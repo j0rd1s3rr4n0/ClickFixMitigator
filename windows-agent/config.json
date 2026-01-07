@@ -1,15 +1,27 @@
 {
   "rules": {
     "suspicious_regexes": [
-      "(?i)powershell\\s+-.*(enc|encodedcommand)",
-      "(?i)cmd\\.exe\\s+/c",
+      "(?i)powershell(\\.exe)?\\s+-.*(enc|encodedcommand)",
+      "(?i)pwsh\\s+-.*(enc|encodedcommand)",
+      "(?i)cmd(\\.exe)?\\s+/[ck]",
       "(?i)curl\\s+http",
       "(?i)bitsadmin\\s+",
       "(?i)invoke-webrequest",
+      "(?i)invoke-expression",
+      "(?i)iex\\b",
+      "(?i)encodedcommand",
+      "(?i)-enc\\b",
+      "(?i)frombase64string",
       "(?i)iex\\s+\"?\\(new-object",
       "(?i)reg\\s+add",
       "(?i)mshta\\s+",
-      "(?i)certutil\\s+-urlcache"
+      "(?i)certutil\\s+-urlcache",
+      "(?i)rundll32\\s+",
+      "(?i)wmic\\s+",
+      "(?i)schtasks\\s+",
+      "(?i)msiexec\\s+",
+      "(?i)cscript\\s+",
+      "(?i)wscript\\s+"
     ],
     "exclusions": [
       "(?i)\\bexample\\.com\\b",

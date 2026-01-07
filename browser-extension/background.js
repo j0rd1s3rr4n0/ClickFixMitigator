@@ -4,8 +4,10 @@ const DEFAULT_SETTINGS = {
   history: []
 };
 
-const COMMAND_REGEX = /(powershell|cmd(\.exe)?|reg\s+add|rundll32|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic)\b/i;
-const SHELL_HINT_REGEX = /(invoke-webrequest|iwr|curl\s+|wget\s+|downloadstring|frombase64string|add-mppreference)/i;
+const COMMAND_REGEX =
+  /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|reg\s+add|rundll32|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic)\b/i;
+const SHELL_HINT_REGEX =
+  /(invoke-webrequest|iwr|curl\s+|wget\s+|downloadstring|frombase64string|add-mppreference|invoke-expression|iex\b|encodedcommand|\-enc\b)/i;
 
 async function getSettings() {
   const stored = await chrome.storage.local.get(DEFAULT_SETTINGS);
@@ -45,6 +47,16 @@ function buildAlertMessage(details) {
   }
   if (details.winRHint) {
     parts.push("La página sugiere usar Win+R/Run dialog.");
+  }
+  if (details.captchaHint) {
+    parts.push("Posible captcha falso detectado.");
+  }
+  if (details.hintSnippet) {
+    const snippet =
+      details.hintSnippet.length > 160
+        ? `${details.hintSnippet.slice(0, 157)}...`
+        : details.hintSnippet;
+    parts.push(`Fragmento detectado: "${snippet}"`);
   }
   return parts.join(" ");
 }
@@ -107,15 +119,18 @@ async function shouldIgnore(url) {
   return settings.whitelist.includes(hostname);
 }
 
-let lastWinRHint = false;
+let lastPageHint = null;
 
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (!message || !message.type) {
     return;
   }
 
-  if (message.type === "pageHint" && message.hint === "winr") {
-    lastWinRHint = true;
+  if (message.type === "pageHint" && message.hint) {
+    lastPageHint = {
+      hint: message.hint,
+      snippet: message.snippet || ""
+    };
     return;
   }
 
@@ -140,15 +155,19 @@ chrome.runtime.onMessage.addListener((message, sender) => {
         selectionAnalysis.shellHint ||
         clipboardAnalysis.shellHint;
 
-      if (mismatch || commandMatch || lastWinRHint) {
+      const winRHint = lastPageHint?.hint === "winr";
+      const captchaHint = lastPageHint?.hint === "captcha";
+      if (mismatch || commandMatch || winRHint || captchaHint) {
         await triggerAlert({
           url: message.url,
           timestamp: message.timestamp,
           mismatch,
           commandMatch,
-          winRHint: lastWinRHint
+          winRHint,
+          captchaHint,
+          hintSnippet: lastPageHint?.snippet || ""
         });
-        lastWinRHint = false;
+        lastPageHint = null;
       }
     })();
   }
