@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ClickFix Mitigator</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>ClickFix Mitigator</h1>
+      <label class="toggle">
+        <input id="toggle-enabled" type="checkbox" />
+        <span>Detección activa</span>
+      </label>
+    </header>
+
+    <section>
+      <h2>Lista blanca</h2>
+      <div class="row">
+        <input id="whitelist-input" type="text" placeholder="ejemplo.com" />
+        <button id="add-domain" type="button">Agregar</button>
+      </div>
+      <ul id="whitelist-list"></ul>
+    </section>
+
+    <section>
+      <h2>Alertas recientes</h2>
+      <div id="history"></div>
+      <button id="clear-history" type="button" class="secondary">Limpiar historial</button>
+    </section>
+
+    <footer>
+      <a href="options.html" target="_blank" rel="noreferrer">Opciones avanzadas</a>
+    </footer>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
