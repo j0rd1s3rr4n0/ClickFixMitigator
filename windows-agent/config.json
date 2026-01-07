@@ -1,0 +1,23 @@
+{
+  "rules": {
+    "suspicious_regexes": [
+      "(?i)powershell\\s+-.*(enc|encodedcommand)",
+      "(?i)cmd\\.exe\\s+/c",
+      "(?i)curl\\s+http",
+      "(?i)bitsadmin\\s+",
+      "(?i)invoke-webrequest",
+      "(?i)iex\\s+\"?\\(new-object",
+      "(?i)reg\\s+add",
+      "(?i)mshta\\s+",
+      "(?i)certutil\\s+-urlcache"
+    ],
+    "exclusions": [
+      "(?i)\\bexample\\.com\\b",
+      "(?i)\\btrusted-script\\.ps1\\b"
+    ]
+  },
+  "sensitivity": {
+    "clipboard_poll_interval_s": 0.5,
+    "process_poll_interval_s": 1.0
+  }
+}
