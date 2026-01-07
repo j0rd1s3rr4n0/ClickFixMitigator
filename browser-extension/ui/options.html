@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Opciones - ClickFix Mitigator</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="options">
+    <header>
+      <h1>Opciones avanzadas</h1>
+      <p>Configura el comportamiento de detección y revisa alertas históricas.</p>
+    </header>
+
+    <section>
+      <h2>Estado</h2>
+      <label class="toggle">
+        <input id="toggle-enabled" type="checkbox" />
+        <span>Detección activa</span>
+      </label>
+    </section>
+
+    <section>
+      <h2>Lista blanca</h2>
+      <div class="row">
+        <input id="whitelist-input" type="text" placeholder="ejemplo.com" />
+        <button id="add-domain" type="button">Agregar dominio</button>
+      </div>
+      <ul id="whitelist-list"></ul>
+    </section>
+
+    <section>
+      <h2>Historial completo</h2>
+      <div id="history"></div>
+      <button id="clear-history" type="button" class="secondary">Limpiar historial</button>
+    </section>
+
+    <script src="options.js"></script>
+  </body>
+</html>

