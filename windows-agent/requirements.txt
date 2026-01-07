@@ -1,0 +1,4 @@
+keyboard==0.13.5
+psutil==5.9.8
+pywin32==306
+win10toast==0.9
