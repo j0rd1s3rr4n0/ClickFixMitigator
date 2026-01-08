@@ -60,6 +60,19 @@ async function readClipboardText() {
   }
 }
 
+async function writeClipboardText(text) {
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.writeText) {
+      return false;
+    }
+    await navigator.clipboard.writeText(text);
+    lastClipboardSnapshot = text;
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 function scanForWinR() {
   if (!document.body) {
     return "";
@@ -178,6 +191,136 @@ function scanForFileExplorer() {
   return findMatchSnippet(CLICKFIX_FILE_EXPLORER_REGEX, bodyText);
 }
 
+function renderBlockedPage(hostname) {
+  const safeHost = hostname || window.location.hostname;
+  const html = `<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sitio bloqueado</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: #fff5f5;
+        color: #7f1d1d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 24px;
+      }
+      .card {
+        max-width: 760px;
+        width: 100%;
+        background: #fff;
+        border: 3px solid #dc2626;
+        border-radius: 20px;
+        padding: 32px;
+        box-shadow: 0 20px 45px rgba(127, 29, 29, 0.2);
+      }
+      .title {
+        font-size: 36px;
+        font-weight: 800;
+        color: #b91c1c;
+        margin-bottom: 12px;
+      }
+      .subtitle {
+        font-size: 18px;
+        margin-bottom: 28px;
+      }
+      .host {
+        font-weight: 700;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      button {
+        font-size: 15px;
+        font-weight: 700;
+        padding: 12px 18px;
+        border-radius: 999px;
+        border: none;
+        cursor: pointer;
+      }
+      .stay {
+        background: #dc2626;
+        color: #fff;
+      }
+      .back {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="title">Sitio web reportado anteriormente</div>
+      <div class="subtitle">
+        Motivo: <strong>ClickFix Report</strong> en
+        <span class="host">${safeHost}</span>
+      </div>
+      <div class="actions">
+        <button class="stay" id="clickfix-stay">Permanecer en web</button>
+        <button class="back" id="clickfix-back">Volver atrás</button>
+      </div>
+    </div>
+  </body>
+</html>`;
+
+  document.open();
+  document.write(html);
+  document.close();
+
+  const stayButton = document.getElementById("clickfix-stay");
+  const backButton = document.getElementById("clickfix-back");
+  if (stayButton) {
+    stayButton.addEventListener("click", () => {
+      chrome.storage.local.get({ whitelist: [] }, (data) => {
+        const next = new Set(data.whitelist || []);
+        next.add(safeHost);
+        chrome.storage.local.set({ whitelist: Array.from(next) }, () => {
+          window.location.reload();
+        });
+      });
+    });
+  }
+  if (backButton) {
+    backButton.addEventListener("click", () => {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = "https://www.ecosia.org/search?method=index&q=Google.com";
+      }
+    });
+  }
+}
+
+function checkReportedSite() {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(
+      {
+        type: "checkBlocklist",
+        url: window.location.href
+      },
+      (response) => {
+        if (response?.blocked) {
+          renderBlockedPage(response.hostname);
+          resolve(true);
+          return;
+        }
+        resolve(false);
+      }
+    );
+  });
+}
+
 function notifyFileExplorerDetected() {
   const snippet = scanForFileExplorer();
   if (snippet && !fileExplorerDetected) {
@@ -268,7 +411,11 @@ document.addEventListener("cut", () => handleCopyCut("cut"));
 document.addEventListener("paste", () => handlePaste());
 document.addEventListener("selectionchange", handleSelectionChange);
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  const blocked = await checkReportedSite();
+  if (blocked) {
+    return;
+  }
   notifyWinRDetected();
   notifyCaptchaDetected();
   notifyConsoleDetected();
@@ -276,7 +423,7 @@ document.addEventListener("DOMContentLoaded", () => {
   notifyPasteSequenceDetected();
   notifyFileExplorerDetected();
   monitorClipboardChanges();
-  setInterval(monitorClipboardChanges, 4000);
+  setInterval(monitorClipboardChanges, 1000);
   const observer = new MutationObserver(() => {
     notifyWinRDetected();
     notifyCaptchaDetected();
@@ -291,6 +438,14 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "replaceClipboard") {
+    writeClipboardText(message.text ?? "");
+    return;
+  }
+  if (message?.type === "restoreClipboard") {
+    writeClipboardText(message.text ?? "");
+    return;
+  }
   if (message?.type === "showBanner") {
     const existing = document.getElementById("clickfix-mitigator-banner");
     if (existing) {

@@ -8,6 +8,11 @@ const COMMAND_REGEX =
   /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|reg\s+add|rundll32|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic)\b/i;
 const SHELL_HINT_REGEX =
   /(invoke-webrequest|iwr|curl\s+|wget\s+|downloadstring|frombase64string|add-mppreference|invoke-expression|iex\b|encodedcommand|\-enc\b)/i;
+const CLIPBOARD_SNIPPET_LIMIT = 160;
+const CLIPBOARD_THROTTLE_MS = 30000;
+const CLICKFIX_REPORT_URL = "https://jordiserrano.me/clickfix-report.php";
+const CLICKFIX_BLOCKLIST_URL = "https://jordiserrano.me/clickfixlist";
+const BLOCKLIST_CACHE_MS = 10 * 60 * 1000;
 
 async function getSettings() {
   const stored = await chrome.storage.local.get(DEFAULT_SETTINGS);
@@ -70,6 +75,13 @@ function buildAlertMessage(details) {
         : details.hintSnippet;
     parts.push(`Fragmento detectado: "${snippet}"`);
   }
+  if (details.blockedClipboardText) {
+    const snippet =
+      details.blockedClipboardText.length > CLIPBOARD_SNIPPET_LIMIT
+        ? `${details.blockedClipboardText.slice(0, CLIPBOARD_SNIPPET_LIMIT - 3)}...`
+        : details.blockedClipboardText;
+    parts.push(`Portapapeles bloqueado: "${snippet}"`);
+  }
   return parts.join(" ");
 }
 
@@ -93,11 +105,22 @@ async function triggerAlert(details) {
     "</svg>"
   ].join("");
 
-  chrome.notifications.create({
-    type: "basic",
-    iconUrl: svgIcon,
-    title: "ClickFix Mitigator",
-    message
+  const notificationId = await new Promise((resolve) => {
+    chrome.notifications.create(
+      {
+        type: "basic",
+        iconUrl: svgIcon,
+        title: "ClickFix Mitigator",
+        message,
+        buttons: details.blockedClipboardText
+          ? [
+              { title: "Restaurar portapapeles" },
+              { title: "Mantener limpio" }
+            ]
+          : undefined
+      },
+      (id) => resolve(id)
+    );
   });
 
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -109,6 +132,8 @@ async function triggerAlert(details) {
       });
     }
   });
+
+  return notificationId;
 }
 
 function analyzeText(text) {
@@ -132,10 +157,103 @@ async function shouldIgnore(url) {
 }
 
 let lastPageHint = null;
+let lastClipboardBlock = { text: "", timestamp: 0 };
+const blockedClipboardByNotification = new Map();
+let blocklistCache = { items: [], fetchedAt: 0 };
 
-chrome.runtime.onMessage.addListener((message, sender) => {
+async function fetchBlocklist() {
+  const now = Date.now();
+  if (blocklistCache.items.length && now - blocklistCache.fetchedAt < BLOCKLIST_CACHE_MS) {
+    return blocklistCache.items;
+  }
+  try {
+    const response = await fetch(CLICKFIX_BLOCKLIST_URL, { cache: "no-store" });
+    if (!response.ok) {
+      return blocklistCache.items;
+    }
+    const text = await response.text();
+    const items = text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    blocklistCache = { items, fetchedAt: now };
+    return items;
+  } catch (error) {
+    return blocklistCache.items;
+  }
+}
+
+async function reportClickfix(details) {
+  try {
+    await fetch(CLICKFIX_REPORT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(details)
+    });
+  } catch (error) {
+    // Ignore reporting errors to avoid breaking the user flow.
+  }
+}
+
+function shouldThrottleClipboardBlock(text) {
+  return (
+    lastClipboardBlock.text === text &&
+    Date.now() - lastClipboardBlock.timestamp < CLIPBOARD_THROTTLE_MS
+  );
+}
+
+function setClipboardBlock(text) {
+  lastClipboardBlock = { text, timestamp: Date.now() };
+}
+
+function requestClipboardReplace(tabId, text) {
+  if (!tabId) {
+    return;
+  }
+  chrome.tabs.sendMessage(tabId, {
+    type: "replaceClipboard",
+    text
+  });
+}
+
+function requestClipboardRestore(tabId, text) {
+  if (!tabId) {
+    return;
+  }
+  chrome.tabs.sendMessage(tabId, {
+    type: "restoreClipboard",
+    text
+  });
+}
+
+chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
+  const entry = blockedClipboardByNotification.get(notificationId);
+  if (!entry) {
+    return;
+  }
+  if (buttonIndex === 0) {
+    requestClipboardRestore(entry.tabId, entry.text);
+  }
+  blockedClipboardByNotification.delete(notificationId);
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || !message.type) {
     return;
+  }
+
+  if (message.type === "checkBlocklist") {
+    (async () => {
+      if (await shouldIgnore(message.url)) {
+        sendResponse({ blocked: false });
+        return;
+      }
+      const hostname = extractHostname(message.url);
+      const items = await fetchBlocklist();
+      const blocked = items.some((entry) => entry === hostname || hostname.endsWith(`.${entry}`));
+      sendResponse({ blocked, hostname });
+    })();
+    return true;
   }
 
   if (message.type === "pageHint" && message.hint) {
@@ -173,7 +291,7 @@ chrome.runtime.onMessage.addListener((message, sender) => {
       const shellHint = lastPageHint?.hint === "shell";
       const pasteSequenceHint = lastPageHint?.hint === "paste-sequence";
       const fileExplorerHint = lastPageHint?.hint === "file-explorer";
-      if (
+      const shouldAlert =
         mismatch ||
         commandMatch ||
         winRHint ||
@@ -182,8 +300,28 @@ chrome.runtime.onMessage.addListener((message, sender) => {
         shellHint ||
         pasteSequenceHint ||
         fileExplorerHint
-      ) {
-        await triggerAlert({
+      ;
+
+      if (shouldAlert) {
+        const clipboardText = message.clipboardText?.trim();
+        const isClipboardWatch = message.eventType === "clipboard-watch";
+        const shouldBlockClipboard =
+          isClipboardWatch &&
+          clipboardText &&
+          (commandMatch || winRHint || captchaHint || consoleHint || shellHint || pasteSequenceHint);
+
+        if (shouldBlockClipboard && shouldThrottleClipboardBlock(clipboardText)) {
+          return;
+        }
+
+        let blockedClipboardText = "";
+        if (shouldBlockClipboard) {
+          setClipboardBlock(clipboardText);
+          blockedClipboardText = clipboardText;
+          requestClipboardReplace(sender?.tab?.id, "");
+        }
+
+        const notificationId = await triggerAlert({
           url: message.url,
           timestamp: message.timestamp,
           mismatch,
@@ -194,8 +332,35 @@ chrome.runtime.onMessage.addListener((message, sender) => {
           shellHint,
           pasteSequenceHint,
           fileExplorerHint,
-          hintSnippet: lastPageHint?.snippet || ""
+          hintSnippet: lastPageHint?.snippet || "",
+          blockedClipboardText
         });
+
+        if (commandMatch || winRHint || captchaHint || consoleHint || shellHint || pasteSequenceHint) {
+          reportClickfix({
+            url: message.url,
+            hostname: extractHostname(message.url),
+            timestamp: message.timestamp,
+            reason: buildAlertMessage({
+              mismatch,
+              commandMatch,
+              winRHint,
+              captchaHint,
+              consoleHint,
+              shellHint,
+              pasteSequenceHint,
+              fileExplorerHint,
+              hintSnippet: lastPageHint?.snippet || ""
+            })
+          });
+        }
+
+        if (blockedClipboardText && notificationId) {
+          blockedClipboardByNotification.set(notificationId, {
+            text: blockedClipboardText,
+            tabId: sender?.tab?.id ?? null
+          });
+        }
         lastPageHint = null;
       }
     })();
