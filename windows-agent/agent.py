@@ -9,10 +9,9 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import psutil
-import win32con
 import win32gui
 import win32process
-from win10toast import ToastNotifier
+from winotify import Notification
 import keyboard
 
 
@@ -35,7 +34,7 @@ class ClipboardMonitor:
         self.exclusions = [re.compile(p, re.IGNORECASE) for p in config["rules"]["exclusions"]]
         self.poll_interval = float(config["sensitivity"]["clipboard_poll_interval_s"])
         self.process_poll_interval = float(config["sensitivity"]["process_poll_interval_s"])
-        self.toast = ToastNotifier()
+        self.toast_app_id = "ClickFix Mitigator"
         self.last_clipboard_text: Optional[str] = None
         self.last_copy_time: Optional[float] = None
         self.known_pids: Dict[int, str] = {}
@@ -96,7 +95,13 @@ class ClipboardMonitor:
             f"Texto: {context.text[:200]}"
         )
         try:
-            self.toast.show_toast("ClickFix Mitigator", message, duration=8, threaded=True)
+            notification = Notification(
+                app_id=self.toast_app_id,
+                title="ClickFix Mitigator",
+                msg=message,
+                duration="short",
+            )
+            notification.show()
         except Exception:
             print("[ALERTA]", message)
 
