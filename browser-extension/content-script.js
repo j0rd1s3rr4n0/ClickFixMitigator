@@ -71,11 +71,73 @@ function sendPageAlert(alertType, snippet) {
   });
 }
 
-function buildBlockedPage(hostname, reasonText) {
+function escapeHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function buildHighlightedHtml(text, snippets) {
+  if (!text) {
+    return "";
+  }
+  const lowerText = text.toLowerCase();
+  const ranges = [];
+  const uniqueSnippets = [...new Set(snippets.filter(Boolean))]
+    .map((snippet) => snippet.trim())
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+
+  uniqueSnippets.forEach((snippet) => {
+    const lowerSnippet = snippet.toLowerCase();
+    let index = 0;
+    while (index < lowerText.length) {
+      const found = lowerText.indexOf(lowerSnippet, index);
+      if (found === -1) {
+        break;
+      }
+      ranges.push({ start: found, end: found + lowerSnippet.length });
+      index = found + lowerSnippet.length;
+    }
+  });
+
+  if (!ranges.length) {
+    return escapeHtml(text);
+  }
+
+  ranges.sort((a, b) => a.start - b.start || b.end - a.end);
+  const merged = [];
+  ranges.forEach((range) => {
+    const last = merged[merged.length - 1];
+    if (last && range.start <= last.end) {
+      last.end = Math.max(last.end, range.end);
+    } else {
+      merged.push({ ...range });
+    }
+  });
+
+  let output = "";
+  let cursor = 0;
+  merged.forEach((range) => {
+    output += escapeHtml(text.slice(cursor, range.start));
+    output += `<mark style="background:#fde68a;color:#7f1d1d;border-radius:4px;padding:0 2px;">${escapeHtml(text.slice(range.start, range.end))}</mark>`;
+    cursor = range.end;
+  });
+  output += escapeHtml(text.slice(cursor));
+  return output;
+}
+
+function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", snippets = []) {
   const title = t("blockedTitle");
-  const reason = reasonText
-    ? t("blockedReasonWithDetail", reasonText)
-    : t("blockedReasonDefault");
+  const filteredReasons = reasons.filter(Boolean);
+  const reason = filteredReasons.length
+    ? t("blockedReasonDefault")
+    : reasonText
+      ? t("blockedReasonWithDetail", reasonText)
+      : t("blockedReasonDefault");
   const container = document.createElement("div");
   container.style.cssText = [
     "min-height:100vh",
@@ -83,17 +145,27 @@ function buildBlockedPage(hostname, reasonText) {
     "flex-direction:column",
     "justify-content:center",
     "align-items:center",
-    "gap:24px",
-    "padding:32px",
-    "background:#fff5f5",
+    "gap:20px",
+    "padding:32px 24px",
+    "background:linear-gradient(180deg, #fff1f2 0%, #fee2e2 100%)",
     "font-family:system-ui, sans-serif",
     "text-align:center"
+  ].join(";");
+
+  const card = document.createElement("div");
+  card.style.cssText = [
+    "background:#ffffff",
+    "border-radius:24px",
+    "padding:32px",
+    "box-shadow:0 24px 60px rgba(185, 28, 28, 0.18)",
+    "max-width:720px",
+    "width:100%"
   ].join(";");
 
   const heading = document.createElement("div");
   heading.textContent = title;
   heading.style.cssText = [
-    "font-size:36px",
+    "font-size:30px",
     "font-weight:800",
     "color:#b91c1c",
     "text-transform:uppercase"
@@ -102,17 +174,85 @@ function buildBlockedPage(hostname, reasonText) {
   const subtitle = document.createElement("div");
   subtitle.textContent = reason;
   subtitle.style.cssText = [
-    "font-size:20px",
-    "font-weight:700",
-    "color:#dc2626"
+    "font-size:16px",
+    "font-weight:600",
+    "color:#b91c1c",
+    "margin-top:12px"
   ].join(";");
+
+  const reasonsTitle = document.createElement("div");
+  reasonsTitle.textContent = t("blockedReasonsTitle");
+  reasonsTitle.style.cssText = [
+    "margin-top:18px",
+    "font-size:15px",
+    "font-weight:700",
+    "color:#7f1d1d"
+  ].join(";");
+
+  const reasonList = document.createElement("ul");
+  reasonList.style.cssText = [
+    "margin:12px 0 0",
+    "padding:0",
+    "list-style:none",
+    "display:flex",
+    "flex-direction:column",
+    "gap:10px",
+    "text-align:left"
+  ].join(";");
+
+  filteredReasons.forEach((entry) => {
+    const item = document.createElement("li");
+    item.textContent = entry;
+    item.style.cssText = [
+      "padding:12px 14px",
+      "border-radius:14px",
+      "background:#fff1f2",
+      "border:1px solid #fecdd3",
+      "color:#7f1d1d",
+      "font-size:14px",
+      "line-height:1.4"
+    ].join(";");
+    reasonList.appendChild(item);
+  });
 
   const hostText = document.createElement("div");
   hostText.textContent = hostname ? t("blockedHost", hostname) : "";
   hostText.style.cssText = [
-    "font-size:16px",
+    "font-size:14px",
     "color:#7f1d1d"
   ].join(";");
+
+  const contextLabel = document.createElement("div");
+  contextLabel.textContent = t("blockedContextTitle");
+  contextLabel.style.cssText = [
+    "margin-top:18px",
+    "font-size:15px",
+    "font-weight:700",
+    "color:#7f1d1d"
+  ].join(";");
+
+  const contextBox = document.createElement("div");
+  contextBox.setAttribute("role", "textbox");
+  contextBox.setAttribute("aria-readonly", "true");
+  contextBox.style.cssText = [
+    "margin-top:12px",
+    "padding:12px 14px",
+    "border-radius:16px",
+    "background:#f8fafc",
+    "border:1px solid #e2e8f0",
+    "color:#0f172a",
+    "font-size:13px",
+    "line-height:1.5",
+    "max-height:400pt",
+    "overflow:auto",
+    "width:60%",
+    "text-align:left",
+    "white-space:pre-wrap"
+  ].join(";");
+
+  if (contextText) {
+    contextBox.innerHTML = buildHighlightedHtml(contextText, snippets);
+  }
 
   const buttonRow = document.createElement("div");
   buttonRow.style.cssText = [
@@ -199,12 +339,21 @@ function buildBlockedPage(hostname, reasonText) {
   buttonRow.appendChild(stayButton);
   buttonRow.appendChild(backButton);
 
-  container.appendChild(heading);
-  container.appendChild(subtitle);
-  if (hostname) {
-    container.appendChild(hostText);
+  card.appendChild(heading);
+  card.appendChild(subtitle);
+  if (filteredReasons.length) {
+    card.appendChild(reasonsTitle);
+    card.appendChild(reasonList);
   }
-  container.appendChild(buttonRow);
+  if (contextText) {
+    card.appendChild(contextLabel);
+    card.appendChild(contextBox);
+  }
+  if (hostname) {
+    card.appendChild(hostText);
+  }
+  card.appendChild(buttonRow);
+  container.appendChild(card);
 
   document.documentElement.innerHTML = "";
   const head = document.createElement("head");
@@ -670,10 +819,8 @@ function startMonitoring() {
 }
 
 (async () => {
-  const isBlocked = await checkBlocklistAndBlock();
-  if (!isBlocked) {
-    startMonitoring();
-  }
+  await checkBlocklistAndBlock();
+  startMonitoring();
 })();
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -686,7 +833,13 @@ chrome.runtime.onMessage.addListener((message) => {
     return;
   }
   if (message?.type === "blockPage") {
-    buildBlockedPage(message.hostname || getHostname(window.location.href), message.reason);
+    buildBlockedPage(
+      message.hostname || getHostname(window.location.href),
+      message.reason,
+      message.reasons || [],
+      message.contextText || "",
+      message.snippets || []
+    );
     return;
   }
   if (message?.type === "showBanner") {
