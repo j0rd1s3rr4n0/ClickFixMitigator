@@ -1,0 +1,8 @@
+2026-01-08 14:56:11,861 INFO Starting ClickFix Mitigator agent
+2026-01-08 14:56:11,863 INFO Starting thread: monitor_clipboard
+2026-01-08 14:56:11,863 INFO Starting thread: monitor_paste_hotkey
+2026-01-08 14:56:11,863 INFO Starting thread: run_tray_icon
+2026-01-08 14:56:32,036 INFO Starting ClickFix Mitigator agent
+2026-01-08 14:56:32,038 INFO Starting thread: monitor_clipboard
+2026-01-08 14:56:32,038 INFO Starting thread: monitor_paste_hotkey
+2026-01-08 14:56:32,038 INFO Starting thread: run_tray_icon
