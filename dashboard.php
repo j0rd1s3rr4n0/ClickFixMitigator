@@ -6,7 +6,19 @@ header('X-Content-Type-Options: nosniff');
 header('Cache-Control: no-store');
 
 $dbPath = __DIR__ . '/data/clickfix.sqlite';
-$schemaPath = __DIR__ . '/data/clickfix.sql';
+$schemaPath = null;
+$preferredSchema = __DIR__ . '/data/clickfix.sql';
+if (is_readable($preferredSchema)) {
+    $schemaPath = $preferredSchema;
+} else {
+    $schemaCandidates = glob(__DIR__ . '/data/*.sql') ?: [];
+    foreach ($schemaCandidates as $candidate) {
+        if (is_readable($candidate)) {
+            $schemaPath = $candidate;
+            break;
+        }
+    }
+}
 
 $stats = [
     'total_alerts' => 0,
@@ -17,8 +29,14 @@ $stats = [
 ];
 
 $recentDetections = [];
+$chartData = [
+    'daily' => [],
+    'hourly' => array_fill(0, 24, 0),
+    'countries' => [],
+    'signals' => []
+];
 
-if (!file_exists($dbPath) && is_readable($schemaPath)) {
+if (!file_exists($dbPath) && $schemaPath !== null) {
     try {
         $pdo = new PDO('sqlite:' . $dbPath);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -58,12 +76,60 @@ if (is_readable($dbPath)) {
                 $stats['last_update'] = (string) $entry['received_at'];
             }
         }
-        $detected = trim((string) ($entry['detected_content'] ?? ''));
-        if ($detected === '') {
-            $detected = trim((string) ($entry['message'] ?? ''));
-        }
-        if ($detected === '') {
-            continue;
+        $reportRows = $pdo->query(
+            'SELECT received_at, url, hostname, message, detected_content, signals_json, country
+             FROM reports
+             ORDER BY received_at DESC
+             LIMIT 200'
+        )->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($reportRows as $entry) {
+            $detected = trim((string) ($entry['detected_content'] ?? ''));
+            $message = trim((string) ($entry['message'] ?? ''));
+            if ($detected === '' && $message === '') {
+                continue;
+            }
+
+            $timestamp = strtotime((string) ($entry['received_at'] ?? ''));
+            if ($timestamp !== false) {
+                $dateKey = date('Y-m-d', $timestamp);
+                $hourKey = (int) date('G', $timestamp);
+                $chartData['daily'][$dateKey] = ($chartData['daily'][$dateKey] ?? 0) + 1;
+                if (isset($chartData['hourly'][$hourKey])) {
+                    $chartData['hourly'][$hourKey] += 1;
+                }
+            }
+
+            $country = (string) ($entry['country'] ?? '');
+            if ($country !== '') {
+                $chartData['countries'][$country] = ($chartData['countries'][$country] ?? 0) + 1;
+            }
+
+            $signals = json_decode((string) ($entry['signals_json'] ?? ''), true);
+            if (is_array($signals)) {
+                foreach ($signals as $signal => $enabled) {
+                    if ($enabled) {
+                        $chartData['signals'][$signal] = ($chartData['signals'][$signal] ?? 0) + 1;
+                    }
+                }
+            }
+
+            $hostname = trim((string) ($entry['hostname'] ?? ''));
+            if ($hostname === '') {
+                $url = (string) ($entry['url'] ?? '');
+                if ($url !== '') {
+                    $parsedUrl = parse_url($url);
+                    $hostname = (string) ($parsedUrl['host'] ?? '');
+                }
+            }
+
+            $recentDetections[] = [
+                'hostname' => $hostname !== '' ? $hostname : 'Sin dominio',
+                'timestamp' => (string) ($entry['received_at'] ?? ''),
+                'message' => $message,
+                'detected' => $detected,
+                'full_context' => ''
+            ];
         }
     } catch (Throwable $exception) {
         $stats = $stats;
