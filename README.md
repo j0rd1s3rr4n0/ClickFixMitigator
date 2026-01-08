@@ -1,83 +1,47 @@
 # ClickFix Mitigator
 
-## English
+ClickFix Mitigator es un proyecto de referencia para entender y mitigar ataques de ingeniería social que empujan a ejecutar comandos (ClickFix). Incluye una extensión de navegador y un agente para Windows que pueden usarse por separado o juntos.
 
-### Overview
-ClickFix Mitigator is a defense-in-depth project focused on detecting and disrupting “ClickFix” social‑engineering flows. It monitors for suspicious clipboard activity, misleading instructions, and pages that try to coerce users into running commands. The browser extension can alert, sanitize the clipboard, and block access to domains reported for ClickFix abuse.
+## Componentes
 
-### Key capabilities
-- **Real-time clipboard monitoring** to detect suspicious command patterns and intervene before they are pasted.
-- **ClickFix hint detection** (e.g., “Win+R”, fake human verification, console paste instructions).
-- **Clipboard sanitization** with restore/keep-clean options on notifications.
-- **Remote reporting** of detections to a server endpoint.
-- **Remote blocklist enforcement** with a full-page warning, plus “stay” or “go back” actions.
+- **Extensión de navegador (MV3)**: detecta patrones típicos de ClickFix, discrepancias entre selección y portapapeles, y contenido que intenta inducir el uso de **Win + R**.
+- **Agente de Windows (Python)**: vigila cambios del portapapeles, eventos de pegado y nuevos procesos para alertar sobre comandos sospechosos.
 
-### Project structure
-- `browser-extension/` — Chrome/Chromium extension (MV3).
-  - `content-script.js` — page signals, clipboard monitoring, and block page UI.
-  - `background.js` — detection logic, notifications, reporting, and blocklist checks.
-- `windows-agent/` — Windows automation/agent components (if used in your deployment).
+## Inicio rápido
 
-### Browser extension setup (Chrome/Chromium)
-1. Open `chrome://extensions/`.
-2. Enable **Developer mode**.
-3. Click **Load unpacked** and select `browser-extension/`.
-4. Pin the extension for quick access.
+### Extensión
 
-### Configuration notes
-The extension uses two remote endpoints:
-- `https://jordiserrano.me/clickfix-report.php` — detection reporting.
-- `https://jordiserrano.me/clickfixlist` — blocklist domain feed.
+1. Ve a `chrome://extensions` (Edge/Brave también funciona).
+2. Activa **modo desarrollador**.
+3. Selecciona **Cargar sin empaquetar** y apunta a `browser-extension/`.
+4. Abre una página de pruebas, copia texto y verifica las alertas cuando el contenido del portapapeles no coincide.
 
-Ensure your environment allows outbound HTTPS requests if you expect reporting and blocklist features to work.
+Más detalles en `browser-extension/README.md`.
 
-### Privacy & data handling
-Reporting sends detection metadata (URL, hostname, timestamp, and reason text). Adjust the server endpoint or remove reporting if you need a local‑only deployment.
+### Agente de Windows
 
-### Development
-No build step is required for the extension. Edit files under `browser-extension/`, then reload the extension from `chrome://extensions/`.
+```powershell
+cd windows-agent
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python agent.py
+```
 
-### License
-See [LICENSE](LICENSE).
+Más detalles en `windows-agent/README.md`.
 
----
+## Permisos y privacidad
 
-## Español
+- La extensión solicita acceso a `<all_urls>` para inspeccionar texto y eventos en las páginas visitadas, y permisos de portapapeles para validar discrepancias entre selección y pegado.
+- El agente de Windows lee el portapapeles y la línea de comandos de procesos para detectar patrones maliciosos.
 
-### Descripción general
-ClickFix Mitigator es un proyecto de defensa en profundidad enfocado en detectar y frenar flujos de ingeniería social tipo “ClickFix”. Supervisa el portapapeles, instrucciones engañosas y páginas que intentan forzar al usuario a ejecutar comandos. La extensión del navegador puede alertar, limpiar el portapapeles y bloquear dominios reportados por abuso ClickFix.
+Si necesitas limitar el alcance, revisa los permisos en `browser-extension/manifest.json` y las reglas en `windows-agent/config.json`.
 
-### Capacidades principales
-- **Monitorización en tiempo real del portapapeles** para detectar patrones sospechosos e intervenir antes del pegado.
-- **Detección de señales ClickFix** (p. ej., “Win+R”, verificación humana falsa, instrucciones para pegar en consola).
-- **Limpieza del portapapeles** con opciones para restaurar o mantener limpio desde la notificación.
-- **Reporte remoto** de detecciones a un servidor.
-- **Bloqueo por lista remota** con aviso a pantalla completa y acciones para permanecer o volver atrás.
+## Pruebas
 
-### Estructura del proyecto
-- `browser-extension/` — Extensión para Chrome/Chromium (MV3).
-  - `content-script.js` — señales de página, monitorización del portapapeles y UI de bloqueo.
-  - `background.js` — lógica de detección, notificaciones, reporte y lista de bloqueo.
-- `windows-agent/` — Componentes del agente para Windows (si se usa en tu despliegue).
+- **Extensión**: usa los HTML de prueba en `browser-extension/` (por ejemplo, `demo-*.html`) y valida que las notificaciones aparezcan cuando el texto copiado/pegado cambia o coincide con reglas sospechosas.
+- **Agente**: ajusta las reglas en `windows-agent/config.json` y ejecuta comandos simulados para verificar los toasts.
 
-### Instalación de la extensión (Chrome/Chromium)
-1. Abre `chrome://extensions/`.
-2. Activa el **Modo desarrollador**.
-3. Pulsa **Cargar descomprimida** y selecciona `browser-extension/`.
-4. Ancla la extensión para acceso rápido.
+## Estado del proyecto
 
-### Notas de configuración
-La extensión utiliza dos endpoints remotos:
-- `https://jordiserrano.me/clickfix-report.php` — reporte de detecciones.
-- `https://jordiserrano.me/clickfixlist` — feed de dominios bloqueados.
-
-Asegúrate de permitir conexiones HTTPS salientes si necesitas reporte y lista de bloqueo.
-
-### Privacidad y datos
-El reporte envía metadatos de la detección (URL, hostname, timestamp y motivo). Ajusta el endpoint o elimina el reporte si necesitas un despliegue totalmente local.
-
-### Desarrollo
-La extensión no requiere build. Edita los archivos en `browser-extension/` y recarga la extensión desde `chrome://extensions/`.
-
-### Licencia
-Consulta [LICENSE](LICENSE).
+Este repositorio es una referencia educativa. Para un entorno real, conviene añadir pruebas automatizadas, un flujo de despliegue seguro y políticas claras de uso.
