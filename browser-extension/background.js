@@ -9,8 +9,8 @@ const DEFAULT_SETTINGS = {
   blocklistUpdatedAt: 0
 };
 
-const CLICKFIX_BLOCKLIST_URL = "https://jordiserrano.me/clickfixlist";
-const CLICKFIX_REPORT_URL = "https://jordiserrano.me/clickfix-report.php";
+const CLICKFIX_BLOCKLIST_URL = "https://jordiserrano.me/ClickFix/clickfixlist";
+const CLICKFIX_REPORT_URL = "https://jordiserrano.me/ClickFix/clickfix-report.php";
 const BLOCKLIST_REFRESH_MINUTES = 0.5;
 const STATS_REPORT_MINUTES = 60;
 
