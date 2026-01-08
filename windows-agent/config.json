@@ -21,7 +21,9 @@
       "(?i)schtasks\\s+",
       "(?i)msiexec\\s+",
       "(?i)cscript\\s+",
-      "(?i)wscript\\s+"
+      "(?i)wscript\\s+",
+      "(?i)p[\\s\\^`]*o[\\s\\^`]*w[\\s\\^`]*e[\\s\\^`]*r[\\s\\^`]*s[\\s\\^`]*h[\\s\\^`]*e[\\s\\^`]*l[\\s\\^`]*l",
+      "(?i)c[\\s\\^`]*m[\\s\\^`]*d"
     ],
     "exclusions": [
       "(?i)\\bexample\\.com\\b",
