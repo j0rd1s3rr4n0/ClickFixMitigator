@@ -155,6 +155,15 @@ function buildAlertMessage(details) {
   if (details.fixActionHint) {
     parts.push(t("alertFixAction"));
   }
+  if (details.winXHint) {
+    parts.push("La página sugiere usar Win+X para abrir la terminal.");
+  }
+  if (details.browserErrorHint) {
+    parts.push("La página muestra un error falso del navegador.");
+  }
+  if (details.fixActionHint) {
+    parts.push("La página pide aplicar una solución rápida o copiar un comando.");
+  }
   if (details.captchaHint) {
     parts.push(t("alertCaptcha"));
   }
@@ -172,6 +181,9 @@ function buildAlertMessage(details) {
   }
   if (details.copyTriggerHint) {
     parts.push(t("alertCopyTrigger"));
+  }
+  if (details.copyTriggerHint) {
+    parts.push("La página intenta copiar comandos al portapapeles.");
   }
   if (details.hintSnippet) {
     const snippet =
