@@ -57,6 +57,9 @@
   "blockedReasonsTitle": {
     "message": "Detecciones"
   },
+  "blockedContextTitle": {
+    "message": "Contexto detectado"
+  },
   "alertMismatch": {
     "message": "Discrepancia entre selección y portapapeles."
   },

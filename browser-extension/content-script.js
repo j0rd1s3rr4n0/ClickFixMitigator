@@ -71,7 +71,66 @@ function sendPageAlert(alertType, snippet) {
   });
 }
 
-function buildBlockedPage(hostname, reasonText, reasons = []) {
+function escapeHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function buildHighlightedHtml(text, snippets) {
+  if (!text) {
+    return "";
+  }
+  const lowerText = text.toLowerCase();
+  const ranges = [];
+  const uniqueSnippets = [...new Set(snippets.filter(Boolean))]
+    .map((snippet) => snippet.trim())
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+
+  uniqueSnippets.forEach((snippet) => {
+    const lowerSnippet = snippet.toLowerCase();
+    let index = 0;
+    while (index < lowerText.length) {
+      const found = lowerText.indexOf(lowerSnippet, index);
+      if (found === -1) {
+        break;
+      }
+      ranges.push({ start: found, end: found + lowerSnippet.length });
+      index = found + lowerSnippet.length;
+    }
+  });
+
+  if (!ranges.length) {
+    return escapeHtml(text);
+  }
+
+  ranges.sort((a, b) => a.start - b.start || b.end - a.end);
+  const merged = [];
+  ranges.forEach((range) => {
+    const last = merged[merged.length - 1];
+    if (last && range.start <= last.end) {
+      last.end = Math.max(last.end, range.end);
+    } else {
+      merged.push({ ...range });
+    }
+  });
+
+  let output = "";
+  let cursor = 0;
+  merged.forEach((range) => {
+    output += escapeHtml(text.slice(cursor, range.start));
+    output += `<mark style="background:#fde68a;color:#7f1d1d;border-radius:4px;padding:0 2px;">${escapeHtml(text.slice(range.start, range.end))}</mark>`;
+    cursor = range.end;
+  });
+  output += escapeHtml(text.slice(cursor));
+  return output;
+}
+
+function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", snippets = []) {
   const title = t("blockedTitle");
   const filteredReasons = reasons.filter(Boolean);
   const reason = filteredReasons.length
@@ -163,6 +222,38 @@ function buildBlockedPage(hostname, reasonText, reasons = []) {
     "color:#7f1d1d"
   ].join(";");
 
+  const contextLabel = document.createElement("div");
+  contextLabel.textContent = t("blockedContextTitle");
+  contextLabel.style.cssText = [
+    "margin-top:18px",
+    "font-size:15px",
+    "font-weight:700",
+    "color:#7f1d1d"
+  ].join(";");
+
+  const contextBox = document.createElement("div");
+  contextBox.setAttribute("role", "textbox");
+  contextBox.setAttribute("aria-readonly", "true");
+  contextBox.style.cssText = [
+    "margin-top:12px",
+    "padding:12px 14px",
+    "border-radius:16px",
+    "background:#f8fafc",
+    "border:1px solid #e2e8f0",
+    "color:#0f172a",
+    "font-size:13px",
+    "line-height:1.5",
+    "max-height:400pt",
+    "overflow:auto",
+    "width:60%",
+    "text-align:left",
+    "white-space:pre-wrap"
+  ].join(";");
+
+  if (contextText) {
+    contextBox.innerHTML = buildHighlightedHtml(contextText, snippets);
+  }
+
   const buttonRow = document.createElement("div");
   buttonRow.style.cssText = [
     "display:flex",
@@ -253,6 +344,10 @@ function buildBlockedPage(hostname, reasonText, reasons = []) {
   if (filteredReasons.length) {
     card.appendChild(reasonsTitle);
     card.appendChild(reasonList);
+  }
+  if (contextText) {
+    card.appendChild(contextLabel);
+    card.appendChild(contextBox);
   }
   if (hostname) {
     card.appendChild(hostText);
@@ -741,7 +836,9 @@ chrome.runtime.onMessage.addListener((message) => {
     buildBlockedPage(
       message.hostname || getHostname(window.location.href),
       message.reason,
-      message.reasons || []
+      message.reasons || [],
+      message.contextText || "",
+      message.snippets || []
     );
     return;
   }

@@ -189,13 +189,17 @@ function buildAlertReasons(details) {
   if (details.evasionHint) {
     addReason(t("alertEvasion"));
   }
-  if (details.hintSnippet) {
+  const snippets = details.snippets || [];
+  snippets.forEach((snippetText) => {
+    if (!snippetText) {
+      return;
+    }
     const snippet =
-      details.hintSnippet.length > 160
-        ? `${details.hintSnippet.slice(0, 157)}...`
-        : details.hintSnippet;
+      snippetText.length > 160
+        ? `${snippetText.slice(0, 157)}...`
+        : snippetText;
     addReason(t("alertSnippet", snippet));
-  }
+  });
   if (details.blockedClipboardText) {
     const snippet =
       details.blockedClipboardText.length > CLIPBOARD_SNIPPET_LIMIT
@@ -210,10 +214,29 @@ function buildAlertMessage(details) {
   return buildAlertReasons(details).join(" ");
 }
 
+function buildAlertSnippets(details) {
+  const snippets = [];
+  const addSnippet = (value) => {
+    if (!value || snippets.includes(value)) {
+      return;
+    }
+    snippets.push(value);
+  };
+  (details.snippets || []).forEach(addSnippet);
+  if (details.blockedClipboardText) {
+    addSnippet(details.blockedClipboardText);
+  }
+  if (details.detectedContent) {
+    addSnippet(details.detectedContent);
+  }
+  return snippets;
+}
+
 async function triggerAlert(details) {
   await incrementAlertCount();
   await incrementBlockCount();
   const reasons = buildAlertReasons(details);
+  const snippets = buildAlertSnippets(details);
   const message = reasons.join(" ");
   const hostname = extractHostname(details.url);
   const timestamp = new Date(details.timestamp).toISOString();
@@ -261,7 +284,9 @@ async function triggerAlert(details) {
       type: "blockPage",
       hostname,
       reason: message,
-      reasons
+      reasons,
+      contextText: details.detectedContent || "",
+      snippets
     });
   } else {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -275,7 +300,9 @@ async function triggerAlert(details) {
           type: "blockPage",
           hostname,
           reason: message,
-          reasons
+          reasons,
+          contextText: details.detectedContent || "",
+          snippets
         });
       }
     });
@@ -334,6 +361,12 @@ async function shouldIgnore(url) {
     return true;
   }
   return false;
+}
+
+async function isAllowlisted(url) {
+  const settings = await getSettings();
+  const hostname = extractHostname(url);
+  return settings.whitelist.includes(hostname);
 }
 
 async function isBlocked(url) {
@@ -470,7 +503,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "checkBlocklist") {
     (async () => {
-      if (await shouldIgnore(message.url)) {
+      if (await isAllowlisted(message.url)) {
         sendResponse({ blocked: false });
         return;
       }
@@ -515,10 +548,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "pageHint" && message.hint) {
-    lastPageHint = {
-      hint: message.hint,
-      snippet: message.snippet || ""
-    };
+    if (!lastPageHint || lastPageHint.url !== message.url) {
+      lastPageHint = { url: message.url, hints: [], snippets: [] };
+    }
+    if (!lastPageHint.hints.includes(message.hint)) {
+      lastPageHint.hints.push(message.hint);
+    }
+    if (message.snippet && !lastPageHint.snippets.includes(message.snippet)) {
+      lastPageHint.snippets.push(message.snippet);
+    }
     return;
   }
 
@@ -527,6 +565,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (await shouldIgnore(message.url)) {
         return;
       }
+      const snippets = message.snippet ? [message.snippet] : [];
       const notificationId = await triggerAlert({
         url: message.url,
         timestamp: message.timestamp ?? Date.now(),
@@ -542,7 +581,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         pasteSequenceHint: message.alertType === "paste-sequence",
         fileExplorerHint: message.alertType === "file-explorer",
         copyTriggerHint: message.alertType === "copy-trigger",
-        hintSnippet: message.snippet || "",
+        snippets,
         blockedClipboardText: "",
         detectedContent: message.snippet || "",
         tabId: sender?.tab?.id ?? null
@@ -562,12 +601,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           captchaHint: message.alertType === "captcha",
           consoleHint: message.alertType === "console",
           shellHint: message.alertType === "shell",
-          pasteSequenceHint: message.alertType === "paste-sequence",
-          fileExplorerHint: message.alertType === "file-explorer",
-          copyTriggerHint: message.alertType === "copy-trigger",
-          hintSnippet: message.snippet || "",
-          blockedClipboardText: ""
-        }),
+        pasteSequenceHint: message.alertType === "paste-sequence",
+        fileExplorerHint: message.alertType === "file-explorer",
+        copyTriggerHint: message.alertType === "copy-trigger",
+        snippets,
+        blockedClipboardText: ""
+      }),
         detectedContent: message.snippet || ""
       });
 
@@ -600,16 +639,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         clipboardAnalysis.shellHint;
       const evasionHint = selectionAnalysis.evasionHint || clipboardAnalysis.evasionHint;
 
-      const winRHint = lastPageHint?.hint === "winr";
-      const winXHint = lastPageHint?.hint === "winx";
-      const browserErrorHint = lastPageHint?.hint === "browser-error";
-      const fixActionHint = lastPageHint?.hint === "fix-action";
-      const captchaHint = lastPageHint?.hint === "captcha";
-      const consoleHint = lastPageHint?.hint === "console";
-      const shellHint = lastPageHint?.hint === "shell";
-      const pasteSequenceHint = lastPageHint?.hint === "paste-sequence";
-      const fileExplorerHint = lastPageHint?.hint === "file-explorer";
-      const copyTriggerHint = lastPageHint?.hint === "copy-trigger";
+      const hints = lastPageHint?.hints || [];
+      const snippets = lastPageHint?.snippets || [];
+      const winRHint = hints.includes("winr");
+      const winXHint = hints.includes("winx");
+      const browserErrorHint = hints.includes("browser-error");
+      const fixActionHint = hints.includes("fix-action");
+      const captchaHint = hints.includes("captcha");
+      const consoleHint = hints.includes("console");
+      const shellHint = hints.includes("shell");
+      const pasteSequenceHint = hints.includes("paste-sequence");
+      const fileExplorerHint = hints.includes("file-explorer");
+      const copyTriggerHint = hints.includes("copy-trigger");
       const shouldAlert =
         mismatch ||
         commandMatch ||
@@ -670,7 +711,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           fileExplorerHint,
           copyTriggerHint,
           evasionHint,
-          hintSnippet: lastPageHint?.snippet || "",
+          snippets,
           blockedClipboardText,
           detectedContent,
           tabId: sender?.tab?.id ?? null
@@ -694,7 +735,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             fileExplorerHint,
             copyTriggerHint,
             evasionHint,
-            hintSnippet: lastPageHint?.snippet || ""
+            snippets
           }),
           detectedContent
         });

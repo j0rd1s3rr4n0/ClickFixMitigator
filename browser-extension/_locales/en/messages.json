@@ -57,6 +57,9 @@
   "blockedReasonsTitle": {
     "message": "Detections"
   },
+  "blockedContextTitle": {
+    "message": "Detected context"
+  },
   "alertMismatch": {
     "message": "Mismatch between selection and clipboard."
   },
