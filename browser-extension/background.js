@@ -240,6 +240,7 @@ async function triggerAlert(details) {
   const message = reasons.join(" ");
   const hostname = extractHostname(details.url);
   const timestamp = new Date(details.timestamp).toISOString();
+  const allowlisted = await isAllowlisted(details.url);
 
   await saveHistory({
     message,
@@ -280,14 +281,16 @@ async function triggerAlert(details) {
       type: "showBanner",
       text: message
     });
-    chrome.tabs.sendMessage(targetTabId, {
-      type: "blockPage",
-      hostname,
-      reason: message,
-      reasons,
-      contextText: details.detectedContent || "",
-      snippets
-    });
+    if (!allowlisted) {
+      chrome.tabs.sendMessage(targetTabId, {
+        type: "blockPage",
+        hostname,
+        reason: message,
+        reasons,
+        contextText: details.detectedContent || "",
+        snippets
+      });
+    }
   } else {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tabId = tabs?.[0]?.id;
@@ -296,14 +299,16 @@ async function triggerAlert(details) {
           type: "showBanner",
           text: message
         });
-        chrome.tabs.sendMessage(tabId, {
-          type: "blockPage",
-          hostname,
-          reason: message,
-          reasons,
-          contextText: details.detectedContent || "",
-          snippets
-        });
+        if (!allowlisted) {
+          chrome.tabs.sendMessage(tabId, {
+            type: "blockPage",
+            hostname,
+            reason: message,
+            reasons,
+            contextText: details.detectedContent || "",
+            snippets
+          });
+        }
       }
     });
   }
