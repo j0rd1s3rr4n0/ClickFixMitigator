@@ -1,6 +1,7 @@
 import ctypes
 from ctypes import wintypes
 import json
+import logging
 import re
 import threading
 import time
@@ -18,6 +19,7 @@ from PIL import Image, ImageDraw
 
 
 CONFIG_PATH = Path(__file__).with_name("config.json")
+LOG_PATH = Path(__file__).with_name("agent.log")
 CLIPBOARD_CF_UNICODETEXT = 13
 
 
@@ -246,16 +248,30 @@ class ClipboardMonitor:
 
     def run(self) -> None:
         threads = [
-            threading.Thread(target=self.monitor_clipboard, daemon=True),
-            threading.Thread(target=self.monitor_paste_hotkey, daemon=True),
-            threading.Thread(target=self.run_tray_icon, daemon=True),
+            threading.Thread(
+                target=self._run_thread,
+                args=(self.monitor_clipboard, "monitor_clipboard"),
+                daemon=True,
+            ),
+            threading.Thread(
+                target=self._run_thread,
+                args=(self.monitor_paste_hotkey, "monitor_paste_hotkey"),
+                daemon=True,
+            ),
         ]
         for thread in threads:
             thread.start()
         try:
-            while self.running:
-                time.sleep(1)
+            self._run_thread(self.run_tray_icon, "run_tray_icon")
         except KeyboardInterrupt:
+            self.stop()
+
+    def _run_thread(self, target, name: str) -> None:
+        try:
+            logging.info("Starting thread: %s", name)
+            target()
+        except Exception:
+            logging.exception("Thread crashed: %s", name)
             self.stop()
 
 
@@ -265,9 +281,24 @@ def load_config() -> Dict[str, object]:
 
 
 def main() -> None:
-    config = load_config()
+    logging.basicConfig(
+        filename=LOG_PATH,
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+    )
+    logging.info("Starting ClickFix Mitigator agent")
+    print("ClickFix Mitigator iniciado. Revisa la bandeja del sistema.")
+    try:
+        config = load_config()
+    except Exception:
+        logging.exception("Failed to load config")
+        raise
     monitor = ClipboardMonitor(config)
-    monitor.run()
+    try:
+        monitor.run()
+    except Exception:
+        logging.exception("Agent crashed")
+        raise
 
 
 if __name__ == "__main__":
