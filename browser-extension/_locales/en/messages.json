@@ -54,6 +54,9 @@
       }
     }
   },
+  "blockedReasonsTitle": {
+    "message": "Detections"
+  },
   "alertMismatch": {
     "message": "Mismatch between selection and clipboard."
   },
@@ -89,6 +92,9 @@
   },
   "alertCopyTrigger": {
     "message": "The page attempts to copy commands to the clipboard."
+  },
+  "alertEvasion": {
+    "message": "Obfuscated or encoded command content detected."
   },
   "alertSnippet": {
     "message": "Detected snippet: \"$1\"",
@@ -209,5 +215,14 @@
   },
   "optionsRemove": {
     "message": "Remove"
+  },
+  "languageTitle": {
+    "message": "Language"
+  },
+  "languageEnglish": {
+    "message": "English"
+  },
+  "languageSpanish": {
+    "message": "Spanish"
   }
 }

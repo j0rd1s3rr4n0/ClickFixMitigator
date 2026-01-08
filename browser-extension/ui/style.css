@@ -54,6 +54,14 @@ input[type="text"] {
   border: 1px solid #cbd5f5;
 }
 
+select {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #cbd5f5;
+  background: #fff;
+}
+
 button {
   background: #0f172a;
   color: #fff;

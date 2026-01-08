@@ -54,6 +54,9 @@
       }
     }
   },
+  "blockedReasonsTitle": {
+    "message": "Detecciones"
+  },
   "alertMismatch": {
     "message": "Discrepancia entre selección y portapapeles."
   },
@@ -89,6 +92,9 @@
   },
   "alertCopyTrigger": {
     "message": "La página intenta copiar comandos al portapapeles."
+  },
+  "alertEvasion": {
+    "message": "Se detectó contenido de comandos ofuscado o codificado."
   },
   "alertSnippet": {
     "message": "Fragmento detectado: \"$1\"",
@@ -209,5 +215,14 @@
   },
   "optionsRemove": {
     "message": "Quitar"
+  },
+  "languageTitle": {
+    "message": "Idioma"
+  },
+  "languageEnglish": {
+    "message": "Inglés"
+  },
+  "languageSpanish": {
+    "message": "Español"
   }
 }
