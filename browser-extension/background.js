@@ -6,7 +6,7 @@ const DEFAULT_SETTINGS = {
   blocklistUpdatedAt: 0
 };
 
-const CLICKFIX_LIST_URL = "https://jordiserrano.me/clickfixlist";
+const CLICKFIX_BLOCKLIST_URL = "https://jordiserrano.me/clickfixlist";
 const CLICKFIX_REPORT_URL = "https://jordiserrano.me/clickfix-report.php";
 const BLOCKLIST_REFRESH_MINUTES = 30;
 
@@ -16,8 +16,6 @@ const SHELL_HINT_REGEX =
   /(invoke-webrequest|iwr|curl\s+|wget\s+|downloadstring|frombase64string|add-mppreference|invoke-expression|iex\b|encodedcommand|\-enc\b)/i;
 const CLIPBOARD_SNIPPET_LIMIT = 160;
 const CLIPBOARD_THROTTLE_MS = 30000;
-const CLICKFIX_REPORT_URL = "https://jordiserrano.me/clickfix-report.php";
-const CLICKFIX_BLOCKLIST_URL = "https://jordiserrano.me/clickfixlist";
 const BLOCKLIST_CACHE_MS = 10 * 60 * 1000;
 
 async function getSettings() {
@@ -63,9 +61,11 @@ function matchesHostname(hostname, entry) {
   return hostname.endsWith(`.${entry}`);
 }
 
-async function fetchBlocklist() {
+let blocklistCache = { items: [], fetchedAt: 0 };
+
+async function refreshBlocklist() {
   try {
-    const response = await fetch(CLICKFIX_LIST_URL, { cache: "no-store" });
+    const response = await fetch(CLICKFIX_BLOCKLIST_URL, { cache: "no-store" });
     if (!response.ok) {
       return;
     }
@@ -76,6 +76,7 @@ async function fetchBlocklist() {
       .filter((line) => line && !line.startsWith("#"))
       .map(normalizeHostname)
       .filter(Boolean);
+    blocklistCache = { items: entries, fetchedAt: Date.now() };
     await chrome.storage.local.set({
       blocklist: entries,
       blocklistUpdatedAt: Date.now()
@@ -177,17 +178,34 @@ async function triggerAlert(details) {
     );
   });
 
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const tabId = tabs?.[0]?.id;
-    if (tabId) {
-      chrome.tabs.sendMessage(tabId, {
-        type: "showBanner",
-        text: message
-      });
-    }
-  });
+  const targetTabId = details.tabId;
+  if (targetTabId) {
+    chrome.tabs.sendMessage(targetTabId, {
+      type: "showBanner",
+      text: message
+    });
+    chrome.tabs.sendMessage(targetTabId, {
+      type: "blockPage",
+      hostname,
+      reason: message
+    });
+  } else {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tabId = tabs?.[0]?.id;
+      if (tabId) {
+        chrome.tabs.sendMessage(tabId, {
+          type: "showBanner",
+          text: message
+        });
+        chrome.tabs.sendMessage(tabId, {
+          type: "blockPage",
+          hostname,
+          reason: message
+        });
+      }
+    });
+  }
 
-  return notificationId;
   try {
     await fetch(CLICKFIX_REPORT_URL, {
       method: "POST",
@@ -212,6 +230,8 @@ async function triggerAlert(details) {
   } catch (error) {
     // Ignore reporting errors.
   }
+
+  return notificationId;
 }
 
 function analyzeText(text) {
@@ -256,46 +276,36 @@ async function addToWhitelist(hostname) {
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  fetchBlocklist();
+  refreshBlocklist();
   chrome.alarms.create("clickfix-refresh", { periodInMinutes: BLOCKLIST_REFRESH_MINUTES });
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  fetchBlocklist();
+  refreshBlocklist();
   chrome.alarms.create("clickfix-refresh", { periodInMinutes: BLOCKLIST_REFRESH_MINUTES });
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "clickfix-refresh") {
-    fetchBlocklist();
+    refreshBlocklist();
   }
 });
 
 let lastPageHint = null;
 let lastClipboardBlock = { text: "", timestamp: 0 };
 const blockedClipboardByNotification = new Map();
-let blocklistCache = { items: [], fetchedAt: 0 };
 
-async function fetchBlocklist() {
+async function getBlocklistItems() {
   const now = Date.now();
   if (blocklistCache.items.length && now - blocklistCache.fetchedAt < BLOCKLIST_CACHE_MS) {
     return blocklistCache.items;
   }
-  try {
-    const response = await fetch(CLICKFIX_BLOCKLIST_URL, { cache: "no-store" });
-    if (!response.ok) {
-      return blocklistCache.items;
-    }
-    const text = await response.text();
-    const items = text
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-    blocklistCache = { items, fetchedAt: now };
-    return items;
-  } catch (error) {
-    return blocklistCache.items;
+  const settings = await getSettings();
+  if (settings.blocklist.length) {
+    blocklistCache = { items: settings.blocklist, fetchedAt: now };
+    return settings.blocklist;
   }
+  return blocklistCache.items;
 }
 
 async function reportClickfix(details) {
@@ -364,10 +374,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
       const hostname = extractHostname(message.url);
-      const items = await fetchBlocklist();
+      const items = await getBlocklistItems();
       const blocked = items.some((entry) => entry === hostname || hostname.endsWith(`.${entry}`));
-      const hostname = extractHostname(message.url);
-      const blocked = await isBlocked(message.url);
       sendResponse({ blocked, hostname });
     })();
     return true;
@@ -458,7 +466,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           pasteSequenceHint,
           fileExplorerHint,
           hintSnippet: lastPageHint?.snippet || "",
-          blockedClipboardText
+          blockedClipboardText,
+          tabId: sender?.tab?.id ?? null
         });
 
         if (commandMatch || winRHint || captchaHint || consoleHint || shellHint || pasteSequenceHint) {

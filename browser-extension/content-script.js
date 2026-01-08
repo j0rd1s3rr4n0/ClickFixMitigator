@@ -39,9 +39,11 @@ async function getBlocklistStatus() {
   });
 }
 
-function buildBlockedPage(hostname) {
-  const title = "Sitio web reportado anteriormente";
-  const reason = "Motivo: ClickFix Report";
+function buildBlockedPage(hostname, reasonText) {
+  const title = "Sitio web bloqueado por posible ClickFix";
+  const reason = reasonText
+    ? `Motivo: ${reasonText}`
+    : "Motivo: patrones ClickFix detectados";
   const container = document.createElement("div");
   container.style.cssText = [
     "min-height:100vh",
@@ -609,6 +611,10 @@ chrome.runtime.onMessage.addListener((message) => {
   }
   if (message?.type === "restoreClipboard") {
     writeClipboardText(message.text ?? "");
+    return;
+  }
+  if (message?.type === "blockPage") {
+    buildBlockedPage(message.hostname || getHostname(window.location.href), message.reason);
     return;
   }
   if (message?.type === "showBanner") {
