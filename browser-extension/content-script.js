@@ -1,7 +1,13 @@
 const CLICKFIX_WIN_R_REGEX =
   /(win\s*\+\s*r|w\s*i\s*n\s*\+\s*r|win\s+r|windows\s*\+\s*r|windows\s+key|windows\s+logo\s+key|windows\s+button|logo\s+de\s+windows|presiona\s+windows|tecla\s+windows|tecla\s+de\s+windows|tecla\s+⊞|⊞\s*\+\s*r|run\s+dialog|run\s*box|runbox|rundialog|open\s+run|abre\s+ejecutar|cuadro\s+de\s+ejecutar|ventana\s+de\s+ejecutar|simbolo\s+del\s+sistema|símbolo\s+del\s+sistema|abr(e|ir)\s+cmd|abr(e|ir)\s+powershell|abr(e|ir)\s+terminal|abre\s+la\s+consola)/i;
+const CLICKFIX_WIN_X_REGEX =
+  /(win\s*\+\s*x|w\s*i\s*n\s*\+\s*x|win\s+x|windows\s*\+\s*x|menu\s+de\s+acceso\s+rápido|quick\s+link\s+menu|power\s+user\s+menu|menu\s+winx|abre\s+winx|open\s+winx)/i;
 const CLICKFIX_CAPTCHA_REGEX =
   /(captcha|no\s+soy\s+un\s+robot|no\s+eres\s+un\s+robot|i('?| a)?m\s+not\s+a\s+robot|verify\s+you('?| a)?re\s+human|human\s+verification|verifica\s+que\s+eres\s+humano|confirmar\s+que\s+eres\s+humano)/i;
+const CLICKFIX_FAKE_ERROR_REGEX =
+  /(algo\s+sal(i|ió)\s+mal|something\s+went\s+wrong|error\s+al\s+mostrar\s+esta\s+p(a|á)gina|error\s+displaying\s+this\s+page|browser\s+update|actualizaci(o|ó)n\s+del\s+navegador|suspicious\s+activity|actividad\s+sospechosa|security\s+check|chequeo\s+de\s+seguridad|verify\s+your\s+browser|verifica\s+tu\s+navegador)/i;
+const CLICKFIX_FIX_ACTION_REGEX =
+  /(fix\s+it|fix\s+this|copy\s+fix|copy\s+solution|copiar\s+soluci(o|ó)n|copiar\s+solucion|resolver\s+el\s+problema|how\s+to\s+fix|soluci(o|ó)n\s+r(a|á)pida)/i;
 const CLICKFIX_CONSOLE_REGEX =
   /(devtools\s+console|consola\s+de\s+devtools|console\s+de\s+desarrolladores|developer\s+console|browser\s+console|web\s+console|console\s+of\s+the\s+browser|allow\s+pasting|permitir\s+pegar|pega\s+esto\s+en\s+la\s+consola|paste\s+this\s+into\s+the\s+console|paste\s+in(to)?\s+console|pega\s+en\s+la\s+consola|pegar\s+en\s+consola|open\s+devtools|abre\s+devtools|open\s+developer\s+tools|abre\s+las\s+herramientas\s+de\s+desarrollador)/i;
 const CLICKFIX_SHELL_PASTE_REGEX =
@@ -10,15 +16,27 @@ const CLICKFIX_PASTE_SEQUENCE_REGEX =
   /(ctrl\s*\+\s*v|control\s*\+\s*v|pega\s+con\s+ctrl\s*\+\s*v|press\s+ctrl\s*\+\s*v|then\s+press\s+enter|pulsa\s+enter|presiona\s+enter|hit\s+enter|ctrl\s*\+\s*shift\s*\+\s*enter|control\s*\+\s*shift\s*\+\s*enter)/i;
 const CLICKFIX_FILE_EXPLORER_REGEX =
   /(file\s+explorer|explorador\s+de\s+archivos|address\s+bar|barra\s+de\s+direcciones|ctrl\s*\+\s*l|control\s*\+\s*l|alt\s*\+\s*d|pega\s+la\s+ruta|paste\s+the\s+path|open\s+file\s+explorer|abre\s+el\s+explorador)/i;
+const CLICKFIX_COPY_TRIGGER_REGEX =
+  /(execCommand\(['"]copy['"]\)|navigator\.clipboard\.writeText|clipboard\.writeText)/i;
+const CLICKFIX_RECAPTCHA_ID_REGEX = /reCAPTCHA Verification ID/i;
+const COMMAND_REGEX =
+  /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d|reg\s+add|rundll32|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic)\b/i;
+const SHELL_HINT_REGEX =
+  /(invoke-webrequest|iwr|curl\s+|wget\s+|downloadstring|frombase64string|add-mppreference|invoke-expression|iex\b|encodedcommand|\-enc\b)/i;
 const MAX_SELECTION_LENGTH = 2000;
 
 let lastSelectionText = "";
 let winRDetected = false;
+let winXDetected = false;
 let captchaDetected = false;
+let browserErrorDetected = false;
+let fixActionDetected = false;
 let consoleDetected = false;
 let shellDetected = false;
 let pasteSequenceDetected = false;
 let fileExplorerDetected = false;
+let commandDetected = false;
+let copyTriggerDetected = false;
 let lastClipboardSnapshot = "";
 let clipboardWatchRunning = false;
 
@@ -39,9 +57,21 @@ async function getBlocklistStatus() {
   });
 }
 
-function buildBlockedPage(hostname) {
-  const title = "Sitio web reportado anteriormente";
-  const reason = "Motivo: ClickFix Report";
+function sendPageAlert(alertType, snippet) {
+  chrome.runtime.sendMessage({
+    type: "pageAlert",
+    alertType,
+    snippet,
+    url: window.location.href,
+    timestamp: Date.now()
+  });
+}
+
+function buildBlockedPage(hostname, reasonText) {
+  const title = "Sitio web bloqueado por posible ClickFix";
+  const reason = reasonText
+    ? `Motivo: ${reasonText}`
+    : "Motivo: patrones ClickFix detectados";
   const container = document.createElement("div");
   container.style.cssText = [
     "min-height:100vh",
@@ -88,6 +118,20 @@ function buildBlockedPage(hostname) {
     "justify-content:center"
   ].join(";");
 
+  const reportButton = document.createElement("button");
+  reportButton.type = "button";
+  reportButton.textContent = "Reportar sitio";
+  reportButton.style.cssText = [
+    "padding:12px 20px",
+    "border-radius:999px",
+    "border:2px solid #f97316",
+    "background:#fff7ed",
+    "color:#ea580c",
+    "font-weight:700",
+    "cursor:pointer",
+    "font-size:14px"
+  ].join(";");
+
   const stayButton = document.createElement("button");
   stayButton.type = "button";
   stayButton.textContent = "Permanecer en web";
@@ -127,6 +171,17 @@ function buildBlockedPage(hostname) {
     window.location.reload();
   });
 
+  reportButton.addEventListener("click", () => {
+    chrome.runtime.sendMessage({
+      type: "manualReport",
+      url: window.location.href,
+      hostname: hostname || getHostname(window.location.href),
+      timestamp: Date.now()
+    });
+    reportButton.disabled = true;
+    reportButton.textContent = "Reportado";
+  });
+
   backButton.addEventListener("click", () => {
     if (window.history.length > 1) {
       window.history.back();
@@ -136,6 +191,7 @@ function buildBlockedPage(hostname) {
     }
   });
 
+  buttonRow.appendChild(reportButton);
   buttonRow.appendChild(stayButton);
   buttonRow.appendChild(backButton);
 
@@ -157,7 +213,14 @@ function buildBlockedPage(hostname) {
 async function checkBlocklistAndBlock() {
   const status = await getBlocklistStatus();
   if (status?.blocked) {
-    buildBlockedPage(status.hostname || getHostname(window.location.href));
+    const hostname = status.hostname || getHostname(window.location.href);
+    chrome.runtime.sendMessage({
+      type: "blocklisted",
+      url: window.location.href,
+      hostname,
+      timestamp: Date.now()
+    });
+    buildBlockedPage(hostname);
     return true;
   }
   return false;
@@ -222,12 +285,39 @@ function scanForWinR() {
   return findMatchSnippet(CLICKFIX_WIN_R_REGEX, bodyText);
 }
 
+function scanForWinX() {
+  if (!document.body) {
+    return "";
+  }
+  const bodyText = document.body.innerText || "";
+  return findMatchSnippet(CLICKFIX_WIN_X_REGEX, bodyText);
+}
+
+function scanForFakeError() {
+  if (!document.body) {
+    return "";
+  }
+  const bodyText = document.body.innerText || "";
+  return findMatchSnippet(CLICKFIX_FAKE_ERROR_REGEX, bodyText);
+}
+
+function scanForFixAction() {
+  if (!document.body) {
+    return "";
+  }
+  const bodyText = document.body.innerText || "";
+  return findMatchSnippet(CLICKFIX_FIX_ACTION_REGEX, bodyText);
+}
+
 function scanForFakeCaptcha() {
   if (!document.body) {
     return "";
   }
   const bodyText = document.body.innerText || "";
-  return findMatchSnippet(CLICKFIX_CAPTCHA_REGEX, bodyText);
+  return (
+    findMatchSnippet(CLICKFIX_CAPTCHA_REGEX, bodyText) ||
+    findMatchSnippet(CLICKFIX_RECAPTCHA_ID_REGEX, bodyText)
+  );
 }
 
 function notifyWinRDetected() {
@@ -241,6 +331,22 @@ function notifyWinRDetected() {
       url: window.location.href,
       timestamp: Date.now()
     });
+    sendPageAlert("winr", snippet);
+  }
+}
+
+function notifyWinXDetected() {
+  const snippet = scanForWinX();
+  if (snippet && !winXDetected) {
+    winXDetected = true;
+    chrome.runtime.sendMessage({
+      type: "pageHint",
+      hint: "winx",
+      snippet,
+      url: window.location.href,
+      timestamp: Date.now()
+    });
+    sendPageAlert("winx", snippet);
   }
 }
 
@@ -255,6 +361,37 @@ function notifyCaptchaDetected() {
       url: window.location.href,
       timestamp: Date.now()
     });
+    sendPageAlert("captcha", snippet);
+  }
+}
+
+function notifyBrowserErrorDetected() {
+  const snippet = scanForFakeError();
+  if (snippet && !browserErrorDetected) {
+    browserErrorDetected = true;
+    chrome.runtime.sendMessage({
+      type: "pageHint",
+      hint: "browser-error",
+      snippet,
+      url: window.location.href,
+      timestamp: Date.now()
+    });
+    sendPageAlert("browser-error", snippet);
+  }
+}
+
+function notifyFixActionDetected() {
+  const snippet = scanForFixAction();
+  if (snippet && !fixActionDetected) {
+    fixActionDetected = true;
+    chrome.runtime.sendMessage({
+      type: "pageHint",
+      hint: "fix-action",
+      snippet,
+      url: window.location.href,
+      timestamp: Date.now()
+    });
+    sendPageAlert("fix-action", snippet);
   }
 }
 
@@ -277,6 +414,7 @@ function notifyConsoleDetected() {
       url: window.location.href,
       timestamp: Date.now()
     });
+    sendPageAlert("console", snippet);
   }
 }
 
@@ -299,6 +437,7 @@ function notifyShellDetected() {
       url: window.location.href,
       timestamp: Date.now()
     });
+    sendPageAlert("shell", snippet);
   }
 }
 
@@ -321,6 +460,7 @@ function notifyPasteSequenceDetected() {
       url: window.location.href,
       timestamp: Date.now()
     });
+    sendPageAlert("paste-sequence", snippet);
   }
 }
 
@@ -330,6 +470,45 @@ function scanForFileExplorer() {
   }
   const bodyText = document.body.innerText || "";
   return findMatchSnippet(CLICKFIX_FILE_EXPLORER_REGEX, bodyText);
+}
+
+function scanForCopyTrigger() {
+  const htmlText = document.documentElement?.innerHTML || "";
+  return findMatchSnippet(CLICKFIX_COPY_TRIGGER_REGEX, htmlText);
+}
+
+function scanForCommandPatterns() {
+  if (!document.body) {
+    return "";
+  }
+  const bodyText = document.body.innerText || "";
+  return (
+    findMatchSnippet(COMMAND_REGEX, bodyText) ||
+    findMatchSnippet(SHELL_HINT_REGEX, bodyText)
+  );
+}
+
+function notifyCommandDetected() {
+  const snippet = scanForCommandPatterns();
+  if (snippet && !commandDetected) {
+    commandDetected = true;
+    sendPageAlert("command", snippet);
+  }
+}
+
+function notifyCopyTriggerDetected() {
+  const snippet = scanForCopyTrigger();
+  if (snippet && !copyTriggerDetected) {
+    copyTriggerDetected = true;
+    chrome.runtime.sendMessage({
+      type: "pageHint",
+      hint: "copy-trigger",
+      snippet,
+      url: window.location.href,
+      timestamp: Date.now()
+    });
+    sendPageAlert("copy-trigger", snippet);
+  }
 }
 
 function renderBlockedPage(hostname) {
@@ -473,6 +652,7 @@ function notifyFileExplorerDetected() {
       url: window.location.href,
       timestamp: Date.now()
     });
+    sendPageAlert("file-explorer", snippet);
   }
 }
 
@@ -547,52 +727,49 @@ function handleSelectionChange() {
   }
 }
 
-document.addEventListener("copy", () => handleCopyCut("copy"));
-document.addEventListener("cut", () => handleCopyCut("cut"));
-document.addEventListener("paste", () => handlePaste());
-document.addEventListener("selectionchange", handleSelectionChange);
-
-document.addEventListener("DOMContentLoaded", async () => {
-  const blocked = await checkReportedSite();
-  if (blocked) {
-    return;
-  }
-  notifyWinRDetected();
-  notifyCaptchaDetected();
-  notifyConsoleDetected();
-  notifyShellDetected();
-  notifyPasteSequenceDetected();
-  notifyFileExplorerDetected();
-  monitorClipboardChanges();
-  setInterval(monitorClipboardChanges, 1000);
-  const observer = new MutationObserver(() => {
 function startMonitoring() {
   document.addEventListener("copy", () => handleCopyCut("copy"));
   document.addEventListener("cut", () => handleCopyCut("cut"));
   document.addEventListener("paste", () => handlePaste());
   document.addEventListener("selectionchange", handleSelectionChange);
 
-  document.addEventListener("DOMContentLoaded", () => {
+  const initMonitoring = () => {
     notifyWinRDetected();
+    notifyWinXDetected();
     notifyCaptchaDetected();
+    notifyBrowserErrorDetected();
+    notifyFixActionDetected();
     notifyConsoleDetected();
     notifyShellDetected();
     notifyPasteSequenceDetected();
     notifyFileExplorerDetected();
+    notifyCommandDetected();
+    notifyCopyTriggerDetected();
     monitorClipboardChanges();
-    setInterval(monitorClipboardChanges, 4000);
+    setInterval(monitorClipboardChanges, 1000);
     const observer = new MutationObserver(() => {
       notifyWinRDetected();
+      notifyWinXDetected();
       notifyCaptchaDetected();
+      notifyBrowserErrorDetected();
+      notifyFixActionDetected();
       notifyConsoleDetected();
       notifyShellDetected();
       notifyPasteSequenceDetected();
       notifyFileExplorerDetected();
+      notifyCommandDetected();
+      notifyCopyTriggerDetected();
     });
     if (document.body) {
       observer.observe(document.body, { childList: true, subtree: true, characterData: true });
     }
-  });
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initMonitoring);
+  } else {
+    initMonitoring();
+  }
 }
 
 (async () => {
@@ -609,6 +786,10 @@ chrome.runtime.onMessage.addListener((message) => {
   }
   if (message?.type === "restoreClipboard") {
     writeClipboardText(message.text ?? "");
+    return;
+  }
+  if (message?.type === "blockPage") {
+    buildBlockedPage(message.hostname || getHostname(window.location.href), message.reason);
     return;
   }
   if (message?.type === "showBanner") {

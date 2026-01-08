@@ -10,6 +10,9 @@ const addDomainButton = document.getElementById("add-domain");
 const whitelistList = document.getElementById("whitelist-list");
 const historyContainer = document.getElementById("history");
 const clearHistoryButton = document.getElementById("clear-history");
+const reportInput = document.getElementById("report-input");
+const reportButton = document.getElementById("report-site");
+const reportStatus = document.getElementById("report-status");
 
 async function loadSettings() {
   const settings = await chrome.storage.local.get(DEFAULT_SETTINGS);
@@ -107,6 +110,41 @@ clearHistoryButton.addEventListener("click", async () => {
 
 toggleEnabled.addEventListener("change", async () => {
   await chrome.storage.local.set({ enabled: toggleEnabled.checked });
+});
+
+async function reportSite(targetUrl) {
+  if (!targetUrl) {
+    reportStatus.textContent = "Introduce una URL o usa la pestaña actual.";
+    return;
+  }
+  try {
+    const parsedUrl = new URL(targetUrl);
+    chrome.runtime.sendMessage({
+      type: "manualReport",
+      url: parsedUrl.href,
+      hostname: parsedUrl.hostname,
+      timestamp: Date.now()
+    });
+    reportStatus.textContent = `Reporte enviado: ${parsedUrl.hostname}`;
+  } catch (error) {
+    reportStatus.textContent = "URL no válida.";
+  }
+}
+
+reportButton.addEventListener("click", async () => {
+  const value = reportInput.value.trim();
+  if (value) {
+    await reportSite(value);
+    reportInput.value = "";
+    return;
+  }
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  const url = tabs?.[0]?.url;
+  if (url) {
+    await reportSite(url);
+  } else {
+    reportStatus.textContent = "No se pudo detectar la pestaña activa.";
+  }
 });
 
 (async () => {
