@@ -65,6 +65,9 @@ $signals = isset($payload['signals']) && is_array($payload['signals']) ? $payloa
 $detectedContent = isset($payload['detectedContent'])
     ? trim((string) $payload['detectedContent'])
     : '';
+$fullContext = isset($payload['full_context'])
+    ? trim((string) $payload['full_context'])
+    : '';
 $statsData = isset($payload['data']) && is_array($payload['data']) ? $payload['data'] : [];
 $manualReport = filter_var($payload['manualReport'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
 
@@ -73,6 +76,23 @@ $hostname = substr($hostname, 0, 255);
 $message = substr($message !== '' ? $message : $reason, 0, 2000);
 $timestamp = substr($timestamp, 0, 100);
 $detectedContent = substr($detectedContent, 0, 4000);
+$fullContext = substr($fullContext, 0, 50000);
+
+if ($url !== '' && preg_match('/\s/', $url)) {
+    respondWithError(400, 'Invalid url', $debugFile, ['url' => $url]);
+}
+
+if ($url !== '') {
+    $parsedUrl = parse_url($url);
+    $scheme = strtolower((string) ($parsedUrl['scheme'] ?? ''));
+    $host = (string) ($parsedUrl['host'] ?? '');
+    if (!in_array($scheme, ['http', 'https'], true) || $host === '') {
+        respondWithError(400, 'Invalid url', $debugFile, ['url' => $url]);
+    }
+    if ($hostname === '') {
+        $hostname = $host;
+    }
+}
 
 if ($url !== '' && preg_match('/\s/', $url)) {
     respondWithError(400, 'Invalid url', $debugFile, ['url' => $url]);
@@ -144,16 +164,52 @@ $entry = [
     'timestamp' => $timestamp,
     'signals' => $normalizedSignals,
     'detected_content' => $detectedContent,
+    'full_context' => $fullContext,
     'stats' => $normalizedStats,
     'user_agent' => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512),
     'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
     'country' => $country
 ];
 
-$logFile = $type === 'stats'
-    ? __DIR__ . '/clickfix-stats.log'
-    : __DIR__ . '/clickfix-report.log';
-$logLine = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;
+$pdo = openDatabase($dbPath, $schemaPath, $debugFile);
+$inserted = false;
+if ($pdo instanceof PDO) {
+    try {
+        if ($type === 'stats') {
+            $statement = $pdo->prepare(
+                'INSERT INTO stats (received_at, enabled, alert_count, block_count, manual_sites_json, country)
+                 VALUES (:received_at, :enabled, :alert_count, :block_count, :manual_sites_json, :country)'
+            );
+            $statement->execute([
+                ':received_at' => $entry['received_at'],
+                ':enabled' => $normalizedStats['enabled'] ? 1 : 0,
+                ':alert_count' => $normalizedStats['alert_count'],
+                ':block_count' => $normalizedStats['block_count'],
+                ':manual_sites_json' => json_encode($normalizedStats['manual_sites'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                ':country' => $entry['country']
+            ]);
+        } else {
+            $statement = $pdo->prepare(
+                'INSERT INTO reports (received_at, url, hostname, message, detected_content, signals_json, user_agent, ip, country)
+                 VALUES (:received_at, :url, :hostname, :message, :detected_content, :signals_json, :user_agent, :ip, :country)'
+            );
+            $statement->execute([
+                ':received_at' => $entry['received_at'],
+                ':url' => $entry['url'],
+                ':hostname' => $entry['hostname'],
+                ':message' => $entry['message'],
+                ':detected_content' => $entry['detected_content'],
+                ':signals_json' => json_encode($entry['signals'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                ':user_agent' => $entry['user_agent'],
+                ':ip' => $entry['ip'],
+                ':country' => $entry['country']
+            ]);
+        }
+        $inserted = true;
+    } catch (Throwable $exception) {
+        writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'db_path' => $dbPath]);
+    }
+}
 
 if (file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX) === false) {
     respondWithError(500, 'Failed to write report', $debugFile, ['log_file' => $logFile]);

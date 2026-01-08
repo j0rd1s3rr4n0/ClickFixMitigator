@@ -28,6 +28,7 @@ const EVASION_REGEXES = [
 const CLIPBOARD_SNIPPET_LIMIT = 160;
 const CLIPBOARD_THROTTLE_MS = 30000;
 const BLOCKLIST_CACHE_MS = 10 * 60 * 1000;
+const FULL_CONTEXT_LIMIT = 40000;
 
 async function getSettings() {
   const stored = await chrome.storage.local.get(DEFAULT_SETTINGS);
@@ -323,6 +324,7 @@ async function triggerAlert(details) {
         timestamp,
         message,
         detectedContent: details.detectedContent || "",
+        full_context: fullContext,
         signals: {
           mismatch: details.mismatch,
           commandMatch: details.commandMatch,
@@ -589,6 +591,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         snippets,
         blockedClipboardText: "",
         detectedContent: message.snippet || "",
+        fullContext: message.fullContext || "",
         tabId: sender?.tab?.id ?? null
       });
 
@@ -719,6 +722,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           snippets,
           blockedClipboardText,
           detectedContent,
+          fullContext: message.fullContext || "",
           tabId: sender?.tab?.id ?? null
         });
 
@@ -742,7 +746,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             evasionHint,
             snippets
           }),
-          detectedContent
+          detectedContent,
+          full_context: trimFullContext(message.fullContext || "")
         });
 
         if (blockedClipboardText && notificationId) {

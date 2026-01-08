@@ -85,6 +85,17 @@ Las viñetas muestran el flujo completo:
 - **Endpoint y dashboard**: `clickfix-report.php` recibe reportes/estadísticas y `dashboard.php` muestra un resumen público con detecciones recientes.
 
 > Nota: el mitigador `agent.py` está en mantenimiento (en pruebas).
+## Servidor (PHP)
+
+El endpoint usa SQLite en `data/clickfix.sqlite`. Asegúrate de que el directorio `data/` sea escribible por el servidor web. El esquema está en `data/clickfix.sql`.
+
+```bash
+mkdir -p data
+sqlite3 data/clickfix.sqlite < data/clickfix.sql
+chmod 775 data
+```
+
+Si el proceso PHP no puede escribir, revisa permisos/propietario de `data/` y el archivo `.sqlite`.
 
 ## Inicio rápido
 
