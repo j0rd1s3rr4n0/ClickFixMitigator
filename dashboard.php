@@ -58,27 +58,12 @@ if (is_readable($dbPath)) {
                 $stats['last_update'] = (string) $entry['received_at'];
             }
         }
-
-        $reportRows = $pdo->query(
-            'SELECT received_at, hostname, detected_content, message
-             FROM reports
-             ORDER BY received_at DESC
-             LIMIT 50'
-        )->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($reportRows as $entry) {
-            $detected = trim((string) ($entry['detected_content'] ?? ''));
-            if ($detected === '') {
-                $detected = trim((string) ($entry['message'] ?? ''));
-            }
-            if ($detected === '') {
-                continue;
-            }
-            $recentDetections[] = [
-                'hostname' => (string) ($entry['hostname'] ?? ''),
-                'timestamp' => (string) ($entry['received_at'] ?? ''),
-                'detected' => $detected
-            ];
+        $detected = trim((string) ($entry['detected_content'] ?? ''));
+        if ($detected === '') {
+            $detected = trim((string) ($entry['message'] ?? ''));
+        }
+        if ($detected === '') {
+            continue;
         }
     } catch (Throwable $exception) {
         $stats = $stats;

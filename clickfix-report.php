@@ -24,43 +24,13 @@ function respondWithError(int $statusCode, string $message, string $debugFile, a
     exit;
 }
 
-function openDatabase(string $dbPath, string $schemaPath, string $debugFile): ?PDO
-{
-    $directory = dirname($dbPath);
-    if (!is_dir($directory)) {
-        @mkdir($directory, 0755, true);
-    }
-
-    try {
-        $shouldInit = !file_exists($dbPath);
-        $pdo = new PDO('sqlite:' . $dbPath);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        if ($shouldInit && is_readable($schemaPath)) {
-            $schemaSql = file_get_contents($schemaPath);
-            if ($schemaSql !== false) {
-                $pdo->exec($schemaSql);
-            }
-        }
-        return $pdo;
-    } catch (Throwable $exception) {
-        writeDebugLog($debugFile, [
-            'status' => 'db_error',
-            'error' => $exception->getMessage(),
-            'db_path' => $dbPath
-        ]);
-        return null;
-    }
-}
-
 $debugFile = __DIR__ . '/clickfix-debug.log';
-$dbPath = __DIR__ . '/data/clickfix.sqlite';
-$schemaPath = __DIR__ . '/data/clickfix.sql';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respondWithError(405, 'Method not allowed', $debugFile, ['method' => $_SERVER['REQUEST_METHOD'] ?? '']);
 }
 
-$maxBytes = 65536;
+$maxBytes = 32768;
 $rawBody = file_get_contents('php://input', false, null, 0, $maxBytes + 1);
 if ($rawBody === false || strlen($rawBody) > $maxBytes) {
     respondWithError(413, 'Payload too large', $debugFile, ['bytes' => $rawBody === false ? null : strlen($rawBody)]);
@@ -107,6 +77,22 @@ $message = substr($message !== '' ? $message : $reason, 0, 2000);
 $timestamp = substr($timestamp, 0, 100);
 $detectedContent = substr($detectedContent, 0, 4000);
 $fullContext = substr($fullContext, 0, 50000);
+
+if ($url !== '' && preg_match('/\s/', $url)) {
+    respondWithError(400, 'Invalid url', $debugFile, ['url' => $url]);
+}
+
+if ($url !== '') {
+    $parsedUrl = parse_url($url);
+    $scheme = strtolower((string) ($parsedUrl['scheme'] ?? ''));
+    $host = (string) ($parsedUrl['host'] ?? '');
+    if (!in_array($scheme, ['http', 'https'], true) || $host === '') {
+        respondWithError(400, 'Invalid url', $debugFile, ['url' => $url]);
+    }
+    if ($hostname === '') {
+        $hostname = $host;
+    }
+}
 
 if ($url !== '' && preg_match('/\s/', $url)) {
     respondWithError(400, 'Invalid url', $debugFile, ['url' => $url]);
@@ -225,28 +211,8 @@ if ($pdo instanceof PDO) {
     }
 }
 
-if (!$inserted) {
-    $logFile = $type === 'stats'
-        ? __DIR__ . '/clickfix-stats.log'
-        : __DIR__ . '/clickfix-report.log';
-    $logLine = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;
-
-    if (file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX) === false) {
-        respondWithError(500, 'Failed to write report', $debugFile, ['log_file' => $logFile]);
-    }
-}
-
-if ($type === 'alert') {
-    $dbPath = __DIR__ . '/clickfix-reports.sqlite';
-    $db = openReportDatabase($dbPath, $debugFile);
-    if ($db === null) {
-        respondWithError(500, 'Failed to open report database', $debugFile, ['db_path' => $dbPath]);
-    }
-    if (!persistReport($db, $entry, $debugFile)) {
-        $db->close();
-        respondWithError(500, 'Failed to persist report', $debugFile, ['db_path' => $dbPath]);
-    }
-    $db->close();
+if (file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX) === false) {
+    respondWithError(500, 'Failed to write report', $debugFile, ['log_file' => $logFile]);
 }
 
 if ($manualReport && $hostname !== '') {

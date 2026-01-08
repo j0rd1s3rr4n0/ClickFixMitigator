@@ -233,17 +233,6 @@ function buildAlertSnippets(details) {
   return snippets;
 }
 
-function trimFullContext(value) {
-  if (!value) {
-    return "";
-  }
-  const trimmed = value.trim();
-  if (trimmed.length <= FULL_CONTEXT_LIMIT) {
-    return trimmed;
-  }
-  return trimmed.slice(0, FULL_CONTEXT_LIMIT);
-}
-
 async function triggerAlert(details) {
   await incrementAlertCount();
   await incrementBlockCount();
@@ -253,7 +242,6 @@ async function triggerAlert(details) {
   const hostname = extractHostname(details.url);
   const timestamp = new Date(details.timestamp).toISOString();
   const allowlisted = await isAllowlisted(details.url);
-  const fullContext = trimFullContext(details.fullContext || "");
 
   await saveHistory({
     message,
@@ -621,15 +609,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           captchaHint: message.alertType === "captcha",
           consoleHint: message.alertType === "console",
           shellHint: message.alertType === "shell",
-          pasteSequenceHint: message.alertType === "paste-sequence",
-          fileExplorerHint: message.alertType === "file-explorer",
-          copyTriggerHint: message.alertType === "copy-trigger",
-          evasionHint: false,
-          snippets,
-          blockedClipboardText: ""
-        }),
-        detectedContent: message.snippet || "",
-        full_context: trimFullContext(message.fullContext || "")
+        pasteSequenceHint: message.alertType === "paste-sequence",
+        fileExplorerHint: message.alertType === "file-explorer",
+        copyTriggerHint: message.alertType === "copy-trigger",
+        snippets,
+        blockedClipboardText: ""
+      }),
+        detectedContent: message.snippet || ""
       });
 
       if (notificationId) {
