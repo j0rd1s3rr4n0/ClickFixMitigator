@@ -1,7 +1,13 @@
 const CLICKFIX_WIN_R_REGEX =
   /(win\s*\+\s*r|w\s*i\s*n\s*\+\s*r|win\s+r|windows\s*\+\s*r|windows\s+key|windows\s+logo\s+key|windows\s+button|logo\s+de\s+windows|presiona\s+windows|tecla\s+windows|tecla\s+de\s+windows|tecla\s+⊞|⊞\s*\+\s*r|run\s+dialog|run\s*box|runbox|rundialog|open\s+run|abre\s+ejecutar|cuadro\s+de\s+ejecutar|ventana\s+de\s+ejecutar|simbolo\s+del\s+sistema|símbolo\s+del\s+sistema|abr(e|ir)\s+cmd|abr(e|ir)\s+powershell|abr(e|ir)\s+terminal|abre\s+la\s+consola)/i;
+const CLICKFIX_WIN_X_REGEX =
+  /(win\s*\+\s*x|w\s*i\s*n\s*\+\s*x|win\s+x|windows\s*\+\s*x|menu\s+de\s+acceso\s+rápido|quick\s+link\s+menu|power\s+user\s+menu|menu\s+winx|abre\s+winx|open\s+winx)/i;
 const CLICKFIX_CAPTCHA_REGEX =
   /(captcha|no\s+soy\s+un\s+robot|no\s+eres\s+un\s+robot|i('?| a)?m\s+not\s+a\s+robot|verify\s+you('?| a)?re\s+human|human\s+verification|verifica\s+que\s+eres\s+humano|confirmar\s+que\s+eres\s+humano)/i;
+const CLICKFIX_FAKE_ERROR_REGEX =
+  /(algo\s+sal(i|ió)\s+mal|something\s+went\s+wrong|error\s+al\s+mostrar\s+esta\s+p(a|á)gina|error\s+displaying\s+this\s+page|browser\s+update|actualizaci(o|ó)n\s+del\s+navegador|suspicious\s+activity|actividad\s+sospechosa|security\s+check|chequeo\s+de\s+seguridad|verify\s+your\s+browser|verifica\s+tu\s+navegador)/i;
+const CLICKFIX_FIX_ACTION_REGEX =
+  /(fix\s+it|fix\s+this|copy\s+fix|copy\s+solution|copiar\s+soluci(o|ó)n|copiar\s+solucion|resolver\s+el\s+problema|how\s+to\s+fix|soluci(o|ó)n\s+r(a|á)pida)/i;
 const CLICKFIX_CONSOLE_REGEX =
   /(devtools\s+console|consola\s+de\s+devtools|console\s+de\s+desarrolladores|developer\s+console|browser\s+console|web\s+console|console\s+of\s+the\s+browser|allow\s+pasting|permitir\s+pegar|pega\s+esto\s+en\s+la\s+consola|paste\s+this\s+into\s+the\s+console|paste\s+in(to)?\s+console|pega\s+en\s+la\s+consola|pegar\s+en\s+consola|open\s+devtools|abre\s+devtools|open\s+developer\s+tools|abre\s+las\s+herramientas\s+de\s+desarrollador)/i;
 const CLICKFIX_SHELL_PASTE_REGEX =
@@ -21,7 +27,10 @@ const MAX_SELECTION_LENGTH = 2000;
 
 let lastSelectionText = "";
 let winRDetected = false;
+let winXDetected = false;
 let captchaDetected = false;
+let browserErrorDetected = false;
+let fixActionDetected = false;
 let consoleDetected = false;
 let shellDetected = false;
 let pasteSequenceDetected = false;
@@ -109,6 +118,20 @@ function buildBlockedPage(hostname, reasonText) {
     "justify-content:center"
   ].join(";");
 
+  const reportButton = document.createElement("button");
+  reportButton.type = "button";
+  reportButton.textContent = "Reportar sitio";
+  reportButton.style.cssText = [
+    "padding:12px 20px",
+    "border-radius:999px",
+    "border:2px solid #f97316",
+    "background:#fff7ed",
+    "color:#ea580c",
+    "font-weight:700",
+    "cursor:pointer",
+    "font-size:14px"
+  ].join(";");
+
   const stayButton = document.createElement("button");
   stayButton.type = "button";
   stayButton.textContent = "Permanecer en web";
@@ -148,6 +171,17 @@ function buildBlockedPage(hostname, reasonText) {
     window.location.reload();
   });
 
+  reportButton.addEventListener("click", () => {
+    chrome.runtime.sendMessage({
+      type: "manualReport",
+      url: window.location.href,
+      hostname: hostname || getHostname(window.location.href),
+      timestamp: Date.now()
+    });
+    reportButton.disabled = true;
+    reportButton.textContent = "Reportado";
+  });
+
   backButton.addEventListener("click", () => {
     if (window.history.length > 1) {
       window.history.back();
@@ -157,6 +191,7 @@ function buildBlockedPage(hostname, reasonText) {
     }
   });
 
+  buttonRow.appendChild(reportButton);
   buttonRow.appendChild(stayButton);
   buttonRow.appendChild(backButton);
 
@@ -178,7 +213,14 @@ function buildBlockedPage(hostname, reasonText) {
 async function checkBlocklistAndBlock() {
   const status = await getBlocklistStatus();
   if (status?.blocked) {
-    buildBlockedPage(status.hostname || getHostname(window.location.href));
+    const hostname = status.hostname || getHostname(window.location.href);
+    chrome.runtime.sendMessage({
+      type: "blocklisted",
+      url: window.location.href,
+      hostname,
+      timestamp: Date.now()
+    });
+    buildBlockedPage(hostname);
     return true;
   }
   return false;
@@ -243,6 +285,30 @@ function scanForWinR() {
   return findMatchSnippet(CLICKFIX_WIN_R_REGEX, bodyText);
 }
 
+function scanForWinX() {
+  if (!document.body) {
+    return "";
+  }
+  const bodyText = document.body.innerText || "";
+  return findMatchSnippet(CLICKFIX_WIN_X_REGEX, bodyText);
+}
+
+function scanForFakeError() {
+  if (!document.body) {
+    return "";
+  }
+  const bodyText = document.body.innerText || "";
+  return findMatchSnippet(CLICKFIX_FAKE_ERROR_REGEX, bodyText);
+}
+
+function scanForFixAction() {
+  if (!document.body) {
+    return "";
+  }
+  const bodyText = document.body.innerText || "";
+  return findMatchSnippet(CLICKFIX_FIX_ACTION_REGEX, bodyText);
+}
+
 function scanForFakeCaptcha() {
   if (!document.body) {
     return "";
@@ -269,6 +335,21 @@ function notifyWinRDetected() {
   }
 }
 
+function notifyWinXDetected() {
+  const snippet = scanForWinX();
+  if (snippet && !winXDetected) {
+    winXDetected = true;
+    chrome.runtime.sendMessage({
+      type: "pageHint",
+      hint: "winx",
+      snippet,
+      url: window.location.href,
+      timestamp: Date.now()
+    });
+    sendPageAlert("winx", snippet);
+  }
+}
+
 function notifyCaptchaDetected() {
   const snippet = scanForFakeCaptcha();
   if (snippet && !captchaDetected) {
@@ -281,6 +362,36 @@ function notifyCaptchaDetected() {
       timestamp: Date.now()
     });
     sendPageAlert("captcha", snippet);
+  }
+}
+
+function notifyBrowserErrorDetected() {
+  const snippet = scanForFakeError();
+  if (snippet && !browserErrorDetected) {
+    browserErrorDetected = true;
+    chrome.runtime.sendMessage({
+      type: "pageHint",
+      hint: "browser-error",
+      snippet,
+      url: window.location.href,
+      timestamp: Date.now()
+    });
+    sendPageAlert("browser-error", snippet);
+  }
+}
+
+function notifyFixActionDetected() {
+  const snippet = scanForFixAction();
+  if (snippet && !fixActionDetected) {
+    fixActionDetected = true;
+    chrome.runtime.sendMessage({
+      type: "pageHint",
+      hint: "fix-action",
+      snippet,
+      url: window.location.href,
+      timestamp: Date.now()
+    });
+    sendPageAlert("fix-action", snippet);
   }
 }
 
@@ -624,7 +735,10 @@ function startMonitoring() {
 
   const initMonitoring = () => {
     notifyWinRDetected();
+    notifyWinXDetected();
     notifyCaptchaDetected();
+    notifyBrowserErrorDetected();
+    notifyFixActionDetected();
     notifyConsoleDetected();
     notifyShellDetected();
     notifyPasteSequenceDetected();
@@ -635,7 +749,10 @@ function startMonitoring() {
     setInterval(monitorClipboardChanges, 1000);
     const observer = new MutationObserver(() => {
       notifyWinRDetected();
+      notifyWinXDetected();
       notifyCaptchaDetected();
+      notifyBrowserErrorDetected();
+      notifyFixActionDetected();
       notifyConsoleDetected();
       notifyShellDetected();
       notifyPasteSequenceDetected();

@@ -1,13 +1,17 @@
 const DEFAULT_SETTINGS = {
   enabled: true,
   whitelist: [],
-  history: []
+  history: [],
+  blocklistSources: []
 };
 
 const toggleEnabled = document.getElementById("toggle-enabled");
 const whitelistInput = document.getElementById("whitelist-input");
 const addDomainButton = document.getElementById("add-domain");
 const whitelistList = document.getElementById("whitelist-list");
+const blocklistInput = document.getElementById("blocklist-input");
+const addBlocklistButton = document.getElementById("add-blocklist");
+const blocklistList = document.getElementById("blocklist-list");
 const historyContainer = document.getElementById("history");
 const clearHistoryButton = document.getElementById("clear-history");
 
@@ -16,7 +20,8 @@ async function loadSettings() {
   return {
     enabled: settings.enabled ?? true,
     whitelist: settings.whitelist ?? [],
-    history: settings.history ?? []
+    history: settings.history ?? [],
+    blocklistSources: settings.blocklistSources ?? []
   };
 }
 
@@ -64,6 +69,44 @@ function renderHistory(history) {
   });
 }
 
+function renderBlocklistSources(sources) {
+  blocklistList.innerHTML = "";
+  if (!sources.length) {
+    const item = document.createElement("li");
+    item.textContent = "Sin listas adicionales.";
+    item.classList.add("empty");
+    blocklistList.appendChild(item);
+    return;
+  }
+
+  sources.forEach((source) => {
+    const item = document.createElement("li");
+    item.textContent = source;
+    const removeButton = document.createElement("button");
+    removeButton.textContent = "Quitar";
+    removeButton.addEventListener("click", async () => {
+      const settings = await loadSettings();
+      const next = settings.blocklistSources.filter((entry) => entry !== source);
+      await chrome.storage.local.set({ blocklistSources: next });
+      renderBlocklistSources(next);
+    });
+    item.appendChild(removeButton);
+    blocklistList.appendChild(item);
+  });
+}
+
+async function addBlocklistSource(source) {
+  if (!source) {
+    return;
+  }
+  const settings = await loadSettings();
+  if (!settings.blocklistSources.includes(source)) {
+    const next = [...settings.blocklistSources, source].sort();
+    await chrome.storage.local.set({ blocklistSources: next });
+    renderBlocklistSources(next);
+  }
+}
+
 async function addDomain(domain) {
   if (!domain) {
     return;
@@ -84,6 +127,14 @@ addDomainButton.addEventListener("click", async () => {
   }
 });
 
+addBlocklistButton.addEventListener("click", async () => {
+  const source = blocklistInput.value.trim();
+  if (source) {
+    await addBlocklistSource(source);
+    blocklistInput.value = "";
+  }
+});
+
 clearHistoryButton.addEventListener("click", async () => {
   await chrome.storage.local.set({ history: [] });
   renderHistory([]);
@@ -97,5 +148,6 @@ toggleEnabled.addEventListener("change", async () => {
   const settings = await loadSettings();
   toggleEnabled.checked = settings.enabled;
   renderWhitelist(settings.whitelist);
+  renderBlocklistSources(settings.blocklistSources);
   renderHistory(settings.history);
 })();

@@ -3,12 +3,16 @@ const DEFAULT_SETTINGS = {
   whitelist: [],
   history: [],
   blocklist: [],
+  blocklistSources: [],
+  alertCount: 0,
+  blockCount: 0,
   blocklistUpdatedAt: 0
 };
 
 const CLICKFIX_BLOCKLIST_URL = "https://jordiserrano.me/clickfixlist";
 const CLICKFIX_REPORT_URL = "https://jordiserrano.me/clickfix-report.php";
 const BLOCKLIST_REFRESH_MINUTES = 0.5;
+const STATS_REPORT_MINUTES = 60;
 
 const COMMAND_REGEX =
   /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d|reg\s+add|rundll32|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic)\b/i;
@@ -25,6 +29,9 @@ async function getSettings() {
     whitelist: stored.whitelist ?? [],
     history: stored.history ?? [],
     blocklist: stored.blocklist ?? [],
+    blocklistSources: stored.blocklistSources ?? [],
+    alertCount: stored.alertCount ?? 0,
+    blockCount: stored.blockCount ?? 0,
     blocklistUpdatedAt: stored.blocklistUpdatedAt ?? 0
   };
 }
@@ -64,23 +71,40 @@ function matchesHostname(hostname, entry) {
 let blocklistCache = { items: [], fetchedAt: 0 };
 
 async function refreshBlocklist() {
+  const settings = await getSettings();
+  const sources = [CLICKFIX_BLOCKLIST_URL, ...(settings.blocklistSources || [])];
+  const seen = new Set();
   try {
-    const response = await fetch(CLICKFIX_BLOCKLIST_URL, { cache: "no-store" });
-    if (!response.ok) {
-      return;
+    const entries = [];
+    for (const source of sources) {
+      if (!source) {
+        continue;
+      }
+      const response = await fetch(source, { cache: "no-store" });
+      if (!response.ok) {
+        continue;
+      }
+      const text = await response.text();
+      const sourceEntries = text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith("#"))
+        .map(normalizeHostname)
+        .filter(Boolean);
+      for (const entry of sourceEntries) {
+        if (!seen.has(entry)) {
+          seen.add(entry);
+          entries.push(entry);
+        }
+      }
     }
-    const text = await response.text();
-    const entries = text
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith("#"))
-      .map(normalizeHostname)
-      .filter(Boolean);
-    blocklistCache = { items: entries, fetchedAt: Date.now() };
-    await chrome.storage.local.set({
-      blocklist: entries,
-      blocklistUpdatedAt: Date.now()
-    });
+    if (entries.length) {
+      blocklistCache = { items: entries, fetchedAt: Date.now() };
+      await chrome.storage.local.set({
+        blocklist: entries,
+        blocklistUpdatedAt: Date.now()
+      });
+    }
   } catch (error) {
     // Ignore network errors.
   }
@@ -97,6 +121,16 @@ async function saveHistory(entry) {
   await chrome.storage.local.set({ history });
 }
 
+async function incrementAlertCount() {
+  const settings = await getSettings();
+  await chrome.storage.local.set({ alertCount: (settings.alertCount ?? 0) + 1 });
+}
+
+async function incrementBlockCount() {
+  const settings = await getSettings();
+  await chrome.storage.local.set({ blockCount: (settings.blockCount ?? 0) + 1 });
+}
+
 function buildAlertMessage(details) {
   const parts = [];
   if (details.mismatch) {
@@ -107,6 +141,15 @@ function buildAlertMessage(details) {
   }
   if (details.winRHint) {
     parts.push("La página sugiere usar Win+R/Run dialog.");
+  }
+  if (details.winXHint) {
+    parts.push("La página sugiere usar Win+X para abrir la terminal.");
+  }
+  if (details.browserErrorHint) {
+    parts.push("La página muestra un error falso del navegador.");
+  }
+  if (details.fixActionHint) {
+    parts.push("La página pide aplicar una solución rápida o copiar un comando.");
   }
   if (details.captchaHint) {
     parts.push("Posible captcha falso detectado.");
@@ -144,6 +187,8 @@ function buildAlertMessage(details) {
 }
 
 async function triggerAlert(details) {
+  await incrementAlertCount();
+  await incrementBlockCount();
   const message = buildAlertMessage(details);
   const hostname = extractHostname(details.url);
   const timestamp = new Date(details.timestamp).toISOString();
@@ -218,10 +263,14 @@ async function triggerAlert(details) {
         hostname,
         timestamp,
         message,
+        detectedContent: details.detectedContent || "",
         signals: {
           mismatch: details.mismatch,
           commandMatch: details.commandMatch,
           winRHint: details.winRHint,
+          winXHint: details.winXHint,
+          browserErrorHint: details.browserErrorHint,
+          fixActionHint: details.fixActionHint,
           captchaHint: details.captchaHint,
           consoleHint: details.consoleHint,
           shellHint: details.shellHint,
@@ -282,16 +331,21 @@ async function addToWhitelist(hostname) {
 chrome.runtime.onInstalled.addListener(() => {
   refreshBlocklist();
   chrome.alarms.create("clickfix-refresh", { periodInMinutes: BLOCKLIST_REFRESH_MINUTES });
+  chrome.alarms.create("clickfix-stats", { periodInMinutes: STATS_REPORT_MINUTES });
 });
 
 chrome.runtime.onStartup.addListener(() => {
   refreshBlocklist();
   chrome.alarms.create("clickfix-refresh", { periodInMinutes: BLOCKLIST_REFRESH_MINUTES });
+  chrome.alarms.create("clickfix-stats", { periodInMinutes: STATS_REPORT_MINUTES });
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "clickfix-refresh") {
     refreshBlocklist();
+  }
+  if (alarm.name === "clickfix-stats") {
+    sendStatsReport();
   }
 });
 
@@ -322,6 +376,20 @@ async function reportClickfix(details) {
   } catch (error) {
     // Ignore reporting errors to avoid breaking the user flow.
   }
+}
+
+async function sendStatsReport() {
+  const settings = await getSettings();
+  reportClickfix({
+    type: "stats",
+    timestamp: Date.now(),
+    data: {
+      enabled: settings.enabled ?? true,
+      manualSites: settings.whitelist ?? [],
+      alertCount: settings.alertCount ?? 0,
+      blockCount: settings.blockCount ?? 0
+    }
+  });
 }
 
 function shouldThrottleClipboardBlock(text) {
@@ -393,6 +461,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "manualReport") {
+    reportClickfix({
+      url: message.url,
+      hostname: message.hostname || extractHostname(message.url),
+      timestamp: message.timestamp ?? Date.now(),
+      reason: "Reporte manual del usuario",
+      detectedContent: ""
+    });
+    return;
+  }
+
+  if (message.type === "blocklisted") {
+    incrementBlockCount();
+    reportClickfix({
+      url: message.url,
+      hostname: message.hostname || extractHostname(message.url),
+      timestamp: message.timestamp ?? Date.now(),
+      reason: "Bloqueado por lista",
+      detectedContent: ""
+    });
+    return;
+  }
+
   if (message.type === "pageHint" && message.hint) {
     lastPageHint = {
       hint: message.hint,
@@ -412,6 +503,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         mismatch: false,
         commandMatch: message.alertType === "command",
         winRHint: message.alertType === "winr",
+        winXHint: message.alertType === "winx",
+        browserErrorHint: message.alertType === "browser-error",
+        fixActionHint: message.alertType === "fix-action",
         captchaHint: message.alertType === "captcha",
         consoleHint: message.alertType === "console",
         shellHint: message.alertType === "shell",
@@ -420,6 +514,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         copyTriggerHint: message.alertType === "copy-trigger",
         hintSnippet: message.snippet || "",
         blockedClipboardText: "",
+        detectedContent: message.snippet || "",
         tabId: sender?.tab?.id ?? null
       });
 
@@ -431,6 +526,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           mismatch: false,
           commandMatch: message.alertType === "command",
           winRHint: message.alertType === "winr",
+          winXHint: message.alertType === "winx",
+          browserErrorHint: message.alertType === "browser-error",
+          fixActionHint: message.alertType === "fix-action",
           captchaHint: message.alertType === "captcha",
           consoleHint: message.alertType === "console",
           shellHint: message.alertType === "shell",
@@ -439,7 +537,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           copyTriggerHint: message.alertType === "copy-trigger",
           hintSnippet: message.snippet || "",
           blockedClipboardText: ""
-        })
+        }),
+        detectedContent: message.snippet || ""
       });
 
       if (notificationId) {
@@ -471,6 +570,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         clipboardAnalysis.shellHint;
 
       const winRHint = lastPageHint?.hint === "winr";
+      const winXHint = lastPageHint?.hint === "winx";
+      const browserErrorHint = lastPageHint?.hint === "browser-error";
+      const fixActionHint = lastPageHint?.hint === "fix-action";
       const captchaHint = lastPageHint?.hint === "captcha";
       const consoleHint = lastPageHint?.hint === "console";
       const shellHint = lastPageHint?.hint === "shell";
@@ -481,6 +583,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         mismatch ||
         commandMatch ||
         winRHint ||
+        winXHint ||
+        browserErrorHint ||
+        fixActionHint ||
         captchaHint ||
         consoleHint ||
         shellHint ||
@@ -491,6 +596,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       if (shouldAlert) {
         const clipboardText = message.clipboardText?.trim();
+        const detectedContent = clipboardText || message.selectionText || "";
         const isClipboardWatch = message.eventType === "clipboard-watch";
         const shouldBlockClipboard =
           isClipboardWatch &&
@@ -514,6 +620,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           mismatch,
           commandMatch,
           winRHint,
+          winXHint,
+          browserErrorHint,
+          fixActionHint,
           captchaHint,
           consoleHint,
           shellHint,
@@ -522,6 +631,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           copyTriggerHint,
           hintSnippet: lastPageHint?.snippet || "",
           blockedClipboardText,
+          detectedContent,
           tabId: sender?.tab?.id ?? null
         });
 
@@ -533,6 +643,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             mismatch,
             commandMatch,
             winRHint,
+            winXHint,
+            browserErrorHint,
+            fixActionHint,
             captchaHint,
             consoleHint,
             shellHint,
@@ -540,7 +653,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             fileExplorerHint,
             copyTriggerHint,
             hintSnippet: lastPageHint?.snippet || ""
-          })
+          }),
+          detectedContent
         });
 
         if (blockedClipboardText && notificationId) {

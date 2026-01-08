@@ -30,6 +30,18 @@
     </section>
 
     <section>
+      <h2>Listas de bloqueo adicionales</h2>
+      <p class="hint">
+        Agrega URLs de listas de ClickFix (una por lista) para combinarlas con la lista principal.
+      </p>
+      <div class="row">
+        <input id="blocklist-input" type="text" placeholder="https://ejemplo.com/clickfixlist" />
+        <button id="add-blocklist" type="button">Agregar lista</button>
+      </div>
+      <ul id="blocklist-list"></ul>
+    </section>
+
+    <section>
       <h2>Historial completo</h2>
       <div id="history"></div>
       <button id="clear-history" type="button" class="secondary">Limpiar historial</button>

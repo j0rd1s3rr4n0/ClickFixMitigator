@@ -57,8 +57,9 @@ Si detecta algo sospechoso, muestra un toast con el motivo, el proceso y la vent
 ## 8) Recursos prácticos
 
 - Revisa los HTML de prueba en `browser-extension/` (por ejemplo, `demo-*.html`) para simular escenarios.
+- La carpeta `demo/` contiene PoCs adicionales de ClickFix para practicar con campañas más realistas.
 - Ajusta reglas en `windows-agent/config.json` si necesitas reducir falsos positivos.
 
 ## 9) Recordatorio final
 
-Las herramientas **no reemplazan** el juicio humano. Si algo te parece raro, **detente** y verifica antes de ejecutar cualquier comando.
+Las herramientas **no reemplazan** el juicio humano. Si algo te parece raro, **detente** y verifica antes de ejecutar cualquier comando. Cualquier mejora es bienvenida siempre que tenga sentido.
