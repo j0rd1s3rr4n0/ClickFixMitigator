@@ -39,7 +39,7 @@ El agente escuchará:
 - Cambios en el portapapeles (copia).
 - Patrón Win + R → pegar (Ctrl+V o click derecho) → Enter/Ctrl+Shift+Enter.
 
-Cuando detecte un comando sospechoso, mostrará un toast con detalles, reemplazará el portapapeles por un marcador seguro y permitirá restaurarlo desde el icono de bandeja.
+Cuando detecte un comando sospechoso, mostrará una alerta para que el usuario decida si permite o deniega el comando. Si se deniega, reemplazará el portapapeles por un marcador seguro y permitirá restaurarlo desde el icono de bandeja.
 
 ## Integración opcional (IPC)
 

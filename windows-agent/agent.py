@@ -21,6 +21,9 @@ from PIL import Image, ImageDraw
 CONFIG_PATH = Path(__file__).with_name("config.json")
 LOG_PATH = Path(__file__).with_name("agent.log")
 CLIPBOARD_CF_UNICODETEXT = 13
+TRAY_ICON_PATH = Path(__file__).with_name("logo.png")
+MESSAGEBOX_YES = 6
+MESSAGEBOX_NO = 7
 
 
 @dataclass
@@ -40,9 +43,12 @@ class ClipboardMonitor:
         self.run_sequence_timeout = float(config["sensitivity"].get("run_sequence_timeout_s", 8))
         self.toast_app_id = "ClickFix Mitigator"
         self.blocked_placeholder = str(config["sensitivity"].get("blocked_clipboard_placeholder", "[Clipboard bloqueado]"))
+        self.allow_timeout = float(config["sensitivity"].get("allow_timeout_s", 15))
         self.last_clipboard_text: Optional[str] = None
         self.last_blocked_clipboard: Optional[str] = None
         self.last_blocked_reason: Optional[str] = None
+        self.allowed_clipboard_text: Optional[str] = None
+        self.allowed_clipboard_until: Optional[float] = None
         self.ignore_next_clipboard_change = False
         self.run_sequence_started_at: Optional[float] = None
         self.run_sequence_last_paste: Optional[str] = None
@@ -114,6 +120,36 @@ class ClipboardMonitor:
         except Exception:
             print("[ALERTA]", message)
 
+    def prompt_user_decision(self, reason: str, text: str) -> bool:
+        message = (
+            f"Se detectó un comando sospechoso.\n\n"
+            f"Motivo: {reason}\n"
+            f"Texto: {text[:200]}\n\n"
+            "¿Permitir este comando?"
+        )
+        response = ctypes.windll.user32.MessageBoxW(
+            0,
+            message,
+            "ClickFix Mitigator",
+            0x00000004 | 0x00000030 | 0x00001000,
+        )
+        return response == MESSAGEBOX_YES
+
+    def allow_clipboard_temporarily(self, text: str) -> None:
+        self.allowed_clipboard_text = text
+        self.allowed_clipboard_until = time.time() + self.allow_timeout
+        self.ignore_next_clipboard_change = True
+        self.set_clipboard_text(text)
+
+    def is_temporarily_allowed(self, text: str) -> bool:
+        if not self.allowed_clipboard_text or not self.allowed_clipboard_until:
+            return False
+        if time.time() > self.allowed_clipboard_until:
+            self.allowed_clipboard_text = None
+            self.allowed_clipboard_until = None
+            return False
+        return text == self.allowed_clipboard_text
+
     def set_clipboard_text(self, text: str) -> None:
         if not ctypes.windll.user32.OpenClipboard(0):
             return
@@ -134,11 +170,25 @@ class ClipboardMonitor:
         finally:
             ctypes.windll.user32.CloseClipboard()
 
-    def quarantine_clipboard(self, text: str, reason: str) -> None:
+    def quarantine_clipboard(self, text: str, reason: str, close_run_dialog: bool = False) -> None:
         self.last_blocked_clipboard = text
         self.last_blocked_reason = reason
         self.ignore_next_clipboard_change = True
         self.set_clipboard_text(self.blocked_placeholder)
+        allow = self.prompt_user_decision(reason, text)
+        if allow:
+            self.allow_clipboard_temporarily(text)
+            self.raise_alert(
+                AlertContext(
+                    reason="Usuario permitió el comando",
+                    text=text,
+                    active_window=self.get_active_window(),
+                    active_process=self.get_active_process(),
+                )
+            )
+            return
+        if close_run_dialog:
+            keyboard.send("esc")
         self.raise_alert(
             AlertContext(
                 reason=f"{reason}. Clipboard reemplazado; puedes restaurarlo desde la bandeja.",
@@ -167,6 +217,8 @@ class ClipboardMonitor:
     def handle_clipboard_change(self, text: str) -> None:
         if self.is_excluded(text):
             return
+        if self.is_temporarily_allowed(text):
+            return
         self.last_clipboard_text = text
         match = self.match_suspicious(text)
         if match:
@@ -186,7 +238,7 @@ class ClipboardMonitor:
             return
         self.run_sequence_last_paste = "ctrl+v"
         text = self.load_clipboard_text() or ""
-        if not text or self.is_excluded(text):
+        if not text or self.is_excluded(text) or self.is_temporarily_allowed(text):
             return
         match = self.match_suspicious(text)
         if match:
@@ -199,10 +251,17 @@ class ClipboardMonitor:
         if not text or self.is_excluded(text):
             self.run_sequence_started_at = None
             return
+        if self.is_temporarily_allowed(text):
+            self.run_sequence_started_at = None
+            return
         match = self.match_suspicious(text)
         if match:
             paste_note = self.run_sequence_last_paste or "pegado (click derecho o desconocido)"
-            self.quarantine_clipboard(text, f"Patrón Win+R + {paste_note} + {method} con regla '{match}'")
+            self.quarantine_clipboard(
+                text,
+                f"Patrón Win+R + {paste_note} + {method} con regla '{match}'",
+                close_run_dialog=True,
+            )
         self.run_sequence_started_at = None
 
     def monitor_clipboard(self) -> None:
@@ -225,17 +284,23 @@ class ClipboardMonitor:
         keyboard.wait()
 
     def create_tray_icon(self) -> pystray.Icon:
-        size = 64
-        image = Image.new("RGB", (size, size), color=(30, 30, 30))
-        draw = ImageDraw.Draw(image)
-        draw.rectangle((12, 12, size - 12, size - 12), outline=(0, 180, 255), width=4)
-        draw.line((20, size // 2, size // 2, size - 20), fill=(0, 180, 255), width=4)
-        draw.line((size // 2, size - 20, size - 20, 20), fill=(0, 180, 255), width=4)
+        image = self.load_tray_image()
         menu = pystray.Menu(
             pystray.MenuItem("Restaurar último portapapeles bloqueado", self.restore_last_clipboard),
             pystray.MenuItem("Salir", self.stop),
         )
         return pystray.Icon("ClickFixMitigator", image, "ClickFix Mitigator", menu)
+
+    def load_tray_image(self) -> Image.Image:
+        if TRAY_ICON_PATH.exists():
+            return Image.open(TRAY_ICON_PATH).convert("RGBA")
+        size = 64
+        image = Image.new("RGBA", (size, size), color=(30, 30, 30, 255))
+        draw = ImageDraw.Draw(image)
+        draw.rectangle((12, 12, size - 12, size - 12), outline=(0, 180, 255, 255), width=4)
+        draw.line((20, size // 2, size // 2, size - 20), fill=(0, 180, 255, 255), width=4)
+        draw.line((size // 2, size - 20, size - 20, 20), fill=(0, 180, 255, 255), width=4)
+        return image
 
     def run_tray_icon(self) -> None:
         self.tray_icon = self.create_tray_icon()
