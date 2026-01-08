@@ -2,16 +2,12 @@
 
 ClickFix Mitigator is a reference project for understanding and mitigating social engineering attacks that push users to run commands (ClickFix). It includes a browser extension and a Windows agent that can be used separately or together.
 
-## Flow overview
-
-The bullets show the complete flow:
-
-1. The deception  
-   ![The deception](assets/flow-1-deception.svg)
-2. The interruption  
-   ![The interruption](assets/flow-2-interruption.svg)
-3. The block before execution  
-   ![The block](assets/flow-3-block.svg)
+## Comic strip explaining the full flow:
+<center><p>
+<img src="assets/1_en.png" alt="The deception" width="500"/>
+<img src="assets/2_en.png" alt="The interruption" width="500"/>
+<img src="assets/3_new_en.png" alt="The block before execution" width="500"/>
+</p></center>
 
 ## Components
 
@@ -67,16 +63,12 @@ This repository is an educational reference. For production, add automated tests
 
 ClickFix Mitigator es un proyecto de referencia para entender y mitigar ataques de ingeniería social que empujan a ejecutar comandos (ClickFix). Incluye una extensión de navegador y un agente para Windows que pueden usarse por separado o juntos.
 
-## Flujo completo
-
-Las viñetas muestran el flujo completo:
-
-1. El engaño  
-   ![El engaño](assets/flow-1-deception.svg)
-2. La interrupción  
-   ![La interrupción](assets/flow-2-interruption.svg)
-3. El bloqueo antes de la ejecución  
-   ![El bloqueo antes de la ejecución](assets/flow-3-block.svg)
+## Cómic que explica el flujo completo:
+<center><p>
+<img src="assets/1_es.png" alt="El engaño" width="500"/>
+<img src="assets/2_es.png" alt="La interrupción" width="500"/>
+<img src="assets/3_new_es.png" alt="El bloqueo antes de la ejecución" width="500"/>
+</p></center>
 
 ## Componentes
 
