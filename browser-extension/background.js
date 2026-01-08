@@ -18,6 +18,13 @@ const COMMAND_REGEX =
   /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d|reg\s+add|rundll32|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic)\b/i;
 const SHELL_HINT_REGEX =
   /(invoke-webrequest|iwr|curl\s+|wget\s+|downloadstring|frombase64string|add-mppreference|invoke-expression|iex\b|encodedcommand|\-enc\b)/i;
+const EVASION_REGEXES = [
+  /\\x[0-9a-f]{2}/i,
+  /\\u[0-9a-f]{4}/i,
+  /%[0-9a-f]{2}/i,
+  /[\^`]{2,}/,
+  /[A-Za-z0-9+/]{80,}={0,2}/
+];
 const CLIPBOARD_SNIPPET_LIMIT = 160;
 const CLIPBOARD_THROTTLE_MS = 30000;
 const BLOCKLIST_CACHE_MS = 10 * 60 * 1000;
@@ -135,79 +142,105 @@ async function incrementBlockCount() {
   await chrome.storage.local.set({ blockCount: (settings.blockCount ?? 0) + 1 });
 }
 
-function buildAlertMessage(details) {
+function buildAlertReasons(details) {
   const parts = [];
+  const addReason = (message) => {
+    if (!message || parts.includes(message)) {
+      return;
+    }
+    parts.push(message);
+  };
   if (details.mismatch) {
-    parts.push(t("alertMismatch"));
+    addReason(t("alertMismatch"));
   }
   if (details.commandMatch) {
-    parts.push(t("alertCommand"));
+    addReason(t("alertCommand"));
   }
   if (details.winRHint) {
-    parts.push(t("alertWinR"));
+    addReason(t("alertWinR"));
   }
   if (details.winXHint) {
-    parts.push(t("alertWinX"));
+    addReason(t("alertWinX"));
   }
   if (details.browserErrorHint) {
-    parts.push(t("alertBrowserError"));
+    addReason(t("alertBrowserError"));
   }
   if (details.fixActionHint) {
-    parts.push(t("alertFixAction"));
-  }
-  if (details.winXHint) {
-    parts.push("La página sugiere usar Win+X para abrir la terminal.");
-  }
-  if (details.browserErrorHint) {
-    parts.push("La página muestra un error falso del navegador.");
-  }
-  if (details.fixActionHint) {
-    parts.push("La página pide aplicar una solución rápida o copiar un comando.");
+    addReason(t("alertFixAction"));
   }
   if (details.captchaHint) {
-    parts.push(t("alertCaptcha"));
+    addReason(t("alertCaptcha"));
   }
   if (details.consoleHint) {
-    parts.push(t("alertConsole"));
+    addReason(t("alertConsole"));
   }
   if (details.shellHint) {
-    parts.push(t("alertShell"));
+    addReason(t("alertShell"));
   }
   if (details.pasteSequenceHint) {
-    parts.push(t("alertPasteSequence"));
+    addReason(t("alertPasteSequence"));
   }
   if (details.fileExplorerHint) {
-    parts.push(t("alertFileExplorer"));
+    addReason(t("alertFileExplorer"));
   }
   if (details.copyTriggerHint) {
-    parts.push(t("alertCopyTrigger"));
+    addReason(t("alertCopyTrigger"));
   }
-  if (details.copyTriggerHint) {
-    parts.push("La página intenta copiar comandos al portapapeles.");
+  if (details.evasionHint) {
+    addReason(t("alertEvasion"));
   }
-  if (details.hintSnippet) {
+  const snippets = details.snippets || [];
+  snippets.forEach((snippetText) => {
+    if (!snippetText) {
+      return;
+    }
     const snippet =
-      details.hintSnippet.length > 160
-        ? `${details.hintSnippet.slice(0, 157)}...`
-        : details.hintSnippet;
-    parts.push(t("alertSnippet", snippet));
-  }
+      snippetText.length > 160
+        ? `${snippetText.slice(0, 157)}...`
+        : snippetText;
+    addReason(t("alertSnippet", snippet));
+  });
   if (details.blockedClipboardText) {
     const snippet =
       details.blockedClipboardText.length > CLIPBOARD_SNIPPET_LIMIT
         ? `${details.blockedClipboardText.slice(0, CLIPBOARD_SNIPPET_LIMIT - 3)}...`
         : details.blockedClipboardText;
-    parts.push(t("alertClipboardBlocked", snippet));
+    addReason(t("alertClipboardBlocked", snippet));
   }
-  return parts.join(" ");
+  return parts;
+}
+
+function buildAlertMessage(details) {
+  return buildAlertReasons(details).join(" ");
+}
+
+function buildAlertSnippets(details) {
+  const snippets = [];
+  const addSnippet = (value) => {
+    if (!value || snippets.includes(value)) {
+      return;
+    }
+    snippets.push(value);
+  };
+  (details.snippets || []).forEach(addSnippet);
+  if (details.blockedClipboardText) {
+    addSnippet(details.blockedClipboardText);
+  }
+  if (details.detectedContent) {
+    addSnippet(details.detectedContent);
+  }
+  return snippets;
 }
 
 async function triggerAlert(details) {
   await incrementAlertCount();
   await incrementBlockCount();
-  const message = buildAlertMessage(details);
+  const reasons = buildAlertReasons(details);
+  const snippets = buildAlertSnippets(details);
+  const message = reasons.join(" ");
   const hostname = extractHostname(details.url);
   const timestamp = new Date(details.timestamp).toISOString();
+  const allowlisted = await isAllowlisted(details.url);
 
   await saveHistory({
     message,
@@ -248,11 +281,16 @@ async function triggerAlert(details) {
       type: "showBanner",
       text: message
     });
-    chrome.tabs.sendMessage(targetTabId, {
-      type: "blockPage",
-      hostname,
-      reason: message
-    });
+    if (!allowlisted) {
+      chrome.tabs.sendMessage(targetTabId, {
+        type: "blockPage",
+        hostname,
+        reason: message,
+        reasons,
+        contextText: details.detectedContent || "",
+        snippets
+      });
+    }
   } else {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tabId = tabs?.[0]?.id;
@@ -261,11 +299,16 @@ async function triggerAlert(details) {
           type: "showBanner",
           text: message
         });
-        chrome.tabs.sendMessage(tabId, {
-          type: "blockPage",
-          hostname,
-          reason: message
-        });
+        if (!allowlisted) {
+          chrome.tabs.sendMessage(tabId, {
+            type: "blockPage",
+            hostname,
+            reason: message,
+            reasons,
+            contextText: details.detectedContent || "",
+            snippets
+          });
+        }
       }
     });
   }
@@ -292,7 +335,8 @@ async function triggerAlert(details) {
           shellHint: details.shellHint,
           pasteSequenceHint: details.pasteSequenceHint,
           fileExplorerHint: details.fileExplorerHint,
-          copyTriggerHint: details.copyTriggerHint
+          copyTriggerHint: details.copyTriggerHint,
+          evasionHint: details.evasionHint
         }
       })
     });
@@ -306,11 +350,13 @@ async function triggerAlert(details) {
 function analyzeText(text) {
   const trimmed = text?.trim();
   if (!trimmed) {
-    return { commandMatch: false, shellHint: false };
+    return { commandMatch: false, shellHint: false, evasionHint: false };
   }
+  const evasionHint = EVASION_REGEXES.some((regex) => regex.test(trimmed));
   return {
     commandMatch: COMMAND_REGEX.test(trimmed),
-    shellHint: SHELL_HINT_REGEX.test(trimmed)
+    shellHint: SHELL_HINT_REGEX.test(trimmed),
+    evasionHint
   };
 }
 
@@ -319,6 +365,11 @@ async function shouldIgnore(url) {
   if (!settings.enabled) {
     return true;
   }
+  return false;
+}
+
+async function isAllowlisted(url) {
+  const settings = await getSettings();
   const hostname = extractHostname(url);
   return settings.whitelist.includes(hostname);
 }
@@ -457,7 +508,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "checkBlocklist") {
     (async () => {
-      if (await shouldIgnore(message.url)) {
+      if (await isAllowlisted(message.url)) {
         sendResponse({ blocked: false });
         return;
       }
@@ -483,6 +534,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       hostname: message.hostname || extractHostname(message.url),
       timestamp: message.timestamp ?? Date.now(),
       reason: t("manualReportReason"),
+      manualReport: true,
       detectedContent: ""
     });
     return;
@@ -501,10 +553,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "pageHint" && message.hint) {
-    lastPageHint = {
-      hint: message.hint,
-      snippet: message.snippet || ""
-    };
+    if (!lastPageHint || lastPageHint.url !== message.url) {
+      lastPageHint = { url: message.url, hints: [], snippets: [] };
+    }
+    if (!lastPageHint.hints.includes(message.hint)) {
+      lastPageHint.hints.push(message.hint);
+    }
+    if (message.snippet && !lastPageHint.snippets.includes(message.snippet)) {
+      lastPageHint.snippets.push(message.snippet);
+    }
     return;
   }
 
@@ -513,6 +570,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (await shouldIgnore(message.url)) {
         return;
       }
+      const snippets = message.snippet ? [message.snippet] : [];
       const notificationId = await triggerAlert({
         url: message.url,
         timestamp: message.timestamp ?? Date.now(),
@@ -528,7 +586,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         pasteSequenceHint: message.alertType === "paste-sequence",
         fileExplorerHint: message.alertType === "file-explorer",
         copyTriggerHint: message.alertType === "copy-trigger",
-        hintSnippet: message.snippet || "",
+        snippets,
         blockedClipboardText: "",
         detectedContent: message.snippet || "",
         tabId: sender?.tab?.id ?? null
@@ -548,12 +606,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           captchaHint: message.alertType === "captcha",
           consoleHint: message.alertType === "console",
           shellHint: message.alertType === "shell",
-          pasteSequenceHint: message.alertType === "paste-sequence",
-          fileExplorerHint: message.alertType === "file-explorer",
-          copyTriggerHint: message.alertType === "copy-trigger",
-          hintSnippet: message.snippet || "",
-          blockedClipboardText: ""
-        }),
+        pasteSequenceHint: message.alertType === "paste-sequence",
+        fileExplorerHint: message.alertType === "file-explorer",
+        copyTriggerHint: message.alertType === "copy-trigger",
+        snippets,
+        blockedClipboardText: ""
+      }),
         detectedContent: message.snippet || ""
       });
 
@@ -584,17 +642,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         clipboardAnalysis.commandMatch ||
         selectionAnalysis.shellHint ||
         clipboardAnalysis.shellHint;
+      const evasionHint = selectionAnalysis.evasionHint || clipboardAnalysis.evasionHint;
 
-      const winRHint = lastPageHint?.hint === "winr";
-      const winXHint = lastPageHint?.hint === "winx";
-      const browserErrorHint = lastPageHint?.hint === "browser-error";
-      const fixActionHint = lastPageHint?.hint === "fix-action";
-      const captchaHint = lastPageHint?.hint === "captcha";
-      const consoleHint = lastPageHint?.hint === "console";
-      const shellHint = lastPageHint?.hint === "shell";
-      const pasteSequenceHint = lastPageHint?.hint === "paste-sequence";
-      const fileExplorerHint = lastPageHint?.hint === "file-explorer";
-      const copyTriggerHint = lastPageHint?.hint === "copy-trigger";
+      const hints = lastPageHint?.hints || [];
+      const snippets = lastPageHint?.snippets || [];
+      const winRHint = hints.includes("winr");
+      const winXHint = hints.includes("winx");
+      const browserErrorHint = hints.includes("browser-error");
+      const fixActionHint = hints.includes("fix-action");
+      const captchaHint = hints.includes("captcha");
+      const consoleHint = hints.includes("console");
+      const shellHint = hints.includes("shell");
+      const pasteSequenceHint = hints.includes("paste-sequence");
+      const fileExplorerHint = hints.includes("file-explorer");
+      const copyTriggerHint = hints.includes("copy-trigger");
       const shouldAlert =
         mismatch ||
         commandMatch ||
@@ -607,7 +668,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         shellHint ||
         pasteSequenceHint ||
         fileExplorerHint ||
-        copyTriggerHint
+        copyTriggerHint ||
+        evasionHint
       ;
 
       if (shouldAlert) {
@@ -617,7 +679,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const shouldBlockClipboard =
           isClipboardWatch &&
           clipboardText &&
-          (commandMatch || winRHint || captchaHint || consoleHint || shellHint || pasteSequenceHint);
+          (
+            commandMatch ||
+            evasionHint ||
+            winRHint ||
+            captchaHint ||
+            consoleHint ||
+            shellHint ||
+            pasteSequenceHint
+          );
 
         if (shouldBlockClipboard && shouldThrottleClipboardBlock(clipboardText)) {
           return;
@@ -645,7 +715,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           pasteSequenceHint,
           fileExplorerHint,
           copyTriggerHint,
-          hintSnippet: lastPageHint?.snippet || "",
+          evasionHint,
+          snippets,
           blockedClipboardText,
           detectedContent,
           tabId: sender?.tab?.id ?? null
@@ -668,7 +739,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             pasteSequenceHint,
             fileExplorerHint,
             copyTriggerHint,
-            hintSnippet: lastPageHint?.snippet || ""
+            evasionHint,
+            snippets
           }),
           detectedContent
         });
