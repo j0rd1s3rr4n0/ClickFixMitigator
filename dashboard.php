@@ -5,8 +5,8 @@ header('Content-Type: text/html; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 header('Cache-Control: no-store');
 
-$statsFile = __DIR__ . '/clickfix-stats.log';
-$reportFile = __DIR__ . '/clickfix-report.log';
+$dbPath = __DIR__ . '/data/clickfix.sqlite';
+$schemaPath = __DIR__ . '/data/clickfix.sql';
 
 $stats = [
     'total_alerts' => 0,
@@ -16,48 +16,72 @@ $stats = [
     'last_update' => null
 ];
 
-if (is_readable($statsFile)) {
-    $lines = file($statsFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
-    foreach ($lines as $line) {
-        $entry = json_decode($line, true);
-        if (!is_array($entry)) {
-            continue;
+$recentDetections = [];
+
+if (!file_exists($dbPath) && is_readable($schemaPath)) {
+    try {
+        $pdo = new PDO('sqlite:' . $dbPath);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $schemaSql = file_get_contents($schemaPath);
+        if ($schemaSql !== false) {
+            $pdo->exec($schemaSql);
         }
-        $statsData = $entry['stats'] ?? [];
-        if (!is_array($statsData)) {
-            continue;
-        }
-        $stats['total_alerts'] = max($stats['total_alerts'], (int) ($statsData['alert_count'] ?? 0));
-        $stats['total_blocks'] = max($stats['total_blocks'], (int) ($statsData['block_count'] ?? 0));
-        $stats['manual_sites'] = array_unique(array_merge($stats['manual_sites'], $statsData['manual_sites'] ?? []));
-        $country = $entry['country'] ?? '';
-        if ($country !== '') {
-            $stats['countries'][$country] = ($stats['countries'][$country] ?? 0) + 1;
-        }
-        $stats['last_update'] = $entry['received_at'] ?? $stats['last_update'];
+    } catch (Throwable $exception) {
+        $pdo = null;
     }
 }
 
-$recentDetections = [];
-if (is_readable($reportFile)) {
-    $lines = array_slice(file($reportFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [], -50);
-    foreach ($lines as $line) {
-        $entry = json_decode($line, true);
-        if (!is_array($entry)) {
-            continue;
+if (is_readable($dbPath)) {
+    try {
+        $pdo = new PDO('sqlite:' . $dbPath);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        $statsRows = $pdo->query(
+            'SELECT received_at, enabled, alert_count, block_count, manual_sites_json, country
+             FROM stats
+             ORDER BY received_at DESC
+             LIMIT 50'
+        )->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($statsRows as $entry) {
+            $stats['total_alerts'] = max($stats['total_alerts'], (int) ($entry['alert_count'] ?? 0));
+            $stats['total_blocks'] = max($stats['total_blocks'], (int) ($entry['block_count'] ?? 0));
+            $manualSites = json_decode((string) ($entry['manual_sites_json'] ?? ''), true);
+            if (is_array($manualSites)) {
+                $stats['manual_sites'] = array_unique(array_merge($stats['manual_sites'], $manualSites));
+            }
+            $country = (string) ($entry['country'] ?? '');
+            if ($country !== '') {
+                $stats['countries'][$country] = ($stats['countries'][$country] ?? 0) + 1;
+            }
+            if ($stats['last_update'] === null && !empty($entry['received_at'])) {
+                $stats['last_update'] = (string) $entry['received_at'];
+            }
         }
-        $detected = trim((string) ($entry['detected_content'] ?? ''));
-        if ($detected === '') {
-            $detected = trim((string) ($entry['message'] ?? ''));
+
+        $reportRows = $pdo->query(
+            'SELECT received_at, hostname, detected_content, message
+             FROM reports
+             ORDER BY received_at DESC
+             LIMIT 50'
+        )->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($reportRows as $entry) {
+            $detected = trim((string) ($entry['detected_content'] ?? ''));
+            if ($detected === '') {
+                $detected = trim((string) ($entry['message'] ?? ''));
+            }
+            if ($detected === '') {
+                continue;
+            }
+            $recentDetections[] = [
+                'hostname' => (string) ($entry['hostname'] ?? ''),
+                'timestamp' => (string) ($entry['received_at'] ?? ''),
+                'detected' => $detected
+            ];
         }
-        if ($detected === '') {
-            continue;
-        }
-        $recentDetections[] = [
-            'hostname' => (string) ($entry['hostname'] ?? ''),
-            'timestamp' => (string) ($entry['received_at'] ?? ''),
-            'detected' => $detected
-        ];
+    } catch (Throwable $exception) {
+        $stats = $stats;
     }
 }
 

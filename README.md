@@ -8,6 +8,18 @@ ClickFix Mitigator es un proyecto de referencia para entender y mitigar ataques 
 - **Agente de Windows (Python)**: vigila cambios del portapapeles, eventos de pegado y nuevos procesos para alertar sobre comandos sospechosos.
 - **Endpoint y dashboard**: `clickfix-report.php` recibe reportes/estadísticas y `dashboard.php` muestra un resumen público con detecciones recientes.
 
+## Servidor (PHP)
+
+El endpoint usa SQLite en `data/clickfix.sqlite`. Asegúrate de que el directorio `data/` sea escribible por el servidor web. El esquema está en `data/clickfix.sql`.
+
+```bash
+mkdir -p data
+sqlite3 data/clickfix.sqlite < data/clickfix.sql
+chmod 775 data
+```
+
+Si el proceso PHP no puede escribir, revisa permisos/propietario de `data/` y el archivo `.sqlite`.
+
 ## Inicio rápido
 
 ### Extensión
