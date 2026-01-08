@@ -39,9 +39,11 @@ async function getBlocklistStatus() {
   });
 }
 
-function buildBlockedPage(hostname) {
-  const title = "Sitio web reportado anteriormente";
-  const reason = "Motivo: ClickFix Report";
+function buildBlockedPage(hostname, reasonText) {
+  const title = "Sitio web bloqueado por posible ClickFix";
+  const reason = reasonText
+    ? `Motivo: ${reasonText}`
+    : "Motivo: patrones ClickFix detectados";
   const container = document.createElement("div");
   container.style.cssText = [
     "min-height:100vh",
@@ -547,25 +549,6 @@ function handleSelectionChange() {
   }
 }
 
-document.addEventListener("copy", () => handleCopyCut("copy"));
-document.addEventListener("cut", () => handleCopyCut("cut"));
-document.addEventListener("paste", () => handlePaste());
-document.addEventListener("selectionchange", handleSelectionChange);
-
-document.addEventListener("DOMContentLoaded", async () => {
-  const blocked = await checkReportedSite();
-  if (blocked) {
-    return;
-  }
-  notifyWinRDetected();
-  notifyCaptchaDetected();
-  notifyConsoleDetected();
-  notifyShellDetected();
-  notifyPasteSequenceDetected();
-  notifyFileExplorerDetected();
-  monitorClipboardChanges();
-  setInterval(monitorClipboardChanges, 1000);
-  const observer = new MutationObserver(() => {
 function startMonitoring() {
   document.addEventListener("copy", () => handleCopyCut("copy"));
   document.addEventListener("cut", () => handleCopyCut("cut"));
@@ -609,6 +592,10 @@ chrome.runtime.onMessage.addListener((message) => {
   }
   if (message?.type === "restoreClipboard") {
     writeClipboardText(message.text ?? "");
+    return;
+  }
+  if (message?.type === "blockPage") {
+    buildBlockedPage(message.hostname || getHostname(window.location.href), message.reason);
     return;
   }
   if (message?.type === "showBanner") {
