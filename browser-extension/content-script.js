@@ -22,6 +22,147 @@ let fileExplorerDetected = false;
 let lastClipboardSnapshot = "";
 let clipboardWatchRunning = false;
 
+function getHostname(url) {
+  try {
+    return new URL(url).hostname;
+  } catch (error) {
+    return "";
+  }
+}
+
+async function getBlocklistStatus() {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(
+      { type: "checkBlocklist", url: window.location.href },
+      (response) => resolve(response)
+    );
+  });
+}
+
+function buildBlockedPage(hostname) {
+  const title = "Sitio web reportado anteriormente";
+  const reason = "Motivo: ClickFix Report";
+  const container = document.createElement("div");
+  container.style.cssText = [
+    "min-height:100vh",
+    "display:flex",
+    "flex-direction:column",
+    "justify-content:center",
+    "align-items:center",
+    "gap:24px",
+    "padding:32px",
+    "background:#fff5f5",
+    "font-family:system-ui, sans-serif",
+    "text-align:center"
+  ].join(";");
+
+  const heading = document.createElement("div");
+  heading.textContent = title;
+  heading.style.cssText = [
+    "font-size:36px",
+    "font-weight:800",
+    "color:#b91c1c",
+    "text-transform:uppercase"
+  ].join(";");
+
+  const subtitle = document.createElement("div");
+  subtitle.textContent = reason;
+  subtitle.style.cssText = [
+    "font-size:20px",
+    "font-weight:700",
+    "color:#dc2626"
+  ].join(";");
+
+  const hostText = document.createElement("div");
+  hostText.textContent = hostname ? `Sitio: ${hostname}` : "";
+  hostText.style.cssText = [
+    "font-size:16px",
+    "color:#7f1d1d"
+  ].join(";");
+
+  const buttonRow = document.createElement("div");
+  buttonRow.style.cssText = [
+    "display:flex",
+    "gap:16px",
+    "flex-wrap:wrap",
+    "justify-content:center"
+  ].join(";");
+
+  const stayButton = document.createElement("button");
+  stayButton.type = "button";
+  stayButton.textContent = "Permanecer en web";
+  stayButton.style.cssText = [
+    "padding:12px 20px",
+    "border-radius:999px",
+    "border:2px solid #dc2626",
+    "background:#fff",
+    "color:#dc2626",
+    "font-weight:700",
+    "cursor:pointer",
+    "font-size:14px"
+  ].join(";");
+
+  const backButton = document.createElement("button");
+  backButton.type = "button";
+  backButton.textContent = "Volver atrás";
+  backButton.style.cssText = [
+    "padding:12px 20px",
+    "border-radius:999px",
+    "border:none",
+    "background:#dc2626",
+    "color:#fff",
+    "font-weight:700",
+    "cursor:pointer",
+    "font-size:14px"
+  ].join(";");
+
+  stayButton.addEventListener("click", async () => {
+    const currentHost = hostname || getHostname(window.location.href);
+    await new Promise((resolve) => {
+      chrome.runtime.sendMessage(
+        { type: "allowSite", hostname: currentHost },
+        () => resolve()
+      );
+    });
+    window.location.reload();
+  });
+
+  backButton.addEventListener("click", () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href =
+        "https://www.ecosia.org/search?method=index&q=Google.com";
+    }
+  });
+
+  buttonRow.appendChild(stayButton);
+  buttonRow.appendChild(backButton);
+
+  container.appendChild(heading);
+  container.appendChild(subtitle);
+  if (hostname) {
+    container.appendChild(hostText);
+  }
+  container.appendChild(buttonRow);
+
+  document.documentElement.innerHTML = "";
+  const head = document.createElement("head");
+  const body = document.createElement("body");
+  body.appendChild(container);
+  document.documentElement.appendChild(head);
+  document.documentElement.appendChild(body);
+}
+
+async function checkBlocklistAndBlock() {
+  const status = await getBlocklistStatus();
+  if (status?.blocked) {
+    buildBlockedPage(status.hostname || getHostname(window.location.href));
+    return true;
+  }
+  return false;
+}
+
 function normalizeSnippet(text) {
   return text.replace(/\s+/g, " ").trim();
 }
@@ -263,32 +404,41 @@ function handleSelectionChange() {
   }
 }
 
-document.addEventListener("copy", () => handleCopyCut("copy"));
-document.addEventListener("cut", () => handleCopyCut("cut"));
-document.addEventListener("paste", () => handlePaste());
-document.addEventListener("selectionchange", handleSelectionChange);
+function startMonitoring() {
+  document.addEventListener("copy", () => handleCopyCut("copy"));
+  document.addEventListener("cut", () => handleCopyCut("cut"));
+  document.addEventListener("paste", () => handlePaste());
+  document.addEventListener("selectionchange", handleSelectionChange);
 
-document.addEventListener("DOMContentLoaded", () => {
-  notifyWinRDetected();
-  notifyCaptchaDetected();
-  notifyConsoleDetected();
-  notifyShellDetected();
-  notifyPasteSequenceDetected();
-  notifyFileExplorerDetected();
-  monitorClipboardChanges();
-  setInterval(monitorClipboardChanges, 4000);
-  const observer = new MutationObserver(() => {
+  document.addEventListener("DOMContentLoaded", () => {
     notifyWinRDetected();
     notifyCaptchaDetected();
     notifyConsoleDetected();
     notifyShellDetected();
     notifyPasteSequenceDetected();
     notifyFileExplorerDetected();
+    monitorClipboardChanges();
+    setInterval(monitorClipboardChanges, 4000);
+    const observer = new MutationObserver(() => {
+      notifyWinRDetected();
+      notifyCaptchaDetected();
+      notifyConsoleDetected();
+      notifyShellDetected();
+      notifyPasteSequenceDetected();
+      notifyFileExplorerDetected();
+    });
+    if (document.body) {
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    }
   });
-  if (document.body) {
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+}
+
+(async () => {
+  const isBlocked = await checkBlocklistAndBlock();
+  if (!isBlocked) {
+    startMonitoring();
   }
-});
+})();
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === "showBanner") {
