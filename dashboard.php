@@ -48,6 +48,9 @@ if (is_readable($reportFile)) {
         }
         $detected = trim((string) ($entry['detected_content'] ?? ''));
         if ($detected === '') {
+            $detected = trim((string) ($entry['message'] ?? ''));
+        }
+        if ($detected === '') {
             continue;
         }
         $recentDetections[] = [

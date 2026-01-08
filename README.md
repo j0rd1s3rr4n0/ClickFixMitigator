@@ -1,12 +1,90 @@
 # ClickFix Mitigator
 
+ClickFix Mitigator is a reference project for understanding and mitigating social engineering attacks that push users to run commands (ClickFix). It includes a browser extension and a Windows agent that can be used separately or together.
+
+## Flow overview
+
+The bullets show the complete flow:
+
+1. The deception  
+   ![The deception](assets/flow-1-deception.svg)
+2. The interruption  
+   ![The interruption](assets/flow-2-interruption.svg)
+3. The block before execution  
+   ![The block](assets/flow-3-block.svg)
+
+## Components
+
+- **Browser extension (MV3)**: detects common ClickFix patterns, clipboard/selection mismatches, and content that tries to induce **Win + R** usage.
+- **Windows agent (Python)**: watches clipboard changes, paste events, and new processes to alert on suspicious commands.
+- **Endpoint and dashboard**: `clickfix-report.php` receives reports/stats and `dashboard.php` shows a public summary with recent detections.
+
+> Note: the `agent.py` mitigator is under maintenance (testing).
+
+## Quick start
+
+### Extension
+
+1. Go to `chrome://extensions` (Edge/Brave also work).
+2. Enable **Developer mode**.
+3. Choose **Load unpacked** and point to `browser-extension/`.
+4. Open a test page, copy text, and verify alerts when clipboard content does not match.
+
+More details in `browser-extension/README.md`.
+
+### Windows agent
+
+```powershell
+cd windows-agent
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python agent.py
+```
+
+More details in `windows-agent/README.md`.
+
+## Permissions and privacy
+
+- The extension requests access to `<all_urls>` to inspect text and events on visited pages, plus clipboard permissions to validate selection/paste mismatches.
+- The Windows agent reads the clipboard and process command lines to detect malicious patterns.
+
+If you need to limit scope, review the permissions in `browser-extension/manifest.json` and the rules in `windows-agent/config.json`.
+
+## Testing
+
+- **Extension**: use the test HTML files in `browser-extension/` (for example, `demo-*.html`) and validate that notifications appear when copied/pasted text changes or matches suspicious rules.
+- **Agent**: tune the rules in `windows-agent/config.json` and run simulated commands to verify toasts.
+- **PoCs**: the `demo/` folder contains additional ClickFix PoCs to simulate real campaigns.
+
+## Project status
+
+This repository is an educational reference. For production, add automated tests, a secure deployment flow, and clear usage policies. Improvements are welcome as long as they fit the project goals.
+
+---
+
+# ClickFix Mitigator
+
 ClickFix Mitigator es un proyecto de referencia para entender y mitigar ataques de ingeniería social que empujan a ejecutar comandos (ClickFix). Incluye una extensión de navegador y un agente para Windows que pueden usarse por separado o juntos.
+
+## Flujo completo
+
+Las viñetas muestran el flujo completo:
+
+1. El engaño  
+   ![El engaño](assets/flow-1-deception.svg)
+2. La interrupción  
+   ![La interrupción](assets/flow-2-interruption.svg)
+3. El bloqueo antes de la ejecución  
+   ![El bloqueo antes de la ejecución](assets/flow-3-block.svg)
 
 ## Componentes
 
 - **Extensión de navegador (MV3)**: detecta patrones típicos de ClickFix, discrepancias entre selección y portapapeles, y contenido que intenta inducir el uso de **Win + R**.
 - **Agente de Windows (Python)**: vigila cambios del portapapeles, eventos de pegado y nuevos procesos para alertar sobre comandos sospechosos.
 - **Endpoint y dashboard**: `clickfix-report.php` recibe reportes/estadísticas y `dashboard.php` muestra un resumen público con detecciones recientes.
+
+> Nota: el mitigador `agent.py` está en mantenimiento (en pruebas).
 
 ## Inicio rápido
 
