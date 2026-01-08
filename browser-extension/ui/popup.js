@@ -14,6 +14,19 @@ const reportInput = document.getElementById("report-input");
 const reportButton = document.getElementById("report-site");
 const reportStatus = document.getElementById("report-status");
 
+function t(key, substitutions) {
+  return chrome.i18n.getMessage(key, substitutions) || key;
+}
+
+function applyTranslations() {
+  document.querySelectorAll("[data-i18n]").forEach((element) => {
+    element.textContent = t(element.dataset.i18n);
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+    element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
+  });
+}
+
 async function loadSettings() {
   const settings = await chrome.storage.local.get(DEFAULT_SETTINGS);
   return {
@@ -27,7 +40,7 @@ function renderWhitelist(domains) {
   whitelistList.innerHTML = "";
   if (!domains.length) {
     const item = document.createElement("li");
-    item.textContent = "Sin dominios en lista blanca.";
+    item.textContent = t("popupWhitelistEmpty");
     item.classList.add("empty");
     whitelistList.appendChild(item);
     return;
@@ -52,7 +65,7 @@ function renderWhitelist(domains) {
 function renderHistory(history) {
   historyContainer.innerHTML = "";
   if (!history.length) {
-    historyContainer.textContent = "No hay alertas recientes.";
+    historyContainer.textContent = t("optionsHistoryEmpty");
     historyContainer.classList.add("empty");
     return;
   }
@@ -114,7 +127,7 @@ toggleEnabled.addEventListener("change", async () => {
 
 async function reportSite(targetUrl) {
   if (!targetUrl) {
-    reportStatus.textContent = "Introduce una URL o usa la pestaña actual.";
+    reportStatus.textContent = t("popupReportStatusMissing");
     return;
   }
   try {
@@ -125,9 +138,9 @@ async function reportSite(targetUrl) {
       hostname: parsedUrl.hostname,
       timestamp: Date.now()
     });
-    reportStatus.textContent = `Reporte enviado: ${parsedUrl.hostname}`;
+    reportStatus.textContent = t("popupReportStatusSent", parsedUrl.hostname);
   } catch (error) {
-    reportStatus.textContent = "URL no válida.";
+    reportStatus.textContent = t("popupReportStatusInvalid");
   }
 }
 
@@ -143,11 +156,12 @@ reportButton.addEventListener("click", async () => {
   if (url) {
     await reportSite(url);
   } else {
-    reportStatus.textContent = "No se pudo detectar la pestaña activa.";
+    reportStatus.textContent = t("popupReportStatusNoTab");
   }
 });
 
 (async () => {
+  applyTranslations();
   const settings = await loadSettings();
   toggleEnabled.checked = settings.enabled;
   renderWhitelist(settings.whitelist);

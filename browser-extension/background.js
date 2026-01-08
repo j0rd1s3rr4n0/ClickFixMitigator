@@ -36,6 +36,10 @@ async function getSettings() {
   };
 }
 
+function t(key, substitutions) {
+  return chrome.i18n.getMessage(key, substitutions) || key;
+}
+
 function extractHostname(url) {
   try {
     return new URL(url).hostname;
@@ -134,13 +138,22 @@ async function incrementBlockCount() {
 function buildAlertMessage(details) {
   const parts = [];
   if (details.mismatch) {
-    parts.push("Discrepancia entre selección y portapapeles.");
+    parts.push(t("alertMismatch"));
   }
   if (details.commandMatch) {
-    parts.push("Patrón de comando sospechoso detectado.");
+    parts.push(t("alertCommand"));
   }
   if (details.winRHint) {
-    parts.push("La página sugiere usar Win+R/Run dialog.");
+    parts.push(t("alertWinR"));
+  }
+  if (details.winXHint) {
+    parts.push(t("alertWinX"));
+  }
+  if (details.browserErrorHint) {
+    parts.push(t("alertBrowserError"));
+  }
+  if (details.fixActionHint) {
+    parts.push(t("alertFixAction"));
   }
   if (details.winXHint) {
     parts.push("La página sugiere usar Win+X para abrir la terminal.");
@@ -152,19 +165,22 @@ function buildAlertMessage(details) {
     parts.push("La página pide aplicar una solución rápida o copiar un comando.");
   }
   if (details.captchaHint) {
-    parts.push("Posible captcha falso detectado.");
+    parts.push(t("alertCaptcha"));
   }
   if (details.consoleHint) {
-    parts.push("La página intenta que pegues en la consola de DevTools.");
+    parts.push(t("alertConsole"));
   }
   if (details.shellHint) {
-    parts.push("La página te pide pegar comandos en CMD/PowerShell/Ejecutar.");
+    parts.push(t("alertShell"));
   }
   if (details.pasteSequenceHint) {
-    parts.push("La página guía el pegado con Ctrl+V/Enter.");
+    parts.push(t("alertPasteSequence"));
   }
   if (details.fileExplorerHint) {
-    parts.push("La página pide pegar una ruta en el Explorador de archivos.");
+    parts.push(t("alertFileExplorer"));
+  }
+  if (details.copyTriggerHint) {
+    parts.push(t("alertCopyTrigger"));
   }
   if (details.copyTriggerHint) {
     parts.push("La página intenta copiar comandos al portapapeles.");
@@ -174,14 +190,14 @@ function buildAlertMessage(details) {
       details.hintSnippet.length > 160
         ? `${details.hintSnippet.slice(0, 157)}...`
         : details.hintSnippet;
-    parts.push(`Fragmento detectado: "${snippet}"`);
+    parts.push(t("alertSnippet", snippet));
   }
   if (details.blockedClipboardText) {
     const snippet =
       details.blockedClipboardText.length > CLIPBOARD_SNIPPET_LIMIT
         ? `${details.blockedClipboardText.slice(0, CLIPBOARD_SNIPPET_LIMIT - 3)}...`
         : details.blockedClipboardText;
-    parts.push(`Portapapeles bloqueado: "${snippet}"`);
+    parts.push(t("alertClipboardBlocked", snippet));
   }
   return parts.join(" ");
 }
@@ -213,12 +229,12 @@ async function triggerAlert(details) {
       {
         type: "basic",
         iconUrl: svgIcon,
-        title: "ClickFix Mitigator",
+        title: t("appName"),
         message,
         buttons: details.blockedClipboardText
           ? [
-              { title: "Restaurar portapapeles" },
-              { title: "Mantener limpio" }
+              { title: t("notificationRestoreClipboard") },
+              { title: t("notificationKeepClean") }
             ]
           : undefined
       },
@@ -466,7 +482,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       url: message.url,
       hostname: message.hostname || extractHostname(message.url),
       timestamp: message.timestamp ?? Date.now(),
-      reason: "Reporte manual del usuario",
+      reason: t("manualReportReason"),
       detectedContent: ""
     });
     return;
@@ -478,7 +494,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       url: message.url,
       hostname: message.hostname || extractHostname(message.url),
       timestamp: message.timestamp ?? Date.now(),
-      reason: "Bloqueado por lista",
+      reason: t("blocklistReason"),
       detectedContent: ""
     });
     return;

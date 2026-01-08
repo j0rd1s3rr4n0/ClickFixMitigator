@@ -15,6 +15,19 @@ const blocklistList = document.getElementById("blocklist-list");
 const historyContainer = document.getElementById("history");
 const clearHistoryButton = document.getElementById("clear-history");
 
+function t(key, substitutions) {
+  return chrome.i18n.getMessage(key, substitutions) || key;
+}
+
+function applyTranslations() {
+  document.querySelectorAll("[data-i18n]").forEach((element) => {
+    element.textContent = t(element.dataset.i18n);
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+    element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
+  });
+}
+
 async function loadSettings() {
   const settings = await chrome.storage.local.get(DEFAULT_SETTINGS);
   return {
@@ -29,7 +42,7 @@ function renderWhitelist(domains) {
   whitelistList.innerHTML = "";
   if (!domains.length) {
     const item = document.createElement("li");
-    item.textContent = "Sin dominios en lista blanca.";
+    item.textContent = t("popupWhitelistEmpty");
     item.classList.add("empty");
     whitelistList.appendChild(item);
     return;
@@ -39,7 +52,7 @@ function renderWhitelist(domains) {
     const item = document.createElement("li");
     item.textContent = domain;
     const removeButton = document.createElement("button");
-    removeButton.textContent = "Quitar";
+    removeButton.textContent = t("optionsRemove");
     removeButton.addEventListener("click", async () => {
       const settings = await loadSettings();
       const next = settings.whitelist.filter((entry) => entry !== domain);
@@ -54,7 +67,7 @@ function renderWhitelist(domains) {
 function renderHistory(history) {
   historyContainer.innerHTML = "";
   if (!history.length) {
-    historyContainer.textContent = "No hay alertas recientes.";
+    historyContainer.textContent = t("optionsHistoryEmpty");
     historyContainer.classList.add("empty");
     return;
   }
@@ -73,7 +86,7 @@ function renderBlocklistSources(sources) {
   blocklistList.innerHTML = "";
   if (!sources.length) {
     const item = document.createElement("li");
-    item.textContent = "Sin listas adicionales.";
+    item.textContent = t("optionsBlocklistEmpty");
     item.classList.add("empty");
     blocklistList.appendChild(item);
     return;
@@ -83,7 +96,7 @@ function renderBlocklistSources(sources) {
     const item = document.createElement("li");
     item.textContent = source;
     const removeButton = document.createElement("button");
-    removeButton.textContent = "Quitar";
+    removeButton.textContent = t("optionsRemove");
     removeButton.addEventListener("click", async () => {
       const settings = await loadSettings();
       const next = settings.blocklistSources.filter((entry) => entry !== source);
@@ -145,6 +158,7 @@ toggleEnabled.addEventListener("change", async () => {
 });
 
 (async () => {
+  applyTranslations();
   const settings = await loadSettings();
   toggleEnabled.checked = settings.enabled;
   renderWhitelist(settings.whitelist);
