@@ -11,7 +11,7 @@ const CLICKFIX_REPORT_URL = "https://jordiserrano.me/clickfix-report.php";
 const BLOCKLIST_REFRESH_MINUTES = 30;
 
 const COMMAND_REGEX =
-  /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|reg\s+add|rundll32|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic)\b/i;
+  /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d|reg\s+add|rundll32|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic)\b/i;
 const SHELL_HINT_REGEX =
   /(invoke-webrequest|iwr|curl\s+|wget\s+|downloadstring|frombase64string|add-mppreference|invoke-expression|iex\b|encodedcommand|\-enc\b)/i;
 const CLIPBOARD_SNIPPET_LIMIT = 160;

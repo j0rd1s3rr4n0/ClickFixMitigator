@@ -1,5 +1,5 @@
 const CLICKFIX_WIN_R_REGEX =
-  /(win\s*\+\s*r|win\s+r|windows\s*\+\s*r|windows\s+key|windows\s+button|presiona\s+windows|tecla\s+windows|tecla\s+de\s+windows|run\s+dialog|open\s+run|cuadro\s+de\s+ejecutar|ventana\s+de\s+ejecutar|simbolo\s+del\s+sistema|símbolo\s+del\s+sistema|abr(e|ir)\s+cmd|abr(e|ir)\s+powershell|abr(e|ir)\s+terminal|abre\s+la\s+consola)/i;
+  /(win\s*\+\s*r|w\s*i\s*n\s*\+\s*r|win\s+r|windows\s*\+\s*r|windows\s+key|windows\s+logo\s+key|windows\s+button|logo\s+de\s+windows|presiona\s+windows|tecla\s+windows|tecla\s+de\s+windows|tecla\s+⊞|⊞\s*\+\s*r|run\s+dialog|run\s*box|runbox|rundialog|open\s+run|abre\s+ejecutar|cuadro\s+de\s+ejecutar|ventana\s+de\s+ejecutar|simbolo\s+del\s+sistema|símbolo\s+del\s+sistema|abr(e|ir)\s+cmd|abr(e|ir)\s+powershell|abr(e|ir)\s+terminal|abre\s+la\s+consola)/i;
 const CLICKFIX_CAPTCHA_REGEX =
   /(captcha|no\s+soy\s+un\s+robot|no\s+eres\s+un\s+robot|i('?| a)?m\s+not\s+a\s+robot|verify\s+you('?| a)?re\s+human|human\s+verification|verifica\s+que\s+eres\s+humano|confirmar\s+que\s+eres\s+humano)/i;
 const CLICKFIX_CONSOLE_REGEX =
