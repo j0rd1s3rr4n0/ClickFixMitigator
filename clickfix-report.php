@@ -24,13 +24,90 @@ function respondWithError(int $statusCode, string $message, string $debugFile, a
     exit;
 }
 
+function openReportDatabase(string $dbPath, string $debugFile): ?SQLite3
+{
+    try {
+        $db = new SQLite3($dbPath);
+    } catch (Throwable $exception) {
+        writeDebugLog($debugFile, ['status' => 'error', 'message' => 'Failed to open database', 'error' => $exception->getMessage()]);
+        return null;
+    }
+
+    $db->busyTimeout(1000);
+    $db->exec('PRAGMA journal_mode = WAL');
+    $db->exec('PRAGMA foreign_keys = ON');
+    $db->exec(
+        'CREATE TABLE IF NOT EXISTS reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            received_at TEXT NOT NULL,
+            type TEXT NOT NULL,
+            url TEXT,
+            hostname TEXT,
+            message TEXT,
+            timestamp TEXT,
+            signals_json TEXT,
+            detected_content TEXT,
+            full_context TEXT,
+            stats_json TEXT,
+            user_agent TEXT,
+            ip TEXT,
+            country TEXT
+        )'
+    );
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_reports_received_at ON reports(received_at)');
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_reports_country ON reports(country)');
+
+    return $db;
+}
+
+function persistReport(SQLite3 $db, array $entry, string $debugFile): bool
+{
+    $statement = $db->prepare(
+        'INSERT INTO reports (
+            received_at, type, url, hostname, message, timestamp, signals_json,
+            detected_content, full_context, stats_json, user_agent, ip, country
+        ) VALUES (
+            :received_at, :type, :url, :hostname, :message, :timestamp, :signals_json,
+            :detected_content, :full_context, :stats_json, :user_agent, :ip, :country
+        )'
+    );
+
+    if ($statement === false) {
+        writeDebugLog($debugFile, ['status' => 'error', 'message' => 'Failed to prepare report insert']);
+        return false;
+    }
+
+    $statement->bindValue(':received_at', (string) ($entry['received_at'] ?? ''), SQLITE3_TEXT);
+    $statement->bindValue(':type', (string) ($entry['type'] ?? ''), SQLITE3_TEXT);
+    $statement->bindValue(':url', (string) ($entry['url'] ?? ''), SQLITE3_TEXT);
+    $statement->bindValue(':hostname', (string) ($entry['hostname'] ?? ''), SQLITE3_TEXT);
+    $statement->bindValue(':message', (string) ($entry['message'] ?? ''), SQLITE3_TEXT);
+    $statement->bindValue(':timestamp', (string) ($entry['timestamp'] ?? ''), SQLITE3_TEXT);
+    $statement->bindValue(':signals_json', json_encode($entry['signals'] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), SQLITE3_TEXT);
+    $statement->bindValue(':detected_content', (string) ($entry['detected_content'] ?? ''), SQLITE3_TEXT);
+    $statement->bindValue(':full_context', (string) ($entry['full_context'] ?? ''), SQLITE3_TEXT);
+    $statement->bindValue(':stats_json', json_encode($entry['stats'] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), SQLITE3_TEXT);
+    $statement->bindValue(':user_agent', (string) ($entry['user_agent'] ?? ''), SQLITE3_TEXT);
+    $statement->bindValue(':ip', (string) ($entry['ip'] ?? ''), SQLITE3_TEXT);
+    $statement->bindValue(':country', (string) ($entry['country'] ?? ''), SQLITE3_TEXT);
+
+    $result = $statement->execute();
+    if ($result === false) {
+        writeDebugLog($debugFile, ['status' => 'error', 'message' => 'Failed to insert report', 'error' => $db->lastErrorMsg()]);
+        return false;
+    }
+    $result->finalize();
+
+    return true;
+}
+
 $debugFile = __DIR__ . '/clickfix-debug.log';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respondWithError(405, 'Method not allowed', $debugFile, ['method' => $_SERVER['REQUEST_METHOD'] ?? '']);
 }
 
-$maxBytes = 32768;
+$maxBytes = 65536;
 $rawBody = file_get_contents('php://input', false, null, 0, $maxBytes + 1);
 if ($rawBody === false || strlen($rawBody) > $maxBytes) {
     respondWithError(413, 'Payload too large', $debugFile, ['bytes' => $rawBody === false ? null : strlen($rawBody)]);
@@ -65,6 +142,9 @@ $signals = isset($payload['signals']) && is_array($payload['signals']) ? $payloa
 $detectedContent = isset($payload['detectedContent'])
     ? trim((string) $payload['detectedContent'])
     : '';
+$fullContext = isset($payload['full_context'])
+    ? trim((string) $payload['full_context'])
+    : '';
 $statsData = isset($payload['data']) && is_array($payload['data']) ? $payload['data'] : [];
 $manualReport = filter_var($payload['manualReport'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
 
@@ -73,6 +153,7 @@ $hostname = substr($hostname, 0, 255);
 $message = substr($message !== '' ? $message : $reason, 0, 2000);
 $timestamp = substr($timestamp, 0, 100);
 $detectedContent = substr($detectedContent, 0, 4000);
+$fullContext = substr($fullContext, 0, 50000);
 
 if ($url !== '' && preg_match('/\s/', $url)) {
     respondWithError(400, 'Invalid url', $debugFile, ['url' => $url]);
@@ -144,6 +225,7 @@ $entry = [
     'timestamp' => $timestamp,
     'signals' => $normalizedSignals,
     'detected_content' => $detectedContent,
+    'full_context' => $fullContext,
     'stats' => $normalizedStats,
     'user_agent' => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512),
     'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
@@ -157,6 +239,19 @@ $logLine = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) 
 
 if (file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX) === false) {
     respondWithError(500, 'Failed to write report', $debugFile, ['log_file' => $logFile]);
+}
+
+if ($type === 'alert') {
+    $dbPath = __DIR__ . '/clickfix-reports.sqlite';
+    $db = openReportDatabase($dbPath, $debugFile);
+    if ($db === null) {
+        respondWithError(500, 'Failed to open report database', $debugFile, ['db_path' => $dbPath]);
+    }
+    if (!persistReport($db, $entry, $debugFile)) {
+        $db->close();
+        respondWithError(500, 'Failed to persist report', $debugFile, ['db_path' => $dbPath]);
+    }
+    $db->close();
 }
 
 if ($manualReport && $hostname !== '') {
