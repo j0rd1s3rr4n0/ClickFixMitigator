@@ -13,9 +13,39 @@ const clearHistoryButton = document.getElementById("clear-history");
 const reportInput = document.getElementById("report-input");
 const reportButton = document.getElementById("report-site");
 const reportStatus = document.getElementById("report-status");
+const languageSelect = document.getElementById("language-select");
+
+const SUPPORTED_LOCALES = ["en", "es"];
+const DEFAULT_LOCALE = "en";
+let activeMessages = null;
 
 function t(key, substitutions) {
+  if (activeMessages?.[key]?.message) {
+    return formatMessage(activeMessages[key].message, substitutions);
+  }
   return chrome.i18n.getMessage(key, substitutions) || key;
+}
+
+function formatMessage(message, substitutions) {
+  if (!substitutions) {
+    return message;
+  }
+  const values = Array.isArray(substitutions) ? substitutions : [substitutions];
+  return values.reduce((result, value, index) => {
+    return result.replaceAll(`$${index + 1}`, value);
+  }, message);
+}
+
+function normalizeLocale(locale) {
+  if (!locale) {
+    return DEFAULT_LOCALE;
+  }
+  const lower = locale.toLowerCase();
+  if (SUPPORTED_LOCALES.includes(lower)) {
+    return lower;
+  }
+  const base = lower.split("-")[0];
+  return SUPPORTED_LOCALES.includes(base) ? base : DEFAULT_LOCALE;
 }
 
 function applyTranslations() {
@@ -24,6 +54,52 @@ function applyTranslations() {
   });
   document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
     element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
+  });
+}
+
+function removeDuplicateReportSections() {
+  const reportInputs = document.querySelectorAll("#report-input");
+  const reportButtons = document.querySelectorAll("#report-site");
+  const reportStatuses = document.querySelectorAll("#report-status");
+  if (reportInputs.length <= 1 && reportButtons.length <= 1 && reportStatuses.length <= 1) {
+    return;
+  }
+  const keepElements = new Set([reportInput, reportButton, reportStatus]);
+  const duplicates = [...reportInputs, ...reportButtons, ...reportStatuses].filter((element) => {
+    return element && !keepElements.has(element);
+  });
+  duplicates.forEach((element) => {
+    const section = element.closest("section");
+    if (section) {
+      section.remove();
+    } else {
+      element.remove();
+    }
+  });
+}
+
+async function loadLocaleMessages(locale) {
+  const response = await fetch(chrome.runtime.getURL(`_locales/${locale}/messages.json`));
+  if (!response.ok) {
+    throw new Error(`Failed to load locale ${locale}`);
+  }
+  activeMessages = await response.json();
+  document.documentElement.lang = locale;
+  applyTranslations();
+}
+
+async function initLanguageSelector() {
+  if (!languageSelect) {
+    return;
+  }
+  const { uiLanguage } = await chrome.storage.local.get({ uiLanguage: "" });
+  const selectedLocale = normalizeLocale(uiLanguage || chrome.i18n.getUILanguage());
+  languageSelect.value = selectedLocale;
+  await loadLocaleMessages(selectedLocale);
+  languageSelect.addEventListener("change", async () => {
+    const nextLocale = normalizeLocale(languageSelect.value);
+    await chrome.storage.local.set({ uiLanguage: nextLocale });
+    await loadLocaleMessages(nextLocale);
   });
 }
 
@@ -50,7 +126,7 @@ function renderWhitelist(domains) {
     const item = document.createElement("li");
     item.textContent = domain;
     const removeButton = document.createElement("button");
-    removeButton.textContent = "Quitar";
+    removeButton.textContent = t("optionsRemove");
     removeButton.addEventListener("click", async () => {
       const settings = await loadSettings();
       const next = settings.whitelist.filter((entry) => entry !== domain);
@@ -161,7 +237,8 @@ reportButton.addEventListener("click", async () => {
 });
 
 (async () => {
-  applyTranslations();
+  removeDuplicateReportSections();
+  await initLanguageSelector();
   const settings = await loadSettings();
   toggleEnabled.checked = settings.enabled;
   renderWhitelist(settings.whitelist);
