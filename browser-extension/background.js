@@ -28,6 +28,7 @@ const EVASION_REGEXES = [
 const CLIPBOARD_SNIPPET_LIMIT = 160;
 const CLIPBOARD_THROTTLE_MS = 30000;
 const BLOCKLIST_CACHE_MS = 10 * 60 * 1000;
+const FULL_CONTEXT_LIMIT = 40000;
 
 async function getSettings() {
   const stored = await chrome.storage.local.get(DEFAULT_SETTINGS);
@@ -232,6 +233,17 @@ function buildAlertSnippets(details) {
   return snippets;
 }
 
+function trimFullContext(value) {
+  if (!value) {
+    return "";
+  }
+  const trimmed = value.trim();
+  if (trimmed.length <= FULL_CONTEXT_LIMIT) {
+    return trimmed;
+  }
+  return trimmed.slice(0, FULL_CONTEXT_LIMIT);
+}
+
 async function triggerAlert(details) {
   await incrementAlertCount();
   await incrementBlockCount();
@@ -241,6 +253,7 @@ async function triggerAlert(details) {
   const hostname = extractHostname(details.url);
   const timestamp = new Date(details.timestamp).toISOString();
   const allowlisted = await isAllowlisted(details.url);
+  const fullContext = trimFullContext(details.fullContext || "");
 
   await saveHistory({
     message,
@@ -323,6 +336,7 @@ async function triggerAlert(details) {
         timestamp,
         message,
         detectedContent: details.detectedContent || "",
+        full_context: fullContext,
         signals: {
           mismatch: details.mismatch,
           commandMatch: details.commandMatch,
@@ -589,6 +603,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         snippets,
         blockedClipboardText: "",
         detectedContent: message.snippet || "",
+        fullContext: message.fullContext || "",
         tabId: sender?.tab?.id ?? null
       });
 
@@ -606,13 +621,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           captchaHint: message.alertType === "captcha",
           consoleHint: message.alertType === "console",
           shellHint: message.alertType === "shell",
-        pasteSequenceHint: message.alertType === "paste-sequence",
-        fileExplorerHint: message.alertType === "file-explorer",
-        copyTriggerHint: message.alertType === "copy-trigger",
-        snippets,
-        blockedClipboardText: ""
-      }),
-        detectedContent: message.snippet || ""
+          pasteSequenceHint: message.alertType === "paste-sequence",
+          fileExplorerHint: message.alertType === "file-explorer",
+          copyTriggerHint: message.alertType === "copy-trigger",
+          evasionHint: false,
+          snippets,
+          blockedClipboardText: ""
+        }),
+        detectedContent: message.snippet || "",
+        full_context: trimFullContext(message.fullContext || "")
       });
 
       if (notificationId) {
@@ -719,6 +736,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           snippets,
           blockedClipboardText,
           detectedContent,
+          fullContext: message.fullContext || "",
           tabId: sender?.tab?.id ?? null
         });
 
@@ -742,7 +760,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             evasionHint,
             snippets
           }),
-          detectedContent
+          detectedContent,
+          full_context: trimFullContext(message.fullContext || "")
         });
 
         if (blockedClipboardText && notificationId) {

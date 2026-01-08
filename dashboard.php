@@ -38,31 +38,195 @@ if (is_readable($statsFile)) {
     }
 }
 
+$stats['manual_sites'] = array_values(array_filter($stats['manual_sites']));
+arsort($stats['countries']);
+
+$reportDb = __DIR__ . '/clickfix-reports.sqlite';
+$chartData = [
+    'daily' => [],
+    'hourly' => array_fill(0, 24, 0),
+    'countries' => [],
+    'signals' => []
+];
 $recentDetections = [];
-if (is_readable($reportFile)) {
-    $lines = array_slice(file($reportFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [], -50);
+
+function recordChartEntry(array &$chartData, string $receivedAt, string $country, array $signals): void
+{
+    $date = null;
+    $hour = null;
+    try {
+        $dateTime = new DateTimeImmutable($receivedAt);
+        $date = $dateTime->format('Y-m-d');
+        $hour = (int) $dateTime->format('G');
+    } catch (Exception $exception) {
+        $date = null;
+        $hour = null;
+    }
+
+    if ($date) {
+        $chartData['daily'][$date] = ($chartData['daily'][$date] ?? 0) + 1;
+    }
+    if ($hour !== null) {
+        $chartData['hourly'][$hour] = ($chartData['hourly'][$hour] ?? 0) + 1;
+    }
+
+    if ($country !== '') {
+        $chartData['countries'][$country] = ($chartData['countries'][$country] ?? 0) + 1;
+    }
+
+    foreach ($signals as $signal => $enabled) {
+        if (!$enabled) {
+            continue;
+        }
+        $chartData['signals'][$signal] = ($chartData['signals'][$signal] ?? 0) + 1;
+    }
+}
+
+if (is_readable($reportDb)) {
+    try {
+        $db = new SQLite3($reportDb, SQLITE3_OPEN_READONLY);
+        $db->busyTimeout(500);
+
+        $recentResult = $db->query(
+            'SELECT received_at, hostname, message, detected_content, full_context
+             FROM reports
+             WHERE type = "alert"
+             ORDER BY id DESC
+             LIMIT 50'
+        );
+
+        if ($recentResult) {
+            while ($row = $recentResult->fetchArray(SQLITE3_ASSOC)) {
+                $detected = trim((string) ($row['detected_content'] ?? ''));
+                $fullContext = trim((string) ($row['full_context'] ?? ''));
+                $summary = trim((string) ($row['message'] ?? ''));
+                if ($detected === '' && $summary === '') {
+                    continue;
+                }
+                $recentDetections[] = [
+                    'hostname' => (string) ($row['hostname'] ?? ''),
+                    'timestamp' => (string) ($row['received_at'] ?? ''),
+                    'message' => $summary,
+                    'detected' => $detected,
+                    'full_context' => $fullContext
+                ];
+            }
+        }
+
+        $chartResult = $db->query(
+            'SELECT received_at, country, signals_json
+             FROM reports
+             WHERE type = "alert"
+             ORDER BY id DESC
+             LIMIT 2000'
+        );
+
+        if ($chartResult) {
+            while ($row = $chartResult->fetchArray(SQLITE3_ASSOC)) {
+                $signals = json_decode((string) ($row['signals_json'] ?? ''), true);
+                if (!is_array($signals)) {
+                    $signals = [];
+                }
+                recordChartEntry(
+                    $chartData,
+                    (string) ($row['received_at'] ?? ''),
+                    (string) ($row['country'] ?? ''),
+                    $signals
+                );
+            }
+        }
+
+        $db->close();
+    } catch (Throwable $exception) {
+        $recentDetections = [];
+        $chartData = [
+            'daily' => [],
+            'hourly' => array_fill(0, 24, 0),
+            'countries' => [],
+            'signals' => []
+        ];
+    }
+}
+
+if (empty($recentDetections) && is_readable($reportFile)) {
+    $lines = array_slice(file($reportFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [], -2000);
     foreach ($lines as $line) {
         $entry = json_decode($line, true);
         if (!is_array($entry)) {
             continue;
         }
         $detected = trim((string) ($entry['detected_content'] ?? ''));
-        if ($detected === '') {
-            $detected = trim((string) ($entry['message'] ?? ''));
-        }
-        if ($detected === '') {
+        $fullContext = trim((string) ($entry['full_context'] ?? ''));
+        $summary = trim((string) ($entry['message'] ?? ''));
+        if ($detected === '' && $summary === '') {
             continue;
         }
         $recentDetections[] = [
             'hostname' => (string) ($entry['hostname'] ?? ''),
             'timestamp' => (string) ($entry['received_at'] ?? ''),
-            'detected' => $detected
+            'message' => $summary,
+            'detected' => $detected,
+            'full_context' => $fullContext
         ];
+        $signals = $entry['signals'] ?? [];
+        if (!is_array($signals)) {
+            $signals = [];
+        }
+        recordChartEntry(
+            $chartData,
+            (string) ($entry['received_at'] ?? ''),
+            (string) ($entry['country'] ?? ''),
+            $signals
+        );
     }
+    $recentDetections = array_slice($recentDetections, 0, 50);
 }
 
-$stats['manual_sites'] = array_values(array_filter($stats['manual_sites']));
-arsort($stats['countries']);
+ksort($chartData['daily']);
+arsort($chartData['countries']);
+arsort($chartData['signals']);
+
+$signalLabels = [
+    'mismatch' => 'Discrepancia',
+    'commandMatch' => 'Comando',
+    'winRHint' => 'Win + R',
+    'winXHint' => 'Win + X',
+    'browserErrorHint' => 'Error navegador',
+    'fixActionHint' => 'Acción de arreglo',
+    'captchaHint' => 'Captcha',
+    'consoleHint' => 'Consola',
+    'shellHint' => 'Shell',
+    'pasteSequenceHint' => 'Secuencia pegado',
+    'fileExplorerHint' => 'Explorador',
+    'copyTriggerHint' => 'Disparador copia',
+    'evasionHint' => 'Evasión'
+];
+
+$signalChartLabels = [];
+$signalChartValues = [];
+foreach ($chartData['signals'] as $signal => $count) {
+    $signalChartLabels[] = $signalLabels[$signal] ?? $signal;
+    $signalChartValues[] = $count;
+}
+
+$chartPayload = [
+    'daily' => [
+        'labels' => array_keys($chartData['daily']),
+        'values' => array_values($chartData['daily'])
+    ],
+    'hourly' => [
+        'labels' => range(0, 23),
+        'values' => array_values($chartData['hourly'])
+    ],
+    'countries' => [
+        'labels' => array_keys($chartData['countries']),
+        'values' => array_values($chartData['countries'])
+    ],
+    'signals' => [
+        'labels' => $signalChartLabels,
+        'values' => $signalChartValues
+    ]
+];
 ?>
 <!doctype html>
 <html lang="es">
@@ -100,9 +264,36 @@ arsort($stats['countries']);
         border-radius: 12px;
         padding: 16px;
       }
+      .section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+      }
+      .chart-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .chart-card h3 {
+        margin: 0 0 10px;
+        font-size: 15px;
+        color: #0f172a;
+      }
       h2 {
         font-size: 18px;
         margin: 0 0 12px;
+      }
+      h3 {
+        font-size: 16px;
+        margin: 0 0 8px;
       }
       ul {
         list-style: none;
@@ -123,6 +314,37 @@ arsort($stats['countries']);
         padding: 12px;
         border-radius: 10px;
         font-size: 13px;
+      }
+      .report-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-bottom: 12px;
+        background: #f8fafc;
+      }
+      .report-card summary {
+        cursor: pointer;
+        font-weight: 600;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .report-meta {
+        font-size: 12px;
+        color: #64748b;
+      }
+      .report-section {
+        margin-top: 10px;
+      }
+      .context-panel {
+        margin-top: 8px;
+        border: 1px dashed #cbd5f5;
+        border-radius: 10px;
+        padding: 10px;
+        background: #eef2ff;
+      }
+      .context-panel pre {
+        background: #111827;
       }
     </style>
   </head>
@@ -168,18 +390,129 @@ arsort($stats['countries']);
     </section>
 
     <section class="card" style="margin-top: 24px;">
+      <div class="section-title">
+        <h2>Analítica de alertas</h2>
+        <span class="muted">Últimos reportes registrados</span>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <h3>Alertas por día</h3>
+          <canvas id="chart-alerts-day" height="140"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Alertas por hora</h3>
+          <canvas id="chart-alerts-hour" height="140"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Distribución por país</h3>
+          <canvas id="chart-alerts-country" height="140"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Tipos de señales</h3>
+          <canvas id="chart-alerts-signals" height="140"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top: 24px;">
       <h2>Detecciones recientes</h2>
       <?php if (empty($recentDetections)): ?>
         <div class="muted">Sin detecciones con contenido registrado.</div>
       <?php else: ?>
         <?php foreach ($recentDetections as $entry): ?>
-          <p class="muted">
-            <?= htmlspecialchars($entry['hostname'], ENT_QUOTES, 'UTF-8'); ?> —
-            <?= htmlspecialchars($entry['timestamp'], ENT_QUOTES, 'UTF-8'); ?>
-          </p>
-          <pre><?= htmlspecialchars($entry['detected'], ENT_QUOTES, 'UTF-8'); ?></pre>
+          <details class="report-card">
+            <summary>
+              <?= htmlspecialchars($entry['hostname'], ENT_QUOTES, 'UTF-8'); ?>
+              <span class="report-meta">
+                <?= htmlspecialchars($entry['timestamp'], ENT_QUOTES, 'UTF-8'); ?>
+              </span>
+            </summary>
+            <?php if (!empty($entry['message'])): ?>
+              <div class="report-section">
+                <strong>Resumen</strong>
+                <div class="muted"><?= htmlspecialchars($entry['message'], ENT_QUOTES, 'UTF-8'); ?></div>
+              </div>
+            <?php endif; ?>
+            <?php if (!empty($entry['detected'])): ?>
+              <div class="report-section">
+                <strong>Contenido detectado</strong>
+                <pre><?= htmlspecialchars($entry['detected'], ENT_QUOTES, 'UTF-8'); ?></pre>
+              </div>
+            <?php endif; ?>
+            <?php if (!empty($entry['full_context'])): ?>
+              <div class="report-section context-panel">
+                <strong>Contexto completo</strong>
+                <pre><?= htmlspecialchars($entry['full_context'], ENT_QUOTES, 'UTF-8'); ?></pre>
+              </div>
+            <?php endif; ?>
+          </details>
         <?php endforeach; ?>
       <?php endif; ?>
     </section>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+      const chartPayload = <?= json_encode($chartPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+      const createChart = (id, type, data, options = {}) => {
+        const canvas = document.getElementById(id);
+        if (!canvas) {
+          return;
+        }
+        // eslint-disable-next-line no-new
+        new Chart(canvas.getContext("2d"), {
+          type,
+          data,
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false }
+            },
+            ...options
+          }
+        });
+      };
+
+      createChart("chart-alerts-day", "line", {
+        labels: chartPayload.daily.labels,
+        datasets: [{
+          label: "Alertas",
+          data: chartPayload.daily.values,
+          borderColor: "#2563eb",
+          backgroundColor: "rgba(37, 99, 235, 0.2)",
+          tension: 0.3,
+          fill: true
+        }]
+      });
+
+      createChart("chart-alerts-hour", "bar", {
+        labels: chartPayload.hourly.labels,
+        datasets: [{
+          label: "Alertas",
+          data: chartPayload.hourly.values,
+          backgroundColor: "#f97316"
+        }]
+      }, {
+        scales: { x: { ticks: { stepSize: 1 } } }
+      });
+
+      createChart("chart-alerts-country", "doughnut", {
+        labels: chartPayload.countries.labels,
+        datasets: [{
+          data: chartPayload.countries.values,
+          backgroundColor: ["#0ea5e9", "#22c55e", "#a855f7", "#facc15", "#ef4444", "#14b8a6", "#f97316"]
+        }]
+      });
+
+      createChart("chart-alerts-signals", "bar", {
+        labels: chartPayload.signals.labels,
+        datasets: [{
+          label: "Señales",
+          data: chartPayload.signals.values,
+          backgroundColor: "#6366f1"
+        }]
+      }, {
+        indexAxis: "y"
+      });
+    </script>
   </body>
 </html>
