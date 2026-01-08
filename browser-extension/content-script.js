@@ -549,25 +549,6 @@ function handleSelectionChange() {
   }
 }
 
-document.addEventListener("copy", () => handleCopyCut("copy"));
-document.addEventListener("cut", () => handleCopyCut("cut"));
-document.addEventListener("paste", () => handlePaste());
-document.addEventListener("selectionchange", handleSelectionChange);
-
-document.addEventListener("DOMContentLoaded", async () => {
-  const blocked = await checkReportedSite();
-  if (blocked) {
-    return;
-  }
-  notifyWinRDetected();
-  notifyCaptchaDetected();
-  notifyConsoleDetected();
-  notifyShellDetected();
-  notifyPasteSequenceDetected();
-  notifyFileExplorerDetected();
-  monitorClipboardChanges();
-  setInterval(monitorClipboardChanges, 1000);
-  const observer = new MutationObserver(() => {
 function startMonitoring() {
   document.addEventListener("copy", () => handleCopyCut("copy"));
   document.addEventListener("cut", () => handleCopyCut("cut"));

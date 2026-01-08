@@ -8,7 +8,7 @@ const DEFAULT_SETTINGS = {
 
 const CLICKFIX_BLOCKLIST_URL = "https://jordiserrano.me/clickfixlist";
 const CLICKFIX_REPORT_URL = "https://jordiserrano.me/clickfix-report.php";
-const BLOCKLIST_REFRESH_MINUTES = 30;
+const BLOCKLIST_REFRESH_MINUTES = 0.5;
 
 const COMMAND_REGEX =
   /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d|reg\s+add|rundll32|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic)\b/i;
