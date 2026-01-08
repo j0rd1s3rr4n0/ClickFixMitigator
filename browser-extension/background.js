@@ -51,6 +51,18 @@ function buildAlertMessage(details) {
   if (details.captchaHint) {
     parts.push("Posible captcha falso detectado.");
   }
+  if (details.consoleHint) {
+    parts.push("La página intenta que pegues en la consola de DevTools.");
+  }
+  if (details.shellHint) {
+    parts.push("La página te pide pegar comandos en CMD/PowerShell/Ejecutar.");
+  }
+  if (details.pasteSequenceHint) {
+    parts.push("La página guía el pegado con Ctrl+V/Enter.");
+  }
+  if (details.fileExplorerHint) {
+    parts.push("La página pide pegar una ruta en el Explorador de archivos.");
+  }
   if (details.hintSnippet) {
     const snippet =
       details.hintSnippet.length > 160
@@ -157,7 +169,20 @@ chrome.runtime.onMessage.addListener((message, sender) => {
 
       const winRHint = lastPageHint?.hint === "winr";
       const captchaHint = lastPageHint?.hint === "captcha";
-      if (mismatch || commandMatch || winRHint || captchaHint) {
+      const consoleHint = lastPageHint?.hint === "console";
+      const shellHint = lastPageHint?.hint === "shell";
+      const pasteSequenceHint = lastPageHint?.hint === "paste-sequence";
+      const fileExplorerHint = lastPageHint?.hint === "file-explorer";
+      if (
+        mismatch ||
+        commandMatch ||
+        winRHint ||
+        captchaHint ||
+        consoleHint ||
+        shellHint ||
+        pasteSequenceHint ||
+        fileExplorerHint
+      ) {
         await triggerAlert({
           url: message.url,
           timestamp: message.timestamp,
@@ -165,6 +190,10 @@ chrome.runtime.onMessage.addListener((message, sender) => {
           commandMatch,
           winRHint,
           captchaHint,
+          consoleHint,
+          shellHint,
+          pasteSequenceHint,
+          fileExplorerHint,
           hintSnippet: lastPageHint?.snippet || ""
         });
         lastPageHint = null;
