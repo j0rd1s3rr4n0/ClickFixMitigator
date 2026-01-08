@@ -1,0 +1,6 @@
+# ClickFix Mitigator blocklist
+# One hostname per line. Lines starting with # are ignored.
+# Example:
+# bad-example.com
+# *.suspicious-domain.tld
+
