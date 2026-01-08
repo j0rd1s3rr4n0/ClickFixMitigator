@@ -123,6 +123,9 @@ function buildAlertMessage(details) {
   if (details.fileExplorerHint) {
     parts.push("La página pide pegar una ruta en el Explorador de archivos.");
   }
+  if (details.copyTriggerHint) {
+    parts.push("La página intenta copiar comandos al portapapeles.");
+  }
   if (details.hintSnippet) {
     const snippet =
       details.hintSnippet.length > 160
@@ -223,7 +226,8 @@ async function triggerAlert(details) {
           consoleHint: details.consoleHint,
           shellHint: details.shellHint,
           pasteSequenceHint: details.pasteSequenceHint,
-          fileExplorerHint: details.fileExplorerHint
+          fileExplorerHint: details.fileExplorerHint,
+          copyTriggerHint: details.copyTriggerHint
         }
       })
     });
@@ -397,6 +401,54 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return;
   }
 
+  if (message.type === "pageAlert" && message.alertType) {
+    (async () => {
+      if (await shouldIgnore(message.url)) {
+        return;
+      }
+      const notificationId = await triggerAlert({
+        url: message.url,
+        timestamp: message.timestamp ?? Date.now(),
+        mismatch: false,
+        commandMatch: message.alertType === "command",
+        winRHint: message.alertType === "winr",
+        captchaHint: message.alertType === "captcha",
+        consoleHint: message.alertType === "console",
+        shellHint: message.alertType === "shell",
+        pasteSequenceHint: message.alertType === "paste-sequence",
+        fileExplorerHint: message.alertType === "file-explorer",
+        copyTriggerHint: message.alertType === "copy-trigger",
+        hintSnippet: message.snippet || "",
+        blockedClipboardText: "",
+        tabId: sender?.tab?.id ?? null
+      });
+
+      reportClickfix({
+        url: message.url,
+        hostname: extractHostname(message.url),
+        timestamp: message.timestamp ?? Date.now(),
+        reason: buildAlertMessage({
+          mismatch: false,
+          commandMatch: message.alertType === "command",
+          winRHint: message.alertType === "winr",
+          captchaHint: message.alertType === "captcha",
+          consoleHint: message.alertType === "console",
+          shellHint: message.alertType === "shell",
+          pasteSequenceHint: message.alertType === "paste-sequence",
+          fileExplorerHint: message.alertType === "file-explorer",
+          copyTriggerHint: message.alertType === "copy-trigger",
+          hintSnippet: message.snippet || "",
+          blockedClipboardText: ""
+        })
+      });
+
+      if (notificationId) {
+        lastPageHint = null;
+      }
+    })();
+    return;
+  }
+
   if (message.type === "clipboardEvent") {
     (async () => {
       if (await shouldIgnore(message.url)) {
@@ -424,6 +476,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const shellHint = lastPageHint?.hint === "shell";
       const pasteSequenceHint = lastPageHint?.hint === "paste-sequence";
       const fileExplorerHint = lastPageHint?.hint === "file-explorer";
+      const copyTriggerHint = lastPageHint?.hint === "copy-trigger";
       const shouldAlert =
         mismatch ||
         commandMatch ||
@@ -432,7 +485,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         consoleHint ||
         shellHint ||
         pasteSequenceHint ||
-        fileExplorerHint
+        fileExplorerHint ||
+        copyTriggerHint
       ;
 
       if (shouldAlert) {
@@ -465,29 +519,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           shellHint,
           pasteSequenceHint,
           fileExplorerHint,
+          copyTriggerHint,
           hintSnippet: lastPageHint?.snippet || "",
           blockedClipboardText,
           tabId: sender?.tab?.id ?? null
         });
 
-        if (commandMatch || winRHint || captchaHint || consoleHint || shellHint || pasteSequenceHint) {
-          reportClickfix({
-            url: message.url,
-            hostname: extractHostname(message.url),
-            timestamp: message.timestamp,
-            reason: buildAlertMessage({
-              mismatch,
-              commandMatch,
-              winRHint,
-              captchaHint,
-              consoleHint,
-              shellHint,
-              pasteSequenceHint,
-              fileExplorerHint,
-              hintSnippet: lastPageHint?.snippet || ""
-            })
-          });
-        }
+        reportClickfix({
+          url: message.url,
+          hostname: extractHostname(message.url),
+          timestamp: message.timestamp,
+          reason: buildAlertMessage({
+            mismatch,
+            commandMatch,
+            winRHint,
+            captchaHint,
+            consoleHint,
+            shellHint,
+            pasteSequenceHint,
+            fileExplorerHint,
+            copyTriggerHint,
+            hintSnippet: lastPageHint?.snippet || ""
+          })
+        });
 
         if (blockedClipboardText && notificationId) {
           blockedClipboardByNotification.set(notificationId, {
