@@ -10,6 +10,22 @@ const addDomainButton = document.getElementById("add-domain");
 const whitelistList = document.getElementById("whitelist-list");
 const historyContainer = document.getElementById("history");
 const clearHistoryButton = document.getElementById("clear-history");
+const reportInput = document.getElementById("report-input");
+const reportButton = document.getElementById("report-site");
+const reportStatus = document.getElementById("report-status");
+
+function t(key, substitutions) {
+  return chrome.i18n.getMessage(key, substitutions) || key;
+}
+
+function applyTranslations() {
+  document.querySelectorAll("[data-i18n]").forEach((element) => {
+    element.textContent = t(element.dataset.i18n);
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+    element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
+  });
+}
 
 async function loadSettings() {
   const settings = await chrome.storage.local.get(DEFAULT_SETTINGS);
@@ -24,7 +40,7 @@ function renderWhitelist(domains) {
   whitelistList.innerHTML = "";
   if (!domains.length) {
     const item = document.createElement("li");
-    item.textContent = "Sin dominios en lista blanca.";
+    item.textContent = t("popupWhitelistEmpty");
     item.classList.add("empty");
     whitelistList.appendChild(item);
     return;
@@ -49,7 +65,7 @@ function renderWhitelist(domains) {
 function renderHistory(history) {
   historyContainer.innerHTML = "";
   if (!history.length) {
-    historyContainer.textContent = "No hay alertas recientes.";
+    historyContainer.textContent = t("optionsHistoryEmpty");
     historyContainer.classList.add("empty");
     return;
   }
@@ -109,7 +125,43 @@ toggleEnabled.addEventListener("change", async () => {
   await chrome.storage.local.set({ enabled: toggleEnabled.checked });
 });
 
+async function reportSite(targetUrl) {
+  if (!targetUrl) {
+    reportStatus.textContent = t("popupReportStatusMissing");
+    return;
+  }
+  try {
+    const parsedUrl = new URL(targetUrl);
+    chrome.runtime.sendMessage({
+      type: "manualReport",
+      url: parsedUrl.href,
+      hostname: parsedUrl.hostname,
+      timestamp: Date.now()
+    });
+    reportStatus.textContent = t("popupReportStatusSent", parsedUrl.hostname);
+  } catch (error) {
+    reportStatus.textContent = t("popupReportStatusInvalid");
+  }
+}
+
+reportButton.addEventListener("click", async () => {
+  const value = reportInput.value.trim();
+  if (value) {
+    await reportSite(value);
+    reportInput.value = "";
+    return;
+  }
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  const url = tabs?.[0]?.url;
+  if (url) {
+    await reportSite(url);
+  } else {
+    reportStatus.textContent = t("popupReportStatusNoTab");
+  }
+});
+
 (async () => {
+  applyTranslations();
   const settings = await loadSettings();
   toggleEnabled.checked = settings.enabled;
   renderWhitelist(settings.whitelist);

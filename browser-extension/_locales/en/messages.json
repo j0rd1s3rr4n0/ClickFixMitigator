@@ -1,0 +1,213 @@
+{
+  "appName": {
+    "message": "ClickFix Mitigator"
+  },
+  "appDescription": {
+    "message": "Detects ClickFix patterns and clipboard mismatches."
+  },
+  "bannerTitle": {
+    "message": "ClickFix Mitigator Alert"
+  },
+  "closeButton": {
+    "message": "Close"
+  },
+  "notificationRestoreClipboard": {
+    "message": "Restore clipboard"
+  },
+  "notificationKeepClean": {
+    "message": "Keep clean"
+  },
+  "blockedTitle": {
+    "message": "Site blocked for possible ClickFix"
+  },
+  "blockedReasonDefault": {
+    "message": "Reason: ClickFix patterns detected"
+  },
+  "blockedReasonWithDetail": {
+    "message": "Reason: $1",
+    "placeholders": {
+      "detail": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonReported": {
+    "message": "Reason: ClickFix report"
+  },
+  "blockedStay": {
+    "message": "Stay on site"
+  },
+  "blockedBack": {
+    "message": "Go back"
+  },
+  "blockedReport": {
+    "message": "Report site"
+  },
+  "blockedReported": {
+    "message": "Reported"
+  },
+  "blockedHost": {
+    "message": "Site: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertMismatch": {
+    "message": "Mismatch between selection and clipboard."
+  },
+  "alertCommand": {
+    "message": "Suspicious command pattern detected."
+  },
+  "alertWinR": {
+    "message": "The page suggests using Win+R/Run dialog."
+  },
+  "alertWinX": {
+    "message": "The page suggests using Win+X to open the terminal."
+  },
+  "alertBrowserError": {
+    "message": "The page shows a fake browser error."
+  },
+  "alertFixAction": {
+    "message": "The page asks for a quick fix or to copy a command."
+  },
+  "alertCaptcha": {
+    "message": "Possible fake captcha detected."
+  },
+  "alertConsole": {
+    "message": "The page asks you to paste into the DevTools console."
+  },
+  "alertShell": {
+    "message": "The page asks you to paste commands in CMD/PowerShell/Run."
+  },
+  "alertPasteSequence": {
+    "message": "The page guides pasting with Ctrl+V/Enter."
+  },
+  "alertFileExplorer": {
+    "message": "The page asks you to paste a path in File Explorer."
+  },
+  "alertCopyTrigger": {
+    "message": "The page attempts to copy commands to the clipboard."
+  },
+  "alertSnippet": {
+    "message": "Detected snippet: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertClipboardBlocked": {
+    "message": "Clipboard blocked: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "manualReportReason": {
+    "message": "Manual user report"
+  },
+  "blocklistReason": {
+    "message": "Blocked by list"
+  },
+  "popupTitle": {
+    "message": "ClickFix Mitigator"
+  },
+  "popupDetectionActive": {
+    "message": "Detection active"
+  },
+  "popupWhitelistTitle": {
+    "message": "Allowlist"
+  },
+  "popupWhitelistPlaceholder": {
+    "message": "example.com"
+  },
+  "popupAdd": {
+    "message": "Add"
+  },
+  "popupWhitelistEmpty": {
+    "message": "No domains in allowlist."
+  },
+  "popupRecentAlerts": {
+    "message": "Recent alerts"
+  },
+  "popupClearHistory": {
+    "message": "Clear history"
+  },
+  "popupReportTitle": {
+    "message": "Report site"
+  },
+  "popupReportHint": {
+    "message": "Send a manual report to block a specific domain."
+  },
+  "popupReportPlaceholder": {
+    "message": "https://example-site.com"
+  },
+  "popupReportButton": {
+    "message": "Report"
+  },
+  "popupReportStatusMissing": {
+    "message": "Enter a URL or use the current tab."
+  },
+  "popupReportStatusSent": {
+    "message": "Report sent: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupReportStatusInvalid": {
+    "message": "Invalid URL."
+  },
+  "popupReportStatusNoTab": {
+    "message": "Could not detect the active tab."
+  },
+  "popupOptionsLink": {
+    "message": "Advanced options"
+  },
+  "optionsTitle": {
+    "message": "Advanced options"
+  },
+  "optionsSubtitle": {
+    "message": "Configure detection behavior and review alert history."
+  },
+  "optionsStateTitle": {
+    "message": "Status"
+  },
+  "optionsWhitelistTitle": {
+    "message": "Allowlist"
+  },
+  "optionsWhitelistAdd": {
+    "message": "Add domain"
+  },
+  "optionsBlocklistTitle": {
+    "message": "Additional blocklists"
+  },
+  "optionsBlocklistHint": {
+    "message": "Add ClickFix list URLs (one per list) to merge with the main list."
+  },
+  "optionsBlocklistPlaceholder": {
+    "message": "https://example.com/clickfixlist"
+  },
+  "optionsBlocklistAdd": {
+    "message": "Add list"
+  },
+  "optionsBlocklistEmpty": {
+    "message": "No additional lists."
+  },
+  "optionsHistoryTitle": {
+    "message": "Full history"
+  },
+  "optionsHistoryEmpty": {
+    "message": "No recent alerts."
+  },
+  "optionsClearHistory": {
+    "message": "Clear history"
+  },
+  "optionsRemove": {
+    "message": "Remove"
+  }
+}

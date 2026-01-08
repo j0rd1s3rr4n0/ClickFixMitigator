@@ -30,6 +30,12 @@ h2 {
   margin-bottom: 8px;
 }
 
+.hint {
+  color: #475569;
+  font-size: 13px;
+  margin: 4px 0 10px;
+}
+
 .toggle {
   display: flex;
   gap: 8px;

@@ -8,30 +8,40 @@
   </head>
   <body>
     <header>
-      <h1>ClickFix Mitigator</h1>
+      <h1 data-i18n="popupTitle">ClickFix Mitigator</h1>
       <label class="toggle">
         <input id="toggle-enabled" type="checkbox" />
-        <span>Detección activa</span>
+        <span data-i18n="popupDetectionActive">Detección activa</span>
       </label>
     </header>
 
     <section>
-      <h2>Lista blanca</h2>
+      <h2 data-i18n="popupWhitelistTitle">Lista blanca</h2>
       <div class="row">
-        <input id="whitelist-input" type="text" placeholder="ejemplo.com" />
-        <button id="add-domain" type="button">Agregar</button>
+        <input id="whitelist-input" type="text" placeholder="ejemplo.com" data-i18n-placeholder="popupWhitelistPlaceholder" />
+        <button id="add-domain" type="button" data-i18n="popupAdd">Agregar</button>
       </div>
       <ul id="whitelist-list"></ul>
     </section>
 
     <section>
-      <h2>Alertas recientes</h2>
+      <h2 data-i18n="popupRecentAlerts">Alertas recientes</h2>
       <div id="history"></div>
-      <button id="clear-history" type="button" class="secondary">Limpiar historial</button>
+      <button id="clear-history" type="button" class="secondary" data-i18n="popupClearHistory">Limpiar historial</button>
+    </section>
+
+    <section>
+      <h2 data-i18n="popupReportTitle">Reportar sitio</h2>
+      <p class="hint" data-i18n="popupReportHint">Envía un reporte manual para bloquear un dominio específico.</p>
+      <div class="row">
+        <input id="report-input" type="text" placeholder="https://sitio-ejemplo.com" data-i18n-placeholder="popupReportPlaceholder" />
+        <button id="report-site" type="button" data-i18n="popupReportButton">Reportar</button>
+      </div>
+      <div id="report-status" class="hint"></div>
     </section>
 
     <footer>
-      <a href="options.html" target="_blank" rel="noreferrer">Opciones avanzadas</a>
+      <a href="options.html" target="_blank" rel="noreferrer" data-i18n="popupOptionsLink">Opciones avanzadas</a>
     </footer>
 
     <script src="popup.js"></script>

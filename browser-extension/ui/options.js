@@ -1,22 +1,40 @@
 const DEFAULT_SETTINGS = {
   enabled: true,
   whitelist: [],
-  history: []
+  history: [],
+  blocklistSources: []
 };
 
 const toggleEnabled = document.getElementById("toggle-enabled");
 const whitelistInput = document.getElementById("whitelist-input");
 const addDomainButton = document.getElementById("add-domain");
 const whitelistList = document.getElementById("whitelist-list");
+const blocklistInput = document.getElementById("blocklist-input");
+const addBlocklistButton = document.getElementById("add-blocklist");
+const blocklistList = document.getElementById("blocklist-list");
 const historyContainer = document.getElementById("history");
 const clearHistoryButton = document.getElementById("clear-history");
+
+function t(key, substitutions) {
+  return chrome.i18n.getMessage(key, substitutions) || key;
+}
+
+function applyTranslations() {
+  document.querySelectorAll("[data-i18n]").forEach((element) => {
+    element.textContent = t(element.dataset.i18n);
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+    element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
+  });
+}
 
 async function loadSettings() {
   const settings = await chrome.storage.local.get(DEFAULT_SETTINGS);
   return {
     enabled: settings.enabled ?? true,
     whitelist: settings.whitelist ?? [],
-    history: settings.history ?? []
+    history: settings.history ?? [],
+    blocklistSources: settings.blocklistSources ?? []
   };
 }
 
@@ -24,7 +42,7 @@ function renderWhitelist(domains) {
   whitelistList.innerHTML = "";
   if (!domains.length) {
     const item = document.createElement("li");
-    item.textContent = "Sin dominios en lista blanca.";
+    item.textContent = t("popupWhitelistEmpty");
     item.classList.add("empty");
     whitelistList.appendChild(item);
     return;
@@ -34,7 +52,7 @@ function renderWhitelist(domains) {
     const item = document.createElement("li");
     item.textContent = domain;
     const removeButton = document.createElement("button");
-    removeButton.textContent = "Quitar";
+    removeButton.textContent = t("optionsRemove");
     removeButton.addEventListener("click", async () => {
       const settings = await loadSettings();
       const next = settings.whitelist.filter((entry) => entry !== domain);
@@ -49,7 +67,7 @@ function renderWhitelist(domains) {
 function renderHistory(history) {
   historyContainer.innerHTML = "";
   if (!history.length) {
-    historyContainer.textContent = "No hay alertas recientes.";
+    historyContainer.textContent = t("optionsHistoryEmpty");
     historyContainer.classList.add("empty");
     return;
   }
@@ -62,6 +80,44 @@ function renderHistory(history) {
     card.innerHTML = `<strong>${entry.hostname}</strong><div>${entry.message}</div><small>${time}</small>`;
     historyContainer.appendChild(card);
   });
+}
+
+function renderBlocklistSources(sources) {
+  blocklistList.innerHTML = "";
+  if (!sources.length) {
+    const item = document.createElement("li");
+    item.textContent = t("optionsBlocklistEmpty");
+    item.classList.add("empty");
+    blocklistList.appendChild(item);
+    return;
+  }
+
+  sources.forEach((source) => {
+    const item = document.createElement("li");
+    item.textContent = source;
+    const removeButton = document.createElement("button");
+    removeButton.textContent = t("optionsRemove");
+    removeButton.addEventListener("click", async () => {
+      const settings = await loadSettings();
+      const next = settings.blocklistSources.filter((entry) => entry !== source);
+      await chrome.storage.local.set({ blocklistSources: next });
+      renderBlocklistSources(next);
+    });
+    item.appendChild(removeButton);
+    blocklistList.appendChild(item);
+  });
+}
+
+async function addBlocklistSource(source) {
+  if (!source) {
+    return;
+  }
+  const settings = await loadSettings();
+  if (!settings.blocklistSources.includes(source)) {
+    const next = [...settings.blocklistSources, source].sort();
+    await chrome.storage.local.set({ blocklistSources: next });
+    renderBlocklistSources(next);
+  }
 }
 
 async function addDomain(domain) {
@@ -84,6 +140,14 @@ addDomainButton.addEventListener("click", async () => {
   }
 });
 
+addBlocklistButton.addEventListener("click", async () => {
+  const source = blocklistInput.value.trim();
+  if (source) {
+    await addBlocklistSource(source);
+    blocklistInput.value = "";
+  }
+});
+
 clearHistoryButton.addEventListener("click", async () => {
   await chrome.storage.local.set({ history: [] });
   renderHistory([]);
@@ -94,8 +158,10 @@ toggleEnabled.addEventListener("change", async () => {
 });
 
 (async () => {
+  applyTranslations();
   const settings = await loadSettings();
   toggleEnabled.checked = settings.enabled;
   renderWhitelist(settings.whitelist);
+  renderBlocklistSources(settings.blocklistSources);
   renderHistory(settings.history);
 })();
