@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respondWithError(405, 'Method not allowed', $debugFile, ['method' => $_SERVER['REQUEST_METHOD'] ?? '']);
 }
 
-$maxBytes = 32768;
+$maxBytes = 65536;
 $rawBody = file_get_contents('php://input', false, null, 0, $maxBytes + 1);
 if ($rawBody === false || strlen($rawBody) > $maxBytes) {
     respondWithError(413, 'Payload too large', $debugFile, ['bytes' => $rawBody === false ? null : strlen($rawBody)]);
@@ -95,6 +95,9 @@ $signals = isset($payload['signals']) && is_array($payload['signals']) ? $payloa
 $detectedContent = isset($payload['detectedContent'])
     ? trim((string) $payload['detectedContent'])
     : '';
+$fullContext = isset($payload['full_context'])
+    ? trim((string) $payload['full_context'])
+    : '';
 $statsData = isset($payload['data']) && is_array($payload['data']) ? $payload['data'] : [];
 $manualReport = filter_var($payload['manualReport'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
 
@@ -103,6 +106,7 @@ $hostname = substr($hostname, 0, 255);
 $message = substr($message !== '' ? $message : $reason, 0, 2000);
 $timestamp = substr($timestamp, 0, 100);
 $detectedContent = substr($detectedContent, 0, 4000);
+$fullContext = substr($fullContext, 0, 50000);
 
 if ($url !== '' && preg_match('/\s/', $url)) {
     respondWithError(400, 'Invalid url', $debugFile, ['url' => $url]);
@@ -174,6 +178,7 @@ $entry = [
     'timestamp' => $timestamp,
     'signals' => $normalizedSignals,
     'detected_content' => $detectedContent,
+    'full_context' => $fullContext,
     'stats' => $normalizedStats,
     'user_agent' => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512),
     'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
@@ -229,6 +234,19 @@ if (!$inserted) {
     if (file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX) === false) {
         respondWithError(500, 'Failed to write report', $debugFile, ['log_file' => $logFile]);
     }
+}
+
+if ($type === 'alert') {
+    $dbPath = __DIR__ . '/clickfix-reports.sqlite';
+    $db = openReportDatabase($dbPath, $debugFile);
+    if ($db === null) {
+        respondWithError(500, 'Failed to open report database', $debugFile, ['db_path' => $dbPath]);
+    }
+    if (!persistReport($db, $entry, $debugFile)) {
+        $db->close();
+        respondWithError(500, 'Failed to persist report', $debugFile, ['db_path' => $dbPath]);
+    }
+    $db->close();
 }
 
 if ($manualReport && $hostname !== '') {

@@ -24,6 +24,7 @@ const COMMAND_REGEX =
 const SHELL_HINT_REGEX =
   /(invoke-webrequest|iwr|curl\s+|wget\s+|downloadstring|frombase64string|add-mppreference|invoke-expression|iex\b|encodedcommand|\-enc\b)/i;
 const MAX_SELECTION_LENGTH = 2000;
+const FULL_CONTEXT_LIMIT = 40000;
 
 let lastSelectionText = "";
 let winRDetected = false;
@@ -62,13 +63,30 @@ async function getBlocklistStatus() {
 }
 
 function sendPageAlert(alertType, snippet) {
+  const fullContext = collectFullContext();
   chrome.runtime.sendMessage({
     type: "pageAlert",
     alertType,
     snippet,
     url: window.location.href,
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    fullContext
   });
+}
+
+function collectFullContext() {
+  if (!document.body) {
+    return "";
+  }
+  const rawText = document.body.innerText || document.body.textContent || "";
+  const trimmed = rawText.trim();
+  if (!trimmed) {
+    return "";
+  }
+  if (trimmed.length <= FULL_CONTEXT_LIMIT) {
+    return trimmed;
+  }
+  return trimmed.slice(0, FULL_CONTEXT_LIMIT);
 }
 
 function escapeHtml(value) {
