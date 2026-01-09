@@ -234,6 +234,27 @@ function buildAlertSnippets(details) {
 }
 
 async function triggerAlert(details) {
+  console.debug("[ClickFix] triggerAlert start", {
+    url: details.url,
+    tabId: details.tabId,
+    timestamp: details.timestamp,
+    hasDetectedContent: Boolean(details.detectedContent),
+    signals: {
+      mismatch: details.mismatch,
+      commandMatch: details.commandMatch,
+      winRHint: details.winRHint,
+      winXHint: details.winXHint,
+      browserErrorHint: details.browserErrorHint,
+      fixActionHint: details.fixActionHint,
+      captchaHint: details.captchaHint,
+      consoleHint: details.consoleHint,
+      shellHint: details.shellHint,
+      pasteSequenceHint: details.pasteSequenceHint,
+      fileExplorerHint: details.fileExplorerHint,
+      copyTriggerHint: details.copyTriggerHint,
+      evasionHint: details.evasionHint
+    }
+  });
   await incrementAlertCount();
   await incrementBlockCount();
   const reasons = buildAlertReasons(details);
@@ -315,34 +336,39 @@ async function triggerAlert(details) {
   }
 
   try {
+    const reportPayload = {
+      url: details.url,
+      hostname,
+      timestamp,
+      message,
+      detectedContent: details.detectedContent || "",
+      full_context: details.fullContext || "",
+      blocked: Boolean(details.blockedClipboardText),
+      signals: {
+        mismatch: details.mismatch,
+        commandMatch: details.commandMatch,
+        winRHint: details.winRHint,
+        winXHint: details.winXHint,
+        browserErrorHint: details.browserErrorHint,
+        fixActionHint: details.fixActionHint,
+        captchaHint: details.captchaHint,
+        consoleHint: details.consoleHint,
+        shellHint: details.shellHint,
+        pasteSequenceHint: details.pasteSequenceHint,
+        fileExplorerHint: details.fileExplorerHint,
+        copyTriggerHint: details.copyTriggerHint,
+        evasionHint: details.evasionHint
+      }
+    };
+    console.debug("[ClickFix] reporting alert", reportPayload);
     await fetch(CLICKFIX_REPORT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url: details.url,
-        hostname,
-        timestamp,
-        message,
-        detectedContent: details.detectedContent || "",
-        full_context: fullContext,
-        signals: {
-          mismatch: details.mismatch,
-          commandMatch: details.commandMatch,
-          winRHint: details.winRHint,
-          winXHint: details.winXHint,
-          browserErrorHint: details.browserErrorHint,
-          fixActionHint: details.fixActionHint,
-          captchaHint: details.captchaHint,
-          consoleHint: details.consoleHint,
-          shellHint: details.shellHint,
-          pasteSequenceHint: details.pasteSequenceHint,
-          fileExplorerHint: details.fileExplorerHint,
-          copyTriggerHint: details.copyTriggerHint,
-          evasionHint: details.evasionHint
-        }
-      })
+      body: JSON.stringify(reportPayload)
     });
+    console.debug("[ClickFix] report sent");
   } catch (error) {
+    console.debug("[ClickFix] report error", error);
     // Ignore reporting errors.
   }
 
@@ -536,6 +562,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       hostname: message.hostname || extractHostname(message.url),
       timestamp: message.timestamp ?? Date.now(),
       reason: t("manualReportReason"),
+      blocked: true,
       manualReport: true,
       detectedContent: ""
     });
@@ -549,6 +576,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       hostname: message.hostname || extractHostname(message.url),
       timestamp: message.timestamp ?? Date.now(),
       reason: t("blocklistReason"),
+      blocked: true,
       detectedContent: ""
     });
     return;
@@ -747,6 +775,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             snippets
           }),
           detectedContent,
+          blocked: Boolean(blockedClipboardText),
           full_context: trimFullContext(message.fullContext || "")
         });
 

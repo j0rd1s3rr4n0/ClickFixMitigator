@@ -24,6 +24,74 @@ function respondWithError(int $statusCode, string $message, string $debugFile, a
     exit;
 }
 
+function ensureReportsSchema(PDO $pdo, string $debugFile): void
+{
+    try {
+        $columns = $pdo->query('PRAGMA table_info(reports)')->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $exception) {
+        writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage()]);
+        return;
+    }
+
+    $existing = [];
+    foreach ($columns as $column) {
+        $existing[(string) ($column['name'] ?? '')] = true;
+    }
+
+    $updates = [];
+    if (!isset($existing['full_context'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN full_context TEXT';
+    }
+    if (!isset($existing['blocked'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN blocked INTEGER DEFAULT 0';
+    }
+
+    foreach ($updates as $statement) {
+        try {
+            $pdo->exec($statement);
+        } catch (Throwable $exception) {
+            writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'statement' => $statement]);
+        }
+    }
+}
+
+function openDatabase(string $dbPath, ?string $schemaPath, string $debugFile): ?PDO
+{
+    $dataDir = dirname($dbPath);
+    if (!is_dir($dataDir)) {
+        @mkdir($dataDir, 0775, true);
+    }
+
+    if (!file_exists($dbPath) && $schemaPath !== null) {
+        try {
+            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $schemaSql = file_get_contents($schemaPath);
+            if ($schemaSql !== false) {
+                $pdo->exec($schemaSql);
+            }
+        } catch (Throwable $exception) {
+            writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'db_path' => $dbPath]);
+            return null;
+        }
+    }
+
+    if (!is_readable($dbPath)) {
+        return null;
+    }
+
+    try {
+        $pdo = new PDO('sqlite:' . $dbPath);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    } catch (Throwable $exception) {
+        writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'db_path' => $dbPath]);
+        return null;
+    }
+
+    ensureReportsSchema($pdo, $debugFile);
+    return $pdo;
+}
+
 $debugFile = __DIR__ . '/clickfix-debug.log';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -70,6 +138,7 @@ $fullContext = isset($payload['full_context'])
     : '';
 $statsData = isset($payload['data']) && is_array($payload['data']) ? $payload['data'] : [];
 $manualReport = filter_var($payload['manualReport'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
+$blocked = filter_var($payload['blocked'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
 
 $url = substr($url, 0, 2048);
 $hostname = substr($hostname, 0, 255);
@@ -165,6 +234,7 @@ $entry = [
     'signals' => $normalizedSignals,
     'detected_content' => $detectedContent,
     'full_context' => $fullContext,
+    'blocked' => $blocked ? 1 : 0,
     'stats' => $normalizedStats,
     'user_agent' => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512),
     'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
@@ -190,8 +260,8 @@ if ($pdo instanceof PDO) {
             ]);
         } else {
             $statement = $pdo->prepare(
-                'INSERT INTO reports (received_at, url, hostname, message, detected_content, signals_json, user_agent, ip, country)
-                 VALUES (:received_at, :url, :hostname, :message, :detected_content, :signals_json, :user_agent, :ip, :country)'
+                'INSERT INTO reports (received_at, url, hostname, message, detected_content, full_context, signals_json, blocked, user_agent, ip, country)
+                 VALUES (:received_at, :url, :hostname, :message, :detected_content, :full_context, :signals_json, :blocked, :user_agent, :ip, :country)'
             );
             $statement->execute([
                 ':received_at' => $entry['received_at'],
@@ -199,7 +269,9 @@ if ($pdo instanceof PDO) {
                 ':hostname' => $entry['hostname'],
                 ':message' => $entry['message'],
                 ':detected_content' => $entry['detected_content'],
+                ':full_context' => $entry['full_context'],
                 ':signals_json' => json_encode($entry['signals'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                ':blocked' => $entry['blocked'],
                 ':user_agent' => $entry['user_agent'],
                 ':ip' => $entry['ip'],
                 ':country' => $entry['country']
@@ -215,7 +287,7 @@ if (file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX) === false) {
     respondWithError(500, 'Failed to write report', $debugFile, ['log_file' => $logFile]);
 }
 
-if ($manualReport && $hostname !== '') {
+if (($manualReport || $blocked) && $hostname !== '') {
     $listFile = __DIR__ . '/clickfixlist';
     $existing = [];
     if (is_readable($listFile)) {

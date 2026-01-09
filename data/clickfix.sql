@@ -5,7 +5,9 @@ CREATE TABLE IF NOT EXISTS reports (
     hostname TEXT,
     message TEXT,
     detected_content TEXT,
+    full_context TEXT,
     signals_json TEXT,
+    blocked INTEGER DEFAULT 0,
     user_agent TEXT,
     ip TEXT,
     country TEXT
