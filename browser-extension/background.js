@@ -343,6 +343,7 @@ async function triggerAlert(details) {
       message,
       detectedContent: details.detectedContent || "",
       full_context: details.fullContext || "",
+      blocked: Boolean(details.blockedClipboardText),
       signals: {
         mismatch: details.mismatch,
         commandMatch: details.commandMatch,
@@ -561,6 +562,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       hostname: message.hostname || extractHostname(message.url),
       timestamp: message.timestamp ?? Date.now(),
       reason: t("manualReportReason"),
+      blocked: true,
       manualReport: true,
       detectedContent: ""
     });
@@ -574,6 +576,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       hostname: message.hostname || extractHostname(message.url),
       timestamp: message.timestamp ?? Date.now(),
       reason: t("blocklistReason"),
+      blocked: true,
       detectedContent: ""
     });
     return;
@@ -772,6 +775,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             snippets
           }),
           detectedContent,
+          blocked: Boolean(blockedClipboardText),
           full_context: trimFullContext(message.fullContext || "")
         });
 
