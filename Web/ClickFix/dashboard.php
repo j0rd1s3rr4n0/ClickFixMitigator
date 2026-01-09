@@ -317,6 +317,7 @@ $chartPayload = [
         border: 1px solid #e2e8f0;
         border-radius: 12px;
         padding: 12px;
+        max-height: 150pt;
       }
       .chart-card h3 {
         margin: 0 0 10px;

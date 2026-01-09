@@ -21,6 +21,33 @@ if (is_readable($preferredSchema)) {
     }
 }
 
+$defaultSchemaSql = <<<SQL
+CREATE TABLE IF NOT EXISTS reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    received_at TEXT NOT NULL,
+    url TEXT,
+    hostname TEXT,
+    message TEXT,
+    detected_content TEXT,
+    full_context TEXT,
+    signals_json TEXT,
+    blocked INTEGER DEFAULT 0,
+    user_agent TEXT,
+    ip TEXT,
+    country TEXT
+);
+
+CREATE TABLE IF NOT EXISTS stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    received_at TEXT NOT NULL,
+    enabled INTEGER,
+    alert_count INTEGER,
+    block_count INTEGER,
+    manual_sites_json TEXT,
+    country TEXT
+);
+SQL;
+
 $logFile = __DIR__ . '/clickfix-report.log';
 
 function writeDebugLog(string $debugFile, array $entry): void
@@ -72,21 +99,25 @@ function ensureReportsSchema(PDO $pdo, string $debugFile): void
     }
 }
 
-function openDatabase(string $dbPath, ?string $schemaPath, string $debugFile): ?PDO
+function openDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFallback, string $debugFile): ?PDO
 {
     $dataDir = dirname($dbPath);
     if (!is_dir($dataDir)) {
         @mkdir($dataDir, 0775, true);
     }
 
-    if (!file_exists($dbPath) && $schemaPath !== null) {
+    if (!file_exists($dbPath)) {
         try {
             $pdo = new PDO('sqlite:' . $dbPath);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $schemaSql = file_get_contents($schemaPath);
-            if ($schemaSql !== false) {
-                $pdo->exec($schemaSql);
+            $schemaSql = null;
+            if ($schemaPath !== null) {
+                $schemaSql = file_get_contents($schemaPath);
             }
+            if (!is_string($schemaSql) || $schemaSql === '') {
+                $schemaSql = $schemaSqlFallback;
+            }
+            $pdo->exec($schemaSql);
         } catch (Throwable $exception) {
             writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'db_path' => $dbPath]);
             return null;
@@ -259,7 +290,7 @@ $entry = [
 ];
 $logLine = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;
 
-$pdo = openDatabase($dbPath, $schemaPath, $debugFile);
+$pdo = openDatabase($dbPath, $schemaPath, $defaultSchemaSql, $debugFile);
 $inserted = false;
 if ($pdo instanceof PDO) {
     try {
