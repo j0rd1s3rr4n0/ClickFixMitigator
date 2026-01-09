@@ -66,6 +66,9 @@
   "alertCommand": {
     "message": "Patrón de comando sospechoso detectado."
   },
+  "alertClipboardCommand": {
+    "message": "Comando sospechoso detectado en el portapapeles."
+  },
   "alertWinR": {
     "message": "La página sugiere usar Win+R/Run dialog."
   },
@@ -205,6 +208,21 @@
     "message": "Agregar lista"
   },
   "optionsBlocklistEmpty": {
+    "message": "Sin listas adicionales."
+  },
+  "optionsAllowlistTitle": {
+    "message": "Listas de permitidos adicionales"
+  },
+  "optionsAllowlistHint": {
+    "message": "Agrega URLs de listas de permitidos (una por lista) para combinarlas con la lista principal."
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://ejemplo.com/clickfix-whitelist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "Agregar lista"
+  },
+  "optionsAllowlistEmpty": {
     "message": "Sin listas adicionales."
   },
   "optionsHistoryTitle": {

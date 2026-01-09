@@ -52,6 +52,23 @@
     </section>
 
     <section>
+      <h2 data-i18n="optionsAllowlistTitle">Listas de permitidos adicionales</h2>
+      <p class="hint" data-i18n="optionsAllowlistHint">
+        Agrega URLs de listas de permitidos (una por lista) para combinarlas con la lista principal.
+      </p>
+      <div class="row">
+        <input
+          id="allowlist-input"
+          type="text"
+          placeholder="https://ejemplo.com/clickfix-whitelist"
+          data-i18n-placeholder="optionsAllowlistPlaceholder"
+        />
+        <button id="add-allowlist" type="button" data-i18n="optionsAllowlistAdd">Agregar lista</button>
+      </div>
+      <ul id="allowlist-list"></ul>
+    </section>
+
+    <section>
       <h2 data-i18n="optionsHistoryTitle">Historial completo</h2>
       <div id="history"></div>
       <button id="clear-history" type="button" class="secondary" data-i18n="optionsClearHistory">Limpiar historial</button>

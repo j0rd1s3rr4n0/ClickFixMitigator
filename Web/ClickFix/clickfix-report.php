@@ -245,7 +245,8 @@ if ($type === 'stats') {
         'enabled' => filter_var($statsData['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false,
         'alert_count' => (int) ($statsData['alertCount'] ?? 0),
         'block_count' => (int) ($statsData['blockCount'] ?? 0),
-        'manual_sites' => []
+        'manual_sites' => [],
+        'alert_sites' => []
     ];
     $manualSites = $statsData['manualSites'] ?? [];
     if (is_array($manualSites)) {
@@ -253,6 +254,15 @@ if ($type === 'stats') {
             $site = substr(trim((string) $site), 0, 255);
             if ($site !== '' && preg_match('/^[a-z0-9.-]+$/i', $site)) {
                 $normalizedStats['manual_sites'][] = $site;
+            }
+        }
+    }
+    $alertSites = $statsData['alertSites'] ?? [];
+    if (is_array($alertSites)) {
+        foreach (array_slice($alertSites, 0, 400) as $site) {
+            $site = substr(trim((string) $site), 0, 255);
+            if ($site !== '' && preg_match('/^[a-z0-9.-]+$/i', $site)) {
+                $normalizedStats['alert_sites'][] = $site;
             }
         }
     }
@@ -336,7 +346,7 @@ if (file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX) === false) {
     respondWithError(500, 'Failed to write report', $debugFile, ['log_file' => $logFile]);
 }
 
-if (($manualReport || $blocked) && $hostname !== '') {
+if ($manualReport && $hostname !== '') {
     $listFile = __DIR__ . '/clickfixlist';
     $existing = [];
     if (is_readable($listFile)) {
@@ -358,6 +368,35 @@ if (($manualReport || $blocked) && $hostname !== '') {
         if (file_put_contents($listFile, $lineToAdd, FILE_APPEND | LOCK_EX) === false) {
             respondWithError(500, 'Failed to update blocklist', $debugFile, ['blocklist' => $listFile]);
         }
+    }
+}
+
+if ($type === 'stats' && !empty($normalizedStats['alert_sites'])) {
+    $listFile = __DIR__ . '/alertsites';
+    $existing = [];
+    if (is_readable($listFile)) {
+        $lines = file($listFile, FILE_IGNORE_NEW_LINES) ?: [];
+        foreach ($lines as $line) {
+            $line = trim((string) $line);
+            if ($line === '' || str_starts_with($line, '#')) {
+                continue;
+            }
+            $existing[strtolower($line)] = true;
+        }
+    }
+    foreach ($normalizedStats['alert_sites'] as $site) {
+        $normalized = strtolower($site);
+        if (isset($existing[$normalized])) {
+            continue;
+        }
+        if (!is_writable($listFile) && !is_writable(__DIR__)) {
+            respondWithError(500, 'Alertsites list is not writable', $debugFile, ['alertsites' => $listFile]);
+        }
+        $lineToAdd = $site . PHP_EOL;
+        if (file_put_contents($listFile, $lineToAdd, FILE_APPEND | LOCK_EX) === false) {
+            respondWithError(500, 'Failed to update alertsites list', $debugFile, ['alertsites' => $listFile]);
+        }
+        $existing[$normalized] = true;
     }
 }
 

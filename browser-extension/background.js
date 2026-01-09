@@ -1,15 +1,19 @@
 const DEFAULT_SETTINGS = {
   enabled: true,
   whitelist: [],
+  allowlist: [],
   history: [],
   blocklist: [],
   blocklistSources: [],
+  allowlistSources: [],
   alertCount: 0,
   blockCount: 0,
-  blocklistUpdatedAt: 0
+  blocklistUpdatedAt: 0,
+  allowlistUpdatedAt: 0
 };
 
 const CLICKFIX_BLOCKLIST_URL = "https://jordiserrano.me/ClickFix/clickfixlist";
+const CLICKFIX_ALLOWLIST_URL = "https://jordiserrano.me/ClickFix/clickfix-whitelist";
 const CLICKFIX_REPORT_URL = "https://jordiserrano.me/ClickFix/clickfix-report.php";
 const BLOCKLIST_REFRESH_MINUTES = 0.5;
 const STATS_REPORT_MINUTES = 60;
@@ -17,7 +21,7 @@ const STATS_REPORT_MINUTES = 60;
 const COMMAND_REGEX =
   /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d|reg\s+add|rundll32|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic)\b/i;
 const SHELL_HINT_REGEX =
-  /(invoke-webrequest|iwr|curl\s+|wget\s+|downloadstring|frombase64string|add-mppreference|invoke-expression|iex\b|encodedcommand|\-enc\b)/i;
+  /(invoke-webrequest|invoke-restmethod|\biwr\b|\birm\b|curl\s+|wget\s+|downloadstring|frombase64string|add-mppreference|invoke-expression|iex\b|iex\s*\(|encodedcommand|\-enc\b)/i;
 const EVASION_REGEXES = [
   /\\x[0-9a-f]{2}/i,
   /\\u[0-9a-f]{4}/i,
@@ -35,12 +39,15 @@ async function getSettings() {
   return {
     enabled: stored.enabled ?? true,
     whitelist: stored.whitelist ?? [],
+    allowlist: stored.allowlist ?? [],
     history: stored.history ?? [],
     blocklist: stored.blocklist ?? [],
     blocklistSources: stored.blocklistSources ?? [],
+    allowlistSources: stored.allowlistSources ?? [],
     alertCount: stored.alertCount ?? 0,
     blockCount: stored.blockCount ?? 0,
-    blocklistUpdatedAt: stored.blocklistUpdatedAt ?? 0
+    blocklistUpdatedAt: stored.blocklistUpdatedAt ?? 0,
+    allowlistUpdatedAt: stored.allowlistUpdatedAt ?? 0
   };
 }
 
@@ -81,6 +88,7 @@ function matchesHostname(hostname, entry) {
 }
 
 let blocklistCache = { items: [], fetchedAt: 0 };
+let allowlistCache = { items: [], fetchedAt: 0 };
 
 async function refreshBlocklist() {
   const settings = await getSettings();
@@ -122,6 +130,46 @@ async function refreshBlocklist() {
   }
 }
 
+async function refreshAllowlist() {
+  const settings = await getSettings();
+  const sources = [CLICKFIX_ALLOWLIST_URL, ...(settings.allowlistSources || [])];
+  const seen = new Set();
+  try {
+    const entries = [];
+    for (const source of sources) {
+      if (!source) {
+        continue;
+      }
+      const response = await fetch(source, { cache: "no-store" });
+      if (!response.ok) {
+        continue;
+      }
+      const text = await response.text();
+      const sourceEntries = text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith("#"))
+        .map(normalizeHostname)
+        .filter(Boolean);
+      for (const entry of sourceEntries) {
+        if (!seen.has(entry)) {
+          seen.add(entry);
+          entries.push(entry);
+        }
+      }
+    }
+    if (entries.length) {
+      allowlistCache = { items: entries, fetchedAt: Date.now() };
+      await chrome.storage.local.set({
+        allowlist: entries,
+        allowlistUpdatedAt: Date.now()
+      });
+    }
+  } catch (error) {
+    // Ignore network errors.
+  }
+}
+
 function pushHistory(history, entry) {
   const next = [entry, ...history];
   return next.slice(0, 50);
@@ -153,6 +201,9 @@ function buildAlertReasons(details) {
   };
   if (details.mismatch) {
     addReason(t("alertMismatch"));
+  }
+  if (details.clipboardWarning) {
+    addReason(t("alertClipboardCommand"));
   }
   if (details.commandMatch) {
     addReason(t("alertCommand"));
@@ -256,13 +307,16 @@ async function triggerAlert(details) {
     }
   });
   await incrementAlertCount();
-  await incrementBlockCount();
+  if (details.incrementBlockCount !== false) {
+    await incrementBlockCount();
+  }
   const reasons = buildAlertReasons(details);
   const snippets = buildAlertSnippets(details);
   const message = reasons.join(" ");
   const hostname = extractHostname(details.url);
   const timestamp = new Date(details.timestamp).toISOString();
   const allowlisted = await isAllowlisted(details.url);
+  const shouldBlockPage = !details.suppressPageBlock;
 
   await saveHistory({
     message,
@@ -303,7 +357,7 @@ async function triggerAlert(details) {
       type: "showBanner",
       text: message
     });
-    if (!allowlisted) {
+    if (shouldBlockPage && !allowlisted) {
       chrome.tabs.sendMessage(targetTabId, {
         type: "blockPage",
         hostname,
@@ -321,7 +375,7 @@ async function triggerAlert(details) {
           type: "showBanner",
           text: message
         });
-        if (!allowlisted) {
+        if (shouldBlockPage && !allowlisted) {
           chrome.tabs.sendMessage(tabId, {
             type: "blockPage",
             hostname,
@@ -333,43 +387,6 @@ async function triggerAlert(details) {
         }
       }
     });
-  }
-
-  try {
-    const reportPayload = {
-      url: details.url,
-      hostname,
-      timestamp,
-      message,
-      detectedContent: details.detectedContent || "",
-      full_context: details.fullContext || "",
-      blocked: Boolean(details.blockedClipboardText),
-      signals: {
-        mismatch: details.mismatch,
-        commandMatch: details.commandMatch,
-        winRHint: details.winRHint,
-        winXHint: details.winXHint,
-        browserErrorHint: details.browserErrorHint,
-        fixActionHint: details.fixActionHint,
-        captchaHint: details.captchaHint,
-        consoleHint: details.consoleHint,
-        shellHint: details.shellHint,
-        pasteSequenceHint: details.pasteSequenceHint,
-        fileExplorerHint: details.fileExplorerHint,
-        copyTriggerHint: details.copyTriggerHint,
-        evasionHint: details.evasionHint
-      }
-    };
-    console.debug("[ClickFix] reporting alert", reportPayload);
-    await fetch(CLICKFIX_REPORT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(reportPayload)
-    });
-    console.debug("[ClickFix] report sent");
-  } catch (error) {
-    console.debug("[ClickFix] report error", error);
-    // Ignore reporting errors.
   }
 
   return notificationId;
@@ -399,7 +416,14 @@ async function shouldIgnore(url) {
 async function isAllowlisted(url) {
   const settings = await getSettings();
   const hostname = extractHostname(url);
-  return settings.whitelist.includes(hostname);
+  if (!hostname) {
+    return false;
+  }
+  if (settings.whitelist.includes(hostname)) {
+    return true;
+  }
+  const items = await getAllowlistItems();
+  return items.some((entry) => matchesHostname(hostname, entry));
 }
 
 async function isBlocked(url) {
@@ -425,12 +449,14 @@ async function addToWhitelist(hostname) {
 
 chrome.runtime.onInstalled.addListener(() => {
   refreshBlocklist();
+  refreshAllowlist();
   chrome.alarms.create("clickfix-refresh", { periodInMinutes: BLOCKLIST_REFRESH_MINUTES });
   chrome.alarms.create("clickfix-stats", { periodInMinutes: STATS_REPORT_MINUTES });
 });
 
 chrome.runtime.onStartup.addListener(() => {
   refreshBlocklist();
+  refreshAllowlist();
   chrome.alarms.create("clickfix-refresh", { periodInMinutes: BLOCKLIST_REFRESH_MINUTES });
   chrome.alarms.create("clickfix-stats", { periodInMinutes: STATS_REPORT_MINUTES });
 });
@@ -438,6 +464,7 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "clickfix-refresh") {
     refreshBlocklist();
+    refreshAllowlist();
   }
   if (alarm.name === "clickfix-stats") {
     sendStatsReport();
@@ -461,6 +488,19 @@ async function getBlocklistItems() {
   return blocklistCache.items;
 }
 
+async function getAllowlistItems() {
+  const now = Date.now();
+  if (allowlistCache.items.length && now - allowlistCache.fetchedAt < BLOCKLIST_CACHE_MS) {
+    return allowlistCache.items;
+  }
+  const settings = await getSettings();
+  if (settings.allowlist.length) {
+    allowlistCache = { items: settings.allowlist, fetchedAt: now };
+    return settings.allowlist;
+  }
+  return allowlistCache.items;
+}
+
 async function reportClickfix(details) {
   try {
     await fetch(CLICKFIX_REPORT_URL, {
@@ -475,16 +515,38 @@ async function reportClickfix(details) {
 
 async function sendStatsReport() {
   const settings = await getSettings();
+  const alertSites = buildAlertSites(settings.history ?? []);
   reportClickfix({
     type: "stats",
     timestamp: Date.now(),
     data: {
       enabled: settings.enabled ?? true,
       manualSites: settings.whitelist ?? [],
+      alertSites,
       alertCount: settings.alertCount ?? 0,
       blockCount: settings.blockCount ?? 0
     }
   });
+}
+
+function buildAlertSites(history) {
+  const sites = [];
+  const seen = new Set();
+  if (!Array.isArray(history)) {
+    return sites;
+  }
+  for (const entry of history) {
+    const hostname = typeof entry?.hostname === "string" ? entry.hostname.trim() : "";
+    if (!hostname || seen.has(hostname)) {
+      continue;
+    }
+    seen.add(hostname);
+    sites.push(hostname);
+    if (sites.length >= 200) {
+      break;
+    }
+  }
+  return sites;
 }
 
 function shouldThrottleClipboardBlock(text) {
@@ -571,14 +633,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "blocklisted") {
     incrementBlockCount();
-    reportClickfix({
-      url: message.url,
-      hostname: message.hostname || extractHostname(message.url),
-      timestamp: message.timestamp ?? Date.now(),
-      reason: t("blocklistReason"),
-      blocked: true,
-      detectedContent: ""
-    });
     return;
   }
 
@@ -623,29 +677,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         tabId: sender?.tab?.id ?? null
       });
 
-      reportClickfix({
-        url: message.url,
-        hostname: extractHostname(message.url),
-        timestamp: message.timestamp ?? Date.now(),
-        reason: buildAlertMessage({
-          mismatch: false,
-          commandMatch: message.alertType === "command",
-          winRHint: message.alertType === "winr",
-          winXHint: message.alertType === "winx",
-          browserErrorHint: message.alertType === "browser-error",
-          fixActionHint: message.alertType === "fix-action",
-          captchaHint: message.alertType === "captcha",
-          consoleHint: message.alertType === "console",
-          shellHint: message.alertType === "shell",
-        pasteSequenceHint: message.alertType === "paste-sequence",
-        fileExplorerHint: message.alertType === "file-explorer",
-        copyTriggerHint: message.alertType === "copy-trigger",
-        snippets,
-        blockedClipboardText: ""
-      }),
-        detectedContent: message.snippet || ""
-      });
-
       if (notificationId) {
         lastPageHint = null;
       }
@@ -674,6 +705,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         selectionAnalysis.shellHint ||
         clipboardAnalysis.shellHint;
       const evasionHint = selectionAnalysis.evasionHint || clipboardAnalysis.evasionHint;
+      const clipboardCommandWarning =
+        message.eventType === "paste" &&
+        (clipboardAnalysis.commandMatch || clipboardAnalysis.shellHint || clipboardAnalysis.evasionHint);
 
       const hints = lastPageHint?.hints || [];
       const snippets = lastPageHint?.snippets || [];
@@ -687,6 +721,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const pasteSequenceHint = hints.includes("paste-sequence");
       const fileExplorerHint = hints.includes("file-explorer");
       const copyTriggerHint = hints.includes("copy-trigger");
+      const hasPageHints =
+        winRHint ||
+        winXHint ||
+        browserErrorHint ||
+        fixActionHint ||
+        captchaHint ||
+        consoleHint ||
+        shellHint ||
+        pasteSequenceHint ||
+        fileExplorerHint ||
+        copyTriggerHint;
+      const clipboardWarningOnly = clipboardCommandWarning && !hasPageHints && !mismatch;
       const shouldAlert =
         mismatch ||
         commandMatch ||
@@ -748,35 +794,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           copyTriggerHint,
           evasionHint,
           snippets,
+          clipboardWarning: clipboardWarningOnly,
           blockedClipboardText,
           detectedContent,
           fullContext: message.fullContext || "",
-          tabId: sender?.tab?.id ?? null
-        });
-
-        reportClickfix({
-          url: message.url,
-          hostname: extractHostname(message.url),
-          timestamp: message.timestamp,
-          reason: buildAlertMessage({
-            mismatch,
-            commandMatch,
-            winRHint,
-            winXHint,
-            browserErrorHint,
-            fixActionHint,
-            captchaHint,
-            consoleHint,
-            shellHint,
-            pasteSequenceHint,
-            fileExplorerHint,
-            copyTriggerHint,
-            evasionHint,
-            snippets
-          }),
-          detectedContent,
-          blocked: Boolean(blockedClipboardText),
-          full_context: trimFullContext(message.fullContext || "")
+          tabId: sender?.tab?.id ?? null,
+          suppressPageBlock: clipboardWarningOnly,
+          incrementBlockCount: !clipboardWarningOnly
         });
 
         if (blockedClipboardText && notificationId) {
