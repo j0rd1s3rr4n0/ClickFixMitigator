@@ -6,6 +6,50 @@ header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 header('Cache-Control: no-store');
 
+$dbPath = __DIR__ . '/data/clickfix.sqlite';
+$schemaPath = null;
+$preferredSchema = __DIR__ . '/data/clickfix.sql';
+if (is_readable($preferredSchema)) {
+    $schemaPath = $preferredSchema;
+} else {
+    $schemaCandidates = glob(__DIR__ . '/data/*.sql') ?: [];
+    foreach ($schemaCandidates as $candidate) {
+        if (is_readable($candidate)) {
+            $schemaPath = $candidate;
+            break;
+        }
+    }
+}
+
+$defaultSchemaSql = <<<SQL
+CREATE TABLE IF NOT EXISTS reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    received_at TEXT NOT NULL,
+    url TEXT,
+    hostname TEXT,
+    message TEXT,
+    detected_content TEXT,
+    full_context TEXT,
+    signals_json TEXT,
+    blocked INTEGER DEFAULT 0,
+    user_agent TEXT,
+    ip TEXT,
+    country TEXT
+);
+
+CREATE TABLE IF NOT EXISTS stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    received_at TEXT NOT NULL,
+    enabled INTEGER,
+    alert_count INTEGER,
+    block_count INTEGER,
+    manual_sites_json TEXT,
+    country TEXT
+);
+SQL;
+
+$logFile = __DIR__ . '/clickfix-report.log';
+
 function writeDebugLog(string $debugFile, array $entry): void
 {
     $entry['logged_at'] = gmdate('c');
@@ -22,6 +66,78 @@ function respondWithError(int $statusCode, string $message, string $debugFile, a
     echo json_encode(['status' => 'error', 'message' => $message]);
     writeDebugLog($debugFile, ['status' => 'error', 'code' => $statusCode, 'message' => $message] + $context);
     exit;
+}
+
+function ensureReportsSchema(PDO $pdo, string $debugFile): void
+{
+    try {
+        $columns = $pdo->query('PRAGMA table_info(reports)')->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $exception) {
+        writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage()]);
+        return;
+    }
+
+    $existing = [];
+    foreach ($columns as $column) {
+        $existing[(string) ($column['name'] ?? '')] = true;
+    }
+
+    $updates = [];
+    if (!isset($existing['full_context'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN full_context TEXT';
+    }
+    if (!isset($existing['blocked'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN blocked INTEGER DEFAULT 0';
+    }
+
+    foreach ($updates as $statement) {
+        try {
+            $pdo->exec($statement);
+        } catch (Throwable $exception) {
+            writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'statement' => $statement]);
+        }
+    }
+}
+
+function openDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFallback, string $debugFile): ?PDO
+{
+    $dataDir = dirname($dbPath);
+    if (!is_dir($dataDir)) {
+        @mkdir($dataDir, 0775, true);
+    }
+
+    if (!file_exists($dbPath)) {
+        try {
+            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $schemaSql = null;
+            if ($schemaPath !== null) {
+                $schemaSql = file_get_contents($schemaPath);
+            }
+            if (!is_string($schemaSql) || $schemaSql === '') {
+                $schemaSql = $schemaSqlFallback;
+            }
+            $pdo->exec($schemaSql);
+        } catch (Throwable $exception) {
+            writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'db_path' => $dbPath]);
+            return null;
+        }
+    }
+
+    if (!is_readable($dbPath)) {
+        return null;
+    }
+
+    try {
+        $pdo = new PDO('sqlite:' . $dbPath);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    } catch (Throwable $exception) {
+        writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'db_path' => $dbPath]);
+        return null;
+    }
+
+    ensureReportsSchema($pdo, $debugFile);
+    return $pdo;
 }
 
 $debugFile = __DIR__ . '/clickfix-debug.log';
@@ -70,6 +186,7 @@ $fullContext = isset($payload['full_context'])
     : '';
 $statsData = isset($payload['data']) && is_array($payload['data']) ? $payload['data'] : [];
 $manualReport = filter_var($payload['manualReport'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
+$blocked = filter_var($payload['blocked'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
 
 $url = substr($url, 0, 2048);
 $hostname = substr($hostname, 0, 255);
@@ -165,13 +282,15 @@ $entry = [
     'signals' => $normalizedSignals,
     'detected_content' => $detectedContent,
     'full_context' => $fullContext,
+    'blocked' => $blocked ? 1 : 0,
     'stats' => $normalizedStats,
     'user_agent' => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512),
     'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
     'country' => $country
 ];
+$logLine = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;
 
-$pdo = openDatabase($dbPath, $schemaPath, $debugFile);
+$pdo = openDatabase($dbPath, $schemaPath, $defaultSchemaSql, $debugFile);
 $inserted = false;
 if ($pdo instanceof PDO) {
     try {
@@ -190,8 +309,8 @@ if ($pdo instanceof PDO) {
             ]);
         } else {
             $statement = $pdo->prepare(
-                'INSERT INTO reports (received_at, url, hostname, message, detected_content, signals_json, user_agent, ip, country)
-                 VALUES (:received_at, :url, :hostname, :message, :detected_content, :signals_json, :user_agent, :ip, :country)'
+                'INSERT INTO reports (received_at, url, hostname, message, detected_content, full_context, signals_json, blocked, user_agent, ip, country)
+                 VALUES (:received_at, :url, :hostname, :message, :detected_content, :full_context, :signals_json, :blocked, :user_agent, :ip, :country)'
             );
             $statement->execute([
                 ':received_at' => $entry['received_at'],
@@ -199,7 +318,9 @@ if ($pdo instanceof PDO) {
                 ':hostname' => $entry['hostname'],
                 ':message' => $entry['message'],
                 ':detected_content' => $entry['detected_content'],
+                ':full_context' => $entry['full_context'],
                 ':signals_json' => json_encode($entry['signals'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                ':blocked' => $entry['blocked'],
                 ':user_agent' => $entry['user_agent'],
                 ':ip' => $entry['ip'],
                 ':country' => $entry['country']
@@ -215,7 +336,7 @@ if (file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX) === false) {
     respondWithError(500, 'Failed to write report', $debugFile, ['log_file' => $logFile]);
 }
 
-if ($manualReport && $hostname !== '') {
+if (($manualReport || $blocked) && $hostname !== '') {
     $listFile = __DIR__ . '/clickfixlist';
     $existing = [];
     if (is_readable($listFile)) {
