@@ -6,6 +6,23 @@ header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 header('Cache-Control: no-store');
 
+$dbPath = __DIR__ . '/data/clickfix.sqlite';
+$schemaPath = null;
+$preferredSchema = __DIR__ . '/data/clickfix.sql';
+if (is_readable($preferredSchema)) {
+    $schemaPath = $preferredSchema;
+} else {
+    $schemaCandidates = glob(__DIR__ . '/data/*.sql') ?: [];
+    foreach ($schemaCandidates as $candidate) {
+        if (is_readable($candidate)) {
+            $schemaPath = $candidate;
+            break;
+        }
+    }
+}
+
+$logFile = __DIR__ . '/clickfix-report.log';
+
 function writeDebugLog(string $debugFile, array $entry): void
 {
     $entry['logged_at'] = gmdate('c');
@@ -240,6 +257,7 @@ $entry = [
     'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
     'country' => $country
 ];
+$logLine = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;
 
 $pdo = openDatabase($dbPath, $schemaPath, $debugFile);
 $inserted = false;

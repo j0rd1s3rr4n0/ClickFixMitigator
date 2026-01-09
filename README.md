@@ -13,7 +13,7 @@ ClickFix Mitigator is a reference project for understanding and mitigating socia
 
 - **Browser extension (MV3)**: detects common ClickFix patterns, clipboard/selection mismatches, and content that tries to induce **Win + R** usage.
 - **Windows agent (Python)**: watches clipboard changes, paste events, and new processes to alert on suspicious commands.
-- **Endpoint and dashboard**: `clickfix-report.php` receives reports/stats and `dashboard.php` shows a public summary with recent detections.
+- **Endpoint and dashboard**: `Web/ClickFix/clickfix-report.php` receives reports/stats and `Web/ClickFix/dashboard.php` shows a public summary with recent detections.
 
 > Note: the `agent.py` mitigator is under maintenance (testing).
 
@@ -74,17 +74,17 @@ ClickFix Mitigator es un proyecto de referencia para entender y mitigar ataques 
 
 - **Extensión de navegador (MV3)**: detecta patrones típicos de ClickFix, discrepancias entre selección y portapapeles, y contenido que intenta inducir el uso de **Win + R**.
 - **Agente de Windows (Python)**: vigila cambios del portapapeles, eventos de pegado y nuevos procesos para alertar sobre comandos sospechosos.
-- **Endpoint y dashboard**: `clickfix-report.php` recibe reportes/estadísticas y `dashboard.php` muestra un resumen público con detecciones recientes.
+- **Endpoint y dashboard**: `Web/ClickFix/clickfix-report.php` recibe reportes/estadísticas y `Web/ClickFix/dashboard.php` muestra un resumen público con detecciones recientes.
 
 > Nota: el mitigador `agent.py` está en mantenimiento (en pruebas).
 ## Servidor (PHP)
 
-El endpoint usa SQLite en `data/clickfix.sqlite`. Asegúrate de que el directorio `data/` sea escribible por el servidor web. El esquema está en `data/clickfix.sql`.
+El endpoint usa SQLite en `Web/ClickFix/data/clickfix.sqlite`. Asegúrate de que el directorio `Web/ClickFix/data/` sea escribible por el servidor web. El esquema está en `Web/ClickFix/data/clickfix.sql`.
 
 ```bash
-mkdir -p data
-sqlite3 data/clickfix.sqlite < data/clickfix.sql
-chmod 775 data
+mkdir -p Web/ClickFix/data
+sqlite3 Web/ClickFix/data/clickfix.sqlite < Web/ClickFix/data/clickfix.sql
+chmod 775 Web/ClickFix/data
 ```
 
 Si el proceso PHP no puede escribir, revisa permisos/propietario de `data/` y el archivo `.sqlite`.
