@@ -89,6 +89,42 @@ chmod 775 data
 
 Si el proceso PHP no puede escribir, revisa permisos/propietario de `data/` y el archivo `.sqlite`.
 
+### Ejemplo de envío en Python
+
+```python
+import requests
+from datetime import datetime, timezone
+
+CLICKFIX_REPORT_URL = "https://tu-dominio.com/clickfix-report.php"
+
+payload = {
+    "url": "https://ejemplo.com/alerta",
+    "hostname": "ejemplo.com",
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "message": "Detección de comando sospechoso",
+    "detectedContent": "powershell -nop -w hidden -enc ...",
+    "full_context": "Contenido completo detectado ...",
+    "signals": {
+        "mismatch": False,
+        "commandMatch": True,
+        "winRHint": False,
+        "winXHint": False,
+        "browserErrorHint": False,
+        "fixActionHint": False,
+        "captchaHint": False,
+        "consoleHint": True,
+        "shellHint": True,
+        "pasteSequenceHint": False,
+        "fileExplorerHint": False,
+        "copyTriggerHint": False,
+        "evasionHint": False,
+    },
+}
+
+response = requests.post(CLICKFIX_REPORT_URL, json=payload, timeout=10)
+print(response.status_code, response.text)
+```
+
 ## Inicio rápido
 
 ### Extensión
