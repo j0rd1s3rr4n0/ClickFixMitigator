@@ -18,6 +18,14 @@
         <input id="toggle-enabled" type="checkbox" />
         <span data-i18n="popupDetectionActive">Detección activa</span>
       </label>
+      <label class="toggle">
+        <input id="toggle-clipboard-backup" type="checkbox" />
+        <span data-i18n="optionsClipboardBackup">Guardar respaldo del portapapeles</span>
+      </label>
+      <label class="toggle">
+        <input id="toggle-send-country" type="checkbox" />
+        <span data-i18n="optionsSendCountry">Compartir país en reportes</span>
+      </label>
     </section>
 
     <section>
@@ -49,6 +57,23 @@
         <button id="add-blocklist" type="button" data-i18n="optionsBlocklistAdd">Agregar lista</button>
       </div>
       <ul id="blocklist-list"></ul>
+    </section>
+
+    <section>
+      <h2 data-i18n="optionsAllowlistTitle">Listas de permitidos adicionales</h2>
+      <p class="hint" data-i18n="optionsAllowlistHint">
+        Agrega URLs de listas de permitidos (una por lista) para combinarlas con la lista principal.
+      </p>
+      <div class="row">
+        <input
+          id="allowlist-input"
+          type="text"
+          placeholder="https://ejemplo.com/clickfix-whitelist"
+          data-i18n-placeholder="optionsAllowlistPlaceholder"
+        />
+        <button id="add-allowlist" type="button" data-i18n="optionsAllowlistAdd">Agregar lista</button>
+      </div>
+      <ul id="allowlist-list"></ul>
     </section>
 
     <section>

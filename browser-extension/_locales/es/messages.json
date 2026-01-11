@@ -43,6 +43,15 @@
   "blockedReport": {
     "message": "Reportar sitio"
   },
+  "blockedAllowOnce": {
+    "message": "Permitir una vez"
+  },
+  "blockedAllowSession": {
+    "message": "Permitir esta sesión"
+  },
+  "blockedAllowAlways": {
+    "message": "Permitir siempre"
+  },
   "blockedReported": {
     "message": "Reportado"
   },
@@ -65,6 +74,9 @@
   },
   "alertCommand": {
     "message": "Patrón de comando sospechoso detectado."
+  },
+  "alertClipboardCommand": {
+    "message": "Comando sospechoso detectado en el portapapeles."
   },
   "alertWinR": {
     "message": "La página sugiere usar Win+R/Run dialog."
@@ -186,6 +198,12 @@
   "optionsStateTitle": {
     "message": "Estado"
   },
+  "optionsClipboardBackup": {
+    "message": "Guardar respaldo del portapapeles"
+  },
+  "optionsSendCountry": {
+    "message": "Compartir país en reportes"
+  },
   "optionsWhitelistTitle": {
     "message": "Lista blanca"
   },
@@ -205,6 +223,21 @@
     "message": "Agregar lista"
   },
   "optionsBlocklistEmpty": {
+    "message": "Sin listas adicionales."
+  },
+  "optionsAllowlistTitle": {
+    "message": "Listas de permitidos adicionales"
+  },
+  "optionsAllowlistHint": {
+    "message": "Agrega URLs de listas de permitidos (una por lista) para combinarlas con la lista principal."
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://ejemplo.com/clickfixallowlist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "Agregar lista"
+  },
+  "optionsAllowlistEmpty": {
     "message": "Sin listas adicionales."
   },
   "optionsHistoryTitle": {
