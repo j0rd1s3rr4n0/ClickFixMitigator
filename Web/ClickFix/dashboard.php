@@ -570,7 +570,7 @@ $reportLogCountries = [];
 $flashErrors = [];
 $flashNotices = [];
 $currentUser = null;
-$adminCode = getenv('CLICKFIX_ADMIN_CODE') ?: '';
+$adminCode = getenv('CLICKFIX_ADMIN_CODE') ?: '24091238460913470129384701!92384709123874!';
 $chartData = [
     'daily' => [],
     'hourly' => array_fill(0, 24, 0),
@@ -892,6 +892,13 @@ if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(16));
 }
 
+if (!isset($_SESSION['login_attempts'])) {
+    $_SESSION['login_attempts'] = [
+        'count' => 0,
+        'last' => 0
+    ];
+}
+
 $alertSites = loadListFile($alertsitesFile);
 $stats['alert_sites'] = $alertSites;
 $reportLogEntries = loadLogEntries(__DIR__ . '/clickfix-report.log', 60);
@@ -941,11 +948,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals(requireCsrfToken() ?? '', $csrfToken)) {
         $flashErrors[] = t($translations, $currentLanguage, 'flash_invalid_session');
     } else {
+        $now = time();
+        $attempts = $_SESSION['login_attempts'] ?? ['count' => 0, 'last' => 0];
+        if (!is_array($attempts)) {
+            $attempts = ['count' => 0, 'last' => 0];
+        }
+        if ($now - (int) ($attempts['last'] ?? 0) > 600) {
+            $attempts = ['count' => 0, 'last' => $now];
+        }
+
         $action = (string) ($_POST['action'] ?? '');
         if ($action === 'register' && $pdo instanceof PDO) {
             $username = trim((string) ($_POST['username'] ?? ''));
             $password = (string) ($_POST['password'] ?? '');
             $adminInput = trim((string) ($_POST['admin_code'] ?? ''));
+            $username = mb_substr($username, 0, 64);
+            $password = mb_substr($password, 0, 128);
             if ($username === '' || $password === '') {
                 $flashErrors[] = t($translations, $currentLanguage, 'flash_required_credentials');
             } else {
@@ -977,18 +995,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'login' && $pdo instanceof PDO) {
             $username = trim((string) ($_POST['username'] ?? ''));
             $password = (string) ($_POST['password'] ?? '');
+            $username = mb_substr($username, 0, 64);
+            $password = mb_substr($password, 0, 128);
+            $rateLimited = ($attempts['count'] ?? 0) >= 8;
+            if ($rateLimited) {
+                $flashErrors[] = t($translations, $currentLanguage, 'flash_invalid_credentials');
+                $_SESSION['login_attempts'] = $attempts;
+            }
             $statement = $pdo->prepare(
                 'SELECT id, username, role, password_hash FROM users WHERE LOWER(username) = LOWER(:username)'
             );
-            $statement->execute([':username' => $username]);
-            $user = $statement->fetch(PDO::FETCH_ASSOC);
+            if (!$rateLimited) {
+                $statement->execute([':username' => $username]);
+            }
+            $user = $rateLimited ? null : $statement->fetch(PDO::FETCH_ASSOC);
             if ($user && password_verify($password, (string) $user['password_hash'])) {
                 session_regenerate_id(true);
                 $_SESSION['user_id'] = (int) $user['id'];
                 $currentUser = ['id' => $user['id'], 'username' => $user['username'], 'role' => $user['role']];
                 $flashNotices[] = t($translations, $currentLanguage, 'flash_login_success');
+                $_SESSION['login_attempts'] = ['count' => 0, 'last' => $now];
             } else {
-                $flashErrors[] = t($translations, $currentLanguage, 'flash_invalid_credentials');
+                if (!$rateLimited) {
+                    $flashErrors[] = t($translations, $currentLanguage, 'flash_invalid_credentials');
+                }
+                $attempts['count'] = (int) ($attempts['count'] ?? 0) + 1;
+                $attempts['last'] = $now;
+                $_SESSION['login_attempts'] = $attempts;
             }
         } elseif ($action === 'logout') {
             unset($_SESSION['user_id']);
@@ -1384,19 +1417,20 @@ $chartLabels = [
     <title><?= htmlspecialchars(t($translations, $currentLanguage, 'app_title'), ENT_QUOTES, 'UTF-8'); ?></title>
     <style>
       :root {
-        color-scheme: light;
-        --bg: #f8fafc;
-        --surface: #ffffff;
-        --surface-alt: #f1f5f9;
-        --border: #e2e8f0;
-        --text: #0f172a;
-        --muted: #64748b;
-        --primary: #1d4ed8;
-        --primary-soft: #dbeafe;
-        --success: #16a34a;
-        --danger: #ef4444;
+        color-scheme: dark;
+        --bg: #0b1020;
+        --surface: rgba(16, 23, 42, 0.85);
+        --surface-alt: rgba(30, 41, 59, 0.7);
+        --border: rgba(148, 163, 184, 0.16);
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --primary: #60a5fa;
+        --primary-soft: rgba(59, 130, 246, 0.18);
+        --success: #22c55e;
+        --danger: #f43f5e;
         --warning: #f59e0b;
-        --shadow: 0 18px 40px -28px rgba(15, 23, 42, 0.4);
+        --shadow: 0 25px 60px -32px rgba(15, 23, 42, 0.8);
+        --glow: 0 0 35px rgba(96, 165, 250, 0.25);
       }
       * {
         box-sizing: border-box;
@@ -1404,7 +1438,7 @@ $chartLabels = [
       body {
         font-family: "Inter", "Segoe UI", system-ui, sans-serif;
         margin: 0;
-        background: radial-gradient(circle at top, #eef2ff 0%, #f8fafc 45%, #e2e8f0 100%);
+        background: radial-gradient(circle at top, rgba(59, 130, 246, 0.12) 0%, rgba(15, 23, 42, 0.9) 40%, #06070d 100%);
         color: var(--text);
       }
       .page {
@@ -1471,9 +1505,10 @@ $chartLabels = [
       .card {
         background: var(--surface);
         border: 1px solid var(--border);
-        border-radius: 16px;
+        border-radius: 18px;
         padding: 18px;
         box-shadow: var(--shadow);
+        backdrop-filter: blur(16px);
       }
       .hero {
         display: grid;
@@ -1496,17 +1531,18 @@ $chartLabels = [
       .hero-action {
         padding: 12px;
         border-radius: 12px;
-        background: var(--surface-alt);
-        border: 1px solid var(--border);
+        background: linear-gradient(140deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7));
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        box-shadow: var(--glow);
       }
       .stat-card {
         display: flex;
         flex-direction: column;
         gap: 10px;
         padding: 18px;
-        border-radius: 16px;
-        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.8));
+        border: 1px solid rgba(148, 163, 184, 0.2);
         box-shadow: var(--shadow);
       }
       .stat-label {
@@ -1543,11 +1579,12 @@ $chartLabels = [
         gap: 16px;
       }
       .chart-card {
-        background: #f8fafc;
-        border: 1px solid var(--border);
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(148, 163, 184, 0.2);
         border-radius: 14px;
         padding: 12px;
         max-height: 170pt;
+        box-shadow: var(--glow);
       }
       .chart-card h3 {
         margin: 0 0 10px;
@@ -1628,8 +1665,8 @@ $chartLabels = [
       }
       .chip {
         padding: 6px 10px;
-        background: var(--primary-soft);
-        color: #1e3a8a;
+        background: rgba(59, 130, 246, 0.2);
+        color: #bfdbfe;
         border-radius: 999px;
         font-size: 12px;
         font-weight: 600;
@@ -1694,18 +1731,20 @@ $chartLabels = [
       }
       pre {
         white-space: pre-wrap;
-        background: #0f172a;
+        background: rgba(15, 23, 42, 0.9);
         color: #e2e8f0;
         padding: 12px;
-        border-radius: 10px;
+        border-radius: 12px;
         font-size: 13px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
       }
       .report-card {
-        border: 1px solid var(--border);
-        border-radius: 14px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 16px;
         padding: 12px 14px;
         margin-bottom: 12px;
-        background: #f8fafc;
+        background: rgba(15, 23, 42, 0.85);
+        box-shadow: var(--shadow);
       }
       .report-card summary {
         cursor: pointer;
@@ -1723,10 +1762,10 @@ $chartLabels = [
       }
       .context-panel {
         margin-top: 8px;
-        border: 1px dashed #cbd5f5;
+        border: 1px dashed rgba(148, 163, 184, 0.4);
         border-radius: 12px;
         padding: 10px;
-        background: #eef2ff;
+        background: rgba(30, 41, 59, 0.8);
       }
       .context-panel pre {
         background: #111827;
@@ -1739,7 +1778,7 @@ $chartLabels = [
         border: 1px solid var(--border);
         border-radius: 12px;
         padding: 12px;
-        background: var(--surface);
+        background: rgba(15, 23, 42, 0.85);
       }
       .log-entry pre {
         margin: 0;
@@ -1755,7 +1794,9 @@ $chartLabels = [
         width: 100%;
         padding: 10px 12px;
         border-radius: 10px;
-        border: 1px solid #cbd5f5;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: rgba(15, 23, 42, 0.8);
+        color: var(--text);
         font-family: inherit;
       }
       .form-grid textarea {
@@ -1767,18 +1808,19 @@ $chartLabels = [
         gap: 8px;
       }
       .button-primary {
-        background: var(--primary);
-        color: #fff;
+        background: linear-gradient(135deg, #3b82f6, #60a5fa);
+        color: #0b1020;
         border: none;
         border-radius: 10px;
         padding: 10px 14px;
         cursor: pointer;
         font-weight: 600;
+        box-shadow: var(--glow);
       }
       .button-secondary {
-        background: #64748b;
-        color: #fff;
-        border: none;
+        background: rgba(148, 163, 184, 0.2);
+        color: #e2e8f0;
+        border: 1px solid rgba(148, 163, 184, 0.3);
         border-radius: 10px;
         padding: 10px 14px;
         cursor: pointer;
@@ -1786,8 +1828,8 @@ $chartLabels = [
       }
       .button-ghost {
         background: transparent;
-        color: var(--primary);
-        border: 1px solid var(--primary-soft);
+        color: #93c5fd;
+        border: 1px solid rgba(59, 130, 246, 0.4);
         border-radius: 10px;
         padding: 8px 12px;
         font-weight: 600;
@@ -1799,12 +1841,24 @@ $chartLabels = [
         font-size: 14px;
       }
       .alert-box.error {
-        background: #fee2e2;
-        color: #991b1b;
+        background: rgba(239, 68, 68, 0.2);
+        color: #fecaca;
+        border: 1px solid rgba(239, 68, 68, 0.35);
       }
       .alert-box.notice {
-        background: #dcfce7;
-        color: #166534;
+        background: rgba(34, 197, 94, 0.2);
+        color: #bbf7d0;
+        border: 1px solid rgba(34, 197, 94, 0.35);
+      }
+      .button-approve {
+        background: #22c55e;
+        color: #fff;
+        border: none;
+      }
+      .button-reject {
+        background: #ef4444;
+        color: #fff;
+        border: none;
       }
       .button-approve {
         background: #22c55e;
@@ -1839,8 +1893,8 @@ $chartLabels = [
         background: #f8fafc;
       }
       .highlight {
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
+        background: rgba(59, 130, 246, 0.15);
+        border: 1px solid rgba(59, 130, 246, 0.3);
         padding: 12px;
         border-radius: 12px;
       }
