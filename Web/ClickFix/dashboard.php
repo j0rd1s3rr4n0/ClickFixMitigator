@@ -395,6 +395,9 @@ function parseIntelHtml(string $html): array
     $title = '';
     $description = '';
     $highlights = [];
+    if (!class_exists('DOMDocument')) {
+        return ['title' => $title, 'description' => $description, 'highlights' => $highlights];
+    }
     $dom = new DOMDocument();
     libxml_use_internal_errors(true);
     if ($dom->loadHTML($html)) {
@@ -428,14 +431,18 @@ function parseIntelHtml(string $html): array
 function fetchIntelSources(array $sources): array
 {
     $entries = [];
+    $allowUrlFopen = filter_var((string) ini_get('allow_url_fopen'), FILTER_VALIDATE_BOOLEAN);
     foreach ($sources as $source) {
-        $context = stream_context_create([
-            'http' => [
-                'timeout' => 6,
-                'header' => "User-Agent: ClickFixDashboard/1.0\r\n"
-            ]
-        ]);
-        $html = @file_get_contents((string) $source['url'], false, $context);
+        $html = '';
+        if ($allowUrlFopen) {
+            $context = stream_context_create([
+                'http' => [
+                    'timeout' => 6,
+                    'header' => "User-Agent: ClickFixDashboard/1.0\r\n"
+                ]
+            ]);
+            $html = (string) (@file_get_contents((string) $source['url'], false, $context) ?: '');
+        }
         $payload = [
             'id' => (string) ($source['id'] ?? ''),
             'label' => (string) ($source['label'] ?? ''),
