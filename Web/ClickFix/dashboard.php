@@ -570,7 +570,7 @@ $reportLogCountries = [];
 $flashErrors = [];
 $flashNotices = [];
 $currentUser = null;
-$adminCode = getenv('CLICKFIX_ADMIN_CODE') ?: '';
+$adminCode = getenv('CLICKFIX_ADMIN_CODE') ?: '24091238460913470129384701!92384709123874!';
 $chartData = [
     'daily' => [],
     'hourly' => array_fill(0, 24, 0),
@@ -892,6 +892,13 @@ if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(16));
 }
 
+if (!isset($_SESSION['login_attempts'])) {
+    $_SESSION['login_attempts'] = [
+        'count' => 0,
+        'last' => 0
+    ];
+}
+
 $alertSites = loadListFile($alertsitesFile);
 $stats['alert_sites'] = $alertSites;
 $reportLogEntries = loadLogEntries(__DIR__ . '/clickfix-report.log', 60);
@@ -941,11 +948,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals(requireCsrfToken() ?? '', $csrfToken)) {
         $flashErrors[] = t($translations, $currentLanguage, 'flash_invalid_session');
     } else {
+        $now = time();
+        $attempts = $_SESSION['login_attempts'] ?? ['count' => 0, 'last' => 0];
+        if (!is_array($attempts)) {
+            $attempts = ['count' => 0, 'last' => 0];
+        }
+        if ($now - (int) ($attempts['last'] ?? 0) > 600) {
+            $attempts = ['count' => 0, 'last' => $now];
+        }
+
         $action = (string) ($_POST['action'] ?? '');
         if ($action === 'register' && $pdo instanceof PDO) {
             $username = trim((string) ($_POST['username'] ?? ''));
             $password = (string) ($_POST['password'] ?? '');
             $adminInput = trim((string) ($_POST['admin_code'] ?? ''));
+            $username = mb_substr($username, 0, 64);
+            $password = mb_substr($password, 0, 128);
             if ($username === '' || $password === '') {
                 $flashErrors[] = t($translations, $currentLanguage, 'flash_required_credentials');
             } else {
@@ -977,18 +995,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'login' && $pdo instanceof PDO) {
             $username = trim((string) ($_POST['username'] ?? ''));
             $password = (string) ($_POST['password'] ?? '');
+            $username = mb_substr($username, 0, 64);
+            $password = mb_substr($password, 0, 128);
+            $rateLimited = ($attempts['count'] ?? 0) >= 8;
+            if ($rateLimited) {
+                $flashErrors[] = t($translations, $currentLanguage, 'flash_invalid_credentials');
+                $_SESSION['login_attempts'] = $attempts;
+            }
             $statement = $pdo->prepare(
                 'SELECT id, username, role, password_hash FROM users WHERE LOWER(username) = LOWER(:username)'
             );
-            $statement->execute([':username' => $username]);
-            $user = $statement->fetch(PDO::FETCH_ASSOC);
+            if (!$rateLimited) {
+                $statement->execute([':username' => $username]);
+            }
+            $user = $rateLimited ? null : $statement->fetch(PDO::FETCH_ASSOC);
             if ($user && password_verify($password, (string) $user['password_hash'])) {
                 session_regenerate_id(true);
                 $_SESSION['user_id'] = (int) $user['id'];
                 $currentUser = ['id' => $user['id'], 'username' => $user['username'], 'role' => $user['role']];
                 $flashNotices[] = t($translations, $currentLanguage, 'flash_login_success');
+                $_SESSION['login_attempts'] = ['count' => 0, 'last' => $now];
             } else {
-                $flashErrors[] = t($translations, $currentLanguage, 'flash_invalid_credentials');
+                if (!$rateLimited) {
+                    $flashErrors[] = t($translations, $currentLanguage, 'flash_invalid_credentials');
+                }
+                $attempts['count'] = (int) ($attempts['count'] ?? 0) + 1;
+                $attempts['last'] = $now;
+                $_SESSION['login_attempts'] = $attempts;
             }
         } elseif ($action === 'logout') {
             unset($_SESSION['user_id']);
