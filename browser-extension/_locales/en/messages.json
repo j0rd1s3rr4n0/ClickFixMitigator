@@ -43,6 +43,15 @@
   "blockedReport": {
     "message": "Report site"
   },
+  "blockedAllowOnce": {
+    "message": "Allow once"
+  },
+  "blockedAllowSession": {
+    "message": "Allow for session"
+  },
+  "blockedAllowAlways": {
+    "message": "Always allow"
+  },
   "blockedReported": {
     "message": "Reported"
   },
@@ -65,6 +74,9 @@
   },
   "alertCommand": {
     "message": "Suspicious command pattern detected."
+  },
+  "alertClipboardCommand": {
+    "message": "Suspicious command detected in the clipboard."
   },
   "alertWinR": {
     "message": "The page suggests using Win+R/Run dialog."
@@ -186,6 +198,9 @@
   "optionsStateTitle": {
     "message": "Status"
   },
+  "optionsClipboardBackup": {
+    "message": "Keep previous clipboard backup"
+  },
   "optionsWhitelistTitle": {
     "message": "Allowlist"
   },
@@ -205,6 +220,21 @@
     "message": "Add list"
   },
   "optionsBlocklistEmpty": {
+    "message": "No additional lists."
+  },
+  "optionsAllowlistTitle": {
+    "message": "Additional allowlists"
+  },
+  "optionsAllowlistHint": {
+    "message": "Add allowlist URLs (one per list) to merge with the main list."
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://example.com/clickfixallowlist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "Add list"
+  },
+  "optionsAllowlistEmpty": {
     "message": "No additional lists."
   },
   "optionsHistoryTitle": {

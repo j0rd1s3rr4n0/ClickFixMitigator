@@ -22,9 +22,10 @@ const CLICKFIX_RECAPTCHA_ID_REGEX = /reCAPTCHA Verification ID/i;
 const COMMAND_REGEX =
   /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d|reg\s+add|rundll32|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic)\b/i;
 const SHELL_HINT_REGEX =
-  /(invoke-webrequest|iwr|curl\s+|wget\s+|downloadstring|frombase64string|add-mppreference|invoke-expression|iex\b|encodedcommand|\-enc\b)/i;
+  /(invoke-webrequest|invoke-restmethod|\biwr\b|\birm\b|curl\s+|wget\s+|downloadstring|frombase64string|add-mppreference|invoke-expression|iex\b|iex\s*\(|encodedcommand|\-enc\b)/i;
 const MAX_SELECTION_LENGTH = 2000;
 const FULL_CONTEXT_LIMIT = 40000;
+const MAX_SCAN_LENGTH = 200000;
 
 let lastSelectionText = "";
 let winRDetected = false;
@@ -40,6 +41,7 @@ let commandDetected = false;
 let copyTriggerDetected = false;
 let lastClipboardSnapshot = "";
 let clipboardWatchRunning = false;
+let lastScanSnapshot = { text: "", html: "", timestamp: 0 };
 
 function getHostname(url) {
   try {
@@ -353,15 +355,43 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
     "font-size:14px"
   ].join(";");
 
-  const stayButton = document.createElement("button");
-  stayButton.type = "button";
-  stayButton.textContent = t("blockedStay");
-  stayButton.style.cssText = [
+  const allowOnceButton = document.createElement("button");
+  allowOnceButton.type = "button";
+  allowOnceButton.textContent = t("blockedAllowOnce");
+  allowOnceButton.style.cssText = [
     "padding:12px 20px",
     "border-radius:999px",
     "border:2px solid #dc2626",
     "background:#fff",
     "color:#dc2626",
+    "font-weight:700",
+    "cursor:pointer",
+    "font-size:14px"
+  ].join(";");
+
+  const allowSessionButton = document.createElement("button");
+  allowSessionButton.type = "button";
+  allowSessionButton.textContent = t("blockedAllowSession");
+  allowSessionButton.style.cssText = [
+    "padding:12px 20px",
+    "border-radius:999px",
+    "border:2px solid #dc2626",
+    "background:#fff",
+    "color:#dc2626",
+    "font-weight:700",
+    "cursor:pointer",
+    "font-size:14px"
+  ].join(";");
+
+  const allowAlwaysButton = document.createElement("button");
+  allowAlwaysButton.type = "button";
+  allowAlwaysButton.textContent = t("blockedAllowAlways");
+  allowAlwaysButton.style.cssText = [
+    "padding:12px 20px",
+    "border-radius:999px",
+    "border:none",
+    "background:#dc2626",
+    "color:#fff",
     "font-weight:700",
     "cursor:pointer",
     "font-size:14px"
@@ -381,7 +411,26 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
     "font-size:14px"
   ].join(";");
 
-  stayButton.addEventListener("click", async () => {
+  allowOnceButton.addEventListener("click", () => {
+    const currentHost = hostname || getHostname(window.location.href);
+    if (currentHost) {
+      sessionStorage.setItem("clickfix-allow-host", currentHost);
+    }
+    window.location.reload();
+  });
+
+  allowSessionButton.addEventListener("click", () => {
+    const currentHost = hostname || getHostname(window.location.href);
+    if (currentHost) {
+      const raw = sessionStorage.getItem("clickfix-allow-session") || "[]";
+      const list = new Set(JSON.parse(raw));
+      list.add(currentHost);
+      sessionStorage.setItem("clickfix-allow-session", JSON.stringify([...list]));
+    }
+    window.location.reload();
+  });
+
+  allowAlwaysButton.addEventListener("click", async () => {
     const currentHost = hostname || getHostname(window.location.href);
     await new Promise((resolve) => {
       chrome.runtime.sendMessage(
@@ -389,9 +438,6 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
         () => resolve()
       );
     });
-    if (currentHost) {
-      sessionStorage.setItem("clickfix-allow-host", currentHost);
-    }
     window.location.reload();
   });
 
@@ -416,7 +462,9 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
   });
 
   buttonRow.appendChild(reportButton);
-  buttonRow.appendChild(stayButton);
+  buttonRow.appendChild(allowOnceButton);
+  buttonRow.appendChild(allowSessionButton);
+  buttonRow.appendChild(allowAlwaysButton);
   buttonRow.appendChild(backButton);
 
   card.appendChild(heading);
@@ -449,6 +497,17 @@ async function checkBlocklistAndBlock() {
   if (allowOnce && allowOnce === currentHost) {
     sessionStorage.removeItem("clickfix-allow-host");
     return false;
+  }
+  const sessionAllow = sessionStorage.getItem("clickfix-allow-session");
+  if (sessionAllow) {
+    try {
+      const allowedHosts = JSON.parse(sessionAllow);
+      if (Array.isArray(allowedHosts) && allowedHosts.includes(currentHost)) {
+        return false;
+      }
+    } catch (error) {
+      sessionStorage.removeItem("clickfix-allow-session");
+    }
   }
   const status = await getBlocklistStatus();
   if (status?.blocked) {
@@ -516,46 +575,59 @@ async function writeClipboardText(text) {
   }
 }
 
-function scanForWinR() {
-  if (!document.body) {
+function trimScanValue(value) {
+  if (!value) {
     return "";
   }
-  const bodyText = document.body.innerText || "";
-  return findMatchSnippet(CLICKFIX_WIN_R_REGEX, bodyText);
+  return value.length > MAX_SCAN_LENGTH ? value.slice(0, MAX_SCAN_LENGTH) : value;
+}
+
+function getScanSnapshot() {
+  const now = Date.now();
+  if (now - lastScanSnapshot.timestamp < 250 && lastScanSnapshot.text) {
+    return lastScanSnapshot;
+  }
+  const root = document.documentElement;
+  const textContent = root?.textContent || "";
+  const htmlContent = root?.innerHTML || "";
+  const inlineAssets = Array.from(document.querySelectorAll("script,style"))
+    .map((node) => node.textContent || "")
+    .filter(Boolean)
+    .join("\n");
+  const combinedText = [textContent, inlineAssets].filter(Boolean).join("\n");
+  lastScanSnapshot = {
+    text: trimScanValue(combinedText),
+    html: trimScanValue(htmlContent),
+    timestamp: now
+  };
+  return lastScanSnapshot;
+}
+
+function scanForWinR() {
+  const snapshot = getScanSnapshot();
+  return findMatchSnippet(CLICKFIX_WIN_R_REGEX, snapshot.text);
 }
 
 function scanForWinX() {
-  if (!document.body) {
-    return "";
-  }
-  const bodyText = document.body.innerText || "";
-  return findMatchSnippet(CLICKFIX_WIN_X_REGEX, bodyText);
+  const snapshot = getScanSnapshot();
+  return findMatchSnippet(CLICKFIX_WIN_X_REGEX, snapshot.text);
 }
 
 function scanForFakeError() {
-  if (!document.body) {
-    return "";
-  }
-  const bodyText = document.body.innerText || "";
-  return findMatchSnippet(CLICKFIX_FAKE_ERROR_REGEX, bodyText);
+  const snapshot = getScanSnapshot();
+  return findMatchSnippet(CLICKFIX_FAKE_ERROR_REGEX, snapshot.text);
 }
 
 function scanForFixAction() {
-  if (!document.body) {
-    return "";
-  }
-  const bodyText = document.body.innerText || "";
-  return findMatchSnippet(CLICKFIX_FIX_ACTION_REGEX, bodyText);
+  const snapshot = getScanSnapshot();
+  return findMatchSnippet(CLICKFIX_FIX_ACTION_REGEX, snapshot.text);
 }
 
 function scanForFakeCaptcha() {
-  if (!document.body) {
-    return "";
-  }
-  const bodyText = document.body.innerText || "";
+  const snapshot = getScanSnapshot();
   return (
-    findMatchSnippet(CLICKFIX_CAPTCHA_REGEX, bodyText) ||
-    findMatchSnippet(CLICKFIX_RECAPTCHA_ID_REGEX, bodyText)
+    findMatchSnippet(CLICKFIX_CAPTCHA_REGEX, snapshot.text) ||
+    findMatchSnippet(CLICKFIX_RECAPTCHA_ID_REGEX, snapshot.text)
   );
 }
 
@@ -635,11 +707,8 @@ function notifyFixActionDetected() {
 }
 
 function scanForConsolePaste() {
-  if (!document.body) {
-    return "";
-  }
-  const bodyText = document.body.innerText || "";
-  return findMatchSnippet(CLICKFIX_CONSOLE_REGEX, bodyText);
+  const snapshot = getScanSnapshot();
+  return findMatchSnippet(CLICKFIX_CONSOLE_REGEX, snapshot.text);
 }
 
 function notifyConsoleDetected() {
@@ -658,11 +727,8 @@ function notifyConsoleDetected() {
 }
 
 function scanForShellPaste() {
-  if (!document.body) {
-    return "";
-  }
-  const bodyText = document.body.innerText || "";
-  return findMatchSnippet(CLICKFIX_SHELL_PASTE_REGEX, bodyText);
+  const snapshot = getScanSnapshot();
+  return findMatchSnippet(CLICKFIX_SHELL_PASTE_REGEX, snapshot.text);
 }
 
 function notifyShellDetected() {
@@ -681,11 +747,8 @@ function notifyShellDetected() {
 }
 
 function scanForPasteSequence() {
-  if (!document.body) {
-    return "";
-  }
-  const bodyText = document.body.innerText || "";
-  return findMatchSnippet(CLICKFIX_PASTE_SEQUENCE_REGEX, bodyText);
+  const snapshot = getScanSnapshot();
+  return findMatchSnippet(CLICKFIX_PASTE_SEQUENCE_REGEX, snapshot.text);
 }
 
 function notifyPasteSequenceDetected() {
@@ -704,26 +767,20 @@ function notifyPasteSequenceDetected() {
 }
 
 function scanForFileExplorer() {
-  if (!document.body) {
-    return "";
-  }
-  const bodyText = document.body.innerText || "";
-  return findMatchSnippet(CLICKFIX_FILE_EXPLORER_REGEX, bodyText);
+  const snapshot = getScanSnapshot();
+  return findMatchSnippet(CLICKFIX_FILE_EXPLORER_REGEX, snapshot.text);
 }
 
 function scanForCopyTrigger() {
-  const htmlText = document.documentElement?.innerHTML || "";
-  return findMatchSnippet(CLICKFIX_COPY_TRIGGER_REGEX, htmlText);
+  const snapshot = getScanSnapshot();
+  return findMatchSnippet(CLICKFIX_COPY_TRIGGER_REGEX, snapshot.html);
 }
 
 function scanForCommandPatterns() {
-  if (!document.body) {
-    return "";
-  }
-  const bodyText = document.body.innerText || "";
+  const snapshot = getScanSnapshot();
   return (
-    findMatchSnippet(COMMAND_REGEX, bodyText) ||
-    findMatchSnippet(SHELL_HINT_REGEX, bodyText)
+    findMatchSnippet(COMMAND_REGEX, snapshot.text) ||
+    findMatchSnippet(SHELL_HINT_REGEX, snapshot.text)
   );
 }
 
@@ -893,7 +950,12 @@ function startMonitoring() {
       notifyCopyTriggerDetected();
     });
     if (document.body) {
-      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+        attributes: true
+      });
     }
   };
 
@@ -924,6 +986,17 @@ chrome.runtime.onMessage.addListener((message) => {
     if (allowOnce && allowOnce === currentHost) {
       sessionStorage.removeItem("clickfix-allow-host");
       return;
+    }
+    const sessionAllow = sessionStorage.getItem("clickfix-allow-session");
+    if (sessionAllow) {
+      try {
+        const allowedHosts = JSON.parse(sessionAllow);
+        if (Array.isArray(allowedHosts) && allowedHosts.includes(currentHost)) {
+          return;
+        }
+      } catch (error) {
+        sessionStorage.removeItem("clickfix-allow-session");
+      }
     }
     buildBlockedPage(
       message.hostname || getHostname(window.location.href),
