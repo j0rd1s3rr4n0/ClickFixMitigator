@@ -355,15 +355,43 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
     "font-size:14px"
   ].join(";");
 
-  const stayButton = document.createElement("button");
-  stayButton.type = "button";
-  stayButton.textContent = t("blockedStay");
-  stayButton.style.cssText = [
+  const allowOnceButton = document.createElement("button");
+  allowOnceButton.type = "button";
+  allowOnceButton.textContent = t("blockedAllowOnce");
+  allowOnceButton.style.cssText = [
     "padding:12px 20px",
     "border-radius:999px",
     "border:2px solid #dc2626",
     "background:#fff",
     "color:#dc2626",
+    "font-weight:700",
+    "cursor:pointer",
+    "font-size:14px"
+  ].join(";");
+
+  const allowSessionButton = document.createElement("button");
+  allowSessionButton.type = "button";
+  allowSessionButton.textContent = t("blockedAllowSession");
+  allowSessionButton.style.cssText = [
+    "padding:12px 20px",
+    "border-radius:999px",
+    "border:2px solid #dc2626",
+    "background:#fff",
+    "color:#dc2626",
+    "font-weight:700",
+    "cursor:pointer",
+    "font-size:14px"
+  ].join(";");
+
+  const allowAlwaysButton = document.createElement("button");
+  allowAlwaysButton.type = "button";
+  allowAlwaysButton.textContent = t("blockedAllowAlways");
+  allowAlwaysButton.style.cssText = [
+    "padding:12px 20px",
+    "border-radius:999px",
+    "border:none",
+    "background:#dc2626",
+    "color:#fff",
     "font-weight:700",
     "cursor:pointer",
     "font-size:14px"
@@ -383,7 +411,26 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
     "font-size:14px"
   ].join(";");
 
-  stayButton.addEventListener("click", async () => {
+  allowOnceButton.addEventListener("click", () => {
+    const currentHost = hostname || getHostname(window.location.href);
+    if (currentHost) {
+      sessionStorage.setItem("clickfix-allow-host", currentHost);
+    }
+    window.location.reload();
+  });
+
+  allowSessionButton.addEventListener("click", () => {
+    const currentHost = hostname || getHostname(window.location.href);
+    if (currentHost) {
+      const raw = sessionStorage.getItem("clickfix-allow-session") || "[]";
+      const list = new Set(JSON.parse(raw));
+      list.add(currentHost);
+      sessionStorage.setItem("clickfix-allow-session", JSON.stringify([...list]));
+    }
+    window.location.reload();
+  });
+
+  allowAlwaysButton.addEventListener("click", async () => {
     const currentHost = hostname || getHostname(window.location.href);
     await new Promise((resolve) => {
       chrome.runtime.sendMessage(
@@ -391,9 +438,6 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
         () => resolve()
       );
     });
-    if (currentHost) {
-      sessionStorage.setItem("clickfix-allow-host", currentHost);
-    }
     window.location.reload();
   });
 
@@ -418,7 +462,9 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
   });
 
   buttonRow.appendChild(reportButton);
-  buttonRow.appendChild(stayButton);
+  buttonRow.appendChild(allowOnceButton);
+  buttonRow.appendChild(allowSessionButton);
+  buttonRow.appendChild(allowAlwaysButton);
   buttonRow.appendChild(backButton);
 
   card.appendChild(heading);
@@ -451,6 +497,17 @@ async function checkBlocklistAndBlock() {
   if (allowOnce && allowOnce === currentHost) {
     sessionStorage.removeItem("clickfix-allow-host");
     return false;
+  }
+  const sessionAllow = sessionStorage.getItem("clickfix-allow-session");
+  if (sessionAllow) {
+    try {
+      const allowedHosts = JSON.parse(sessionAllow);
+      if (Array.isArray(allowedHosts) && allowedHosts.includes(currentHost)) {
+        return false;
+      }
+    } catch (error) {
+      sessionStorage.removeItem("clickfix-allow-session");
+    }
   }
   const status = await getBlocklistStatus();
   if (status?.blocked) {
@@ -929,6 +986,17 @@ chrome.runtime.onMessage.addListener((message) => {
     if (allowOnce && allowOnce === currentHost) {
       sessionStorage.removeItem("clickfix-allow-host");
       return;
+    }
+    const sessionAllow = sessionStorage.getItem("clickfix-allow-session");
+    if (sessionAllow) {
+      try {
+        const allowedHosts = JSON.parse(sessionAllow);
+        if (Array.isArray(allowedHosts) && allowedHosts.includes(currentHost)) {
+          return;
+        }
+      } catch (error) {
+        sessionStorage.removeItem("clickfix-allow-session");
+      }
     }
     buildBlockedPage(
       message.hostname || getHostname(window.location.href),

@@ -5,6 +5,8 @@ header('Content-Type: text/html; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 header('Cache-Control: no-store');
 
+session_start();
+
 $dbPath = __DIR__ . '/data/clickfix.sqlite';
 $schemaPath = null;
 $preferredSchema = __DIR__ . '/data/clickfix.sql';
@@ -45,6 +47,33 @@ CREATE TABLE IF NOT EXISTS stats (
     manual_sites_json TEXT,
     country TEXT
 );
+
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS appeals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    contact TEXT,
+    status TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS list_actions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    user_id INTEGER,
+    action TEXT NOT NULL,
+    list_type TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    reason TEXT NOT NULL
+);
 SQL;
 
 $stats = [
@@ -61,8 +90,14 @@ $stats = [
 $recentDetections = [];
 $alertSites = [];
 $alertsitesFile = __DIR__ . '/alertsites';
+$blocklistFile = __DIR__ . '/clickfixlist';
+$allowlistFile = __DIR__ . '/clickfixallowlist';
 $reportLogEntries = [];
 $debugLogEntries = [];
+$flashErrors = [];
+$flashNotices = [];
+$currentUser = null;
+$adminCode = getenv('CLICKFIX_ADMIN_CODE') ?: '';
 $chartData = [
     'daily' => [],
     'hourly' => array_fill(0, 24, 0),
@@ -125,6 +160,63 @@ function loadLogEntries(string $path, int $limit = 50): array
     return array_reverse($entries);
 }
 
+function ensureAdminTables(PDO $pdo): void
+{
+    $statements = [
+        'CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL
+        )',
+        'CREATE TABLE IF NOT EXISTS appeals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            domain TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            contact TEXT,
+            status TEXT NOT NULL
+        )',
+        'CREATE TABLE IF NOT EXISTS list_actions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            user_id INTEGER,
+            action TEXT NOT NULL,
+            list_type TEXT NOT NULL,
+            domain TEXT NOT NULL,
+            reason TEXT NOT NULL
+        )'
+    ];
+    foreach ($statements as $statement) {
+        $pdo->exec($statement);
+    }
+
+    $columns = $pdo->query('PRAGMA table_info(users)')->fetchAll(PDO::FETCH_ASSOC);
+    $existing = [];
+    foreach ($columns as $column) {
+        $existing[(string) ($column['name'] ?? '')] = true;
+    }
+    if (!isset($existing['created_at'])) {
+        $pdo->exec('ALTER TABLE users ADD COLUMN created_at TEXT');
+    }
+    if (!isset($existing['role'])) {
+        $pdo->exec('ALTER TABLE users ADD COLUMN role TEXT');
+    }
+
+    $columns = $pdo->query('PRAGMA table_info(appeals)')->fetchAll(PDO::FETCH_ASSOC);
+    $existing = [];
+    foreach ($columns as $column) {
+        $existing[(string) ($column['name'] ?? '')] = true;
+    }
+    if (!isset($existing['contact'])) {
+        $pdo->exec('ALTER TABLE appeals ADD COLUMN contact TEXT');
+    }
+    if (!isset($existing['status'])) {
+        $pdo->exec('ALTER TABLE appeals ADD COLUMN status TEXT');
+    }
+}
+
 function ensureDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFallback): void
 {
     if (file_exists($dbPath)) {
@@ -145,9 +237,81 @@ function ensureDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFa
             $schemaSql = $schemaSqlFallback;
         }
         $pdo->exec($schemaSql);
+        ensureAdminTables($pdo);
     } catch (Throwable $exception) {
         return;
     }
+}
+
+function normalizeDomain(string $domain): string
+{
+    $trimmed = trim($domain);
+    if ($trimmed === '') {
+        return '';
+    }
+    $trimmed = strtolower($trimmed);
+    $trimmed = preg_replace('/^https?:\/\//', '', $trimmed);
+    $trimmed = preg_replace('/\/.*$/', '', $trimmed);
+    return $trimmed ?? '';
+}
+
+function isValidDomain(string $domain): bool
+{
+    return $domain !== '' && preg_match('/^[a-z0-9.-]+$/i', $domain) === 1;
+}
+
+function ensureListFile(string $path): void
+{
+    if (is_readable($path)) {
+        return;
+    }
+    @file_put_contents($path, "# Managed ClickFix list\n", FILE_APPEND | LOCK_EX);
+}
+
+function updateListFile(string $path, string $domain, string $mode): bool
+{
+    ensureListFile($path);
+    $lines = is_readable($path) ? (file($path, FILE_IGNORE_NEW_LINES) ?: []) : [];
+    $normalized = strtolower($domain);
+    $existing = [];
+    foreach ($lines as $line) {
+        $line = trim((string) $line);
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
+        }
+        $existing[strtolower($line)] = $line;
+    }
+    if ($mode === 'add') {
+        if (isset($existing[$normalized])) {
+            return true;
+        }
+        $lines[] = $domain;
+    } else {
+        if (!isset($existing[$normalized])) {
+            return true;
+        }
+        $lines = array_filter($lines, static function ($line) use ($normalized) {
+            $line = trim((string) $line);
+            if ($line === '' || str_starts_with($line, '#')) {
+                return true;
+            }
+            return strtolower($line) !== $normalized;
+        });
+    }
+    $content = implode(PHP_EOL, $lines);
+    if ($content !== '') {
+        $content .= PHP_EOL;
+    }
+    return file_put_contents($path, $content, LOCK_EX) !== false;
+}
+
+function requireCsrfToken(): ?string
+{
+    return $_SESSION['csrf_token'] ?? null;
+}
+
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(16));
 }
 
 $alertSites = loadListFile($alertsitesFile);
@@ -157,11 +321,144 @@ $debugLogEntries = loadLogEntries(__DIR__ . '/clickfix-debug.log', 60);
 
 ensureDatabase($dbPath, $schemaPath, $defaultSchemaSql);
 
+$pdo = null;
 if (is_readable($dbPath)) {
     try {
         $pdo = new PDO('sqlite:' . $dbPath);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        ensureAdminTables($pdo);
+    } catch (Throwable $exception) {
+        $pdo = null;
+    }
+}
 
+if ($pdo instanceof PDO && isset($_SESSION['user_id'])) {
+    $statement = $pdo->prepare('SELECT id, username, role FROM users WHERE id = :id');
+    $statement->execute([':id' => (int) $_SESSION['user_id']]);
+    $currentUser = $statement->fetch(PDO::FETCH_ASSOC) ?: null;
+    if (!$currentUser) {
+        unset($_SESSION['user_id']);
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $csrfToken = (string) ($_POST['csrf_token'] ?? '');
+    if (!hash_equals(requireCsrfToken() ?? '', $csrfToken)) {
+        $flashErrors[] = 'Sesión inválida, recarga la página.';
+    } else {
+        $action = (string) ($_POST['action'] ?? '');
+        if ($action === 'register' && $pdo instanceof PDO) {
+            $username = trim((string) ($_POST['username'] ?? ''));
+            $password = (string) ($_POST['password'] ?? '');
+            $adminInput = trim((string) ($_POST['admin_code'] ?? ''));
+            if ($username === '' || $password === '') {
+                $flashErrors[] = 'Usuario y contraseña son obligatorios.';
+            } else {
+                $role = ($adminCode !== '' && hash_equals($adminCode, $adminInput)) ? 'admin' : 'analyst';
+                try {
+                    $statement = $pdo->prepare(
+                        'INSERT INTO users (created_at, username, password_hash, role)
+                         VALUES (:created_at, :username, :password_hash, :role)'
+                    );
+                    $statement->execute([
+                        ':created_at' => gmdate('c'),
+                        ':username' => $username,
+                        ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
+                        ':role' => $role
+                    ]);
+                    $flashNotices[] = 'Registro completado. Ahora puedes iniciar sesión.';
+                } catch (Throwable $exception) {
+                    $flashErrors[] = 'No se pudo registrar. Usa otro usuario.';
+                }
+            }
+        } elseif ($action === 'login' && $pdo instanceof PDO) {
+            $username = trim((string) ($_POST['username'] ?? ''));
+            $password = (string) ($_POST['password'] ?? '');
+            $statement = $pdo->prepare('SELECT id, username, role, password_hash FROM users WHERE username = :username');
+            $statement->execute([':username' => $username]);
+            $user = $statement->fetch(PDO::FETCH_ASSOC);
+            if ($user && password_verify($password, (string) $user['password_hash'])) {
+                $_SESSION['user_id'] = (int) $user['id'];
+                $currentUser = ['id' => $user['id'], 'username' => $user['username'], 'role' => $user['role']];
+                $flashNotices[] = 'Sesión iniciada.';
+            } else {
+                $flashErrors[] = 'Credenciales inválidas.';
+            }
+        } elseif ($action === 'logout') {
+            unset($_SESSION['user_id']);
+            $currentUser = null;
+            $flashNotices[] = 'Sesión cerrada.';
+        } elseif ($action === 'appeal' && $pdo instanceof PDO) {
+            $domain = normalizeDomain((string) ($_POST['domain'] ?? ''));
+            $reason = trim((string) ($_POST['reason'] ?? ''));
+            $contact = trim((string) ($_POST['contact'] ?? ''));
+            if (!isValidDomain($domain) || $reason === '') {
+                $flashErrors[] = 'Dominio y motivo son obligatorios.';
+            } else {
+                $statement = $pdo->prepare(
+                    'INSERT INTO appeals (created_at, domain, reason, contact, status)
+                     VALUES (:created_at, :domain, :reason, :contact, :status)'
+                );
+                $statement->execute([
+                    ':created_at' => gmdate('c'),
+                    ':domain' => $domain,
+                    ':reason' => $reason,
+                    ':contact' => $contact,
+                    ':status' => 'open'
+                ]);
+                $flashNotices[] = 'Desistimiento enviado. Revisaremos tu solicitud.';
+            }
+        } elseif ($action === 'list_action' && $pdo instanceof PDO) {
+            $isAdmin = $currentUser && ($currentUser['role'] ?? '') === 'admin';
+            $domain = normalizeDomain((string) ($_POST['domain'] ?? ''));
+            $reason = trim((string) ($_POST['reason'] ?? ''));
+            $listType = (string) ($_POST['list_type'] ?? '');
+            $mode = (string) ($_POST['mode'] ?? '');
+            if (!$isAdmin) {
+                $flashErrors[] = 'Se requiere un usuario administrador.';
+            } elseif (!isValidDomain($domain) || $reason === '') {
+                $flashErrors[] = 'Dominio y motivo son obligatorios.';
+            } else {
+                $listPath = $listType === 'allow' ? $allowlistFile : $blocklistFile;
+                $ok = updateListFile($listPath, $domain, $mode === 'remove' ? 'remove' : 'add');
+                if ($ok) {
+                    $statement = $pdo->prepare(
+                        'INSERT INTO list_actions (created_at, user_id, action, list_type, domain, reason)
+                         VALUES (:created_at, :user_id, :action, :list_type, :domain, :reason)'
+                    );
+                    $statement->execute([
+                        ':created_at' => gmdate('c'),
+                        ':user_id' => (int) ($currentUser['id'] ?? 0),
+                        ':action' => $mode === 'remove' ? 'remove' : 'add',
+                        ':list_type' => $listType,
+                        ':domain' => $domain,
+                        ':reason' => $reason
+                    ]);
+                    $flashNotices[] = 'Lista actualizada.';
+                } else {
+                    $flashErrors[] = 'No se pudo actualizar la lista.';
+                }
+            }
+        } elseif ($action === 'appeal_resolve' && $pdo instanceof PDO) {
+            $isAdmin = $currentUser && ($currentUser['role'] ?? '') === 'admin';
+            $appealId = (int) ($_POST['appeal_id'] ?? 0);
+            if (!$isAdmin) {
+                $flashErrors[] = 'Se requiere un usuario administrador.';
+            } else {
+                $statement = $pdo->prepare('UPDATE appeals SET status = :status WHERE id = :id');
+                $statement->execute([':status' => 'resolved', ':id' => $appealId]);
+                $flashNotices[] = 'Desistimiento actualizado.';
+            }
+        }
+    }
+}
+
+if (is_readable($dbPath)) {
+    try {
+        if (!$pdo instanceof PDO) {
+            $pdo = new PDO('sqlite:' . $dbPath);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        }
         $statsRows = $pdo->query(
             'SELECT received_at, enabled, alert_count, block_count, manual_sites_json, country
              FROM stats
@@ -261,6 +558,22 @@ if (is_readable($dbPath)) {
     }
     $recentDetections = array_slice($recentDetections, 0, 50);
     $stats['recent_count'] = count($recentDetections);
+}
+
+$blocklistItems = loadListFile($blocklistFile);
+$allowlistItems = loadListFile($allowlistFile);
+$appeals = [];
+if ($pdo instanceof PDO) {
+    try {
+        $appeals = $pdo->query(
+            'SELECT id, created_at, domain, reason, contact, status
+             FROM appeals
+             ORDER BY created_at DESC
+             LIMIT 100'
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $exception) {
+        $appeals = [];
+    }
 }
 
 ksort($chartData['daily']);
@@ -532,6 +845,57 @@ foreach ($chartData['signals'] as $signal => $count) {
         margin: 0;
         font-size: 12px;
       }
+      .form-grid {
+        display: grid;
+        gap: 12px;
+      }
+      .form-grid input,
+      .form-grid textarea,
+      .form-grid select {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid #cbd5f5;
+        font-family: inherit;
+      }
+      .form-grid textarea {
+        min-height: 90px;
+      }
+      .form-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .button-primary {
+        background: #0f172a;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      .button-secondary {
+        background: #64748b;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      .alert-box {
+        padding: 10px 12px;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        font-size: 14px;
+      }
+      .alert-box.error {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .alert-box.notice {
+        background: #dcfce7;
+        color: #166534;
+      }
       @media (max-width: 960px) {
         .layout {
           grid-template-columns: 1fr;
@@ -567,6 +931,69 @@ foreach ($chartData['signals'] as $signal => $count) {
         </span>
       </header>
 
+      <?php foreach ($flashErrors as $error): ?>
+        <div class="alert-box error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
+      <?php endforeach; ?>
+      <?php foreach ($flashNotices as $notice): ?>
+        <div class="alert-box notice"><?= htmlspecialchars($notice, ENT_QUOTES, 'UTF-8'); ?></div>
+      <?php endforeach; ?>
+
+      <section class="card">
+        <div class="section-title">
+          <h2>Acceso y registro</h2>
+          <?php if ($currentUser): ?>
+            <span class="muted">Sesión: <?= htmlspecialchars((string) $currentUser['username'], ENT_QUOTES, 'UTF-8'); ?> (<?= htmlspecialchars((string) $currentUser['role'], ENT_QUOTES, 'UTF-8'); ?>)</span>
+          <?php else: ?>
+            <span class="muted">Accede para administrar listas</span>
+          <?php endif; ?>
+        </div>
+        <div class="grid">
+          <form method="post" class="form-grid">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+            <input type="hidden" name="action" value="login" />
+            <label>
+              Usuario
+              <input type="text" name="username" required />
+            </label>
+            <label>
+              Contraseña
+              <input type="password" name="password" required />
+            </label>
+            <div class="form-actions">
+              <button class="button-primary" type="submit">Iniciar sesión</button>
+            </div>
+          </form>
+          <form method="post" class="form-grid">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+            <input type="hidden" name="action" value="register" />
+            <label>
+              Usuario
+              <input type="text" name="username" required />
+            </label>
+            <label>
+              Contraseña
+              <input type="password" name="password" required />
+            </label>
+            <label>
+              Código administrador (opcional)
+              <input type="text" name="admin_code" />
+            </label>
+            <div class="form-actions">
+              <button class="button-secondary" type="submit">Registrarse</button>
+            </div>
+          </form>
+          <?php if ($currentUser): ?>
+            <form method="post" class="form-grid">
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+              <input type="hidden" name="action" value="logout" />
+              <div class="form-actions">
+                <button class="button-secondary" type="submit">Cerrar sesión</button>
+              </div>
+            </form>
+          <?php endif; ?>
+        </div>
+      </section>
+
       <section class="grid">
         <div class="stat-card">
           <span class="stat-label">Alertas totales</span>
@@ -597,6 +1024,96 @@ foreach ($chartData['signals'] as $signal => $count) {
 
       <div class="layout">
         <div>
+          <section class="card">
+            <div class="section-title">
+              <h2>Listas públicas</h2>
+              <span class="muted">Visibles para todos</span>
+            </div>
+            <div class="grid">
+              <div>
+                <h3>Allowlist</h3>
+                <?php if (empty($allowlistItems)): ?>
+                  <div class="muted">Sin dominios.</div>
+                <?php else: ?>
+                  <div class="list-block">
+                    <ul>
+                      <?php foreach ($allowlistItems as $domain): ?>
+                        <li><?= htmlspecialchars($domain, ENT_QUOTES, 'UTF-8'); ?></li>
+                      <?php endforeach; ?>
+                    </ul>
+                  </div>
+                <?php endif; ?>
+              </div>
+              <div>
+                <h3>Blocklist</h3>
+                <?php if (empty($blocklistItems)): ?>
+                  <div class="muted">Sin dominios.</div>
+                <?php else: ?>
+                  <div class="list-block">
+                    <ul>
+                      <?php foreach ($blocklistItems as $domain): ?>
+                        <li><?= htmlspecialchars($domain, ENT_QUOTES, 'UTF-8'); ?></li>
+                      <?php endforeach; ?>
+                    </ul>
+                  </div>
+                <?php endif; ?>
+              </div>
+            </div>
+          </section>
+
+          <section class="card" style="margin-top: 24px;">
+            <h2>¿Está tu dominio bloqueado? Realiza el desistimiento aquí</h2>
+            <form method="post" class="form-grid">
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+              <input type="hidden" name="action" value="appeal" />
+              <label>
+                Dominio
+                <input type="text" name="domain" placeholder="ejemplo.com" required />
+              </label>
+              <label>
+                Motivo del desistimiento
+                <textarea name="reason" required></textarea>
+              </label>
+              <label>
+                Contacto (opcional)
+                <input type="text" name="contact" placeholder="correo@dominio.com" />
+              </label>
+              <div class="form-actions">
+                <button class="button-primary" type="submit">Enviar desistimiento</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="card" style="margin-top: 24px;">
+            <div class="section-title">
+              <h2>Administrar listas</h2>
+              <span class="muted">Solo administradores</span>
+            </div>
+            <form method="post" class="form-grid">
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+              <input type="hidden" name="action" value="list_action" />
+              <label>
+                Dominio
+                <input type="text" name="domain" placeholder="ejemplo.com" required />
+              </label>
+              <label>
+                Tipo de lista
+                <select name="list_type">
+                  <option value="allow">Allowlist</option>
+                  <option value="block">Blocklist</option>
+                </select>
+              </label>
+              <label>
+                Motivo
+                <textarea name="reason" required></textarea>
+              </label>
+              <div class="form-actions">
+                <button class="button-primary" type="submit" name="mode" value="add">Agregar</button>
+                <button class="button-secondary" type="submit" name="mode" value="remove">Quitar</button>
+              </div>
+            </form>
+          </section>
+
           <section class="card">
             <div class="section-title">
               <h2>Analítica de alertas</h2>
@@ -675,6 +1192,46 @@ foreach ($chartData['signals'] as $signal => $count) {
                       <strong>Contexto completo</strong>
                       <pre><?= htmlspecialchars($entry['full_context'], ENT_QUOTES, 'UTF-8'); ?></pre>
                     </div>
+                  <?php endif; ?>
+                </details>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </section>
+
+          <section class="card" style="margin-top: 24px;">
+            <h2>Desistimientos recientes</h2>
+            <?php if (empty($appeals)): ?>
+              <div class="muted">Sin solicitudes.</div>
+            <?php else: ?>
+              <?php foreach ($appeals as $appeal): ?>
+                <details class="report-card">
+                  <summary>
+                    <?= htmlspecialchars((string) ($appeal['domain'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                    <span class="report-meta">
+                      <?= htmlspecialchars((string) ($appeal['created_at'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                    </span>
+                  </summary>
+                  <div class="report-section">
+                    <strong>Motivo</strong>
+                    <div class="muted"><?= htmlspecialchars((string) ($appeal['reason'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                  </div>
+                  <?php if (!empty($appeal['contact'])): ?>
+                    <div class="report-section">
+                      <strong>Contacto</strong>
+                      <div class="muted"><?= htmlspecialchars((string) ($appeal['contact'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                    </div>
+                  <?php endif; ?>
+                  <div class="report-section">
+                    <strong>Estado</strong>
+                    <div class="muted"><?= htmlspecialchars((string) ($appeal['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                  </div>
+                  <?php if ($currentUser && ($currentUser['role'] ?? '') === 'admin' && ($appeal['status'] ?? '') !== 'resolved'): ?>
+                    <form method="post" class="form-actions" style="margin-top: 12px;">
+                      <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                      <input type="hidden" name="action" value="appeal_resolve" />
+                      <input type="hidden" name="appeal_id" value="<?= (int) ($appeal['id'] ?? 0); ?>" />
+                      <button class="button-secondary" type="submit">Marcar como resuelto</button>
+                    </form>
                   <?php endif; ?>
                 </details>
               <?php endforeach; ?>

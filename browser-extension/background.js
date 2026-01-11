@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS = {
 };
 
 const CLICKFIX_BLOCKLIST_URL = "https://jordiserrano.me/ClickFix/clickfixlist";
-const CLICKFIX_ALLOWLIST_URL = "https://jordiserrano.me/ClickFix/clickfix-whitelist";
+const CLICKFIX_ALLOWLIST_URL = "https://jordiserrano.me/ClickFix/clickfixallowlist";
 const CLICKFIX_REPORT_URL = "https://jordiserrano.me/ClickFix/clickfix-report.php";
 const BLOCKLIST_REFRESH_MINUTES = 0.5;
 const STATS_REPORT_MINUTES = 60;
@@ -394,15 +394,50 @@ async function triggerAlert(details) {
   return notificationId;
 }
 
+function extractBase64Candidates(text) {
+  if (!text) {
+    return [];
+  }
+  const candidates = new Set();
+  const matches = text.match(/[A-Za-z0-9+/=]{24,}/g) || [];
+  matches.forEach((value) => {
+    const cleaned = value.replace(/=+$/, "");
+    if (cleaned.length < 24 || cleaned.length % 4 === 1) {
+      return;
+    }
+    candidates.add(value);
+  });
+  return [...candidates];
+}
+
+function decodeBase64Candidates(text) {
+  const decoded = [];
+  const candidates = extractBase64Candidates(text);
+  candidates.forEach((value) => {
+    try {
+      const normalized = value.length % 4 === 0 ? value : `${value}==`.slice(0, 4 - (value.length % 4));
+      const result = atob(normalized);
+      if (result && /[\w\s]/.test(result)) {
+        decoded.push(result);
+      }
+    } catch (error) {
+      // Ignore invalid base64.
+    }
+  });
+  return decoded;
+}
+
 function analyzeText(text) {
   const trimmed = text?.trim();
   if (!trimmed) {
     return { commandMatch: false, shellHint: false, evasionHint: false };
   }
-  const evasionHint = EVASION_REGEXES.some((regex) => regex.test(trimmed));
+  const decodedChunks = decodeBase64Candidates(trimmed);
+  const combined = [trimmed, ...decodedChunks].join("\n");
+  const evasionHint = EVASION_REGEXES.some((regex) => regex.test(combined));
   return {
-    commandMatch: COMMAND_REGEX.test(trimmed),
-    shellHint: SHELL_HINT_REGEX.test(trimmed),
+    commandMatch: COMMAND_REGEX.test(combined),
+    shellHint: SHELL_HINT_REGEX.test(combined),
     evasionHint
   };
 }
@@ -750,9 +785,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         contextHint
       ].filter(Boolean).length;
       const shouldAlert =
-        signalScore >= 2 ||
-        (commandMatch && (actionHint || copyTriggerHint)) ||
-        (mismatch && (copyTriggerHint || actionHint));
+        (hasPageHints && signalScore >= 2) ||
+        (hasPageHints && commandMatch) ||
+        (hasPageHints && mismatch);
       const clipboardWarningOnly =
         clipboardCommandWarning && !hasPageHints && !mismatch && signalScore < 2;
 

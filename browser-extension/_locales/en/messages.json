@@ -43,6 +43,15 @@
   "blockedReport": {
     "message": "Report site"
   },
+  "blockedAllowOnce": {
+    "message": "Allow once"
+  },
+  "blockedAllowSession": {
+    "message": "Allow for session"
+  },
+  "blockedAllowAlways": {
+    "message": "Always allow"
+  },
   "blockedReported": {
     "message": "Reported"
   },
@@ -220,7 +229,7 @@
     "message": "Add allowlist URLs (one per list) to merge with the main list."
   },
   "optionsAllowlistPlaceholder": {
-    "message": "https://example.com/clickfix-whitelist"
+    "message": "https://example.com/clickfixallowlist"
   },
   "optionsAllowlistAdd": {
     "message": "Add list"

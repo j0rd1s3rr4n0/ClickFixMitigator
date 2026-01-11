@@ -46,6 +46,33 @@ CREATE TABLE IF NOT EXISTS stats (
     manual_sites_json TEXT,
     country TEXT
 );
+
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS appeals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    contact TEXT,
+    status TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS list_actions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    user_id INTEGER,
+    action TEXT NOT NULL,
+    list_type TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    reason TEXT NOT NULL
+);
 SQL;
 
 $logFile = __DIR__ . '/clickfix-report.log';
@@ -99,6 +126,75 @@ function ensureReportsSchema(PDO $pdo, string $debugFile): void
     }
 }
 
+function ensureAdminSchema(PDO $pdo, string $debugFile): void
+{
+    $statements = [
+        'CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL
+        )',
+        'CREATE TABLE IF NOT EXISTS appeals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            domain TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            contact TEXT,
+            status TEXT NOT NULL
+        )',
+        'CREATE TABLE IF NOT EXISTS list_actions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            user_id INTEGER,
+            action TEXT NOT NULL,
+            list_type TEXT NOT NULL,
+            domain TEXT NOT NULL,
+            reason TEXT NOT NULL
+        )'
+    ];
+    foreach ($statements as $statement) {
+        try {
+            $pdo->exec($statement);
+        } catch (Throwable $exception) {
+            writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'statement' => $statement]);
+        }
+    }
+
+    try {
+        $columns = $pdo->query('PRAGMA table_info(users)')->fetchAll(PDO::FETCH_ASSOC);
+        $existing = [];
+        foreach ($columns as $column) {
+            $existing[(string) ($column['name'] ?? '')] = true;
+        }
+        if (!isset($existing['created_at'])) {
+            $pdo->exec('ALTER TABLE users ADD COLUMN created_at TEXT');
+        }
+        if (!isset($existing['role'])) {
+            $pdo->exec('ALTER TABLE users ADD COLUMN role TEXT');
+        }
+    } catch (Throwable $exception) {
+        writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'statement' => 'ALTER users']);
+    }
+
+    try {
+        $columns = $pdo->query('PRAGMA table_info(appeals)')->fetchAll(PDO::FETCH_ASSOC);
+        $existing = [];
+        foreach ($columns as $column) {
+            $existing[(string) ($column['name'] ?? '')] = true;
+        }
+        if (!isset($existing['contact'])) {
+            $pdo->exec('ALTER TABLE appeals ADD COLUMN contact TEXT');
+        }
+        if (!isset($existing['status'])) {
+            $pdo->exec('ALTER TABLE appeals ADD COLUMN status TEXT');
+        }
+    } catch (Throwable $exception) {
+        writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'statement' => 'ALTER appeals']);
+    }
+}
+
 function openDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFallback, string $debugFile): ?PDO
 {
     $dataDir = dirname($dbPath);
@@ -137,6 +233,7 @@ function openDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFall
     }
 
     ensureReportsSchema($pdo, $debugFile);
+    ensureAdminSchema($pdo, $debugFile);
     return $pdo;
 }
 
