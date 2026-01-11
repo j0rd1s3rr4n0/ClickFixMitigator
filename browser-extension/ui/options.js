@@ -4,7 +4,8 @@ const DEFAULT_SETTINGS = {
   history: [],
   blocklistSources: [],
   allowlistSources: [],
-  saveClipboardBackup: true
+  saveClipboardBackup: true,
+  sendCountry: true
 };
 
 const toggleEnabled = document.getElementById("toggle-enabled");
@@ -15,6 +16,7 @@ const blocklistInput = document.getElementById("blocklist-input");
 const addBlocklistButton = document.getElementById("add-blocklist");
 const blocklistList = document.getElementById("blocklist-list");
 const toggleClipboardBackup = document.getElementById("toggle-clipboard-backup");
+const toggleSendCountry = document.getElementById("toggle-send-country");
 const allowlistInput = document.getElementById("allowlist-input");
 const addAllowlistButton = document.getElementById("add-allowlist");
 const allowlistList = document.getElementById("allowlist-list");
@@ -97,7 +99,8 @@ async function loadSettings() {
     history: settings.history ?? [],
     blocklistSources: settings.blocklistSources ?? [],
     allowlistSources: settings.allowlistSources ?? [],
-    saveClipboardBackup: settings.saveClipboardBackup ?? true
+    saveClipboardBackup: settings.saveClipboardBackup ?? true,
+    sendCountry: settings.sendCountry ?? true
   };
 }
 
@@ -270,11 +273,16 @@ toggleClipboardBackup.addEventListener("change", async () => {
   await chrome.storage.local.set({ saveClipboardBackup: toggleClipboardBackup.checked });
 });
 
+toggleSendCountry.addEventListener("change", async () => {
+  await chrome.storage.local.set({ sendCountry: toggleSendCountry.checked });
+});
+
 (async () => {
   await initLanguageSelector();
   const settings = await loadSettings();
   toggleEnabled.checked = settings.enabled;
   toggleClipboardBackup.checked = settings.saveClipboardBackup;
+  toggleSendCountry.checked = settings.sendCountry;
   renderWhitelist(settings.whitelist);
   renderBlocklistSources(settings.blocklistSources);
   renderAllowlistSources(settings.allowlistSources);

@@ -94,6 +94,7 @@ $blocklistFile = __DIR__ . '/clickfixlist';
 $allowlistFile = __DIR__ . '/clickfixallowlist';
 $reportLogEntries = [];
 $debugLogEntries = [];
+$reportLogCountries = [];
 $flashErrors = [];
 $flashNotices = [];
 $currentUser = null;
@@ -158,6 +159,31 @@ function loadLogEntries(string $path, int $limit = 50): array
         $entries[] = $line;
     }
     return array_reverse($entries);
+}
+
+function loadLogCountries(string $path, int $limit = 200): array
+{
+    if (!is_readable($path)) {
+        return [];
+    }
+    $lines = file($path, FILE_IGNORE_NEW_LINES) ?: [];
+    if ($limit > 0) {
+        $lines = array_slice($lines, -$limit);
+    }
+    $counts = [];
+    foreach ($lines as $line) {
+        $decoded = json_decode($line, true);
+        if (!is_array($decoded)) {
+            continue;
+        }
+        $country = strtoupper((string) ($decoded['country'] ?? ''));
+        if ($country === '') {
+            continue;
+        }
+        $counts[$country] = ($counts[$country] ?? 0) + 1;
+    }
+    arsort($counts);
+    return $counts;
 }
 
 function ensureAdminTables(PDO $pdo): void
@@ -318,6 +344,7 @@ $alertSites = loadListFile($alertsitesFile);
 $stats['alert_sites'] = $alertSites;
 $reportLogEntries = loadLogEntries(__DIR__ . '/clickfix-report.log', 60);
 $debugLogEntries = loadLogEntries(__DIR__ . '/clickfix-debug.log', 60);
+$reportLogCountries = loadLogCountries(__DIR__ . '/clickfix-report.log', 200);
 
 ensureDatabase($dbPath, $schemaPath, $defaultSchemaSql);
 
@@ -577,7 +604,7 @@ if ($pdo instanceof PDO) {
 }
 
 ksort($chartData['daily']);
-arsort($chartData['countries']);
+$chartData['countries'] = $reportLogCountries;
 arsort($chartData['signals']);
 
 $signalChartLabels = [];
@@ -743,7 +770,13 @@ foreach ($chartData['signals'] as $signal => $count) {
       .list-block {
         max-height: 240px;
         overflow-y: auto;
+        overflow-x: hidden;
         padding-right: 6px;
+        word-break: break-word;
+      }
+      .list-block li {
+        word-break: break-word;
+        overflow-wrap: anywhere;
       }
       .badge {
         display: inline-flex;
@@ -939,59 +972,61 @@ foreach ($chartData['signals'] as $signal => $count) {
       <?php endforeach; ?>
 
       <section class="card">
-        <div class="section-title">
-          <h2>Acceso y registro</h2>
-          <?php if ($currentUser): ?>
-            <span class="muted">Sesión: <?= htmlspecialchars((string) $currentUser['username'], ENT_QUOTES, 'UTF-8'); ?> (<?= htmlspecialchars((string) $currentUser['role'], ENT_QUOTES, 'UTF-8'); ?>)</span>
-          <?php else: ?>
-            <span class="muted">Accede para administrar listas</span>
-          <?php endif; ?>
-        </div>
-        <div class="grid">
-          <form method="post" class="form-grid">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
-            <input type="hidden" name="action" value="login" />
-            <label>
-              Usuario
-              <input type="text" name="username" required />
-            </label>
-            <label>
-              Contraseña
-              <input type="password" name="password" required />
-            </label>
-            <div class="form-actions">
-              <button class="button-primary" type="submit">Iniciar sesión</button>
-            </div>
-          </form>
-          <form method="post" class="form-grid">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
-            <input type="hidden" name="action" value="register" />
-            <label>
-              Usuario
-              <input type="text" name="username" required />
-            </label>
-            <label>
-              Contraseña
-              <input type="password" name="password" required />
-            </label>
-            <label>
-              Código administrador (opcional)
-              <input type="text" name="admin_code" />
-            </label>
-            <div class="form-actions">
-              <button class="button-secondary" type="submit">Registrarse</button>
-            </div>
-          </form>
-          <?php if ($currentUser): ?>
+        <details>
+          <summary class="section-title">
+            <h2>Acceso y registro</h2>
+            <?php if ($currentUser): ?>
+              <span class="muted">Sesión: <?= htmlspecialchars((string) $currentUser['username'], ENT_QUOTES, 'UTF-8'); ?> (<?= htmlspecialchars((string) $currentUser['role'], ENT_QUOTES, 'UTF-8'); ?>)</span>
+            <?php else: ?>
+              <span class="muted">Accede para administrar listas</span>
+            <?php endif; ?>
+          </summary>
+          <div class="grid" style="margin-top: 12px;">
             <form method="post" class="form-grid">
               <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
-              <input type="hidden" name="action" value="logout" />
+              <input type="hidden" name="action" value="login" />
+              <label>
+                Usuario
+                <input type="text" name="username" required />
+              </label>
+              <label>
+                Contraseña
+                <input type="password" name="password" required />
+              </label>
               <div class="form-actions">
-                <button class="button-secondary" type="submit">Cerrar sesión</button>
+                <button class="button-primary" type="submit">Iniciar sesión</button>
               </div>
             </form>
-          <?php endif; ?>
-        </div>
+            <form method="post" class="form-grid">
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+              <input type="hidden" name="action" value="register" />
+              <label>
+                Usuario
+                <input type="text" name="username" required />
+              </label>
+              <label>
+                Contraseña
+                <input type="password" name="password" required />
+              </label>
+              <label>
+                Código administrador (opcional)
+                <input type="text" name="admin_code" />
+              </label>
+              <div class="form-actions">
+                <button class="button-secondary" type="submit">Registrarse</button>
+              </div>
+            </form>
+            <?php if ($currentUser): ?>
+              <form method="post" class="form-grid">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                <input type="hidden" name="action" value="logout" />
+                <div class="form-actions">
+                  <button class="button-secondary" type="submit">Cerrar sesión</button>
+                </div>
+              </form>
+            <?php endif; ?>
+          </div>
+        </details>
       </section>
 
       <section class="grid">
@@ -1085,33 +1120,35 @@ foreach ($chartData['signals'] as $signal => $count) {
           </section>
 
           <section class="card" style="margin-top: 24px;">
-            <div class="section-title">
-              <h2>Administrar listas</h2>
-              <span class="muted">Solo administradores</span>
-            </div>
-            <form method="post" class="form-grid">
-              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
-              <input type="hidden" name="action" value="list_action" />
-              <label>
-                Dominio
-                <input type="text" name="domain" placeholder="ejemplo.com" required />
-              </label>
-              <label>
-                Tipo de lista
-                <select name="list_type">
-                  <option value="allow">Allowlist</option>
-                  <option value="block">Blocklist</option>
-                </select>
-              </label>
-              <label>
-                Motivo
-                <textarea name="reason" required></textarea>
-              </label>
-              <div class="form-actions">
-                <button class="button-primary" type="submit" name="mode" value="add">Agregar</button>
-                <button class="button-secondary" type="submit" name="mode" value="remove">Quitar</button>
-              </div>
-            </form>
+            <details>
+              <summary class="section-title">
+                <h2>Administrar listas</h2>
+                <span class="muted">Solo administradores</span>
+              </summary>
+              <form method="post" class="form-grid" style="margin-top: 12px;">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                <input type="hidden" name="action" value="list_action" />
+                <label>
+                  Dominio
+                  <input type="text" name="domain" placeholder="ejemplo.com" required />
+                </label>
+                <label>
+                  Tipo de lista
+                  <select name="list_type">
+                    <option value="allow">Allowlist</option>
+                    <option value="block">Blocklist</option>
+                  </select>
+                </label>
+                <label>
+                  Motivo
+                  <textarea name="reason" required></textarea>
+                </label>
+                <div class="form-actions">
+                  <button class="button-primary" type="submit" name="mode" value="add">Agregar</button>
+                  <button class="button-secondary" type="submit" name="mode" value="remove">Quitar</button>
+                </div>
+              </form>
+            </details>
           </section>
 
           <section class="card">

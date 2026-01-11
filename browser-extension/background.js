@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS = {
   blocklistSources: [],
   allowlistSources: [],
   saveClipboardBackup: true,
+  sendCountry: true,
   alertCount: 0,
   blockCount: 0,
   blocklistUpdatedAt: 0,
@@ -46,6 +47,7 @@ async function getSettings() {
     blocklistSources: stored.blocklistSources ?? [],
     allowlistSources: stored.allowlistSources ?? [],
     saveClipboardBackup: stored.saveClipboardBackup ?? true,
+    sendCountry: stored.sendCountry ?? true,
     alertCount: stored.alertCount ?? 0,
     blockCount: stored.blockCount ?? 0,
     blocklistUpdatedAt: stored.blocklistUpdatedAt ?? 0,
@@ -553,6 +555,7 @@ async function reportClickfix(details) {
 async function sendStatsReport() {
   const settings = await getSettings();
   const alertSites = buildAlertSites(settings.history ?? []);
+  const country = settings.sendCountry ? chrome.i18n.getUILanguage() : "";
   reportClickfix({
     type: "stats",
     timestamp: Date.now(),
@@ -561,7 +564,8 @@ async function sendStatsReport() {
       manualSites: settings.whitelist ?? [],
       alertSites,
       alertCount: settings.alertCount ?? 0,
-      blockCount: settings.blockCount ?? 0
+      blockCount: settings.blockCount ?? 0,
+      country
     }
   });
 }

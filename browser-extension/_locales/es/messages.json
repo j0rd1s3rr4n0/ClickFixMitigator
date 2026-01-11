@@ -201,6 +201,9 @@
   "optionsClipboardBackup": {
     "message": "Guardar respaldo del portapapeles"
   },
+  "optionsSendCountry": {
+    "message": "Compartir país en reportes"
+  },
   "optionsWhitelistTitle": {
     "message": "Lista blanca"
   },

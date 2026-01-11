@@ -343,7 +343,8 @@ if ($type === 'stats') {
         'alert_count' => (int) ($statsData['alertCount'] ?? 0),
         'block_count' => (int) ($statsData['blockCount'] ?? 0),
         'manual_sites' => [],
-        'alert_sites' => []
+        'alert_sites' => [],
+        'country' => ''
     ];
     $manualSites = $statsData['manualSites'] ?? [];
     if (is_array($manualSites)) {
@@ -362,6 +363,10 @@ if ($type === 'stats') {
                 $normalizedStats['alert_sites'][] = $site;
             }
         }
+    }
+    $countryInput = strtoupper(substr(trim((string) ($statsData['country'] ?? '')), 0, 2));
+    if ($countryInput !== '' && preg_match('/^[A-Z]{2}$/', $countryInput)) {
+        $normalizedStats['country'] = $countryInput;
     }
 }
 
@@ -393,7 +398,7 @@ $entry = [
     'stats' => $normalizedStats,
     'user_agent' => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512),
     'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
-    'country' => $country
+    'country' => $type === 'stats' && $normalizedStats['country'] !== '' ? $normalizedStats['country'] : $country
 ];
 $logLine = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;
 

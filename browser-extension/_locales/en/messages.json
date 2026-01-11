@@ -201,6 +201,9 @@
   "optionsClipboardBackup": {
     "message": "Keep previous clipboard backup"
   },
+  "optionsSendCountry": {
+    "message": "Share country in reports"
+  },
   "optionsWhitelistTitle": {
     "message": "Allowlist"
   },
