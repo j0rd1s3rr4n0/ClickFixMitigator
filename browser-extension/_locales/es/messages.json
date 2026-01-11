@@ -189,6 +189,9 @@
   "optionsStateTitle": {
     "message": "Estado"
   },
+  "optionsClipboardBackup": {
+    "message": "Guardar respaldo del portapapeles"
+  },
   "optionsWhitelistTitle": {
     "message": "Lista blanca"
   },

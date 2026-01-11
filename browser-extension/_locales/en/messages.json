@@ -189,6 +189,9 @@
   "optionsStateTitle": {
     "message": "Status"
   },
+  "optionsClipboardBackup": {
+    "message": "Keep previous clipboard backup"
+  },
   "optionsWhitelistTitle": {
     "message": "Allowlist"
   },

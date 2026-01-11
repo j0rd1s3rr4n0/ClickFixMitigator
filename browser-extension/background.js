@@ -6,6 +6,7 @@ const DEFAULT_SETTINGS = {
   blocklist: [],
   blocklistSources: [],
   allowlistSources: [],
+  saveClipboardBackup: true,
   alertCount: 0,
   blockCount: 0,
   blocklistUpdatedAt: 0,
@@ -44,6 +45,7 @@ async function getSettings() {
     blocklist: stored.blocklist ?? [],
     blocklistSources: stored.blocklistSources ?? [],
     allowlistSources: stored.allowlistSources ?? [],
+    saveClipboardBackup: stored.saveClipboardBackup ?? true,
     alertCount: stored.alertCount ?? 0,
     blockCount: stored.blockCount ?? 0,
     blocklistUpdatedAt: stored.blocklistUpdatedAt ?? 0,
@@ -721,6 +723,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const pasteSequenceHint = hints.includes("paste-sequence");
       const fileExplorerHint = hints.includes("file-explorer");
       const copyTriggerHint = hints.includes("copy-trigger");
+      const actionHint =
+        winRHint ||
+        winXHint ||
+        pasteSequenceHint ||
+        consoleHint ||
+        shellHint ||
+        fileExplorerHint;
+      const contextHint = browserErrorHint || fixActionHint || captchaHint;
       const hasPageHints =
         winRHint ||
         winXHint ||
@@ -732,24 +742,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         pasteSequenceHint ||
         fileExplorerHint ||
         copyTriggerHint;
-      const clipboardWarningOnly = clipboardCommandWarning && !hasPageHints && !mismatch;
+      const signalScore = [
+        mismatch,
+        commandMatch || evasionHint,
+        copyTriggerHint,
+        actionHint,
+        contextHint
+      ].filter(Boolean).length;
       const shouldAlert =
-        mismatch ||
-        commandMatch ||
-        winRHint ||
-        winXHint ||
-        browserErrorHint ||
-        fixActionHint ||
-        captchaHint ||
-        consoleHint ||
-        shellHint ||
-        pasteSequenceHint ||
-        fileExplorerHint ||
-        copyTriggerHint ||
-        evasionHint
-      ;
+        signalScore >= 2 ||
+        (commandMatch && (actionHint || copyTriggerHint)) ||
+        (mismatch && (copyTriggerHint || actionHint));
+      const clipboardWarningOnly =
+        clipboardCommandWarning && !hasPageHints && !mismatch && signalScore < 2;
 
       if (shouldAlert) {
+        const settings = await getSettings();
+        const saveClipboardBackup = settings.saveClipboardBackup ?? true;
         const clipboardText = message.clipboardText?.trim();
         const detectedContent = clipboardText || message.selectionText || "";
         const isClipboardWatch = message.eventType === "clipboard-watch";
@@ -773,7 +782,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         let blockedClipboardText = "";
         if (shouldBlockClipboard) {
           setClipboardBlock(clipboardText);
-          blockedClipboardText = clipboardText;
+          if (saveClipboardBackup) {
+            blockedClipboardText = clipboardText;
+          }
           requestClipboardReplace(sender?.tab?.id, "");
         }
 

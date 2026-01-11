@@ -3,7 +3,8 @@ const DEFAULT_SETTINGS = {
   whitelist: [],
   history: [],
   blocklistSources: [],
-  allowlistSources: []
+  allowlistSources: [],
+  saveClipboardBackup: true
 };
 
 const toggleEnabled = document.getElementById("toggle-enabled");
@@ -13,6 +14,7 @@ const whitelistList = document.getElementById("whitelist-list");
 const blocklistInput = document.getElementById("blocklist-input");
 const addBlocklistButton = document.getElementById("add-blocklist");
 const blocklistList = document.getElementById("blocklist-list");
+const toggleClipboardBackup = document.getElementById("toggle-clipboard-backup");
 const allowlistInput = document.getElementById("allowlist-input");
 const addAllowlistButton = document.getElementById("add-allowlist");
 const allowlistList = document.getElementById("allowlist-list");
@@ -94,7 +96,8 @@ async function loadSettings() {
     whitelist: settings.whitelist ?? [],
     history: settings.history ?? [],
     blocklistSources: settings.blocklistSources ?? [],
-    allowlistSources: settings.allowlistSources ?? []
+    allowlistSources: settings.allowlistSources ?? [],
+    saveClipboardBackup: settings.saveClipboardBackup ?? true
   };
 }
 
@@ -263,10 +266,15 @@ toggleEnabled.addEventListener("change", async () => {
   await chrome.storage.local.set({ enabled: toggleEnabled.checked });
 });
 
+toggleClipboardBackup.addEventListener("change", async () => {
+  await chrome.storage.local.set({ saveClipboardBackup: toggleClipboardBackup.checked });
+});
+
 (async () => {
   await initLanguageSelector();
   const settings = await loadSettings();
   toggleEnabled.checked = settings.enabled;
+  toggleClipboardBackup.checked = settings.saveClipboardBackup;
   renderWhitelist(settings.whitelist);
   renderBlocklistSources(settings.blocklistSources);
   renderAllowlistSources(settings.allowlistSources);
