@@ -1860,6 +1860,16 @@ $chartLabels = [
         color: #fff;
         border: none;
       }
+      .button-approve {
+        background: #22c55e;
+        color: #fff;
+        border: none;
+      }
+      .button-reject {
+        background: #ef4444;
+        color: #fff;
+        border: none;
+      }
       .role-badge {
         display: inline-flex;
         align-items: center;
