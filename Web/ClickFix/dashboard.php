@@ -32,6 +32,7 @@ $translations = [
         'app_title' => 'ClickFix Command Center',
         'last_update' => 'Última actualización',
         'extension_status_unknown' => 'Estado extensión: sin datos',
+        'extension_status_activity' => 'Actividad detectada',
         'extension_enabled' => 'Extensión activa',
         'extension_disabled' => 'Extensión pausada',
         'session_active' => 'Sesión',
@@ -100,6 +101,11 @@ $translations = [
         'no_requests' => 'Sin solicitudes.',
         'status' => 'Estado',
         'mark_resolved' => 'Marcar como resuelto',
+        'approve' => 'Aprobar',
+        'reject_appeal' => 'Rechazar',
+        'appeal_actions' => 'Acciones',
+        'flash_appeal_approved' => 'Desistimiento aprobado.',
+        'flash_appeal_rejected' => 'Desistimiento rechazado.',
         'recent_logs' => 'Logs recientes',
         'latest_entries' => 'Últimas entradas',
         'no_logs' => 'Sin registros.',
@@ -129,6 +135,28 @@ $translations = [
         'admin_code_optional' => 'Código administrador (opcional)',
         'register' => 'Registrarse',
         'logout' => 'Cerrar sesión',
+        'accepted' => 'Aceptado',
+        'mark_accepted' => 'Marcar como aceptado',
+        'clear_unaccepted' => 'Limpiar no aceptadas',
+        'clear_unaccepted_help' => 'Elimina detecciones recientes sin validar.',
+        'log_table_title' => 'Entradas de alertas',
+        'log_table_empty' => 'Sin entradas estructuradas.',
+        'log_col_time' => 'Fecha',
+        'log_col_url' => 'URL',
+        'log_col_host' => 'Host',
+        'log_col_message' => 'Mensaje',
+        'log_col_detected' => 'Detectado',
+        'log_col_blocked' => 'Bloqueado',
+        'log_col_country' => 'País',
+        'confirm_clear' => '¿Eliminar detecciones no aceptadas?',
+        'intel_section' => 'Fuentes de inteligencia',
+        'intel_subtitle' => 'Scraping de referencia para enriquecer señales',
+        'intel_refresh' => 'Actualizar',
+        'intel_last_fetch' => 'Última sincronización',
+        'intel_status' => 'Estado',
+        'intel_status_ok' => 'Sincronizado',
+        'intel_status_error' => 'Error',
+        'intel_highlights' => 'Patrones destacados',
         'language' => 'Idioma',
         'flash_invalid_session' => 'Sesión inválida, recarga la página.',
         'flash_required_credentials' => 'Usuario y contraseña son obligatorios.',
@@ -151,12 +179,16 @@ $translations = [
         'flash_suggestion_applied' => 'Sugerencia aprobada y aplicada.',
         'flash_suggestion_rejected' => 'Sugerencia rechazada.',
         'flash_appeal_updated' => 'Desistimiento actualizado.',
+        'flash_detection_accepted' => 'Detección marcada como aceptada.',
+        'flash_detection_cleared' => 'Detecciones no aceptadas eliminadas.',
+        'flash_detection_clear_failed' => 'No se pudieron limpiar las detecciones.',
         'no_domain' => 'Sin dominio'
     ],
     'en' => [
         'app_title' => 'ClickFix Command Center',
         'last_update' => 'Last update',
         'extension_status_unknown' => 'Extension status: no data',
+        'extension_status_activity' => 'Activity detected',
         'extension_enabled' => 'Extension enabled',
         'extension_disabled' => 'Extension paused',
         'session_active' => 'Session',
@@ -225,6 +257,11 @@ $translations = [
         'no_requests' => 'No requests.',
         'status' => 'Status',
         'mark_resolved' => 'Mark as resolved',
+        'approve' => 'Approve',
+        'reject_appeal' => 'Reject',
+        'appeal_actions' => 'Actions',
+        'flash_appeal_approved' => 'Appeal approved.',
+        'flash_appeal_rejected' => 'Appeal rejected.',
         'recent_logs' => 'Recent logs',
         'latest_entries' => 'Latest entries',
         'no_logs' => 'No logs.',
@@ -254,6 +291,28 @@ $translations = [
         'admin_code_optional' => 'Admin code (optional)',
         'register' => 'Register',
         'logout' => 'Sign out',
+        'accepted' => 'Accepted',
+        'mark_accepted' => 'Mark as accepted',
+        'clear_unaccepted' => 'Clear unaccepted',
+        'clear_unaccepted_help' => 'Remove recent detections that are not validated.',
+        'log_table_title' => 'Alert entries',
+        'log_table_empty' => 'No structured entries.',
+        'log_col_time' => 'Date',
+        'log_col_url' => 'URL',
+        'log_col_host' => 'Host',
+        'log_col_message' => 'Message',
+        'log_col_detected' => 'Detected',
+        'log_col_blocked' => 'Blocked',
+        'log_col_country' => 'Country',
+        'confirm_clear' => 'Remove unaccepted detections?',
+        'intel_section' => 'Intel sources',
+        'intel_subtitle' => 'Reference scraping to enrich signals',
+        'intel_refresh' => 'Refresh',
+        'intel_last_fetch' => 'Last sync',
+        'intel_status' => 'Status',
+        'intel_status_ok' => 'Synced',
+        'intel_status_error' => 'Error',
+        'intel_highlights' => 'Highlighted patterns',
         'language' => 'Language',
         'flash_invalid_session' => 'Invalid session, reload the page.',
         'flash_required_credentials' => 'Username and password are required.',
@@ -276,6 +335,9 @@ $translations = [
         'flash_suggestion_applied' => 'Suggestion approved and applied.',
         'flash_suggestion_rejected' => 'Suggestion rejected.',
         'flash_appeal_updated' => 'Appeal updated.',
+        'flash_detection_accepted' => 'Detection marked as accepted.',
+        'flash_detection_cleared' => 'Unaccepted detections cleared.',
+        'flash_detection_clear_failed' => 'Could not clear detections.',
         'no_domain' => 'No domain'
     ]
 ];
@@ -283,6 +345,117 @@ $translations = [
 function t(array $translations, string $lang, string $key): string
 {
     return $translations[$lang][$key] ?? $translations['es'][$key] ?? $key;
+}
+
+$intelSources = [
+    [
+        'id' => 'hudsonrock',
+        'label' => 'Hudson Rock',
+        'url' => 'https://www.hudsonrock.com/blog/5766'
+    ],
+    [
+        'id' => 'clickfix-carson',
+        'label' => 'ClickFix Carson',
+        'url' => 'https://clickfix.carsonww.com/'
+    ],
+    [
+        'id' => 'clickgrab-techniques',
+        'label' => 'ClickGrab Techniques',
+        'url' => 'https://mhaggis.github.io/ClickGrab/techniques.html'
+    ],
+    [
+        'id' => 'clickfix-patterns',
+        'label' => 'ClickFix Patterns',
+        'url' => 'https://don-san-sec.github.io/clickfix-patterns/'
+    ]
+];
+$intelCachePath = __DIR__ . '/data/intel-cache.json';
+$intelTtlSeconds = 3600;
+
+function loadIntelCache(string $path): array
+{
+    if (!is_readable($path)) {
+        return [];
+    }
+    $decoded = json_decode((string) file_get_contents($path), true);
+    return is_array($decoded) ? $decoded : [];
+}
+
+function saveIntelCache(string $path, array $payload): void
+{
+    $dir = dirname($path);
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+    file_put_contents($path, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+}
+
+function parseIntelHtml(string $html): array
+{
+    $title = '';
+    $description = '';
+    $highlights = [];
+    $dom = new DOMDocument();
+    libxml_use_internal_errors(true);
+    if ($dom->loadHTML($html)) {
+        $titleNode = $dom->getElementsByTagName('title')->item(0);
+        if ($titleNode) {
+            $title = trim((string) $titleNode->textContent);
+        }
+        foreach ($dom->getElementsByTagName('meta') as $meta) {
+            $name = strtolower((string) $meta->getAttribute('name'));
+            if ($name === 'description') {
+                $description = trim((string) $meta->getAttribute('content'));
+                break;
+            }
+        }
+        foreach (['h2', 'h3', 'li'] as $tag) {
+            foreach ($dom->getElementsByTagName($tag) as $node) {
+                $text = trim((string) $node->textContent);
+                if ($text !== '' && !in_array($text, $highlights, true)) {
+                    $highlights[] = $text;
+                }
+                if (count($highlights) >= 6) {
+                    break 2;
+                }
+            }
+        }
+    }
+    libxml_clear_errors();
+    return ['title' => $title, 'description' => $description, 'highlights' => $highlights];
+}
+
+function fetchIntelSources(array $sources): array
+{
+    $entries = [];
+    foreach ($sources as $source) {
+        $context = stream_context_create([
+            'http' => [
+                'timeout' => 6,
+                'header' => "User-Agent: ClickFixDashboard/1.0\r\n"
+            ]
+        ]);
+        $html = @file_get_contents((string) $source['url'], false, $context);
+        $payload = [
+            'id' => (string) ($source['id'] ?? ''),
+            'label' => (string) ($source['label'] ?? ''),
+            'url' => (string) ($source['url'] ?? ''),
+            'title' => '',
+            'description' => '',
+            'highlights' => [],
+            'status' => 'error',
+            'fetched_at' => gmdate('c')
+        ];
+        if (is_string($html) && $html !== '') {
+            $parsed = parseIntelHtml($html);
+            $payload['title'] = $parsed['title'];
+            $payload['description'] = $parsed['description'];
+            $payload['highlights'] = $parsed['highlights'];
+            $payload['status'] = 'ok';
+        }
+        $entries[] = $payload;
+    }
+    return $entries;
 }
 
 $dbPath = __DIR__ . '/data/clickfix.sqlite';
@@ -311,6 +484,9 @@ CREATE TABLE IF NOT EXISTS reports (
     full_context TEXT,
     signals_json TEXT,
     blocked INTEGER DEFAULT 0,
+    accepted INTEGER DEFAULT 0,
+    accepted_by INTEGER,
+    accepted_at TEXT,
     user_agent TEXT,
     ip TEXT,
     country TEXT
@@ -381,6 +557,7 @@ $alertsitesFile = __DIR__ . '/alertsites';
 $blocklistFile = __DIR__ . '/clickfixlist';
 $allowlistFile = __DIR__ . '/clickfixallowlist';
 $reportLogEntries = [];
+$reportLogStructured = [];
 $debugLogEntries = [];
 $reportLogCountries = [];
 $flashErrors = [];
@@ -474,6 +651,41 @@ function loadLogCountries(string $path, int $limit = 200): array
     return $counts;
 }
 
+function loadStructuredLogEntries(string $path, int $limit = 50): array
+{
+    if (!is_readable($path)) {
+        return [];
+    }
+    $lines = file($path, FILE_IGNORE_NEW_LINES) ?: [];
+    if ($limit > 0) {
+        $lines = array_slice($lines, -$limit);
+    }
+    $entries = [];
+    foreach ($lines as $line) {
+        $decoded = json_decode($line, true);
+        if (!is_array($decoded)) {
+            continue;
+        }
+        $timestampRaw = $decoded['timestamp'] ?? null;
+        $timestamp = '';
+        if (is_numeric($timestampRaw)) {
+            $timestamp = gmdate('Y-m-d H:i:s', (int) ((int) $timestampRaw / 1000));
+        } elseif (!empty($decoded['received_at'])) {
+            $timestamp = (string) $decoded['received_at'];
+        }
+        $entries[] = [
+            'received_at' => $timestamp !== '' ? $timestamp : (string) ($decoded['received_at'] ?? ''),
+            'url' => (string) ($decoded['url'] ?? ''),
+            'hostname' => (string) ($decoded['hostname'] ?? ''),
+            'message' => (string) ($decoded['message'] ?? ''),
+            'detected_content' => (string) ($decoded['detected_content'] ?? ''),
+            'blocked' => !empty($decoded['blocked']),
+            'country' => (string) ($decoded['country'] ?? '')
+        ];
+    }
+    return array_reverse($entries);
+}
+
 function ensureAdminTables(PDO $pdo): void
 {
     $statements = [
@@ -537,6 +749,21 @@ function ensureAdminTables(PDO $pdo): void
     }
     if (!isset($existing['status'])) {
         $pdo->exec('ALTER TABLE appeals ADD COLUMN status TEXT');
+    }
+
+    $columns = $pdo->query('PRAGMA table_info(reports)')->fetchAll(PDO::FETCH_ASSOC);
+    $existing = [];
+    foreach ($columns as $column) {
+        $existing[(string) ($column['name'] ?? '')] = true;
+    }
+    if (!isset($existing['accepted'])) {
+        $pdo->exec('ALTER TABLE reports ADD COLUMN accepted INTEGER DEFAULT 0');
+    }
+    if (!isset($existing['accepted_by'])) {
+        $pdo->exec('ALTER TABLE reports ADD COLUMN accepted_by INTEGER');
+    }
+    if (!isset($existing['accepted_at'])) {
+        $pdo->exec('ALTER TABLE reports ADD COLUMN accepted_at TEXT');
     }
 }
 
@@ -661,8 +888,22 @@ if (!isset($_SESSION['csrf_token'])) {
 $alertSites = loadListFile($alertsitesFile);
 $stats['alert_sites'] = $alertSites;
 $reportLogEntries = loadLogEntries(__DIR__ . '/clickfix-report.log', 60);
+$reportLogStructured = loadStructuredLogEntries(__DIR__ . '/clickfix-report.log', 40);
 $debugLogEntries = loadLogEntries(__DIR__ . '/clickfix-debug.log', 60);
 $reportLogCountries = loadLogCountries(__DIR__ . '/clickfix-report.log', 200);
+
+$intelCache = loadIntelCache($intelCachePath);
+$intelUpdatedAt = (string) ($intelCache['updated_at'] ?? '');
+$intelEntries = is_array($intelCache['entries'] ?? null) ? $intelCache['entries'] : [];
+$shouldRefreshIntel = false;
+if ($intelUpdatedAt === '') {
+    $shouldRefreshIntel = true;
+} else {
+    $updatedTimestamp = strtotime($intelUpdatedAt);
+    if ($updatedTimestamp === false || (time() - $updatedTimestamp) > $intelTtlSeconds) {
+        $shouldRefreshIntel = true;
+    }
+}
 
 ensureDatabase($dbPath, $schemaPath, $defaultSchemaSql);
 
@@ -875,8 +1116,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $statement->execute([':status' => 'resolved', ':id' => $appealId]);
                 $flashNotices[] = t($translations, $currentLanguage, 'flash_appeal_updated');
             }
+        } elseif ($action === 'appeal_decision' && $pdo instanceof PDO) {
+            $isAdmin = $currentUser && ($currentUser['role'] ?? '') === 'admin';
+            $appealId = (int) ($_POST['appeal_id'] ?? 0);
+            $decision = (string) ($_POST['decision'] ?? '');
+            if (!$isAdmin) {
+                $flashErrors[] = t($translations, $currentLanguage, 'flash_admin_required');
+            } else {
+                $newStatus = $decision === 'approve' ? 'approved' : 'rejected';
+                $statement = $pdo->prepare('UPDATE appeals SET status = :status WHERE id = :id');
+                $statement->execute([':status' => $newStatus, ':id' => $appealId]);
+                $flashNotices[] = $decision === 'approve'
+                    ? t($translations, $currentLanguage, 'flash_appeal_approved')
+                    : t($translations, $currentLanguage, 'flash_appeal_rejected');
+            }
+        } elseif ($action === 'accept_detection' && $pdo instanceof PDO) {
+            $isAdmin = $currentUser && ($currentUser['role'] ?? '') === 'admin';
+            $detectionId = (int) ($_POST['detection_id'] ?? 0);
+            if (!$isAdmin) {
+                $flashErrors[] = t($translations, $currentLanguage, 'flash_admin_required');
+            } else {
+                $statement = $pdo->prepare(
+                    'UPDATE reports
+                     SET accepted = 1, accepted_by = :user_id, accepted_at = :accepted_at
+                     WHERE id = :id'
+                );
+                $statement->execute([
+                    ':user_id' => (int) ($currentUser['id'] ?? 0),
+                    ':accepted_at' => gmdate('c'),
+                    ':id' => $detectionId
+                ]);
+                $flashNotices[] = t($translations, $currentLanguage, 'flash_detection_accepted');
+            }
+        } elseif ($action === 'clear_unaccepted' && $pdo instanceof PDO) {
+            $isAdmin = $currentUser && ($currentUser['role'] ?? '') === 'admin';
+            if (!$isAdmin) {
+                $flashErrors[] = t($translations, $currentLanguage, 'flash_admin_required');
+            } else {
+                $statement = $pdo->prepare('DELETE FROM reports WHERE accepted IS NULL OR accepted = 0');
+                $ok = $statement->execute();
+                if ($ok) {
+                    $flashNotices[] = t($translations, $currentLanguage, 'flash_detection_cleared');
+                } else {
+                    $flashErrors[] = t($translations, $currentLanguage, 'flash_detection_clear_failed');
+                }
+            }
         }
     }
+}
+
+if ($isAdmin && isset($_GET['refresh_intel'])) {
+    $shouldRefreshIntel = true;
+}
+if ($shouldRefreshIntel) {
+    $intelEntries = fetchIntelSources($intelSources);
+    $intelUpdatedAt = gmdate('c');
+    saveIntelCache($intelCachePath, [
+        'updated_at' => $intelUpdatedAt,
+        'entries' => $intelEntries
+    ]);
 }
 
 if (is_readable($dbPath)) {
@@ -912,17 +1210,17 @@ if (is_readable($dbPath)) {
         }
         try {
             $reportRows = $pdo->query(
-                'SELECT received_at, url, hostname, message, detected_content, full_context, signals_json, blocked, country
-                 FROM reports
-                 ORDER BY received_at DESC
-                 LIMIT 200'
+            'SELECT id, received_at, url, hostname, message, detected_content, full_context, signals_json, blocked, accepted, accepted_at, country
+             FROM reports
+             ORDER BY received_at DESC
+             LIMIT 200'
             )->fetchAll(PDO::FETCH_ASSOC);
         } catch (Throwable $exception) {
             $reportRows = $pdo->query(
-                'SELECT received_at, url, hostname, message, detected_content, signals_json, country
-                 FROM reports
-                 ORDER BY received_at DESC
-                 LIMIT 200'
+            'SELECT id, received_at, url, hostname, message, detected_content, signals_json, country
+             FROM reports
+             ORDER BY received_at DESC
+             LIMIT 200'
             )->fetchAll(PDO::FETCH_ASSOC);
         }
 
@@ -969,6 +1267,7 @@ if (is_readable($dbPath)) {
             }
 
             $recentDetections[] = [
+                'id' => (int) ($entry['id'] ?? 0),
                 'hostname' => $hostname !== '' ? $hostname : t($translations, $currentLanguage, 'no_domain'),
                 'url' => (string) ($entry['url'] ?? ''),
                 'timestamp' => (string) ($entry['received_at'] ?? ''),
@@ -976,6 +1275,8 @@ if (is_readable($dbPath)) {
                 'detected' => $detected,
                 'full_context' => trim((string) ($entry['full_context'] ?? '')),
                 'blocked' => (bool) ($entry['blocked'] ?? false),
+                'accepted' => (bool) ($entry['accepted'] ?? false),
+                'accepted_at' => (string) ($entry['accepted_at'] ?? ''),
                 'signals' => $signalList
             ];
         }
@@ -984,6 +1285,14 @@ if (is_readable($dbPath)) {
     }
     $recentDetections = array_slice($recentDetections, 0, 50);
     $stats['recent_count'] = count($recentDetections);
+}
+
+if ($stats['last_update'] === null) {
+    if (!empty($reportLogStructured)) {
+        $stats['last_update'] = $reportLogStructured[0]['received_at'] ?? null;
+    } elseif (is_readable(__DIR__ . '/clickfix-report.log')) {
+        $stats['last_update'] = gmdate('c', (int) filemtime(__DIR__ . '/clickfix-report.log'));
+    }
 }
 
 $blockRate = 0.0;
@@ -1238,6 +1547,73 @@ $chartLabels = [
         font-size: 15px;
         color: var(--text);
       }
+      .table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+      th {
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .intel-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+      }
+      .intel-card {
+        border-radius: 16px;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        background: rgba(255, 255, 255, 0.82);
+        backdrop-filter: blur(10px);
+        padding: 16px;
+        box-shadow: 0 12px 30px -20px rgba(15, 23, 42, 0.45);
+        display: grid;
+        gap: 8px;
+      }
+      .intel-title {
+        font-weight: 700;
+        font-size: 14px;
+      }
+      .intel-meta {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .intel-highlights {
+        margin: 8px 0 0;
+        padding-left: 18px;
+        color: var(--text);
+        font-size: 12px;
+      }
+      .intel-highlights li {
+        border-bottom: none;
+        padding: 2px 0;
+      }
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        display: inline-block;
+        margin-right: 6px;
+      }
+      .status-dot.ok {
+        background: #22c55e;
+      }
+      .status-dot.error {
+        background: #ef4444;
+      }
       .chip-list {
         display: flex;
         flex-wrap: wrap;
@@ -1423,6 +1799,16 @@ $chartLabels = [
         background: #dcfce7;
         color: #166534;
       }
+      .button-approve {
+        background: #22c55e;
+        color: #fff;
+        border: none;
+      }
+      .button-reject {
+        background: #ef4444;
+        color: #fff;
+        border: none;
+      }
       .role-badge {
         display: inline-flex;
         align-items: center;
@@ -1498,6 +1884,10 @@ $chartLabels = [
                 : ($extensionStatus
                     ? t($translations, $currentLanguage, 'extension_enabled')
                     : t($translations, $currentLanguage, 'extension_disabled'));
+            if ($extensionStatus === null && $stats['recent_count'] > 0) {
+                $statusClass = 'enabled';
+                $statusLabel = t($translations, $currentLanguage, 'extension_status_activity');
+            }
           ?>
           <span class="status-pill <?= htmlspecialchars($statusClass, ENT_QUOTES, 'UTF-8'); ?>">
             <?= htmlspecialchars($statusLabel, ENT_QUOTES, 'UTF-8'); ?>
@@ -1812,7 +2202,70 @@ $chartLabels = [
           </section>
 
           <section class="card" style="margin-top: 24px;">
-            <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'recent_detections'), ENT_QUOTES, 'UTF-8'); ?></h2>
+            <div class="section-title">
+              <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'intel_section'), ENT_QUOTES, 'UTF-8'); ?></h2>
+              <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'intel_subtitle'), ENT_QUOTES, 'UTF-8'); ?></span>
+              <?php if ($isAdmin): ?>
+                <form method="get" class="form-actions">
+                  <input type="hidden" name="refresh_intel" value="1" />
+                  <input type="hidden" name="lang" value="<?= htmlspecialchars($currentLanguage, ENT_QUOTES, 'UTF-8'); ?>" />
+                  <button class="button-secondary" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'intel_refresh'), ENT_QUOTES, 'UTF-8'); ?></button>
+                </form>
+              <?php endif; ?>
+            </div>
+            <div class="intel-grid">
+              <?php foreach ($intelEntries as $entry): ?>
+                <?php
+                  $status = (string) ($entry['status'] ?? 'error');
+                  $statusLabel = $status === 'ok'
+                      ? t($translations, $currentLanguage, 'intel_status_ok')
+                      : t($translations, $currentLanguage, 'intel_status_error');
+                ?>
+                <div class="intel-card">
+                  <div class="intel-title"><?= htmlspecialchars((string) ($entry['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                  <div class="muted"><?= htmlspecialchars((string) ($entry['title'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                  <?php if (!empty($entry['description'])): ?>
+                    <div class="intel-meta"><?= htmlspecialchars((string) $entry['description'], ENT_QUOTES, 'UTF-8'); ?></div>
+                  <?php endif; ?>
+                  <?php if (!empty($entry['highlights']) && is_array($entry['highlights'])): ?>
+                    <div class="intel-meta"><?= htmlspecialchars(t($translations, $currentLanguage, 'intel_highlights'), ENT_QUOTES, 'UTF-8'); ?></div>
+                    <ul class="intel-highlights">
+                      <?php foreach (array_slice($entry['highlights'], 0, 6) as $highlight): ?>
+                        <li><?= htmlspecialchars((string) $highlight, ENT_QUOTES, 'UTF-8'); ?></li>
+                      <?php endforeach; ?>
+                    </ul>
+                  <?php endif; ?>
+                  <a href="<?= htmlspecialchars((string) ($entry['url'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener">
+                    <?= htmlspecialchars((string) ($entry['url'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                  </a>
+                  <div class="intel-meta">
+                    <span class="status-dot <?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>"></span>
+                    <?= htmlspecialchars(t($translations, $currentLanguage, 'intel_status'), ENT_QUOTES, 'UTF-8'); ?>:
+                    <?= htmlspecialchars($statusLabel, ENT_QUOTES, 'UTF-8'); ?>
+                  </div>
+                  <div class="intel-meta">
+                    <?= htmlspecialchars(t($translations, $currentLanguage, 'intel_last_fetch'), ENT_QUOTES, 'UTF-8'); ?>:
+                    <?= htmlspecialchars((string) ($entry['fetched_at'] ?? $intelUpdatedAt), ENT_QUOTES, 'UTF-8'); ?>
+                  </div>
+                </div>
+              <?php endforeach; ?>
+            </div>
+          </section>
+
+          <section class="card" style="margin-top: 24px;">
+            <div class="section-title">
+              <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'recent_detections'), ENT_QUOTES, 'UTF-8'); ?></h2>
+              <?php if ($isAdmin): ?>
+                <form method="post" class="form-actions">
+                  <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                  <input type="hidden" name="action" value="clear_unaccepted" />
+                  <button class="button-secondary" type="submit" onclick="return confirm('<?= htmlspecialchars(t($translations, $currentLanguage, 'confirm_clear'), ENT_QUOTES, 'UTF-8'); ?>');">
+                    <?= htmlspecialchars(t($translations, $currentLanguage, 'clear_unaccepted'), ENT_QUOTES, 'UTF-8'); ?>
+                  </button>
+                  <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'clear_unaccepted_help'), ENT_QUOTES, 'UTF-8'); ?></span>
+                </form>
+              <?php endif; ?>
+            </div>
             <?php if (empty($recentDetections)): ?>
               <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_detections'), ENT_QUOTES, 'UTF-8'); ?></div>
             <?php else: ?>
@@ -1822,6 +2275,9 @@ $chartLabels = [
                     <?= htmlspecialchars($entry['hostname'], ENT_QUOTES, 'UTF-8'); ?>
                     <?php if ($entry['blocked']): ?>
                       <span class="badge badge-blocked"><?= htmlspecialchars(t($translations, $currentLanguage, 'blocked'), ENT_QUOTES, 'UTF-8'); ?></span>
+                    <?php endif; ?>
+                    <?php if ($entry['accepted']): ?>
+                      <span class="badge"><?= htmlspecialchars(t($translations, $currentLanguage, 'accepted'), ENT_QUOTES, 'UTF-8'); ?></span>
                     <?php endif; ?>
                     <span class="report-meta">
                       <?= htmlspecialchars($entry['timestamp'], ENT_QUOTES, 'UTF-8'); ?>
@@ -1865,6 +2321,14 @@ $chartLabels = [
                       <pre><?= htmlspecialchars($entry['full_context'], ENT_QUOTES, 'UTF-8'); ?></pre>
                     </div>
                   <?php endif; ?>
+                  <?php if ($isAdmin && !$entry['accepted']): ?>
+                    <form method="post" class="form-actions" style="margin-top: 12px;">
+                      <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                      <input type="hidden" name="action" value="accept_detection" />
+                      <input type="hidden" name="detection_id" value="<?= (int) $entry['id']; ?>" />
+                      <button class="button-primary" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'mark_accepted'), ENT_QUOTES, 'UTF-8'); ?></button>
+                    </form>
+                  <?php endif; ?>
                 </details>
               <?php endforeach; ?>
             <?php endif; ?>
@@ -1898,12 +2362,18 @@ $chartLabels = [
                       <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'status'), ENT_QUOTES, 'UTF-8'); ?></strong>
                       <div class="muted"><?= htmlspecialchars((string) ($appeal['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
                     </div>
-                    <?php if (($appeal['status'] ?? '') !== 'resolved'): ?>
+                    <?php if (!in_array((string) ($appeal['status'] ?? ''), ['approved', 'rejected'], true)): ?>
                       <form method="post" class="form-actions" style="margin-top: 12px;">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
-                        <input type="hidden" name="action" value="appeal_resolve" />
+                        <input type="hidden" name="action" value="appeal_decision" />
                         <input type="hidden" name="appeal_id" value="<?= (int) ($appeal['id'] ?? 0); ?>" />
-                        <button class="button-secondary" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'mark_resolved'), ENT_QUOTES, 'UTF-8'); ?></button>
+                        <button class="button-primary button-approve" type="submit" name="decision" value="approve">
+                          <?= htmlspecialchars(t($translations, $currentLanguage, 'approve'), ENT_QUOTES, 'UTF-8'); ?>
+                        </button>
+                        <button class="button-secondary button-reject" type="submit" name="decision" value="reject">
+                          <?= htmlspecialchars(t($translations, $currentLanguage, 'reject_appeal'), ENT_QUOTES, 'UTF-8'); ?>
+                        </button>
+                        <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'appeal_actions'), ENT_QUOTES, 'UTF-8'); ?></span>
                       </form>
                     <?php endif; ?>
                   </details>
@@ -1921,12 +2391,43 @@ $chartLabels = [
                     <h3>clickfix-report.log</h3>
                     <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'latest_entries'), ENT_QUOTES, 'UTF-8'); ?></span>
                   </div>
-                  <?php if (empty($reportLogEntries)): ?>
-                    <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_logs'), ENT_QUOTES, 'UTF-8'); ?></div>
+                  <?php if (empty($reportLogStructured)): ?>
+                    <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'log_table_empty'), ENT_QUOTES, 'UTF-8'); ?></div>
                   <?php else: ?>
-                    <?php foreach ($reportLogEntries as $logLine): ?>
-                      <pre><?= htmlspecialchars($logLine, ENT_QUOTES, 'UTF-8'); ?></pre>
-                    <?php endforeach; ?>
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_time'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_url'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_host'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_message'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_detected'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_blocked'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_country'), ENT_QUOTES, 'UTF-8'); ?></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <?php foreach ($reportLogStructured as $entry): ?>
+                            <tr>
+                              <td><?= htmlspecialchars($entry['received_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                              <td>
+                                <?php if ($entry['url'] !== ''): ?>
+                                  <a href="<?= htmlspecialchars($entry['url'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener">
+                                    <?= htmlspecialchars($entry['url'], ENT_QUOTES, 'UTF-8'); ?>
+                                  </a>
+                                <?php endif; ?>
+                              </td>
+                              <td><?= htmlspecialchars($entry['hostname'], ENT_QUOTES, 'UTF-8'); ?></td>
+                              <td><?= htmlspecialchars($entry['message'], ENT_QUOTES, 'UTF-8'); ?></td>
+                              <td><?= htmlspecialchars($entry['detected_content'], ENT_QUOTES, 'UTF-8'); ?></td>
+                              <td><?= $entry['blocked'] ? htmlspecialchars(t($translations, $currentLanguage, 'blocked'), ENT_QUOTES, 'UTF-8') : ''; ?></td>
+                              <td><?= htmlspecialchars($entry['country'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            </tr>
+                          <?php endforeach; ?>
+                        </tbody>
+                      </table>
+                    </div>
                   <?php endif; ?>
                 </div>
                 <div class="log-entry">
