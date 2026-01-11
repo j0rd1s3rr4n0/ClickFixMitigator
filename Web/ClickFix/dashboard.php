@@ -20,6 +20,33 @@ if (is_readable($preferredSchema)) {
     }
 }
 
+$defaultSchemaSql = <<<SQL
+CREATE TABLE IF NOT EXISTS reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    received_at TEXT NOT NULL,
+    url TEXT,
+    hostname TEXT,
+    message TEXT,
+    detected_content TEXT,
+    full_context TEXT,
+    signals_json TEXT,
+    blocked INTEGER DEFAULT 0,
+    user_agent TEXT,
+    ip TEXT,
+    country TEXT
+);
+
+CREATE TABLE IF NOT EXISTS stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    received_at TEXT NOT NULL,
+    enabled INTEGER,
+    alert_count INTEGER,
+    block_count INTEGER,
+    manual_sites_json TEXT,
+    country TEXT
+);
+SQL;
+
 $stats = [
     'total_alerts' => 0,
     'total_blocks' => 0,
@@ -27,10 +54,15 @@ $stats = [
     'countries' => [],
     'last_update' => null,
     'extension_enabled' => null,
-    'recent_count' => 0
+    'recent_count' => 0,
+    'alert_sites' => []
 ];
 
 $recentDetections = [];
+$alertSites = [];
+$alertsitesFile = __DIR__ . '/alertsites';
+$reportLogEntries = [];
+$debugLogEntries = [];
 $chartData = [
     'daily' => [],
     'hourly' => array_fill(0, 24, 0),
@@ -54,18 +86,76 @@ $signalLabels = [
     'evasionHint' => 'Evasión'
 ];
 
-if (!file_exists($dbPath) && $schemaPath !== null) {
+function loadListFile(string $path): array
+{
+    if (!is_readable($path)) {
+        return [];
+    }
+    $lines = file($path, FILE_IGNORE_NEW_LINES) ?: [];
+    $items = [];
+    foreach ($lines as $line) {
+        $line = trim((string) $line);
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
+        }
+        $items[] = $line;
+    }
+    return array_values(array_unique($items));
+}
+
+function loadLogEntries(string $path, int $limit = 50): array
+{
+    if (!is_readable($path)) {
+        return [];
+    }
+    $lines = file($path, FILE_IGNORE_NEW_LINES) ?: [];
+    if ($limit > 0) {
+        $lines = array_slice($lines, -$limit);
+    }
+    $entries = [];
+    foreach ($lines as $line) {
+        $decoded = json_decode($line, true);
+        if (is_array($decoded)) {
+            unset($decoded['ip']);
+            $entries[] = json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            continue;
+        }
+        $entries[] = $line;
+    }
+    return array_reverse($entries);
+}
+
+function ensureDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFallback): void
+{
+    if (file_exists($dbPath)) {
+        return;
+    }
+    $dataDir = dirname($dbPath);
+    if (!is_dir($dataDir)) {
+        @mkdir($dataDir, 0775, true);
+    }
     try {
         $pdo = new PDO('sqlite:' . $dbPath);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $schemaSql = file_get_contents($schemaPath);
-        if ($schemaSql !== false) {
-            $pdo->exec($schemaSql);
+        $schemaSql = null;
+        if ($schemaPath !== null) {
+            $schemaSql = file_get_contents($schemaPath);
         }
+        if (!is_string($schemaSql) || $schemaSql === '') {
+            $schemaSql = $schemaSqlFallback;
+        }
+        $pdo->exec($schemaSql);
     } catch (Throwable $exception) {
-        $pdo = null;
+        return;
     }
 }
+
+$alertSites = loadListFile($alertsitesFile);
+$stats['alert_sites'] = $alertSites;
+$reportLogEntries = loadLogEntries(__DIR__ . '/clickfix-report.log', 60);
+$debugLogEntries = loadLogEntries(__DIR__ . '/clickfix-debug.log', 60);
+
+ensureDatabase($dbPath, $schemaPath, $defaultSchemaSql);
 
 if (is_readable($dbPath)) {
     try {
@@ -184,7 +274,7 @@ foreach ($chartData['signals'] as $signal => $count) {
     $signalChartValues[] = $count;
 }
 
-$chartPayload = [
+  $chartPayload = [
     'daily' => [
         'labels' => array_keys($chartData['daily']),
         'values' => array_values($chartData['daily'])
@@ -428,6 +518,20 @@ $chartPayload = [
       .context-panel pre {
         background: #111827;
       }
+      .log-grid {
+        display: grid;
+        gap: 16px;
+      }
+      .log-entry {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px;
+        background: #fff;
+      }
+      .log-entry pre {
+        margin: 0;
+        font-size: 12px;
+      }
       @media (max-width: 960px) {
         .layout {
           grid-template-columns: 1fr;
@@ -483,6 +587,11 @@ $chartPayload = [
           <span class="stat-label">Alertas recientes</span>
           <div class="stat-value"><?= (int) $stats['recent_count']; ?></div>
           <span class="stat-footnote">Últimos eventos visibles</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Sitios alertados</span>
+          <div class="stat-value"><?= (int) count($stats['alert_sites']); ?></div>
+          <span class="stat-footnote">Pendientes de revisión</span>
         </div>
       </section>
 
@@ -571,6 +680,38 @@ $chartPayload = [
               <?php endforeach; ?>
             <?php endif; ?>
           </section>
+
+          <section class="card" style="margin-top: 24px;">
+            <h2>Logs recientes</h2>
+            <div class="log-grid">
+              <div class="log-entry">
+                <div class="section-title">
+                  <h3>clickfix-report.log</h3>
+                  <span class="muted">Últimas entradas</span>
+                </div>
+                <?php if (empty($reportLogEntries)): ?>
+                  <div class="muted">Sin registros.</div>
+                <?php else: ?>
+                  <?php foreach ($reportLogEntries as $logLine): ?>
+                    <pre><?= htmlspecialchars($logLine, ENT_QUOTES, 'UTF-8'); ?></pre>
+                  <?php endforeach; ?>
+                <?php endif; ?>
+              </div>
+              <div class="log-entry">
+                <div class="section-title">
+                  <h3>clickfix-debug.log</h3>
+                  <span class="muted">Últimas entradas</span>
+                </div>
+                <?php if (empty($debugLogEntries)): ?>
+                  <div class="muted">Sin registros.</div>
+                <?php else: ?>
+                  <?php foreach ($debugLogEntries as $logLine): ?>
+                    <pre><?= htmlspecialchars($logLine, ENT_QUOTES, 'UTF-8'); ?></pre>
+                  <?php endforeach; ?>
+                <?php endif; ?>
+              </div>
+            </div>
+          </section>
         </div>
 
         <aside>
@@ -598,6 +739,21 @@ $chartPayload = [
                 <?php foreach ($stats['manual_sites'] as $site): ?>
                   <span class="chip"><?= htmlspecialchars($site, ENT_QUOTES, 'UTF-8'); ?></span>
                 <?php endforeach; ?>
+              </div>
+            <?php endif; ?>
+          </section>
+
+          <section class="card" style="margin-top: 20px;">
+            <h2>Sitios alertados</h2>
+            <?php if (empty($stats['alert_sites'])): ?>
+              <div class="muted">Sin sitios.</div>
+            <?php else: ?>
+              <div class="list-block">
+                <ul>
+                  <?php foreach ($stats['alert_sites'] as $site): ?>
+                    <li><?= htmlspecialchars($site, ENT_QUOTES, 'UTF-8'); ?></li>
+                  <?php endforeach; ?>
+                </ul>
               </div>
             <?php endif; ?>
           </section>
