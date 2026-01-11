@@ -46,6 +46,43 @@ CREATE TABLE IF NOT EXISTS stats (
     manual_sites_json TEXT,
     country TEXT
 );
+
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS appeals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    contact TEXT,
+    status TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS list_actions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    user_id INTEGER,
+    action TEXT NOT NULL,
+    list_type TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    reason TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS list_suggestions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    user_id INTEGER,
+    list_type TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    status TEXT NOT NULL
+);
 SQL;
 
 $logFile = __DIR__ . '/clickfix-report.log';
@@ -99,6 +136,84 @@ function ensureReportsSchema(PDO $pdo, string $debugFile): void
     }
 }
 
+function ensureAdminSchema(PDO $pdo, string $debugFile): void
+{
+    $statements = [
+        'CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL
+        )',
+        'CREATE TABLE IF NOT EXISTS appeals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            domain TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            contact TEXT,
+            status TEXT NOT NULL
+        )',
+        'CREATE TABLE IF NOT EXISTS list_actions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            user_id INTEGER,
+            action TEXT NOT NULL,
+            list_type TEXT NOT NULL,
+            domain TEXT NOT NULL,
+            reason TEXT NOT NULL
+        )',
+        'CREATE TABLE IF NOT EXISTS list_suggestions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            user_id INTEGER,
+            list_type TEXT NOT NULL,
+            domain TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            status TEXT NOT NULL
+        )'
+    ];
+    foreach ($statements as $statement) {
+        try {
+            $pdo->exec($statement);
+        } catch (Throwable $exception) {
+            writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'statement' => $statement]);
+        }
+    }
+
+    try {
+        $columns = $pdo->query('PRAGMA table_info(users)')->fetchAll(PDO::FETCH_ASSOC);
+        $existing = [];
+        foreach ($columns as $column) {
+            $existing[(string) ($column['name'] ?? '')] = true;
+        }
+        if (!isset($existing['created_at'])) {
+            $pdo->exec('ALTER TABLE users ADD COLUMN created_at TEXT');
+        }
+        if (!isset($existing['role'])) {
+            $pdo->exec('ALTER TABLE users ADD COLUMN role TEXT');
+        }
+    } catch (Throwable $exception) {
+        writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'statement' => 'ALTER users']);
+    }
+
+    try {
+        $columns = $pdo->query('PRAGMA table_info(appeals)')->fetchAll(PDO::FETCH_ASSOC);
+        $existing = [];
+        foreach ($columns as $column) {
+            $existing[(string) ($column['name'] ?? '')] = true;
+        }
+        if (!isset($existing['contact'])) {
+            $pdo->exec('ALTER TABLE appeals ADD COLUMN contact TEXT');
+        }
+        if (!isset($existing['status'])) {
+            $pdo->exec('ALTER TABLE appeals ADD COLUMN status TEXT');
+        }
+    } catch (Throwable $exception) {
+        writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'statement' => 'ALTER appeals']);
+    }
+}
+
 function openDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFallback, string $debugFile): ?PDO
 {
     $dataDir = dirname($dbPath);
@@ -137,6 +252,7 @@ function openDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFall
     }
 
     ensureReportsSchema($pdo, $debugFile);
+    ensureAdminSchema($pdo, $debugFile);
     return $pdo;
 }
 
@@ -245,7 +361,9 @@ if ($type === 'stats') {
         'enabled' => filter_var($statsData['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false,
         'alert_count' => (int) ($statsData['alertCount'] ?? 0),
         'block_count' => (int) ($statsData['blockCount'] ?? 0),
-        'manual_sites' => []
+        'manual_sites' => [],
+        'alert_sites' => [],
+        'country' => ''
     ];
     $manualSites = $statsData['manualSites'] ?? [];
     if (is_array($manualSites)) {
@@ -255,6 +373,19 @@ if ($type === 'stats') {
                 $normalizedStats['manual_sites'][] = $site;
             }
         }
+    }
+    $alertSites = $statsData['alertSites'] ?? [];
+    if (is_array($alertSites)) {
+        foreach (array_slice($alertSites, 0, 400) as $site) {
+            $site = substr(trim((string) $site), 0, 255);
+            if ($site !== '' && preg_match('/^[a-z0-9.-]+$/i', $site)) {
+                $normalizedStats['alert_sites'][] = $site;
+            }
+        }
+    }
+    $countryInput = strtoupper(substr(trim((string) ($statsData['country'] ?? '')), 0, 2));
+    if ($countryInput !== '' && preg_match('/^[A-Z]{2}$/', $countryInput)) {
+        $normalizedStats['country'] = $countryInput;
     }
 }
 
@@ -286,7 +417,7 @@ $entry = [
     'stats' => $normalizedStats,
     'user_agent' => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512),
     'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
-    'country' => $country
+    'country' => $type === 'stats' && $normalizedStats['country'] !== '' ? $normalizedStats['country'] : $country
 ];
 $logLine = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;
 
@@ -336,7 +467,7 @@ if (file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX) === false) {
     respondWithError(500, 'Failed to write report', $debugFile, ['log_file' => $logFile]);
 }
 
-if (($manualReport || $blocked) && $hostname !== '') {
+if ($manualReport && $hostname !== '') {
     $listFile = __DIR__ . '/clickfixlist';
     $existing = [];
     if (is_readable($listFile)) {
@@ -358,6 +489,35 @@ if (($manualReport || $blocked) && $hostname !== '') {
         if (file_put_contents($listFile, $lineToAdd, FILE_APPEND | LOCK_EX) === false) {
             respondWithError(500, 'Failed to update blocklist', $debugFile, ['blocklist' => $listFile]);
         }
+    }
+}
+
+if ($type === 'stats' && !empty($normalizedStats['alert_sites'])) {
+    $listFile = __DIR__ . '/alertsites';
+    $existing = [];
+    if (is_readable($listFile)) {
+        $lines = file($listFile, FILE_IGNORE_NEW_LINES) ?: [];
+        foreach ($lines as $line) {
+            $line = trim((string) $line);
+            if ($line === '' || str_starts_with($line, '#')) {
+                continue;
+            }
+            $existing[strtolower($line)] = true;
+        }
+    }
+    foreach ($normalizedStats['alert_sites'] as $site) {
+        $normalized = strtolower($site);
+        if (isset($existing[$normalized])) {
+            continue;
+        }
+        if (!is_writable($listFile) && !is_writable(__DIR__)) {
+            respondWithError(500, 'Alertsites list is not writable', $debugFile, ['alertsites' => $listFile]);
+        }
+        $lineToAdd = $site . PHP_EOL;
+        if (file_put_contents($listFile, $lineToAdd, FILE_APPEND | LOCK_EX) === false) {
+            respondWithError(500, 'Failed to update alertsites list', $debugFile, ['alertsites' => $listFile]);
+        }
+        $existing[$normalized] = true;
     }
 }
 

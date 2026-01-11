@@ -2,7 +2,10 @@ const DEFAULT_SETTINGS = {
   enabled: true,
   whitelist: [],
   history: [],
-  blocklistSources: []
+  blocklistSources: [],
+  allowlistSources: [],
+  saveClipboardBackup: true,
+  sendCountry: true
 };
 
 const toggleEnabled = document.getElementById("toggle-enabled");
@@ -12,6 +15,11 @@ const whitelistList = document.getElementById("whitelist-list");
 const blocklistInput = document.getElementById("blocklist-input");
 const addBlocklistButton = document.getElementById("add-blocklist");
 const blocklistList = document.getElementById("blocklist-list");
+const toggleClipboardBackup = document.getElementById("toggle-clipboard-backup");
+const toggleSendCountry = document.getElementById("toggle-send-country");
+const allowlistInput = document.getElementById("allowlist-input");
+const addAllowlistButton = document.getElementById("add-allowlist");
+const allowlistList = document.getElementById("allowlist-list");
 const historyContainer = document.getElementById("history");
 const clearHistoryButton = document.getElementById("clear-history");
 const languageSelect = document.getElementById("language-select");
@@ -89,7 +97,10 @@ async function loadSettings() {
     enabled: settings.enabled ?? true,
     whitelist: settings.whitelist ?? [],
     history: settings.history ?? [],
-    blocklistSources: settings.blocklistSources ?? []
+    blocklistSources: settings.blocklistSources ?? [],
+    allowlistSources: settings.allowlistSources ?? [],
+    saveClipboardBackup: settings.saveClipboardBackup ?? true,
+    sendCountry: settings.sendCountry ?? true
   };
 }
 
@@ -163,6 +174,32 @@ function renderBlocklistSources(sources) {
   });
 }
 
+function renderAllowlistSources(sources) {
+  allowlistList.innerHTML = "";
+  if (!sources.length) {
+    const item = document.createElement("li");
+    item.textContent = t("optionsAllowlistEmpty");
+    item.classList.add("empty");
+    allowlistList.appendChild(item);
+    return;
+  }
+
+  sources.forEach((source) => {
+    const item = document.createElement("li");
+    item.textContent = source;
+    const removeButton = document.createElement("button");
+    removeButton.textContent = t("optionsRemove");
+    removeButton.addEventListener("click", async () => {
+      const settings = await loadSettings();
+      const next = settings.allowlistSources.filter((entry) => entry !== source);
+      await chrome.storage.local.set({ allowlistSources: next });
+      renderAllowlistSources(next);
+    });
+    item.appendChild(removeButton);
+    allowlistList.appendChild(item);
+  });
+}
+
 async function addBlocklistSource(source) {
   if (!source) {
     return;
@@ -172,6 +209,18 @@ async function addBlocklistSource(source) {
     const next = [...settings.blocklistSources, source].sort();
     await chrome.storage.local.set({ blocklistSources: next });
     renderBlocklistSources(next);
+  }
+}
+
+async function addAllowlistSource(source) {
+  if (!source) {
+    return;
+  }
+  const settings = await loadSettings();
+  if (!settings.allowlistSources.includes(source)) {
+    const next = [...settings.allowlistSources, source].sort();
+    await chrome.storage.local.set({ allowlistSources: next });
+    renderAllowlistSources(next);
   }
 }
 
@@ -203,6 +252,14 @@ addBlocklistButton.addEventListener("click", async () => {
   }
 });
 
+addAllowlistButton.addEventListener("click", async () => {
+  const source = allowlistInput.value.trim();
+  if (source) {
+    await addAllowlistSource(source);
+    allowlistInput.value = "";
+  }
+});
+
 clearHistoryButton.addEventListener("click", async () => {
   await chrome.storage.local.set({ history: [] });
   renderHistory([]);
@@ -212,11 +269,22 @@ toggleEnabled.addEventListener("change", async () => {
   await chrome.storage.local.set({ enabled: toggleEnabled.checked });
 });
 
+toggleClipboardBackup.addEventListener("change", async () => {
+  await chrome.storage.local.set({ saveClipboardBackup: toggleClipboardBackup.checked });
+});
+
+toggleSendCountry.addEventListener("change", async () => {
+  await chrome.storage.local.set({ sendCountry: toggleSendCountry.checked });
+});
+
 (async () => {
   await initLanguageSelector();
   const settings = await loadSettings();
   toggleEnabled.checked = settings.enabled;
+  toggleClipboardBackup.checked = settings.saveClipboardBackup;
+  toggleSendCountry.checked = settings.sendCountry;
   renderWhitelist(settings.whitelist);
   renderBlocklistSources(settings.blocklistSources);
+  renderAllowlistSources(settings.allowlistSources);
   renderHistory(settings.history);
 })();
