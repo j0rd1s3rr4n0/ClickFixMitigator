@@ -73,6 +73,16 @@ CREATE TABLE IF NOT EXISTS list_actions (
     domain TEXT NOT NULL,
     reason TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS list_suggestions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    user_id INTEGER,
+    list_type TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    status TEXT NOT NULL
+);
 SQL;
 
 $logFile = __DIR__ . '/clickfix-report.log';
@@ -152,6 +162,15 @@ function ensureAdminSchema(PDO $pdo, string $debugFile): void
             list_type TEXT NOT NULL,
             domain TEXT NOT NULL,
             reason TEXT NOT NULL
+        )',
+        'CREATE TABLE IF NOT EXISTS list_suggestions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            user_id INTEGER,
+            list_type TEXT NOT NULL,
+            domain TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            status TEXT NOT NULL
         )'
     ];
     foreach ($statements as $statement) {

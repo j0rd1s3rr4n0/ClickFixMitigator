@@ -319,14 +319,42 @@ async function triggerAlert(details) {
   const message = reasons.join(" ");
   const hostname = extractHostname(details.url);
   const timestamp = new Date(details.timestamp).toISOString();
+  const reportHostname = details.reportHostname === false ? "" : hostname;
+  const reportUrl = details.reportHostname === false ? "" : details.url;
   const allowlisted = await isAllowlisted(details.url);
   const shouldBlockPage = !details.suppressPageBlock;
 
   await saveHistory({
     message,
-    url: details.url,
-    hostname,
-    timestamp
+    url: reportUrl,
+    hostname: reportHostname || (details.reportHostname === false ? t("historyClipboardOnly") : hostname),
+    timestamp,
+    reportHostname: details.reportHostname !== false
+  });
+  reportClickfix({
+    type: "alert",
+    url: reportUrl,
+    hostname: reportHostname,
+    timestamp: details.timestamp,
+    message,
+    detectedContent: details.detectedContent || "",
+    full_context: details.fullContext || "",
+    signals: {
+      mismatch: details.mismatch,
+      commandMatch: details.commandMatch,
+      winRHint: details.winRHint,
+      winXHint: details.winXHint,
+      browserErrorHint: details.browserErrorHint,
+      fixActionHint: details.fixActionHint,
+      captchaHint: details.captchaHint,
+      consoleHint: details.consoleHint,
+      shellHint: details.shellHint,
+      pasteSequenceHint: details.pasteSequenceHint,
+      fileExplorerHint: details.fileExplorerHint,
+      copyTriggerHint: details.copyTriggerHint,
+      evasionHint: details.evasionHint
+    },
+    blocked: shouldBlockPage && !allowlisted
   });
 
   const svgIcon = [
@@ -577,6 +605,9 @@ function buildAlertSites(history) {
     return sites;
   }
   for (const entry of history) {
+    if (entry?.reportHostname === false) {
+      continue;
+    }
     const hostname = typeof entry?.hostname === "string" ? entry.hostname.trim() : "";
     if (!hostname || seen.has(hostname)) {
       continue;
@@ -749,6 +780,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const clipboardCommandWarning =
         message.eventType === "paste" &&
         (clipboardAnalysis.commandMatch || clipboardAnalysis.shellHint || clipboardAnalysis.evasionHint);
+      const selectionHasSignals =
+        selectionAnalysis.commandMatch ||
+        selectionAnalysis.shellHint ||
+        selectionAnalysis.evasionHint;
 
       const hints = lastPageHint?.hints || [];
       const snippets = lastPageHint?.snippets || [];
@@ -794,6 +829,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         (hasPageHints && mismatch);
       const clipboardWarningOnly =
         clipboardCommandWarning && !hasPageHints && !mismatch && signalScore < 2;
+      const nonClipboardSignal =
+        selectionHasSignals || mismatch || actionHint || contextHint;
+      const clipboardOnlyReport = clipboardCommandWarning && !nonClipboardSignal;
 
       if (shouldAlert) {
         const settings = await getSettings();
@@ -850,7 +888,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           fullContext: message.fullContext || "",
           tabId: sender?.tab?.id ?? null,
           suppressPageBlock: clipboardWarningOnly,
-          incrementBlockCount: !clipboardWarningOnly
+          incrementBlockCount: !clipboardWarningOnly,
+          reportHostname: !clipboardOnlyReport
         });
 
         if (blockedClipboardText && notificationId) {

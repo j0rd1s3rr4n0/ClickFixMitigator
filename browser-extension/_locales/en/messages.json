@@ -243,6 +243,9 @@
   "optionsHistoryTitle": {
     "message": "Full history"
   },
+  "historyClipboardOnly": {
+    "message": "Clipboard only"
+  },
   "optionsHistoryEmpty": {
     "message": "No recent alerts."
   },

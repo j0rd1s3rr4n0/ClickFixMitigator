@@ -74,6 +74,16 @@ CREATE TABLE IF NOT EXISTS list_actions (
     domain TEXT NOT NULL,
     reason TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS list_suggestions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    user_id INTEGER,
+    list_type TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    status TEXT NOT NULL
+);
 SQL;
 
 $stats = [
@@ -212,6 +222,15 @@ function ensureAdminTables(PDO $pdo): void
             list_type TEXT NOT NULL,
             domain TEXT NOT NULL,
             reason TEXT NOT NULL
+        )',
+        'CREATE TABLE IF NOT EXISTS list_suggestions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            user_id INTEGER,
+            list_type TEXT NOT NULL,
+            domain TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            status TEXT NOT NULL
         )'
     ];
     foreach ($statements as $statement) {
@@ -241,6 +260,27 @@ function ensureAdminTables(PDO $pdo): void
     if (!isset($existing['status'])) {
         $pdo->exec('ALTER TABLE appeals ADD COLUMN status TEXT');
     }
+}
+
+function ensureDefaultAdmin(PDO $pdo, array &$flashNotices): void
+{
+    $result = $pdo->query('SELECT COUNT(*) as total FROM users')->fetch(PDO::FETCH_ASSOC);
+    $total = (int) ($result['total'] ?? 0);
+    if ($total > 0) {
+        return;
+    }
+    $password = 'P@ssword!123#';
+    $statement = $pdo->prepare(
+        'INSERT INTO users (created_at, username, password_hash, role)
+         VALUES (:created_at, :username, :password_hash, :role)'
+    );
+    $statement->execute([
+        ':created_at' => gmdate('c'),
+        ':username' => 'admin',
+        ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
+        ':role' => 'admin'
+    ]);
+    $flashNotices[] = 'Usuario admin creado: admin / ' . $password;
 }
 
 function ensureDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFallback): void
@@ -354,6 +394,7 @@ if (is_readable($dbPath)) {
         $pdo = new PDO('sqlite:' . $dbPath);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         ensureAdminTables($pdo);
+        ensureDefaultAdmin($pdo, $flashNotices);
     } catch (Throwable $exception) {
         $pdo = null;
     }
@@ -367,6 +408,7 @@ if ($pdo instanceof PDO && isset($_SESSION['user_id'])) {
         unset($_SESSION['user_id']);
     }
 }
+$isAdmin = $currentUser && ($currentUser['role'] ?? '') === 'admin';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $csrfToken = (string) ($_POST['csrf_token'] ?? '');
@@ -464,6 +506,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $flashNotices[] = 'Lista actualizada.';
                 } else {
                     $flashErrors[] = 'No se pudo actualizar la lista.';
+                }
+            }
+        } elseif ($action === 'list_suggest' && $pdo instanceof PDO) {
+            $isAdmin = $currentUser && ($currentUser['role'] ?? '') === 'admin';
+            $domain = normalizeDomain((string) ($_POST['domain'] ?? ''));
+            $reason = trim((string) ($_POST['reason'] ?? ''));
+            $listType = (string) ($_POST['list_type'] ?? '');
+            if (!$currentUser) {
+                $flashErrors[] = 'Necesitas iniciar sesión para sugerir cambios.';
+            } elseif (!isValidDomain($domain) || $reason === '') {
+                $flashErrors[] = 'Dominio y motivo son obligatorios.';
+            } else {
+                $statement = $pdo->prepare(
+                    'INSERT INTO list_suggestions (created_at, user_id, list_type, domain, reason, status)
+                     VALUES (:created_at, :user_id, :list_type, :domain, :reason, :status)'
+                );
+                $statement->execute([
+                    ':created_at' => gmdate('c'),
+                    ':user_id' => (int) ($currentUser['id'] ?? 0),
+                    ':list_type' => $listType === 'allow' ? 'allow' : 'block',
+                    ':domain' => $domain,
+                    ':reason' => $reason,
+                    ':status' => 'pending'
+                ]);
+                $flashNotices[] = $isAdmin
+                    ? 'Sugerencia registrada. Puedes aprobarla en la sección de revisión.'
+                    : 'Sugerencia enviada. Un administrador la revisará.';
+            }
+        } elseif ($action === 'list_suggestion_update' && $pdo instanceof PDO) {
+            $isAdmin = $currentUser && ($currentUser['role'] ?? '') === 'admin';
+            $suggestionId = (int) ($_POST['suggestion_id'] ?? 0);
+            $decision = (string) ($_POST['decision'] ?? '');
+            if (!$isAdmin) {
+                $flashErrors[] = 'Se requiere un usuario administrador.';
+            } else {
+                $statement = $pdo->prepare(
+                    'SELECT id, list_type, domain, reason, status FROM list_suggestions WHERE id = :id'
+                );
+                $statement->execute([':id' => $suggestionId]);
+                $suggestion = $statement->fetch(PDO::FETCH_ASSOC);
+                if (!$suggestion || ($suggestion['status'] ?? '') !== 'pending') {
+                    $flashErrors[] = 'La sugerencia ya fue revisada.';
+                } elseif ($decision === 'approve') {
+                    $listPath = ($suggestion['list_type'] ?? '') === 'allow' ? $allowlistFile : $blocklistFile;
+                    $ok = updateListFile($listPath, (string) $suggestion['domain'], 'add');
+                    if ($ok) {
+                        $statement = $pdo->prepare(
+                            'INSERT INTO list_actions (created_at, user_id, action, list_type, domain, reason)
+                             VALUES (:created_at, :user_id, :action, :list_type, :domain, :reason)'
+                        );
+                        $statement->execute([
+                            ':created_at' => gmdate('c'),
+                            ':user_id' => (int) ($currentUser['id'] ?? 0),
+                            ':action' => 'approve',
+                            ':list_type' => (string) $suggestion['list_type'],
+                            ':domain' => (string) $suggestion['domain'],
+                            ':reason' => (string) $suggestion['reason']
+                        ]);
+                        $pdo->prepare('UPDATE list_suggestions SET status = :status WHERE id = :id')
+                            ->execute([':status' => 'approved', ':id' => $suggestionId]);
+                        $flashNotices[] = 'Sugerencia aprobada y aplicada.';
+                    } else {
+                        $flashErrors[] = 'No se pudo actualizar la lista.';
+                    }
+                } else {
+                    $pdo->prepare('UPDATE list_suggestions SET status = :status WHERE id = :id')
+                        ->execute([':status' => 'rejected', ':id' => $suggestionId]);
+                    $flashNotices[] = 'Sugerencia rechazada.';
                 }
             }
         } elseif ($action === 'appeal_resolve' && $pdo instanceof PDO) {
@@ -590,6 +700,7 @@ if (is_readable($dbPath)) {
 $blocklistItems = loadListFile($blocklistFile);
 $allowlistItems = loadListFile($allowlistFile);
 $appeals = [];
+$listSuggestions = [];
 if ($pdo instanceof PDO) {
     try {
         $appeals = $pdo->query(
@@ -601,10 +712,23 @@ if ($pdo instanceof PDO) {
     } catch (Throwable $exception) {
         $appeals = [];
     }
+    try {
+        $listSuggestions = $pdo->query(
+            'SELECT ls.id, ls.created_at, ls.domain, ls.reason, ls.list_type, ls.status, u.username
+             FROM list_suggestions ls
+             LEFT JOIN users u ON ls.user_id = u.id
+             ORDER BY ls.created_at DESC
+             LIMIT 200'
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $exception) {
+        $listSuggestions = [];
+    }
 }
 
 ksort($chartData['daily']);
-$chartData['countries'] = $reportLogCountries;
+if (empty($chartData['countries'])) {
+    $chartData['countries'] = $reportLogCountries;
+}
 arsort($chartData['signals']);
 
 $signalChartLabels = [];
@@ -929,6 +1053,40 @@ foreach ($chartData['signals'] as $signal => $count) {
         background: #dcfce7;
         color: #166534;
       }
+      .role-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        background: #e2e8f0;
+        color: #1e293b;
+      }
+      .role-badge.admin {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .role-badge.analyst {
+        background: #e0f2fe;
+        color: #0369a1;
+      }
+      .admin-panel {
+        border: 1px dashed #cbd5f5;
+        background: #f8fafc;
+      }
+      .status-pill.pending {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .status-pill.approved {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .status-pill.rejected {
+        background: #e2e8f0;
+        color: #475569;
+      }
       @media (max-width: 960px) {
         .layout {
           grid-template-columns: 1fr;
@@ -976,7 +1134,12 @@ foreach ($chartData['signals'] as $signal => $count) {
           <summary class="section-title">
             <h2>Acceso y registro</h2>
             <?php if ($currentUser): ?>
-              <span class="muted">Sesión: <?= htmlspecialchars((string) $currentUser['username'], ENT_QUOTES, 'UTF-8'); ?> (<?= htmlspecialchars((string) $currentUser['role'], ENT_QUOTES, 'UTF-8'); ?>)</span>
+              <span class="muted">
+                Sesión: <?= htmlspecialchars((string) $currentUser['username'], ENT_QUOTES, 'UTF-8'); ?>
+                <span class="role-badge <?= htmlspecialchars((string) $currentUser['role'], ENT_QUOTES, 'UTF-8'); ?>">
+                  <?= htmlspecialchars((string) $currentUser['role'], ENT_QUOTES, 'UTF-8'); ?>
+                </span>
+              </span>
             <?php else: ?>
               <span class="muted">Accede para administrar listas</span>
             <?php endif; ?>
@@ -1050,11 +1213,13 @@ foreach ($chartData['signals'] as $signal => $count) {
           <div class="stat-value"><?= (int) $stats['recent_count']; ?></div>
           <span class="stat-footnote">Últimos eventos visibles</span>
         </div>
-        <div class="stat-card">
-          <span class="stat-label">Sitios alertados</span>
-          <div class="stat-value"><?= (int) count($stats['alert_sites']); ?></div>
-          <span class="stat-footnote">Pendientes de revisión</span>
-        </div>
+        <?php if ($isAdmin): ?>
+          <div class="stat-card">
+            <span class="stat-label">Sitios alertados</span>
+            <div class="stat-value"><?= (int) count($stats['alert_sites']); ?></div>
+            <span class="stat-footnote">Pendientes de revisión</span>
+          </div>
+        <?php endif; ?>
       </section>
 
       <div class="layout">
@@ -1119,37 +1284,119 @@ foreach ($chartData['signals'] as $signal => $count) {
             </form>
           </section>
 
-          <section class="card" style="margin-top: 24px;">
-            <details>
-              <summary class="section-title">
-                <h2>Administrar listas</h2>
-                <span class="muted">Solo administradores</span>
-              </summary>
-              <form method="post" class="form-grid" style="margin-top: 12px;">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
-                <input type="hidden" name="action" value="list_action" />
-                <label>
-                  Dominio
-                  <input type="text" name="domain" placeholder="ejemplo.com" required />
-                </label>
-                <label>
-                  Tipo de lista
-                  <select name="list_type">
-                    <option value="allow">Allowlist</option>
-                    <option value="block">Blocklist</option>
-                  </select>
-                </label>
-                <label>
-                  Motivo
-                  <textarea name="reason" required></textarea>
-                </label>
-                <div class="form-actions">
-                  <button class="button-primary" type="submit" name="mode" value="add">Agregar</button>
-                  <button class="button-secondary" type="submit" name="mode" value="remove">Quitar</button>
-                </div>
-              </form>
-            </details>
-          </section>
+          <?php if ($isAdmin): ?>
+            <section class="card admin-panel" style="margin-top: 24px;">
+              <details>
+                <summary class="section-title">
+                  <h2>Administrar listas</h2>
+                  <span class="muted">Solo administradores</span>
+                </summary>
+                <form method="post" class="form-grid" style="margin-top: 12px;">
+                  <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                  <input type="hidden" name="action" value="list_action" />
+                  <label>
+                    Dominio
+                    <input type="text" name="domain" placeholder="ejemplo.com" required />
+                  </label>
+                  <label>
+                    Tipo de lista
+                    <select name="list_type">
+                      <option value="allow">Allowlist</option>
+                      <option value="block">Blocklist</option>
+                    </select>
+                  </label>
+                  <label>
+                    Motivo
+                    <textarea name="reason" required></textarea>
+                  </label>
+                  <div class="form-actions">
+                    <button class="button-primary" type="submit" name="mode" value="add">Agregar</button>
+                    <button class="button-secondary" type="submit" name="mode" value="remove">Quitar</button>
+                  </div>
+                </form>
+              </details>
+            </section>
+          <?php elseif ($currentUser): ?>
+            <section class="card" style="margin-top: 24px;">
+              <details open>
+                <summary class="section-title">
+                  <h2>Sugerir cambios de listas</h2>
+                  <span class="muted">Los analistas solo pueden sugerir</span>
+                </summary>
+                <form method="post" class="form-grid" style="margin-top: 12px;">
+                  <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                  <input type="hidden" name="action" value="list_suggest" />
+                  <label>
+                    Dominio
+                    <input type="text" name="domain" placeholder="ejemplo.com" required />
+                  </label>
+                  <label>
+                    Tipo de lista
+                    <select name="list_type">
+                      <option value="allow">Allowlist</option>
+                      <option value="block">Blocklist</option>
+                    </select>
+                  </label>
+                  <label>
+                    Motivo
+                    <textarea name="reason" required></textarea>
+                  </label>
+                  <div class="form-actions">
+                    <button class="button-primary" type="submit">Enviar sugerencia</button>
+                  </div>
+                </form>
+              </details>
+            </section>
+          <?php endif; ?>
+
+          <?php if ($isAdmin): ?>
+            <section class="card admin-panel" style="margin-top: 24px;">
+              <div class="section-title">
+                <h2>Revisión de sugerencias</h2>
+                <span class="muted">Control de cambios propuestos por analistas</span>
+              </div>
+              <?php if (empty($listSuggestions)): ?>
+                <div class="muted">Sin sugerencias registradas.</div>
+              <?php else: ?>
+                <?php foreach ($listSuggestions as $suggestion): ?>
+                  <details class="report-card">
+                    <summary>
+                      <?= htmlspecialchars((string) ($suggestion['domain'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                      <span class="status-pill <?= htmlspecialchars((string) ($suggestion['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                        <?= htmlspecialchars((string) ($suggestion['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                      </span>
+                      <span class="report-meta">
+                        <?= htmlspecialchars((string) ($suggestion['created_at'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                      </span>
+                    </summary>
+                    <div class="report-section">
+                      <strong>Tipo</strong>
+                      <div class="muted"><?= htmlspecialchars((string) ($suggestion['list_type'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                    </div>
+                    <div class="report-section">
+                      <strong>Motivo</strong>
+                      <div class="muted"><?= htmlspecialchars((string) ($suggestion['reason'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                    </div>
+                    <?php if (!empty($suggestion['username'])): ?>
+                      <div class="report-section">
+                        <strong>Solicitado por</strong>
+                        <div class="muted"><?= htmlspecialchars((string) ($suggestion['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                      </div>
+                    <?php endif; ?>
+                    <?php if (($suggestion['status'] ?? '') === 'pending'): ?>
+                      <form method="post" class="form-actions" style="margin-top: 12px;">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                        <input type="hidden" name="action" value="list_suggestion_update" />
+                        <input type="hidden" name="suggestion_id" value="<?= (int) ($suggestion['id'] ?? 0); ?>" />
+                        <button class="button-primary" type="submit" name="decision" value="approve">Aprobar y aplicar</button>
+                        <button class="button-secondary" type="submit" name="decision" value="reject">Rechazar</button>
+                      </form>
+                    <?php endif; ?>
+                  </details>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </section>
+          <?php endif; ?>
 
           <section class="card">
             <div class="section-title">
@@ -1235,77 +1482,81 @@ foreach ($chartData['signals'] as $signal => $count) {
             <?php endif; ?>
           </section>
 
-          <section class="card" style="margin-top: 24px;">
-            <h2>Desistimientos recientes</h2>
-            <?php if (empty($appeals)): ?>
-              <div class="muted">Sin solicitudes.</div>
-            <?php else: ?>
-              <?php foreach ($appeals as $appeal): ?>
-                <details class="report-card">
-                  <summary>
-                    <?= htmlspecialchars((string) ($appeal['domain'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
-                    <span class="report-meta">
-                      <?= htmlspecialchars((string) ($appeal['created_at'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
-                    </span>
-                  </summary>
-                  <div class="report-section">
-                    <strong>Motivo</strong>
-                    <div class="muted"><?= htmlspecialchars((string) ($appeal['reason'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
-                  </div>
-                  <?php if (!empty($appeal['contact'])): ?>
+          <?php if ($isAdmin): ?>
+            <section class="card" style="margin-top: 24px;">
+              <h2>Desistimientos recientes</h2>
+              <?php if (empty($appeals)): ?>
+                <div class="muted">Sin solicitudes.</div>
+              <?php else: ?>
+                <?php foreach ($appeals as $appeal): ?>
+                  <details class="report-card">
+                    <summary>
+                      <?= htmlspecialchars((string) ($appeal['domain'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                      <span class="report-meta">
+                        <?= htmlspecialchars((string) ($appeal['created_at'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                      </span>
+                    </summary>
                     <div class="report-section">
-                      <strong>Contacto</strong>
-                      <div class="muted"><?= htmlspecialchars((string) ($appeal['contact'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                      <strong>Motivo</strong>
+                      <div class="muted"><?= htmlspecialchars((string) ($appeal['reason'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
                     </div>
-                  <?php endif; ?>
-                  <div class="report-section">
-                    <strong>Estado</strong>
-                    <div class="muted"><?= htmlspecialchars((string) ($appeal['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
-                  </div>
-                  <?php if ($currentUser && ($currentUser['role'] ?? '') === 'admin' && ($appeal['status'] ?? '') !== 'resolved'): ?>
-                    <form method="post" class="form-actions" style="margin-top: 12px;">
-                      <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
-                      <input type="hidden" name="action" value="appeal_resolve" />
-                      <input type="hidden" name="appeal_id" value="<?= (int) ($appeal['id'] ?? 0); ?>" />
-                      <button class="button-secondary" type="submit">Marcar como resuelto</button>
-                    </form>
-                  <?php endif; ?>
-                </details>
-              <?php endforeach; ?>
-            <?php endif; ?>
-          </section>
+                    <?php if (!empty($appeal['contact'])): ?>
+                      <div class="report-section">
+                        <strong>Contacto</strong>
+                        <div class="muted"><?= htmlspecialchars((string) ($appeal['contact'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                      </div>
+                    <?php endif; ?>
+                    <div class="report-section">
+                      <strong>Estado</strong>
+                      <div class="muted"><?= htmlspecialchars((string) ($appeal['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                    </div>
+                    <?php if (($appeal['status'] ?? '') !== 'resolved'): ?>
+                      <form method="post" class="form-actions" style="margin-top: 12px;">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                        <input type="hidden" name="action" value="appeal_resolve" />
+                        <input type="hidden" name="appeal_id" value="<?= (int) ($appeal['id'] ?? 0); ?>" />
+                        <button class="button-secondary" type="submit">Marcar como resuelto</button>
+                      </form>
+                    <?php endif; ?>
+                  </details>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </section>
+          <?php endif; ?>
 
-          <section class="card" style="margin-top: 24px;">
-            <h2>Logs recientes</h2>
-            <div class="log-grid">
-              <div class="log-entry">
-                <div class="section-title">
-                  <h3>clickfix-report.log</h3>
-                  <span class="muted">Últimas entradas</span>
+          <?php if ($isAdmin): ?>
+            <section class="card" style="margin-top: 24px;">
+              <h2>Logs recientes</h2>
+              <div class="log-grid">
+                <div class="log-entry">
+                  <div class="section-title">
+                    <h3>clickfix-report.log</h3>
+                    <span class="muted">Últimas entradas</span>
+                  </div>
+                  <?php if (empty($reportLogEntries)): ?>
+                    <div class="muted">Sin registros.</div>
+                  <?php else: ?>
+                    <?php foreach ($reportLogEntries as $logLine): ?>
+                      <pre><?= htmlspecialchars($logLine, ENT_QUOTES, 'UTF-8'); ?></pre>
+                    <?php endforeach; ?>
+                  <?php endif; ?>
                 </div>
-                <?php if (empty($reportLogEntries)): ?>
-                  <div class="muted">Sin registros.</div>
-                <?php else: ?>
-                  <?php foreach ($reportLogEntries as $logLine): ?>
-                    <pre><?= htmlspecialchars($logLine, ENT_QUOTES, 'UTF-8'); ?></pre>
-                  <?php endforeach; ?>
-                <?php endif; ?>
-              </div>
-              <div class="log-entry">
-                <div class="section-title">
-                  <h3>clickfix-debug.log</h3>
-                  <span class="muted">Últimas entradas</span>
+                <div class="log-entry">
+                  <div class="section-title">
+                    <h3>clickfix-debug.log</h3>
+                    <span class="muted">Últimas entradas</span>
+                  </div>
+                  <?php if (empty($debugLogEntries)): ?>
+                    <div class="muted">Sin registros.</div>
+                  <?php else: ?>
+                    <?php foreach ($debugLogEntries as $logLine): ?>
+                      <pre><?= htmlspecialchars($logLine, ENT_QUOTES, 'UTF-8'); ?></pre>
+                    <?php endforeach; ?>
+                  <?php endif; ?>
                 </div>
-                <?php if (empty($debugLogEntries)): ?>
-                  <div class="muted">Sin registros.</div>
-                <?php else: ?>
-                  <?php foreach ($debugLogEntries as $logLine): ?>
-                    <pre><?= htmlspecialchars($logLine, ENT_QUOTES, 'UTF-8'); ?></pre>
-                  <?php endforeach; ?>
-                <?php endif; ?>
               </div>
-            </div>
-          </section>
+            </section>
+          <?php endif; ?>
         </div>
 
         <aside>
@@ -1337,20 +1588,22 @@ foreach ($chartData['signals'] as $signal => $count) {
             <?php endif; ?>
           </section>
 
-          <section class="card" style="margin-top: 20px;">
-            <h2>Sitios alertados</h2>
-            <?php if (empty($stats['alert_sites'])): ?>
-              <div class="muted">Sin sitios.</div>
-            <?php else: ?>
-              <div class="list-block">
-                <ul>
-                  <?php foreach ($stats['alert_sites'] as $site): ?>
-                    <li><?= htmlspecialchars($site, ENT_QUOTES, 'UTF-8'); ?></li>
-                  <?php endforeach; ?>
-                </ul>
-              </div>
-            <?php endif; ?>
-          </section>
+          <?php if ($isAdmin): ?>
+            <section class="card" style="margin-top: 20px;">
+              <h2>Sitios alertados</h2>
+              <?php if (empty($stats['alert_sites'])): ?>
+                <div class="muted">Sin sitios.</div>
+              <?php else: ?>
+                <div class="list-block">
+                  <ul>
+                    <?php foreach ($stats['alert_sites'] as $site): ?>
+                      <li><?= htmlspecialchars($site, ENT_QUOTES, 'UTF-8'); ?></li>
+                    <?php endforeach; ?>
+                  </ul>
+                </div>
+              <?php endif; ?>
+            </section>
+          <?php endif; ?>
         </aside>
       </div>
     </div>

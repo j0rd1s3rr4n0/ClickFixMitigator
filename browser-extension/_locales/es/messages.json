@@ -243,6 +243,9 @@
   "optionsHistoryTitle": {
     "message": "Historial completo"
   },
+  "historyClipboardOnly": {
+    "message": "Solo portapapeles"
+  },
   "optionsHistoryEmpty": {
     "message": "No hay alertas recientes."
   },
