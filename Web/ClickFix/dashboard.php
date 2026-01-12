@@ -161,6 +161,7 @@ $translations = [
         'log_col_detected' => 'Detectado',
         'log_col_blocked' => 'Bloqueado',
         'log_col_country' => 'País',
+        'log_col_raw' => 'Detalle',
         'confirm_clear' => '¿Eliminar detecciones no aceptadas?',
         'intel_section' => 'Fuentes de inteligencia',
         'intel_subtitle' => 'Scraping de referencia para enriquecer señales',
@@ -332,6 +333,7 @@ $translations = [
         'log_col_detected' => 'Detected',
         'log_col_blocked' => 'Blocked',
         'log_col_country' => 'Country',
+        'log_col_raw' => 'Detail',
         'confirm_clear' => 'Remove unaccepted detections?',
         'intel_section' => 'Intel sources',
         'intel_subtitle' => 'Reference scraping to enrich signals',
@@ -766,6 +768,65 @@ function loadStructuredLogEntries(string $path, int $limit = 50): array
     return array_reverse($entries);
 }
 
+function formatLogValue(mixed $value): string
+{
+    if (is_array($value)) {
+        return json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '';
+    }
+    if (is_bool($value)) {
+        return $value ? 'true' : 'false';
+    }
+    if ($value === null) {
+        return '';
+    }
+    return (string) $value;
+}
+
+function loadLogTableEntries(string $path, int $limit = 50): array
+{
+    if (!is_readable($path)) {
+        return ['columns' => [], 'rows' => []];
+    }
+    $lines = file($path, FILE_IGNORE_NEW_LINES) ?: [];
+    if ($limit > 0) {
+        $lines = array_slice($lines, -$limit);
+    }
+    $columns = [];
+    $rows = [];
+    foreach ($lines as $line) {
+        $decoded = json_decode($line, true);
+        if (is_array($decoded)) {
+            unset($decoded['ip']);
+            $row = [];
+            foreach ($decoded as $key => $value) {
+                $row[$key] = formatLogValue($value);
+                if (!in_array($key, $columns, true)) {
+                    $columns[] = $key;
+                }
+            }
+            $rows[] = $row;
+        } else {
+            $rows[] = ['raw' => $line];
+            if (!in_array('raw', $columns, true)) {
+                $columns[] = 'raw';
+            }
+        }
+    }
+    $preferred = ['timestamp', 'received_at', 'level', 'message', 'url', 'hostname', 'country', 'blocked', 'detected_content'];
+    $ordered = [];
+    foreach ($preferred as $key) {
+        if (in_array($key, $columns, true)) {
+            $ordered[] = $key;
+        }
+    }
+    foreach ($columns as $key) {
+        if (!in_array($key, $ordered, true)) {
+            $ordered[] = $key;
+        }
+    }
+    return ['columns' => $ordered, 'rows' => array_reverse($rows)];
+}
+
 function ensureAdminTables(PDO $pdo): void
 {
     $statements = [
@@ -981,7 +1042,7 @@ $alertSites = loadListFile($alertsitesFile);
 $stats['alert_sites'] = $alertSites;
 $reportLogEntries = loadLogEntries(__DIR__ . '/clickfix-report.log', 60);
 $reportLogStructured = loadStructuredLogEntries(__DIR__ . '/clickfix-report.log', 40);
-$debugLogEntries = loadLogEntries(__DIR__ . '/clickfix-debug.log', 60);
+$debugLogTable = loadLogTableEntries(__DIR__ . '/clickfix-debug.log', 60);
 $reportLogCountries = loadLogCountries(__DIR__ . '/clickfix-report.log', 200);
 
 $intelCache = loadIntelCache($intelCachePath);
@@ -1754,6 +1815,7 @@ $chartLabels = [
         border-collapse: collapse;
         font-size: 12px;
         max-width: 100%;
+        table-layout: fixed;
       }
       th,
       td {
@@ -1761,12 +1823,17 @@ $chartLabels = [
         padding: 8px 10px;
         border-bottom: 1px solid var(--border);
         vertical-align: top;
+        word-break: break-word;
+        overflow-wrap: anywhere;
       }
       th {
         text-transform: uppercase;
         letter-spacing: 0.08em;
         font-size: 11px;
         color: var(--muted);
+      }
+      td a {
+        word-break: break-all;
       }
       .intel-grid {
         display: grid;
@@ -1952,6 +2019,7 @@ $chartLabels = [
       .log-grid {
         display: grid;
         gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       }
       .log-entry {
         border: 1px solid var(--border);
@@ -2085,12 +2153,27 @@ $chartLabels = [
           grid-template-columns: 1fr;
         }
       }
+      @media (max-width: 760px) {
+        .section-title {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .top-bar {
+          align-items: flex-start;
+        }
+        .card {
+          padding: 16px;
+        }
+      }
       @media (max-width: 640px) {
         .page {
           padding: 24px 16px 40px;
         }
         .stat-value {
           font-size: 24px;
+        }
+        table {
+          font-size: 11px;
         }
       }
     </style>
@@ -2772,12 +2855,31 @@ $chartLabels = [
                     <h3>clickfix-debug.log</h3>
                     <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'latest_entries'), ENT_QUOTES, 'UTF-8'); ?></span>
                   </div>
-                  <?php if (empty($debugLogEntries)): ?>
+                  <?php if (empty($debugLogTable['rows'])): ?>
                     <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_logs'), ENT_QUOTES, 'UTF-8'); ?></div>
                   <?php else: ?>
-                    <?php foreach ($debugLogEntries as $logLine): ?>
-                      <pre><?= htmlspecialchars($logLine, ENT_QUOTES, 'UTF-8'); ?></pre>
-                    <?php endforeach; ?>
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <?php foreach ($debugLogTable['columns'] as $column): ?>
+                              <th>
+                                <?= htmlspecialchars($column === 'raw' ? t($translations, $currentLanguage, 'log_col_raw') : $column, ENT_QUOTES, 'UTF-8'); ?>
+                              </th>
+                            <?php endforeach; ?>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <?php foreach ($debugLogTable['rows'] as $row): ?>
+                            <tr>
+                              <?php foreach ($debugLogTable['columns'] as $column): ?>
+                                <td><?= htmlspecialchars((string) ($row[$column] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                              <?php endforeach; ?>
+                            </tr>
+                          <?php endforeach; ?>
+                        </tbody>
+                      </table>
+                    </div>
                   <?php endif; ?>
                 </div>
               </div>
