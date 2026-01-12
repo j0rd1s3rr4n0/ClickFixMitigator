@@ -126,6 +126,8 @@ $translations = [
         'active' => 'Activo',
         'review_permissions' => 'Revisar permisos',
         'not_assigned' => 'No asignado',
+        'verified_account' => 'Cuenta verificada',
+        'unverified_account' => 'Pendiente verificación',
         'login' => 'Iniciar sesión',
         'login_hint' => 'Usuario sin distinguir mayúsculas',
         'username' => 'Usuario',
@@ -135,6 +137,17 @@ $translations = [
         'admin_code_optional' => 'Código administrador (opcional)',
         'register' => 'Registrarse',
         'logout' => 'Cerrar sesión',
+        'manage_users' => 'Gestión de usuarios',
+        'manage_users_hint' => 'Crear, verificar y asignar roles',
+        'create_user' => 'Crear usuario',
+        'role' => 'Rol',
+        'verified' => 'Verificado',
+        'actions' => 'Acciones',
+        'save' => 'Guardar',
+        'delete' => 'Eliminar',
+        'verify' => 'Verificar',
+        'unverify' => 'Quitar verificación',
+        'confirm_delete_user' => '¿Eliminar este usuario?',
         'accepted' => 'Aceptado',
         'mark_accepted' => 'Marcar como aceptado',
         'clear_unaccepted' => 'Limpiar no aceptadas',
@@ -157,6 +170,8 @@ $translations = [
         'intel_status_ok' => 'Sincronizado',
         'intel_status_error' => 'Error',
         'intel_highlights' => 'Patrones destacados',
+        'intel_focus' => 'Cobertura de amenazas',
+        'intel_focus_subtitle' => 'Enfoques clave aprendidos de ClickGrab y PasteEater',
         'language' => 'Idioma',
         'flash_invalid_session' => 'Sesión inválida, recarga la página.',
         'flash_required_credentials' => 'Usuario y contraseña son obligatorios.',
@@ -282,6 +297,8 @@ $translations = [
         'active' => 'Active',
         'review_permissions' => 'Check permissions',
         'not_assigned' => 'Not assigned',
+        'verified_account' => 'Verified account',
+        'unverified_account' => 'Pending verification',
         'login' => 'Sign in',
         'login_hint' => 'Username is case-insensitive',
         'username' => 'Username',
@@ -291,6 +308,17 @@ $translations = [
         'admin_code_optional' => 'Admin code (optional)',
         'register' => 'Register',
         'logout' => 'Sign out',
+        'manage_users' => 'User management',
+        'manage_users_hint' => 'Create, verify, and assign roles',
+        'create_user' => 'Create user',
+        'role' => 'Role',
+        'verified' => 'Verified',
+        'actions' => 'Actions',
+        'save' => 'Save',
+        'delete' => 'Delete',
+        'verify' => 'Verify',
+        'unverify' => 'Remove verification',
+        'confirm_delete_user' => 'Delete this user?',
         'accepted' => 'Accepted',
         'mark_accepted' => 'Mark as accepted',
         'clear_unaccepted' => 'Clear unaccepted',
@@ -313,6 +341,8 @@ $translations = [
         'intel_status_ok' => 'Synced',
         'intel_status_error' => 'Error',
         'intel_highlights' => 'Highlighted patterns',
+        'intel_focus' => 'Threat coverage',
+        'intel_focus_subtitle' => 'Key focus areas learned from ClickGrab and PasteEater',
         'language' => 'Language',
         'flash_invalid_session' => 'Invalid session, reload the page.',
         'flash_required_credentials' => 'Username and password are required.',
@@ -367,10 +397,52 @@ $intelSources = [
         'id' => 'clickfix-patterns',
         'label' => 'ClickFix Patterns',
         'url' => 'https://don-san-sec.github.io/clickfix-patterns/'
+    ],
+    [
+        'id' => 'pasteeater',
+        'label' => 'PasteEater',
+        'url' => 'https://github.com/wmetcalf/PasteEater'
+    ],
+    [
+        'id' => 'clickgrab',
+        'label' => 'ClickGrab',
+        'url' => 'https://github.com/cdup07/ClickGrab'
     ]
 ];
 $intelCachePath = __DIR__ . '/data/intel-cache.json';
 $intelTtlSeconds = 3600;
+$intelFocusAreas = [
+    [
+        'icon' => '🔐',
+        'title' => 'PowerShell Detection',
+        'description' => 'Detecta comandos ofuscados, payloads codificados y descargas remotas.'
+    ],
+    [
+        'icon' => '📋',
+        'title' => 'Clipboard Hijacking',
+        'description' => 'Monitorea manipulación del portapapeles y reemplazo de direcciones.'
+    ],
+    [
+        'icon' => '🤖',
+        'title' => 'Fake CAPTCHA',
+        'description' => 'Identifica flujos de verificación falsos usados para ingeniería social.'
+    ],
+    [
+        'icon' => '🔍',
+        'title' => 'Code Obfuscation',
+        'description' => 'Analiza hex/base64 y técnicas de ocultación en scripts.'
+    ],
+    [
+        'icon' => '🌐',
+        'title' => 'URL Analysis',
+        'description' => 'Extrae URLs maliciosas y rastrea infraestructura C2.'
+    ],
+    [
+        'icon' => '🛡️',
+        'title' => 'Mitigation Guidance',
+        'description' => 'Resume controles defensivos propuestos en ClickGrab/PasteEater.'
+    ]
+];
 
 function loadIntelCache(string $path): array
 {
@@ -514,7 +586,8 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TEXT NOT NULL,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL
+    role TEXT NOT NULL,
+    verified INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS appeals (
@@ -701,7 +774,8 @@ function ensureAdminTables(PDO $pdo): void
             created_at TEXT NOT NULL,
             username TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
-            role TEXT NOT NULL
+            role TEXT NOT NULL,
+            verified INTEGER DEFAULT 0
         )',
         'CREATE TABLE IF NOT EXISTS appeals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -745,6 +819,9 @@ function ensureAdminTables(PDO $pdo): void
     if (!isset($existing['role'])) {
         $pdo->exec('ALTER TABLE users ADD COLUMN role TEXT');
     }
+    if (!isset($existing['verified'])) {
+        $pdo->exec('ALTER TABLE users ADD COLUMN verified INTEGER DEFAULT 0');
+    }
 
     $columns = $pdo->query('PRAGMA table_info(appeals)')->fetchAll(PDO::FETCH_ASSOC);
     $existing = [];
@@ -783,14 +860,15 @@ function ensureDefaultAdmin(PDO $pdo, array &$flashNotices, array $translations,
     }
     $password = 'P@ssword!123#';
     $statement = $pdo->prepare(
-        'INSERT INTO users (created_at, username, password_hash, role)
-         VALUES (:created_at, :username, :password_hash, :role)'
+        'INSERT INTO users (created_at, username, password_hash, role, verified)
+         VALUES (:created_at, :username, :password_hash, :role, :verified)'
     );
     $statement->execute([
         ':created_at' => gmdate('c'),
         ':username' => 'admin',
         ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
-        ':role' => 'admin'
+        ':role' => 'admin',
+        ':verified' => 1
     ]);
     $flashNotices[] = t($translations, $language, 'flash_default_admin') . $password;
 }
@@ -934,7 +1012,7 @@ if (is_readable($dbPath)) {
 }
 
 if ($pdo instanceof PDO && isset($_SESSION['user_id'])) {
-    $statement = $pdo->prepare('SELECT id, username, role FROM users WHERE id = :id');
+    $statement = $pdo->prepare('SELECT id, username, role, verified FROM users WHERE id = :id');
     $statement->execute([':id' => (int) $_SESSION['user_id']]);
     $currentUser = $statement->fetch(PDO::FETCH_ASSOC) ?: null;
     if (!$currentUser) {
@@ -942,6 +1020,8 @@ if ($pdo instanceof PDO && isset($_SESSION['user_id'])) {
     }
 }
 $isAdmin = $currentUser && ($currentUser['role'] ?? '') === 'admin';
+$isVerified = $currentUser && (int) ($currentUser['verified'] ?? 0) === 1;
+$canViewLogs = $isAdmin || $isVerified;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $csrfToken = (string) ($_POST['csrf_token'] ?? '');
@@ -976,14 +1056,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         throw new RuntimeException('duplicate user');
                     }
                     $statement = $pdo->prepare(
-                        'INSERT INTO users (created_at, username, password_hash, role)
-                         VALUES (:created_at, :username, :password_hash, :role)'
+                        'INSERT INTO users (created_at, username, password_hash, role, verified)
+                         VALUES (:created_at, :username, :password_hash, :role, :verified)'
                     );
                     $statement->execute([
                         ':created_at' => gmdate('c'),
                         ':username' => $username,
                         ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
-                        ':role' => $role
+                        ':role' => $role,
+                        ':verified' => $role === 'admin' ? 1 : 0
                     ]);
                     $flashNotices[] = t($translations, $currentLanguage, 'flash_register_success');
                 } catch (Throwable $exception) {
@@ -1201,6 +1282,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $flashErrors[] = t($translations, $currentLanguage, 'flash_detection_clear_failed');
                 }
             }
+        } elseif ($action === 'user_create' && $pdo instanceof PDO) {
+            $isAdmin = $currentUser && ($currentUser['role'] ?? '') === 'admin';
+            $username = trim((string) ($_POST['username'] ?? ''));
+            $password = (string) ($_POST['password'] ?? '');
+            $role = (string) ($_POST['role'] ?? 'analyst');
+            $verified = (int) ($_POST['verified'] ?? 0);
+            $username = mb_substr($username, 0, 64);
+            $password = mb_substr($password, 0, 128);
+            if (!$isAdmin) {
+                $flashErrors[] = t($translations, $currentLanguage, 'flash_admin_required');
+            } elseif ($username === '' || $password === '') {
+                $flashErrors[] = t($translations, $currentLanguage, 'flash_required_credentials');
+            } else {
+                try {
+                    $statement = $pdo->prepare(
+                        'INSERT INTO users (created_at, username, password_hash, role, verified)
+                         VALUES (:created_at, :username, :password_hash, :role, :verified)'
+                    );
+                    $statement->execute([
+                        ':created_at' => gmdate('c'),
+                        ':username' => $username,
+                        ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
+                        ':role' => in_array($role, ['admin', 'analyst'], true) ? $role : 'analyst',
+                        ':verified' => $verified === 1 ? 1 : 0
+                    ]);
+                    $flashNotices[] = t($translations, $currentLanguage, 'flash_register_success');
+                } catch (Throwable $exception) {
+                    $flashErrors[] = t($translations, $currentLanguage, 'flash_register_failure');
+                }
+            }
+        } elseif ($action === 'user_update' && $pdo instanceof PDO) {
+            $isAdmin = $currentUser && ($currentUser['role'] ?? '') === 'admin';
+            $userId = (int) ($_POST['user_id'] ?? 0);
+            $role = (string) ($_POST['role'] ?? 'analyst');
+            $verified = (int) ($_POST['verified'] ?? 0);
+            if (!$isAdmin) {
+                $flashErrors[] = t($translations, $currentLanguage, 'flash_admin_required');
+            } else {
+                $statement = $pdo->prepare(
+                    'UPDATE users SET role = :role, verified = :verified WHERE id = :id'
+                );
+                $statement->execute([
+                    ':role' => in_array($role, ['admin', 'analyst'], true) ? $role : 'analyst',
+                    ':verified' => $verified === 1 ? 1 : 0,
+                    ':id' => $userId
+                ]);
+                $flashNotices[] = t($translations, $currentLanguage, 'flash_list_updated');
+            }
+        } elseif ($action === 'user_delete' && $pdo instanceof PDO) {
+            $isAdmin = $currentUser && ($currentUser['role'] ?? '') === 'admin';
+            $userId = (int) ($_POST['user_id'] ?? 0);
+            if (!$isAdmin) {
+                $flashErrors[] = t($translations, $currentLanguage, 'flash_admin_required');
+            } elseif ($userId === (int) ($currentUser['id'] ?? 0)) {
+                $flashErrors[] = t($translations, $currentLanguage, 'flash_admin_required');
+            } else {
+                $statement = $pdo->prepare('DELETE FROM users WHERE id = :id');
+                $statement->execute([':id' => $userId]);
+                $flashNotices[] = t($translations, $currentLanguage, 'flash_list_updated');
+            }
         }
     }
 }
@@ -1347,6 +1488,7 @@ $blocklistItems = loadListFile($blocklistFile);
 $allowlistItems = loadListFile($allowlistFile);
 $appeals = [];
 $listSuggestions = [];
+$userRows = [];
 if ($pdo instanceof PDO) {
     try {
         $appeals = $pdo->query(
@@ -1368,6 +1510,15 @@ if ($pdo instanceof PDO) {
         )->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $exception) {
         $listSuggestions = [];
+    }
+    try {
+        $userRows = $pdo->query(
+            'SELECT id, username, role, verified, created_at
+             FROM users
+             ORDER BY created_at DESC'
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $exception) {
+        $userRows = [];
     }
 }
 
@@ -1442,9 +1593,10 @@ $chartLabels = [
         color: var(--text);
       }
       .page {
-        max-width: 1280px;
+        max-width: 100%;
         margin: 0 auto;
         padding: 28px 24px 48px;
+        min-height: 100vh;
       }
       .top-bar {
         display: flex;
@@ -1509,6 +1661,7 @@ $chartLabels = [
         padding: 18px;
         box-shadow: var(--shadow);
         backdrop-filter: blur(16px);
+        max-width: 100%;
       }
       .hero {
         display: grid;
@@ -1592,12 +1745,15 @@ $chartLabels = [
         color: var(--text);
       }
       .table-wrap {
-        overflow-x: auto;
+        overflow: auto;
+        max-width: 100%;
+        max-height: 360px;
       }
       table {
         width: 100%;
         border-collapse: collapse;
         font-size: 12px;
+        max-width: 100%;
       }
       th,
       td {
@@ -1626,6 +1782,28 @@ $chartLabels = [
         box-shadow: 0 12px 30px -20px rgba(15, 23, 42, 0.45);
         display: grid;
         gap: 8px;
+      }
+      .intel-focus-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+      }
+      .intel-focus-card {
+        padding: 14px;
+        border-radius: 14px;
+        background: rgba(15, 23, 42, 0.75);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        display: grid;
+        gap: 6px;
+      }
+      .intel-focus-card h4 {
+        margin: 0;
+        font-size: 14px;
+      }
+      .intel-focus-card p {
+        margin: 0;
+        font-size: 12px;
+        color: var(--muted);
       }
       .intel-title {
         font-weight: 700;
@@ -1673,6 +1851,7 @@ $chartLabels = [
       }
       .list-block {
         max-height: 240px;
+        max-width: 100%;
         overflow-y: auto;
         overflow-x: hidden;
         padding-right: 6px;
@@ -1860,16 +2039,6 @@ $chartLabels = [
         color: #fff;
         border: none;
       }
-      .button-approve {
-        background: #22c55e;
-        color: #fff;
-        border: none;
-      }
-      .button-reject {
-        background: #ef4444;
-        color: #fff;
-        border: none;
-      }
       .role-badge {
         display: inline-flex;
         align-items: center;
@@ -1957,6 +2126,10 @@ $chartLabels = [
             <span class="badge">
               <?= htmlspecialchars(t($translations, $currentLanguage, 'session_active'), ENT_QUOTES, 'UTF-8'); ?>:
               <?= htmlspecialchars((string) $currentUser['username'], ENT_QUOTES, 'UTF-8'); ?>
+            </span>
+            <span class="badge">
+              <?= htmlspecialchars($isVerified ? t($translations, $currentLanguage, 'verified_account') : t($translations, $currentLanguage, 'unverified_account'), ENT_QUOTES, 'UTF-8'); ?>
+              <?= $isVerified ? '✅' : '⏳'; ?>
             </span>
             <span class="role-badge <?= htmlspecialchars((string) $currentUser['role'], ENT_QUOTES, 'UTF-8'); ?>">
               <?= htmlspecialchars((string) $currentUser['role'], ENT_QUOTES, 'UTF-8'); ?>
@@ -2311,6 +2484,21 @@ $chartLabels = [
                 </div>
               <?php endforeach; ?>
             </div>
+            <div class="section-title" style="margin-top: 18px;">
+              <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'intel_focus'), ENT_QUOTES, 'UTF-8'); ?></h3>
+              <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'intel_focus_subtitle'), ENT_QUOTES, 'UTF-8'); ?></span>
+            </div>
+            <div class="intel-focus-grid">
+              <?php foreach ($intelFocusAreas as $area): ?>
+                <div class="intel-focus-card">
+                  <div class="meta-row">
+                    <span class="chip"><?= htmlspecialchars((string) $area['icon'], ENT_QUOTES, 'UTF-8'); ?></span>
+                    <h4><?= htmlspecialchars((string) $area['title'], ENT_QUOTES, 'UTF-8'); ?></h4>
+                  </div>
+                  <p><?= htmlspecialchars((string) $area['description'], ENT_QUOTES, 'UTF-8'); ?></p>
+                </div>
+              <?php endforeach; ?>
+            </div>
           </section>
 
           <section class="card" style="margin-top: 24px;">
@@ -2444,6 +2632,94 @@ $chartLabels = [
           <?php endif; ?>
 
           <?php if ($isAdmin): ?>
+            <section class="card admin-panel" style="margin-top: 24px;">
+              <div class="section-title">
+                <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'manage_users'), ENT_QUOTES, 'UTF-8'); ?></h2>
+                <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'manage_users_hint'), ENT_QUOTES, 'UTF-8'); ?></span>
+              </div>
+              <form method="post" class="form-grid" style="margin-top: 12px;">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                <input type="hidden" name="action" value="user_create" />
+                <label>
+                  <?= htmlspecialchars(t($translations, $currentLanguage, 'username'), ENT_QUOTES, 'UTF-8'); ?>
+                  <input type="text" name="username" required />
+                </label>
+                <label>
+                  <?= htmlspecialchars(t($translations, $currentLanguage, 'password'), ENT_QUOTES, 'UTF-8'); ?>
+                  <input type="password" name="password" required />
+                </label>
+                <label>
+                  <?= htmlspecialchars(t($translations, $currentLanguage, 'role'), ENT_QUOTES, 'UTF-8'); ?>
+                  <select name="role">
+                    <option value="analyst">Analyst</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </label>
+                <label>
+                  <?= htmlspecialchars(t($translations, $currentLanguage, 'verified'), ENT_QUOTES, 'UTF-8'); ?>
+                  <select name="verified">
+                    <option value="1"><?= htmlspecialchars(t($translations, $currentLanguage, 'verified_account'), ENT_QUOTES, 'UTF-8'); ?></option>
+                    <option value="0" selected><?= htmlspecialchars(t($translations, $currentLanguage, 'unverified_account'), ENT_QUOTES, 'UTF-8'); ?></option>
+                  </select>
+                </label>
+                <div class="form-actions">
+                  <button class="button-primary" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'create_user'), ENT_QUOTES, 'UTF-8'); ?></button>
+                </div>
+              </form>
+              <div class="table-wrap" style="margin-top: 16px;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th><?= htmlspecialchars(t($translations, $currentLanguage, 'username'), ENT_QUOTES, 'UTF-8'); ?></th>
+                      <th><?= htmlspecialchars(t($translations, $currentLanguage, 'role'), ENT_QUOTES, 'UTF-8'); ?></th>
+                      <th><?= htmlspecialchars(t($translations, $currentLanguage, 'verified'), ENT_QUOTES, 'UTF-8'); ?></th>
+                      <th><?= htmlspecialchars(t($translations, $currentLanguage, 'actions'), ENT_QUOTES, 'UTF-8'); ?></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <?php foreach ($userRows as $userRow): ?>
+                      <tr>
+                        <td><?= htmlspecialchars((string) ($userRow['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td>
+                          <form method="post" class="form-actions">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                            <input type="hidden" name="action" value="user_update" />
+                            <input type="hidden" name="user_id" value="<?= (int) ($userRow['id'] ?? 0); ?>" />
+                            <select name="role">
+                              <option value="analyst" <?= ($userRow['role'] ?? '') === 'analyst' ? 'selected' : ''; ?>>Analyst</option>
+                              <option value="admin" <?= ($userRow['role'] ?? '') === 'admin' ? 'selected' : ''; ?>>Admin</option>
+                            </select>
+                            <select name="verified">
+                              <option value="1" <?= (int) ($userRow['verified'] ?? 0) === 1 ? 'selected' : ''; ?>>
+                                <?= htmlspecialchars(t($translations, $currentLanguage, 'verified_account'), ENT_QUOTES, 'UTF-8'); ?>
+                              </option>
+                              <option value="0" <?= (int) ($userRow['verified'] ?? 0) === 0 ? 'selected' : ''; ?>>
+                                <?= htmlspecialchars(t($translations, $currentLanguage, 'unverified_account'), ENT_QUOTES, 'UTF-8'); ?>
+                              </option>
+                            </select>
+                            <button class="button-secondary" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'save'), ENT_QUOTES, 'UTF-8'); ?></button>
+                          </form>
+                        </td>
+                        <td><?= (int) ($userRow['verified'] ?? 0) === 1 ? '✅' : '⏳'; ?></td>
+                        <td>
+                          <form method="post" class="form-actions">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                            <input type="hidden" name="action" value="user_delete" />
+                            <input type="hidden" name="user_id" value="<?= (int) ($userRow['id'] ?? 0); ?>" />
+                            <button class="button-secondary" type="submit" onclick="return confirm('<?= htmlspecialchars(t($translations, $currentLanguage, 'confirm_delete_user'), ENT_QUOTES, 'UTF-8'); ?>');">
+                              <?= htmlspecialchars(t($translations, $currentLanguage, 'delete'), ENT_QUOTES, 'UTF-8'); ?>
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          <?php endif; ?>
+
+          <?php if ($canViewLogs): ?>
             <section class="card" style="margin-top: 24px;">
               <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'recent_logs'), ENT_QUOTES, 'UTF-8'); ?></h2>
               <div class="log-grid">
@@ -2532,58 +2808,59 @@ $chartLabels = [
                   </li>
                 </ul>
               </div>
-              <details open style="margin-top: 12px;">
-                <summary class="section-title">
-                  <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'login'), ENT_QUOTES, 'UTF-8'); ?></h3>
-                  <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'login_hint'), ENT_QUOTES, 'UTF-8'); ?></span>
-                </summary>
-                <form method="post" class="form-grid" style="margin-top: 12px;">
-                  <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
-                  <input type="hidden" name="action" value="login" />
-                  <label>
-                    <?= htmlspecialchars(t($translations, $currentLanguage, 'username'), ENT_QUOTES, 'UTF-8'); ?>
-                    <input type="text" name="username" required />
-                  </label>
-                  <label>
-                    <?= htmlspecialchars(t($translations, $currentLanguage, 'password'), ENT_QUOTES, 'UTF-8'); ?>
-                    <input type="password" name="password" required />
-                  </label>
-                  <div class="form-actions">
-                    <button class="button-primary" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'login'), ENT_QUOTES, 'UTF-8'); ?></button>
-                  </div>
-                </form>
-              </details>
-              <details style="margin-top: 12px;">
-                <summary class="section-title">
-                  <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'quick_register'), ENT_QUOTES, 'UTF-8'); ?></h3>
-                  <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'register_hint'), ENT_QUOTES, 'UTF-8'); ?></span>
-                </summary>
-                <form method="post" class="form-grid" style="margin-top: 12px;">
-                  <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
-                  <input type="hidden" name="action" value="register" />
-                  <label>
-                    <?= htmlspecialchars(t($translations, $currentLanguage, 'username'), ENT_QUOTES, 'UTF-8'); ?>
-                    <input type="text" name="username" required />
-                  </label>
-                  <label>
-                    <?= htmlspecialchars(t($translations, $currentLanguage, 'password'), ENT_QUOTES, 'UTF-8'); ?>
-                    <input type="password" name="password" required />
-                  </label>
-                  <label>
-                    <?= htmlspecialchars(t($translations, $currentLanguage, 'admin_code_optional'), ENT_QUOTES, 'UTF-8'); ?>
-                    <input type="text" name="admin_code" />
-                  </label>
-                  <div class="form-actions">
-                    <button class="button-secondary" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'register'), ENT_QUOTES, 'UTF-8'); ?></button>
-                  </div>
-                </form>
-              </details>
               <?php if ($currentUser): ?>
                 <form method="post" class="form-actions" style="margin-top: 16px;">
                   <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
                   <input type="hidden" name="action" value="logout" />
                   <button class="button-ghost" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'logout'), ENT_QUOTES, 'UTF-8'); ?></button>
                 </form>
+              <?php else: ?>
+                <details open style="margin-top: 12px;">
+                  <summary class="section-title">
+                    <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'login'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                    <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'login_hint'), ENT_QUOTES, 'UTF-8'); ?></span>
+                  </summary>
+                  <form method="post" class="form-grid" style="margin-top: 12px;">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                    <input type="hidden" name="action" value="login" />
+                    <label>
+                      <?= htmlspecialchars(t($translations, $currentLanguage, 'username'), ENT_QUOTES, 'UTF-8'); ?>
+                      <input type="text" name="username" required />
+                    </label>
+                    <label>
+                      <?= htmlspecialchars(t($translations, $currentLanguage, 'password'), ENT_QUOTES, 'UTF-8'); ?>
+                      <input type="password" name="password" required />
+                    </label>
+                    <div class="form-actions">
+                      <button class="button-primary" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'login'), ENT_QUOTES, 'UTF-8'); ?></button>
+                    </div>
+                  </form>
+                </details>
+                <details style="margin-top: 12px;">
+                  <summary class="section-title">
+                    <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'quick_register'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                    <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'register_hint'), ENT_QUOTES, 'UTF-8'); ?></span>
+                  </summary>
+                  <form method="post" class="form-grid" style="margin-top: 12px;">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                    <input type="hidden" name="action" value="register" />
+                    <label>
+                      <?= htmlspecialchars(t($translations, $currentLanguage, 'username'), ENT_QUOTES, 'UTF-8'); ?>
+                      <input type="text" name="username" required />
+                    </label>
+                    <label>
+                      <?= htmlspecialchars(t($translations, $currentLanguage, 'password'), ENT_QUOTES, 'UTF-8'); ?>
+                      <input type="password" name="password" required />
+                    </label>
+                    <label>
+                      <?= htmlspecialchars(t($translations, $currentLanguage, 'admin_code_optional'), ENT_QUOTES, 'UTF-8'); ?>
+                      <input type="text" name="admin_code" />
+                    </label>
+                    <div class="form-actions">
+                      <button class="button-secondary" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'register'), ENT_QUOTES, 'UTF-8'); ?></button>
+                    </div>
+                  </form>
+                </details>
               <?php endif; ?>
             </section>
 
