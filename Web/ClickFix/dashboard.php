@@ -46,6 +46,8 @@ $translations = [
         'alerted_sites' => 'Sitios alertados',
         'block_rate' => 'Tasa de bloqueo',
         'block_rate_help' => 'Bloqueos sobre alertas totales',
+        'alerts_24h' => 'Alertas 24h',
+        'blocks_24h' => 'Bloqueos 24h',
         'top_countries' => 'Top países',
         'events' => 'eventos',
         'no_geo_data' => 'Sin datos geográficos.',
@@ -53,10 +55,13 @@ $translations = [
         'total_blocks' => 'Bloqueos totales',
         'extension_history' => 'Histórico de la extensión',
         'confirmed_preventions' => 'Prevenciones confirmadas',
+        'unique_hosts' => 'Dominios únicos',
+        'unique_hosts_help' => 'Últimos reportes',
         'manual_domains' => 'Dominios cargados manualmente',
         'recent_events' => 'Últimos eventos visibles',
         'pending_review' => 'Pendientes de revisión',
         'containment_efficiency' => 'Eficiencia de contención',
+        'last_24h' => 'Últimas 24h',
         'public_lists' => 'Listas públicas',
         'visible_to_all' => 'Visibles para todos',
         'allowlist' => 'Allowlist',
@@ -223,6 +228,8 @@ $translations = [
         'alerted_sites' => 'Alerted sites',
         'block_rate' => 'Block rate',
         'block_rate_help' => 'Blocks over total alerts',
+        'alerts_24h' => 'Alerts 24h',
+        'blocks_24h' => 'Blocks 24h',
         'top_countries' => 'Top countries',
         'events' => 'events',
         'no_geo_data' => 'No geographic data.',
@@ -230,10 +237,13 @@ $translations = [
         'total_blocks' => 'Total blocks',
         'extension_history' => 'Extension history',
         'confirmed_preventions' => 'Confirmed preventions',
+        'unique_hosts' => 'Unique domains',
+        'unique_hosts_help' => 'Latest reports',
         'manual_domains' => 'Manually loaded domains',
         'recent_events' => 'Latest visible events',
         'pending_review' => 'Pending review',
         'containment_efficiency' => 'Containment efficiency',
+        'last_24h' => 'Last 24h',
         'public_lists' => 'Public lists',
         'visible_to_all' => 'Visible to everyone',
         'allowlist' => 'Allowlist',
@@ -569,6 +579,7 @@ CREATE TABLE IF NOT EXISTS reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     received_at TEXT NOT NULL,
     url TEXT,
+    previous_url TEXT,
     hostname TEXT,
     message TEXT,
     detected_content TEXT,
@@ -635,6 +646,9 @@ SQL;
 $stats = [
     'total_alerts' => 0,
     'total_blocks' => 0,
+    'alerts_24h' => 0,
+    'blocks_24h' => 0,
+    'unique_hosts' => 0,
     'manual_sites' => [],
     'countries' => [],
     'last_update' => null,
@@ -919,6 +933,9 @@ function ensureAdminTables(PDO $pdo): void
     }
     if (!isset($existing['accepted_at'])) {
         $pdo->exec('ALTER TABLE reports ADD COLUMN accepted_at TEXT');
+    }
+    if (!isset($existing['previous_url'])) {
+        $pdo->exec('ALTER TABLE reports ADD COLUMN previous_url TEXT');
     }
 }
 
@@ -1491,6 +1508,8 @@ if (is_readable($dbPath)) {
             )->fetchAll(PDO::FETCH_ASSOC);
         }
 
+        $uniqueHosts = [];
+        $recentWindow = time() - 86400;
         foreach ($reportRows as $entry) {
             $detected = trim((string) ($entry['detected_content'] ?? ''));
             $message = trim((string) ($entry['message'] ?? ''));
@@ -1532,6 +1551,15 @@ if (is_readable($dbPath)) {
                     $hostname = (string) ($parsedUrl['host'] ?? '');
                 }
             }
+            if ($hostname !== '') {
+                $uniqueHosts[$hostname] = true;
+            }
+            if ($timestamp !== false && $timestamp >= $recentWindow) {
+                $stats['alerts_24h'] += 1;
+                if (!empty($entry['blocked'])) {
+                    $stats['blocks_24h'] += 1;
+                }
+            }
 
             $recentDetections[] = [
                 'id' => (int) ($entry['id'] ?? 0),
@@ -1547,6 +1575,7 @@ if (is_readable($dbPath)) {
                 'signals' => $signalList
             ];
         }
+        $stats['unique_hosts'] = count($uniqueHosts);
     } catch (Throwable $exception) {
         $stats = $stats;
     }
@@ -1565,6 +1594,7 @@ if ($stats['last_update'] === null) {
 $blockRate = 0.0;
 if ($stats['total_alerts'] > 0) {
     $blockRate = ($stats['total_blocks'] / $stats['total_alerts']) * 100;
+    $blockRate = min(100.0, max(0.0, $blockRate));
 }
 $topCountries = $stats['countries'];
 arsort($topCountries);
@@ -2416,6 +2446,21 @@ $chartLabels = [
           <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'total_blocks'), ENT_QUOTES, 'UTF-8'); ?></span>
           <div class="stat-value"><?= (int) $stats['total_blocks']; ?></div>
           <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'confirmed_preventions'), ENT_QUOTES, 'UTF-8'); ?></span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'alerts_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
+          <div class="stat-value"><?= (int) $stats['alerts_24h']; ?></div>
+          <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'last_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'blocks_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
+          <div class="stat-value"><?= (int) $stats['blocks_24h']; ?></div>
+          <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'last_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'unique_hosts'), ENT_QUOTES, 'UTF-8'); ?></span>
+          <div class="stat-value"><?= (int) $stats['unique_hosts']; ?></div>
+          <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'unique_hosts_help'), ENT_QUOTES, 'UTF-8'); ?></span>
         </div>
         <div class="stat-card">
           <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'manual_sites'), ENT_QUOTES, 'UTF-8'); ?></span>

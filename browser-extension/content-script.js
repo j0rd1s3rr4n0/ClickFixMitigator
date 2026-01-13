@@ -51,6 +51,22 @@ function getHostname(url) {
   }
 }
 
+function getReferrerUrl() {
+  const referrer = document.referrer;
+  if (!referrer) {
+    return "";
+  }
+  try {
+    const parsed = new URL(referrer);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return "";
+    }
+    return referrer;
+  } catch (error) {
+    return "";
+  }
+}
+
 function t(key, substitutions) {
   return chrome.i18n.getMessage(key, substitutions) || key;
 }
@@ -72,7 +88,8 @@ function sendPageAlert(alertType, snippet) {
     snippet,
     url: window.location.href,
     timestamp: Date.now(),
-    fullContext
+    fullContext,
+    previousUrl: getReferrerUrl()
   });
 }
 
@@ -446,7 +463,8 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       type: "manualReport",
       url: window.location.href,
       hostname: hostname || getHostname(window.location.href),
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      previousUrl: getReferrerUrl()
     });
     reportButton.disabled = true;
     reportButton.textContent = t("blockedReported");
@@ -850,6 +868,7 @@ function sendClipboardEvent(payload) {
     type: "clipboardEvent",
     url: window.location.href,
     timestamp: Date.now(),
+    previousUrl: getReferrerUrl(),
     ...payload
   });
 }

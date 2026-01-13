@@ -327,6 +327,8 @@ async function triggerAlert(details) {
   const timestamp = new Date(details.timestamp).toISOString();
   const reportHostname = details.reportHostname === false ? "" : hostname;
   const reportUrl = details.reportHostname === false ? "" : details.url;
+  const reportPreviousUrl =
+    details.reportHostname === false ? "" : details.previousUrl || "";
   const allowlisted = await isAllowlisted(details.url);
   const shouldBlockPage = !details.suppressPageBlock;
 
@@ -345,6 +347,7 @@ async function triggerAlert(details) {
     message,
     detectedContent: details.detectedContent || "",
     full_context: details.fullContext || "",
+    previous_url: reportPreviousUrl,
     signals: {
       mismatch: details.mismatch,
       commandMatch: details.commandMatch,
@@ -787,7 +790,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       reason: t("manualReportReason"),
       blocked: true,
       manualReport: true,
-      detectedContent: ""
+      detectedContent: "",
+      previous_url: message.previousUrl || ""
     });
     return;
   }
@@ -835,6 +839,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         blockedClipboardText: "",
         detectedContent: message.snippet || "",
         fullContext: message.fullContext || "",
+        previousUrl: message.previousUrl || "",
         tabId: sender?.tab?.id ?? null
       });
 
@@ -975,6 +980,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           blockedClipboardText,
           detectedContent,
           fullContext: message.fullContext || "",
+          previousUrl: message.previousUrl || "",
           tabId: sender?.tab?.id ?? null,
           suppressPageBlock: clipboardWarningOnly,
           incrementBlockCount: !clipboardWarningOnly,
