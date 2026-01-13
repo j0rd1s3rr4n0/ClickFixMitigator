@@ -119,6 +119,32 @@ async function initLocale() {
   await loadLocaleMessages(selectedLocale);
 }
 
+function safeSendMessage(message, callback) {
+  if (!chrome?.runtime?.id) {
+    if (callback) {
+      callback();
+    }
+    return;
+  }
+  try {
+    chrome.runtime.sendMessage(message, (response) => {
+      if (chrome.runtime.lastError) {
+        if (callback) {
+          callback();
+        }
+        return;
+      }
+      if (callback) {
+        callback(response);
+      }
+    });
+  } catch (error) {
+    if (callback) {
+      callback();
+    }
+  }
+}
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes.uiLanguage) {
     initLocale();
@@ -129,7 +155,7 @@ initLocale();
 
 async function getBlocklistStatus() {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage(
+    safeSendMessage(
       { type: "checkBlocklist", url: window.location.href },
       (response) => resolve(response)
     );
@@ -138,7 +164,7 @@ async function getBlocklistStatus() {
 
 function sendPageAlert(alertType, snippet) {
   const fullContext = collectFullContext();
-  chrome.runtime.sendMessage({
+  safeSendMessage({
     type: "pageAlert",
     alertType,
     snippet,
@@ -347,6 +373,9 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
   const buttonRow = document.createElement("div");
   buttonRow.className = "clickfix-actions";
 
+  const backRow = document.createElement("div");
+  backRow.className = "clickfix-back-actions";
+
   const reportButton = document.createElement("button");
   reportButton.type = "button";
   reportButton.textContent = t("blockedReport");
@@ -394,7 +423,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
   allowAlwaysButton.addEventListener("click", async () => {
     const currentHost = hostname || getHostname(window.location.href);
     await new Promise((resolve) => {
-      chrome.runtime.sendMessage(
+      safeSendMessage(
         { type: "allowSite", hostname: currentHost },
         () => resolve()
       );
@@ -403,7 +432,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
   });
 
   reportButton.addEventListener("click", () => {
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       type: "manualReport",
       url: window.location.href,
       hostname: hostname || getHostname(window.location.href),
@@ -427,7 +456,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
   buttonRow.appendChild(allowOnceButton);
   buttonRow.appendChild(allowSessionButton);
   buttonRow.appendChild(allowAlwaysButton);
-  buttonRow.appendChild(backButton);
+  backRow.appendChild(backButton);
 
   const header = document.createElement("div");
   header.className = "clickfix-header";
@@ -448,6 +477,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
     card.appendChild(hostText);
   }
   card.appendChild(buttonRow);
+  card.appendChild(backRow);
   container.appendChild(card);
 
   document.documentElement.innerHTML = "";
@@ -461,16 +491,16 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 32px 20px;
-      background: radial-gradient(circle at top, #fff5f5 0%, #fdecec 40%, #ffe4e6 100%);
+      padding: 40px 24px;
+      background: radial-gradient(circle at top, #fff7f8 0%, #feecec 48%, #fde2e5 100%);
       font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     }
     .clickfix-card {
-      width: min(860px, 100%);
+      width: min(920px, 100%);
       background: #fff;
-      border-radius: 28px;
-      padding: 32px;
-      box-shadow: 0 30px 70px rgba(185, 28, 28, 0.22);
+      border-radius: 32px;
+      padding: clamp(28px, 4vw, 40px);
+      box-shadow: 0 28px 60px rgba(185, 28, 28, 0.18);
       text-align: center;
     }
     .clickfix-header {
@@ -497,13 +527,13 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       letter-spacing: 0.4px;
     }
     .clickfix-subtitle {
-      margin-top: 12px;
+      margin-top: 14px;
       font-size: 15px;
       font-weight: 600;
       color: #b91c1c;
     }
     .clickfix-section-title {
-      margin-top: 20px;
+      margin-top: 22px;
       font-size: 15px;
       font-weight: 700;
       color: #7f1d1d;
@@ -530,8 +560,8 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       margin-top: 12px;
       padding: 12px 14px;
       border-radius: 16px;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
+      background: #f8fbff;
+      border: 1px solid #cfe0ff;
       color: #0f172a;
       font-size: 13px;
       line-height: 1.5;
@@ -551,7 +581,12 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       gap: 12px;
       flex-wrap: wrap;
       justify-content: center;
-      margin-top: 18px;
+      margin-top: 24px;
+    }
+    .clickfix-back-actions {
+      display: flex;
+      justify-content: center;
+      margin-top: 14px;
     }
     .clickfix-btn {
       padding: 12px 20px;
@@ -620,7 +655,7 @@ async function checkBlocklistAndBlock() {
   const status = await getBlocklistStatus();
   if (status?.blocked) {
     const hostname = status.hostname || getHostname(window.location.href);
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       type: "blocklisted",
       url: window.location.href,
       hostname,
@@ -743,7 +778,7 @@ function notifyWinRDetected() {
   const snippet = scanForWinR();
   if (snippet && !winRDetected) {
     winRDetected = true;
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       type: "pageHint",
       hint: "winr",
       snippet,
@@ -758,7 +793,7 @@ function notifyWinXDetected() {
   const snippet = scanForWinX();
   if (snippet && !winXDetected) {
     winXDetected = true;
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       type: "pageHint",
       hint: "winx",
       snippet,
@@ -773,7 +808,7 @@ function notifyCaptchaDetected() {
   const snippet = scanForFakeCaptcha();
   if (snippet && !captchaDetected) {
     captchaDetected = true;
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       type: "pageHint",
       hint: "captcha",
       snippet,
@@ -788,7 +823,7 @@ function notifyBrowserErrorDetected() {
   const snippet = scanForFakeError();
   if (snippet && !browserErrorDetected) {
     browserErrorDetected = true;
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       type: "pageHint",
       hint: "browser-error",
       snippet,
@@ -803,7 +838,7 @@ function notifyFixActionDetected() {
   const snippet = scanForFixAction();
   if (snippet && !fixActionDetected) {
     fixActionDetected = true;
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       type: "pageHint",
       hint: "fix-action",
       snippet,
@@ -823,7 +858,7 @@ function notifyConsoleDetected() {
   const snippet = scanForConsolePaste();
   if (snippet && !consoleDetected) {
     consoleDetected = true;
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       type: "pageHint",
       hint: "console",
       snippet,
@@ -843,7 +878,7 @@ function notifyShellDetected() {
   const snippet = scanForShellPaste();
   if (snippet && !shellDetected) {
     shellDetected = true;
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       type: "pageHint",
       hint: "shell",
       snippet,
@@ -863,7 +898,7 @@ function notifyPasteSequenceDetected() {
   const snippet = scanForPasteSequence();
   if (snippet && !pasteSequenceDetected) {
     pasteSequenceDetected = true;
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       type: "pageHint",
       hint: "paste-sequence",
       snippet,
@@ -904,7 +939,7 @@ function notifyCopyTriggerDetected() {
   const snippet = scanForCopyTrigger();
   if (snippet && !copyTriggerDetected) {
     copyTriggerDetected = true;
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       type: "pageHint",
       hint: "copy-trigger",
       snippet,
@@ -921,7 +956,7 @@ function renderBlockedPage(hostname) {
 
 function checkReportedSite() {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage(
+    safeSendMessage(
       {
         type: "checkBlocklist",
         url: window.location.href
@@ -942,7 +977,7 @@ function notifyFileExplorerDetected() {
   const snippet = scanForFileExplorer();
   if (snippet && !fileExplorerDetected) {
     fileExplorerDetected = true;
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       type: "pageHint",
       hint: "file-explorer",
       snippet,
@@ -954,7 +989,7 @@ function notifyFileExplorerDetected() {
 }
 
 function sendClipboardEvent(payload) {
-  chrome.runtime.sendMessage({
+  safeSendMessage({
     type: "clipboardEvent",
     url: window.location.href,
     timestamp: Date.now(),
