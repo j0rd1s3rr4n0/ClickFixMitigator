@@ -63,6 +63,44 @@ function t(key, substitutions) {
   return chrome.i18n.getMessage(key, substitutions) || key;
 }
 
+const ALERT_ES_MESSAGES = {
+  alertMismatch: "Discrepancia entre selección y portapapeles.",
+  alertCommand: "Patrón de comando sospechoso detectado.",
+  alertClipboardCommand: "Comando sospechoso detectado en el portapapeles.",
+  alertWinR: "La página sugiere usar Win+R/Run dialog.",
+  alertWinX: "La página sugiere usar Win+X para abrir la terminal.",
+  alertBrowserError: "La página muestra un error falso del navegador.",
+  alertFixAction: "La página pide aplicar una solución rápida o copiar un comando.",
+  alertCaptcha: "Posible captcha falso detectado.",
+  alertConsole: "La página intenta que pegues en la consola de DevTools.",
+  alertShell: "La página te pide pegar comandos en CMD/PowerShell/Ejecutar.",
+  alertPasteSequence: "La página guía el pegado con Ctrl+V/Enter.",
+  alertFileExplorer: "La página pide pegar una ruta en el Explorador de archivos.",
+  alertCopyTrigger: "La página intenta copiar comandos al portapapeles.",
+  alertEvasion: "Se detectó contenido de comandos ofuscado o codificado.",
+  alertSnippet: "Fragmento detectado: \"$1\"",
+  alertClipboardBlocked: "Portapapeles bloqueado: \"$1\""
+};
+
+function formatMessage(message, substitutions) {
+  if (!substitutions) {
+    return message;
+  }
+  const values = Array.isArray(substitutions) ? substitutions : [substitutions];
+  return values.reduce(
+    (result, value, index) => result.split(`$${index + 1}`).join(value),
+    message
+  );
+}
+
+function tEsMessage(key, substitutions) {
+  const message = ALERT_ES_MESSAGES[key];
+  if (!message) {
+    return t(key, substitutions);
+  }
+  return formatMessage(message, substitutions);
+}
+
 function extractHostname(url) {
   try {
     return new URL(url).hostname;
@@ -272,6 +310,77 @@ function buildAlertReasons(details) {
   return parts;
 }
 
+function buildAlertReasonsEs(details) {
+  const parts = [];
+  const addReason = (message) => {
+    if (!message || parts.includes(message)) {
+      return;
+    }
+    parts.push(message);
+  };
+  if (details.mismatch) {
+    addReason(tEsMessage("alertMismatch"));
+  }
+  if (details.clipboardWarning) {
+    addReason(tEsMessage("alertClipboardCommand"));
+  }
+  if (details.commandMatch) {
+    addReason(tEsMessage("alertCommand"));
+  }
+  if (details.winRHint) {
+    addReason(tEsMessage("alertWinR"));
+  }
+  if (details.winXHint) {
+    addReason(tEsMessage("alertWinX"));
+  }
+  if (details.browserErrorHint) {
+    addReason(tEsMessage("alertBrowserError"));
+  }
+  if (details.fixActionHint) {
+    addReason(tEsMessage("alertFixAction"));
+  }
+  if (details.captchaHint) {
+    addReason(tEsMessage("alertCaptcha"));
+  }
+  if (details.consoleHint) {
+    addReason(tEsMessage("alertConsole"));
+  }
+  if (details.shellHint) {
+    addReason(tEsMessage("alertShell"));
+  }
+  if (details.pasteSequenceHint) {
+    addReason(tEsMessage("alertPasteSequence"));
+  }
+  if (details.fileExplorerHint) {
+    addReason(tEsMessage("alertFileExplorer"));
+  }
+  if (details.copyTriggerHint) {
+    addReason(tEsMessage("alertCopyTrigger"));
+  }
+  if (details.evasionHint) {
+    addReason(tEsMessage("alertEvasion"));
+  }
+  const snippets = details.snippets || [];
+  snippets.forEach((snippetText) => {
+    if (!snippetText) {
+      return;
+    }
+    const snippet =
+      snippetText.length > 160
+        ? `${snippetText.slice(0, 157)}...`
+        : snippetText;
+    addReason(tEsMessage("alertSnippet", snippet));
+  });
+  if (details.blockedClipboardText) {
+    const snippet =
+      details.blockedClipboardText.length > CLIPBOARD_SNIPPET_LIMIT
+        ? `${details.blockedClipboardText.slice(0, CLIPBOARD_SNIPPET_LIMIT - 3)}...`
+        : details.blockedClipboardText;
+    addReason(tEsMessage("alertClipboardBlocked", snippet));
+  }
+  return parts;
+}
+
 function buildAlertMessage(details) {
   return buildAlertReasons(details).join(" ");
 }
@@ -321,8 +430,10 @@ async function triggerAlert(details) {
     await incrementBlockCount();
   }
   const reasons = buildAlertReasons(details);
+  const reasonsEs = buildAlertReasonsEs(details);
   const snippets = buildAlertSnippets(details);
   const message = reasons.join(" ");
+  const messageEs = reasonsEs.join(" ");
   const hostname = extractHostname(details.url);
   const timestamp = new Date(details.timestamp).toISOString();
   const reportHostname = details.reportHostname === false ? "" : hostname;
@@ -404,6 +515,8 @@ async function triggerAlert(details) {
         hostname,
         reason: message,
         reasons,
+        reasonEs: messageEs,
+        reasonsEs,
         contextText: details.detectedContent || "",
         snippets
       });
@@ -422,6 +535,8 @@ async function triggerAlert(details) {
             hostname,
             reason: message,
             reasons,
+            reasonEs: messageEs,
+            reasonsEs,
             contextText: details.detectedContent || "",
             snippets
           });
