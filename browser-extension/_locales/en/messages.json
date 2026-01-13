@@ -157,6 +157,21 @@
   "popupClearHistory": {
     "message": "Clear history"
   },
+  "popupClipboardTitle": {
+    "message": "Clipboard backups"
+  },
+  "popupClipboardEmpty": {
+    "message": "No clipboard backups."
+  },
+  "popupClipboardClear": {
+    "message": "Clear clipboard backups"
+  },
+  "popupClipboardCopy": {
+    "message": "Copy"
+  },
+  "popupClipboardCopied": {
+    "message": "Copied"
+  },
   "popupReportTitle": {
     "message": "Report site"
   },

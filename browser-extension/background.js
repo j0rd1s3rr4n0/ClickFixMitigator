@@ -22,6 +22,7 @@ const LIST_REFRESH_MINUTES = 3;
 const REPORT_FLUSH_MINUTES = 5;
 const REPORT_DEDUPE_WINDOW_MS = 15 * 60 * 1000;
 const REPORT_QUEUE_LIMIT = 300;
+const CLIPBOARD_BACKUP_LIMIT = 50;
 
 const COMMAND_REGEX =
   /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d|reg\s+add|rundll32|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic)\b/i;
@@ -255,6 +256,27 @@ async function incrementAlertCount() {
 async function incrementBlockCount() {
   const settings = await getSettings();
   await chrome.storage.local.set({ blockCount: (settings.blockCount ?? 0) + 1 });
+}
+
+async function addClipboardBackupEntry({ text, url, malicious }) {
+  if (!text) {
+    return;
+  }
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return;
+  }
+  const entry = {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    text: trimmed,
+    url: url || "",
+    timestamp: Date.now(),
+    malicious: Boolean(malicious)
+  };
+  const stored = await chrome.storage.local.get({ clipboardBackups: [] });
+  const existing = Array.isArray(stored.clipboardBackups) ? stored.clipboardBackups : [];
+  const next = [entry, ...existing].slice(0, CLIPBOARD_BACKUP_LIMIT);
+  await chrome.storage.local.set({ clipboardBackups: next });
 }
 
 function buildAlertReasons(details) {
@@ -1011,6 +1033,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           setClipboardBlock(clipboardText);
           if (saveClipboardBackup) {
             blockedClipboardText = clipboardText;
+            await addClipboardBackupEntry({
+              text: clipboardText,
+              url: message.url,
+              malicious: true
+            });
           }
           requestClipboardReplace(sender?.tab?.id, "");
         }

@@ -104,6 +104,29 @@ li.empty,
   margin-bottom: 8px;
 }
 
+.clipboard-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.clipboard-item.malicious {
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+.clipboard-text {
+  font-size: 13px;
+  line-height: 1.4;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.clipboard-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .history-item small {
   color: #64748b;
 }
