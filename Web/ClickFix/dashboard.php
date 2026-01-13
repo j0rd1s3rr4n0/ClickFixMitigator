@@ -2443,7 +2443,7 @@ $chartLabels = [
 
       <div class="layout">
         <div>
-          <section class="card">
+          <section class="card" id="public-lists-section">
             <div class="section-title">
               <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'alert_analytics'), ENT_QUOTES, 'UTF-8'); ?></h2>
               <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'latest_reports'), ENT_QUOTES, 'UTF-8'); ?></span>
