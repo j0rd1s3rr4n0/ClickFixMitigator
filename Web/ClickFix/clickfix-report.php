@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     received_at TEXT NOT NULL,
     url TEXT,
+    previous_url TEXT,
     hostname TEXT,
     message TEXT,
     detected_content TEXT,
@@ -125,6 +126,9 @@ function ensureReportsSchema(PDO $pdo, string $debugFile): void
     }
     if (!isset($existing['blocked'])) {
         $updates[] = 'ALTER TABLE reports ADD COLUMN blocked INTEGER DEFAULT 0';
+    }
+    if (!isset($existing['previous_url'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN previous_url TEXT';
     }
 
     foreach ($updates as $statement) {
@@ -289,6 +293,7 @@ if (!in_array($type, ['alert', 'stats'], true)) {
 }
 
 $url = isset($payload['url']) ? trim((string) $payload['url']) : '';
+$previousUrl = isset($payload['previous_url']) ? trim((string) $payload['previous_url']) : '';
 $hostname = isset($payload['hostname']) ? trim((string) $payload['hostname']) : '';
 $message = isset($payload['message']) ? trim((string) $payload['message']) : '';
 $reason = isset($payload['reason']) ? trim((string) $payload['reason']) : '';
@@ -305,6 +310,7 @@ $manualReport = filter_var($payload['manualReport'] ?? false, FILTER_VALIDATE_BO
 $blocked = filter_var($payload['blocked'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
 
 $url = substr($url, 0, 2048);
+$previousUrl = substr($previousUrl, 0, 2048);
 $hostname = substr($hostname, 0, 255);
 $message = substr($message !== '' ? $message : $reason, 0, 2000);
 $timestamp = substr($timestamp, 0, 100);
@@ -313,6 +319,10 @@ $fullContext = substr($fullContext, 0, 50000);
 
 if ($url !== '' && preg_match('/\s/', $url)) {
     respondWithError(400, 'Invalid url', $debugFile, ['url' => $url]);
+}
+
+if ($previousUrl !== '' && preg_match('/\s/', $previousUrl)) {
+    $previousUrl = '';
 }
 
 if ($url !== '') {
@@ -324,6 +334,15 @@ if ($url !== '') {
     }
     if ($hostname === '') {
         $hostname = $host;
+    }
+}
+
+if ($previousUrl !== '') {
+    $parsedUrl = parse_url($previousUrl);
+    $scheme = strtolower((string) ($parsedUrl['scheme'] ?? ''));
+    $host = (string) ($parsedUrl['host'] ?? '');
+    if (!in_array($scheme, ['http', 'https'], true) || $host === '') {
+        $previousUrl = '';
     }
 }
 
@@ -345,6 +364,10 @@ if ($url !== '') {
 
 if ($url !== '' && filter_var($url, FILTER_VALIDATE_URL) === false) {
     respondWithError(400, 'Invalid url', $debugFile, ['url' => $url]);
+}
+
+if ($previousUrl !== '' && filter_var($previousUrl, FILTER_VALIDATE_URL) === false) {
+    $previousUrl = '';
 }
 
 if ($hostname !== '' && !preg_match('/^[a-z0-9.-]+$/i', $hostname)) {
@@ -407,6 +430,7 @@ $entry = [
     'type' => $type,
     'received_at' => gmdate('c'),
     'url' => $url,
+    'previous_url' => $previousUrl,
     'hostname' => $hostname,
     'message' => $message,
     'timestamp' => $timestamp,
@@ -440,12 +464,13 @@ if ($pdo instanceof PDO) {
             ]);
         } else {
             $statement = $pdo->prepare(
-                'INSERT INTO reports (received_at, url, hostname, message, detected_content, full_context, signals_json, blocked, user_agent, ip, country)
-                 VALUES (:received_at, :url, :hostname, :message, :detected_content, :full_context, :signals_json, :blocked, :user_agent, :ip, :country)'
+                'INSERT INTO reports (received_at, url, previous_url, hostname, message, detected_content, full_context, signals_json, blocked, user_agent, ip, country)
+                 VALUES (:received_at, :url, :previous_url, :hostname, :message, :detected_content, :full_context, :signals_json, :blocked, :user_agent, :ip, :country)'
             );
             $statement->execute([
                 ':received_at' => $entry['received_at'],
                 ':url' => $entry['url'],
+                ':previous_url' => $entry['previous_url'],
                 ':hostname' => $entry['hostname'],
                 ':message' => $entry['message'],
                 ':detected_content' => $entry['detected_content'],

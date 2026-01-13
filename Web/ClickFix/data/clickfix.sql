@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     received_at TEXT NOT NULL,
     url TEXT,
+    previous_url TEXT,
     hostname TEXT,
     message TEXT,
     detected_content TEXT,
