@@ -22,6 +22,7 @@ const LIST_REFRESH_MINUTES = 3;
 const REPORT_FLUSH_MINUTES = 5;
 const REPORT_DEDUPE_WINDOW_MS = 15 * 60 * 1000;
 const REPORT_QUEUE_LIMIT = 300;
+const CLIPBOARD_BACKUP_LIMIT = 50;
 
 const COMMAND_REGEX =
   /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d|reg\s+add|rundll32|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic)\b/i;
@@ -60,8 +61,62 @@ async function getSettings() {
 }
 
 function t(key, substitutions) {
+  if (activeMessages?.[key]?.message) {
+    return formatMessage(activeMessages[key].message, substitutions);
+  }
   return chrome.i18n.getMessage(key, substitutions) || key;
 }
+
+const SUPPORTED_LOCALES = ["en", "es"];
+const DEFAULT_LOCALE = "en";
+let activeMessages = null;
+
+function formatMessage(message, substitutions) {
+  if (!substitutions) {
+    return message;
+  }
+  const values = Array.isArray(substitutions) ? substitutions : [substitutions];
+  return values.reduce((result, value, index) => {
+    return result.replaceAll(`$${index + 1}`, value);
+  }, message);
+}
+
+function normalizeLocale(locale) {
+  if (!locale) {
+    return DEFAULT_LOCALE;
+  }
+  const lower = locale.toLowerCase();
+  if (SUPPORTED_LOCALES.includes(lower)) {
+    return lower;
+  }
+  const base = lower.split("-")[0];
+  return SUPPORTED_LOCALES.includes(base) ? base : DEFAULT_LOCALE;
+}
+
+async function loadLocaleMessages(locale) {
+  try {
+    const response = await fetch(chrome.runtime.getURL(`_locales/${locale}/messages.json`));
+    if (!response.ok) {
+      activeMessages = null;
+      return;
+    }
+    activeMessages = await response.json();
+  } catch (error) {
+    activeMessages = null;
+  }
+}
+
+async function initLocale() {
+  const { uiLanguage } = await chrome.storage.local.get({ uiLanguage: "" });
+  const selectedLocale = normalizeLocale(uiLanguage || chrome.i18n.getUILanguage());
+  await loadLocaleMessages(selectedLocale);
+}
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.uiLanguage) {
+    initLocale();
+  }
+});
 
 function extractHostname(url) {
   try {
@@ -99,6 +154,8 @@ let blocklistCache = { items: [], fetchedAt: 0 };
 let allowlistCache = { items: [], fetchedAt: 0 };
 let reportQueue = [];
 const reportHashes = new Map();
+
+initLocale();
 
 async function refreshBlocklist() {
   const settings = await getSettings();
@@ -201,6 +258,27 @@ async function incrementBlockCount() {
   await chrome.storage.local.set({ blockCount: (settings.blockCount ?? 0) + 1 });
 }
 
+async function addClipboardBackupEntry({ text, url, malicious }) {
+  if (!text) {
+    return;
+  }
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return;
+  }
+  const entry = {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    text: trimmed,
+    url: url || "",
+    timestamp: Date.now(),
+    malicious: Boolean(malicious)
+  };
+  const stored = await chrome.storage.local.get({ clipboardBackups: [] });
+  const existing = Array.isArray(stored.clipboardBackups) ? stored.clipboardBackups : [];
+  const next = [entry, ...existing].slice(0, CLIPBOARD_BACKUP_LIMIT);
+  await chrome.storage.local.set({ clipboardBackups: next });
+}
+
 function buildAlertReasons(details) {
   const parts = [];
   const addReason = (message) => {
@@ -270,6 +348,14 @@ function buildAlertReasons(details) {
     addReason(t("alertClipboardBlocked", snippet));
   }
   return parts;
+}
+
+function tEsMessage(key, substitutions) {
+  return t(key, substitutions);
+}
+
+function buildAlertReasonsEs(details) {
+  return buildAlertReasons(details);
 }
 
 function buildAlertMessage(details) {
@@ -955,6 +1041,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           setClipboardBlock(clipboardText);
           if (saveClipboardBackup) {
             blockedClipboardText = clipboardText;
+            await addClipboardBackupEntry({
+              text: clipboardText,
+              url: message.url,
+              malicious: true
+            });
           }
           requestClipboardReplace(sender?.tab?.id, "");
         }

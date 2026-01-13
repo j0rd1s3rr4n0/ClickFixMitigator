@@ -68,8 +68,64 @@ function getReferrerUrl() {
 }
 
 function t(key, substitutions) {
+  if (activeMessages?.[key]?.message) {
+    return formatMessage(activeMessages[key].message, substitutions);
+  }
   return chrome.i18n.getMessage(key, substitutions) || key;
 }
+
+const SUPPORTED_LOCALES = ["en", "es"];
+const DEFAULT_LOCALE = "en";
+let activeMessages = null;
+
+function formatMessage(message, substitutions) {
+  if (!substitutions) {
+    return message;
+  }
+  const values = Array.isArray(substitutions) ? substitutions : [substitutions];
+  return values.reduce((result, value, index) => {
+    return result.replaceAll(`$${index + 1}`, value);
+  }, message);
+}
+
+function normalizeLocale(locale) {
+  if (!locale) {
+    return DEFAULT_LOCALE;
+  }
+  const lower = locale.toLowerCase();
+  if (SUPPORTED_LOCALES.includes(lower)) {
+    return lower;
+  }
+  const base = lower.split("-")[0];
+  return SUPPORTED_LOCALES.includes(base) ? base : DEFAULT_LOCALE;
+}
+
+async function loadLocaleMessages(locale) {
+  try {
+    const response = await fetch(chrome.runtime.getURL(`_locales/${locale}/messages.json`));
+    if (!response.ok) {
+      activeMessages = null;
+      return;
+    }
+    activeMessages = await response.json();
+  } catch (error) {
+    activeMessages = null;
+  }
+}
+
+async function initLocale() {
+  const { uiLanguage } = await chrome.storage.local.get({ uiLanguage: "" });
+  const selectedLocale = normalizeLocale(uiLanguage || chrome.i18n.getUILanguage());
+  await loadLocaleMessages(selectedLocale);
+}
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.uiLanguage) {
+    initLocale();
+  }
+});
+
+initLocale();
 
 async function getBlocklistStatus() {
   return new Promise((resolve) => {
@@ -235,198 +291,86 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       ? t("blockedReasonWithDetail", reasonText)
       : t("blockedReasonDefault");
   const container = document.createElement("div");
-  container.style.cssText = [
-    "min-height:100vh",
-    "display:flex",
-    "flex-direction:column",
-    "justify-content:center",
-    "align-items:center",
-    "gap:20px",
-    "padding:32px 24px",
-    "background:linear-gradient(180deg, #fff1f2 0%, #fee2e2 100%)",
-    "font-family:system-ui, sans-serif",
-    "text-align:center"
-  ].join(";");
+  container.className = "clickfix-blocked";
 
   const card = document.createElement("div");
-  card.style.cssText = [
-    "background:#ffffff",
-    "border-radius:24px",
-    "padding:32px",
-    "box-shadow:0 24px 60px rgba(185, 28, 28, 0.18)",
-    "max-width:720px",
-    "width:100%"
-  ].join(";");
+  card.className = "clickfix-card";
+
+  const iconWrap = document.createElement("div");
+  iconWrap.className = "clickfix-icon";
+  iconWrap.innerHTML =
+    "<svg width='28' height='28' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>" +
+    "<path d='M12 3l9 16H3L12 3z' fill='white'/>" +
+    "<path d='M12 8.5v5.5' stroke='#991b1b' stroke-width='2' stroke-linecap='round'/>" +
+    "<circle cx='12' cy='17' r='1.4' fill='#991b1b'/>" +
+    "</svg>";
 
   const heading = document.createElement("div");
   heading.textContent = title;
-  heading.style.cssText = [
-    "font-size:30px",
-    "font-weight:800",
-    "color:#b91c1c",
-    "text-transform:uppercase"
-  ].join(";");
+  heading.className = "clickfix-title";
 
   const subtitle = document.createElement("div");
   subtitle.textContent = reason;
-  subtitle.style.cssText = [
-    "font-size:16px",
-    "font-weight:600",
-    "color:#b91c1c",
-    "margin-top:12px"
-  ].join(";");
+  subtitle.className = "clickfix-subtitle";
 
   const reasonsTitle = document.createElement("div");
   reasonsTitle.textContent = t("blockedReasonsTitle");
-  reasonsTitle.style.cssText = [
-    "margin-top:18px",
-    "font-size:15px",
-    "font-weight:700",
-    "color:#7f1d1d"
-  ].join(";");
+  reasonsTitle.className = "clickfix-section-title";
 
   const reasonList = document.createElement("ul");
-  reasonList.style.cssText = [
-    "margin:12px 0 0",
-    "padding:0",
-    "list-style:none",
-    "display:flex",
-    "flex-direction:column",
-    "gap:10px",
-    "text-align:left"
-  ].join(";");
+  reasonList.className = "clickfix-reason-list";
 
   filteredReasons.forEach((entry) => {
     const item = document.createElement("li");
     item.textContent = entry;
-    item.style.cssText = [
-      "padding:12px 14px",
-      "border-radius:14px",
-      "background:#fff1f2",
-      "border:1px solid #fecdd3",
-      "color:#7f1d1d",
-      "font-size:14px",
-      "line-height:1.4"
-    ].join(";");
+    item.className = "clickfix-reason-chip";
     reasonList.appendChild(item);
   });
 
   const hostText = document.createElement("div");
   hostText.textContent = hostname ? t("blockedHost", hostname) : "";
-  hostText.style.cssText = [
-    "font-size:14px",
-    "color:#7f1d1d"
-  ].join(";");
+  hostText.className = "clickfix-host";
 
   const contextLabel = document.createElement("div");
   contextLabel.textContent = t("blockedContextTitle");
-  contextLabel.style.cssText = [
-    "margin-top:18px",
-    "font-size:15px",
-    "font-weight:700",
-    "color:#7f1d1d"
-  ].join(";");
+  contextLabel.className = "clickfix-section-title";
 
   const contextBox = document.createElement("div");
   contextBox.setAttribute("role", "textbox");
   contextBox.setAttribute("aria-readonly", "true");
-  contextBox.style.cssText = [
-    "margin-top:12px",
-    "padding:12px 14px",
-    "border-radius:16px",
-    "background:#f8fafc",
-    "border:1px solid #e2e8f0",
-    "color:#0f172a",
-    "font-size:13px",
-    "line-height:1.5",
-    "max-height:400pt",
-    "overflow:auto",
-    "width:60%",
-    "text-align:left",
-    "white-space:pre-wrap"
-  ].join(";");
+  contextBox.className = "clickfix-context";
 
   if (contextText) {
     contextBox.innerHTML = buildHighlightedHtml(contextText, snippets);
   }
 
   const buttonRow = document.createElement("div");
-  buttonRow.style.cssText = [
-    "display:flex",
-    "gap:16px",
-    "flex-wrap:wrap",
-    "justify-content:center"
-  ].join(";");
+  buttonRow.className = "clickfix-actions";
 
   const reportButton = document.createElement("button");
   reportButton.type = "button";
   reportButton.textContent = t("blockedReport");
-  reportButton.style.cssText = [
-    "padding:12px 20px",
-    "border-radius:999px",
-    "border:2px solid #f97316",
-    "background:#fff7ed",
-    "color:#ea580c",
-    "font-weight:700",
-    "cursor:pointer",
-    "font-size:14px"
-  ].join(";");
+  reportButton.className = "clickfix-btn clickfix-btn-outline warning";
 
   const allowOnceButton = document.createElement("button");
   allowOnceButton.type = "button";
   allowOnceButton.textContent = t("blockedAllowOnce");
-  allowOnceButton.style.cssText = [
-    "padding:12px 20px",
-    "border-radius:999px",
-    "border:2px solid #dc2626",
-    "background:#fff",
-    "color:#dc2626",
-    "font-weight:700",
-    "cursor:pointer",
-    "font-size:14px"
-  ].join(";");
+  allowOnceButton.className = "clickfix-btn clickfix-btn-outline danger";
 
   const allowSessionButton = document.createElement("button");
   allowSessionButton.type = "button";
   allowSessionButton.textContent = t("blockedAllowSession");
-  allowSessionButton.style.cssText = [
-    "padding:12px 20px",
-    "border-radius:999px",
-    "border:2px solid #dc2626",
-    "background:#fff",
-    "color:#dc2626",
-    "font-weight:700",
-    "cursor:pointer",
-    "font-size:14px"
-  ].join(";");
+  allowSessionButton.className = "clickfix-btn clickfix-btn-outline danger";
 
   const allowAlwaysButton = document.createElement("button");
   allowAlwaysButton.type = "button";
   allowAlwaysButton.textContent = t("blockedAllowAlways");
-  allowAlwaysButton.style.cssText = [
-    "padding:12px 20px",
-    "border-radius:999px",
-    "border:none",
-    "background:#dc2626",
-    "color:#fff",
-    "font-weight:700",
-    "cursor:pointer",
-    "font-size:14px"
-  ].join(";");
+  allowAlwaysButton.className = "clickfix-btn clickfix-btn-solid danger";
 
   const backButton = document.createElement("button");
   backButton.type = "button";
   backButton.textContent = t("blockedBack");
-  backButton.style.cssText = [
-    "padding:12px 20px",
-    "border-radius:999px",
-    "border:none",
-    "background:#dc2626",
-    "color:#fff",
-    "font-weight:700",
-    "cursor:pointer",
-    "font-size:14px"
-  ].join(";");
+  backButton.className = "clickfix-btn clickfix-btn-solid primary";
 
   allowOnceButton.addEventListener("click", () => {
     const currentHost = hostname || getHostname(window.location.href);
@@ -485,7 +429,12 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
   buttonRow.appendChild(allowAlwaysButton);
   buttonRow.appendChild(backButton);
 
-  card.appendChild(heading);
+  const header = document.createElement("div");
+  header.className = "clickfix-header";
+  header.appendChild(iconWrap);
+  header.appendChild(heading);
+
+  card.appendChild(header);
   card.appendChild(subtitle);
   if (filteredReasons.length) {
     card.appendChild(reasonsTitle);
@@ -503,6 +452,147 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
 
   document.documentElement.innerHTML = "";
   const head = document.createElement("head");
+  const style = document.createElement("style");
+  style.textContent = `
+    :root { color-scheme: light; }
+    body { margin: 0; }
+    .clickfix-blocked {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 20px;
+      background: radial-gradient(circle at top, #fff5f5 0%, #fdecec 40%, #ffe4e6 100%);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    .clickfix-card {
+      width: min(860px, 100%);
+      background: #fff;
+      border-radius: 28px;
+      padding: 32px;
+      box-shadow: 0 30px 70px rgba(185, 28, 28, 0.22);
+      text-align: center;
+    }
+    .clickfix-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .clickfix-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: #dc2626;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 12px 24px rgba(220, 38, 38, 0.25);
+    }
+    .clickfix-title {
+      font-size: clamp(22px, 3vw, 32px);
+      font-weight: 800;
+      color: #b91c1c;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .clickfix-subtitle {
+      margin-top: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #b91c1c;
+    }
+    .clickfix-section-title {
+      margin-top: 20px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #7f1d1d;
+    }
+    .clickfix-reason-list {
+      margin: 12px 0 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      text-align: left;
+    }
+    .clickfix-reason-chip {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
+      color: #7f1d1d;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .clickfix-context {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      color: #0f172a;
+      font-size: 13px;
+      line-height: 1.5;
+      max-height: 320px;
+      overflow: auto;
+      width: 100%;
+      text-align: left;
+      white-space: pre-wrap;
+    }
+    .clickfix-host {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #7f1d1d;
+    }
+    .clickfix-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 18px;
+    }
+    .clickfix-btn {
+      padding: 12px 20px;
+      border-radius: 999px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 14px;
+      border: none;
+    }
+    .clickfix-btn-outline {
+      background: #fff;
+      border: 2px solid;
+    }
+    .clickfix-btn-solid.primary {
+      background: #b91c1c;
+      color: #fff;
+    }
+    .clickfix-btn-outline.danger {
+      border-color: #dc2626;
+      color: #dc2626;
+    }
+    .clickfix-btn-solid.danger {
+      background: #dc2626;
+      color: #fff;
+    }
+    .clickfix-btn-outline.warning {
+      border-color: #f97316;
+      color: #ea580c;
+      background: #fff7ed;
+    }
+    .clickfix-btn:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+    @media (max-width: 640px) {
+      .clickfix-card { padding: 24px; }
+      .clickfix-actions { gap: 8px; }
+      .clickfix-btn { width: 100%; }
+    }
+  `;
+  head.appendChild(style);
   const body = document.createElement("body");
   body.appendChild(container);
   document.documentElement.appendChild(head);

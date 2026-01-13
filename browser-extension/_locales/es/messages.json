@@ -157,6 +157,21 @@
   "popupClearHistory": {
     "message": "Limpiar historial"
   },
+  "popupClipboardTitle": {
+    "message": "Historial de portapapeles"
+  },
+  "popupClipboardEmpty": {
+    "message": "Sin respaldos del portapapeles."
+  },
+  "popupClipboardClear": {
+    "message": "Limpiar portapapeles"
+  },
+  "popupClipboardCopy": {
+    "message": "Copiar"
+  },
+  "popupClipboardCopied": {
+    "message": "Copiado"
+  },
   "popupReportTitle": {
     "message": "Reportar sitio"
   },
