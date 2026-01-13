@@ -350,6 +350,77 @@ function buildAlertReasons(details) {
   return parts;
 }
 
+function buildAlertReasonsEs(details) {
+  const parts = [];
+  const addReason = (message) => {
+    if (!message || parts.includes(message)) {
+      return;
+    }
+    parts.push(message);
+  };
+  if (details.mismatch) {
+    addReason(tEsMessage("alertMismatch"));
+  }
+  if (details.clipboardWarning) {
+    addReason(tEsMessage("alertClipboardCommand"));
+  }
+  if (details.commandMatch) {
+    addReason(tEsMessage("alertCommand"));
+  }
+  if (details.winRHint) {
+    addReason(tEsMessage("alertWinR"));
+  }
+  if (details.winXHint) {
+    addReason(tEsMessage("alertWinX"));
+  }
+  if (details.browserErrorHint) {
+    addReason(tEsMessage("alertBrowserError"));
+  }
+  if (details.fixActionHint) {
+    addReason(tEsMessage("alertFixAction"));
+  }
+  if (details.captchaHint) {
+    addReason(tEsMessage("alertCaptcha"));
+  }
+  if (details.consoleHint) {
+    addReason(tEsMessage("alertConsole"));
+  }
+  if (details.shellHint) {
+    addReason(tEsMessage("alertShell"));
+  }
+  if (details.pasteSequenceHint) {
+    addReason(tEsMessage("alertPasteSequence"));
+  }
+  if (details.fileExplorerHint) {
+    addReason(tEsMessage("alertFileExplorer"));
+  }
+  if (details.copyTriggerHint) {
+    addReason(tEsMessage("alertCopyTrigger"));
+  }
+  if (details.evasionHint) {
+    addReason(tEsMessage("alertEvasion"));
+  }
+  const snippets = details.snippets || [];
+  snippets.forEach((snippetText) => {
+    if (!snippetText) {
+      return;
+    }
+    const snippet =
+      snippetText.length > 160
+        ? `${snippetText.slice(0, 157)}...`
+        : snippetText;
+    addReason(tEsMessage("alertSnippet", snippet));
+  });
+  if (details.blockedClipboardText) {
+    const snippet =
+      details.blockedClipboardText.length > CLIPBOARD_SNIPPET_LIMIT
+        ? `${details.blockedClipboardText.slice(0, CLIPBOARD_SNIPPET_LIMIT - 3)}...`
+        : details.blockedClipboardText;
+    addReason(tEsMessage("alertClipboardBlocked", snippet));
+  }
+  return parts;
+}
+
 function buildAlertMessage(details) {
   return buildAlertReasons(details).join(" ");
 }
@@ -399,8 +470,10 @@ async function triggerAlert(details) {
     await incrementBlockCount();
   }
   const reasons = buildAlertReasons(details);
+  const reasonsEs = buildAlertReasonsEs(details);
   const snippets = buildAlertSnippets(details);
   const message = reasons.join(" ");
+  const messageEs = reasonsEs.join(" ");
   const hostname = extractHostname(details.url);
   const timestamp = new Date(details.timestamp).toISOString();
   const reportHostname = details.reportHostname === false ? "" : hostname;
@@ -482,6 +555,8 @@ async function triggerAlert(details) {
         hostname,
         reason: message,
         reasons,
+        reasonEs: messageEs,
+        reasonsEs,
         contextText: details.detectedContent || "",
         snippets
       });
@@ -500,6 +575,8 @@ async function triggerAlert(details) {
             hostname,
             reason: message,
             reasons,
+            reasonEs: messageEs,
+            reasonsEs,
             contextText: details.detectedContent || "",
             snippets
           });
