@@ -180,3 +180,43 @@ Las extensiones deben tener una política de privacidad si recopilan datos del u
 
 URL de la política de privacidad*
 0/2,048Se ingresaron 0 de 2048 caracteres
+
+---
+
+Contenido sugerido para la sección de Privacidad (relleno según la captura)
+
+Descripción de un solo propósito
+Detectar patrones de ClickFix y discrepancias del portapapeles para alertar y proteger al usuario mientras navega.
+
+Justificación de storage
+Guardar configuración local, allowlist/blocklist, historial de alertas y cola de reportes para mantener la protección y evitar pérdida de datos tras reinicios.
+
+Justificación de notifications
+Mostrar avisos inmediatos cuando se detectan patrones peligrosos o acciones de bloqueo/restauración.
+
+Justificación de clipboardRead
+Comparar el texto copiado con el contenido del portapapeles para identificar discrepancias sospechosas asociadas a ClickFix.
+
+Justificación de clipboardWrite
+Limpiar el portapapeles cuando se detecta contenido malicioso para evitar pegados accidentales.
+
+Justificación de alarms
+Ejecutar sincronizaciones periódicas de allowlist/blocklist y el envío programado de reportes.
+
+Justificación de Permiso de host
+Permitir la detección en los sitios visitados y la descarga de listas remotas de allowlist/blocklist.
+
+¿Usas código remoto?
+Sí, estoy usando Código remoto
+
+Justificación
+Se consumen listas públicas remotas (allowlist/blocklist) y reportes se envían a un servidor externo; no se ejecuta código JS remoto.
+
+Uso de datos (selecciones)
+- Ubicación.
+
+Certificaciones (selecciones)
+- No uso ni transfiero datos de usuarios para propósitos no relacionados con el propósito específico de mi elemento.
+
+URL de la política de privacidad*
+https://jordiserrano.me/privacy/clickfix-mitigator
