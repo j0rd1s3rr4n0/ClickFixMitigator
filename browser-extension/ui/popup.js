@@ -10,6 +10,8 @@ const addDomainButton = document.getElementById("add-domain");
 const whitelistList = document.getElementById("whitelist-list");
 const historyContainer = document.getElementById("history");
 const clearHistoryButton = document.getElementById("clear-history");
+const clipboardHistoryContainer = document.getElementById("clipboard-history");
+const clearClipboardHistoryButton = document.getElementById("clear-clipboard-history");
 const reportInput = document.getElementById("report-input");
 const reportButton = document.getElementById("report-site");
 const reportStatus = document.getElementById("report-status");
@@ -55,6 +57,7 @@ function applyTranslations() {
   document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
     element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
   });
+  document.title = t("popupTitle");
 }
 
 function removeDuplicateReportSections() {
@@ -104,11 +107,12 @@ async function initLanguageSelector() {
 }
 
 async function loadSettings() {
-  const settings = await chrome.storage.local.get(DEFAULT_SETTINGS);
+  const settings = await chrome.storage.local.get({ ...DEFAULT_SETTINGS, clipboardBackups: [] });
   return {
     enabled: settings.enabled ?? true,
     whitelist: settings.whitelist ?? [],
-    history: settings.history ?? []
+    history: settings.history ?? [],
+    clipboardBackups: settings.clipboardBackups ?? []
   };
 }
 
@@ -156,6 +160,59 @@ function renderHistory(history) {
   });
 }
 
+function renderClipboardHistory(entries) {
+  if (!clipboardHistoryContainer) {
+    return;
+  }
+  clipboardHistoryContainer.innerHTML = "";
+  if (!entries.length) {
+    clipboardHistoryContainer.textContent = t("popupClipboardEmpty");
+    clipboardHistoryContainer.classList.add("empty");
+    return;
+  }
+  clipboardHistoryContainer.classList.remove("empty");
+  entries.forEach((entry) => {
+    const card = document.createElement("div");
+    card.classList.add("history-item", "clipboard-item");
+    if (entry.malicious) {
+      card.classList.add("malicious");
+    }
+
+    const text = document.createElement("div");
+    text.classList.add("clipboard-text");
+    text.textContent = entry.text;
+
+    const meta = document.createElement("small");
+    const time = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : "";
+    meta.textContent = entry.url ? `${time} • ${entry.url}` : time;
+
+    const actions = document.createElement("div");
+    actions.classList.add("clipboard-actions");
+    const copyButton = document.createElement("button");
+    copyButton.type = "button";
+    copyButton.textContent = t("popupClipboardCopy");
+    copyButton.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(entry.text || "");
+        copyButton.textContent = t("popupClipboardCopied");
+        setTimeout(() => {
+          copyButton.textContent = t("popupClipboardCopy");
+        }, 1500);
+      } catch (error) {
+        copyButton.textContent = t("popupClipboardCopy");
+      }
+    });
+    actions.appendChild(copyButton);
+
+    card.appendChild(text);
+    if (meta.textContent) {
+      card.appendChild(meta);
+    }
+    card.appendChild(actions);
+    clipboardHistoryContainer.appendChild(card);
+  });
+}
+
 async function addDomain(domain) {
   if (!domain) {
     return;
@@ -195,6 +252,11 @@ addDomainButton.addEventListener("click", async () => {
 clearHistoryButton.addEventListener("click", async () => {
   await chrome.storage.local.set({ history: [] });
   renderHistory([]);
+});
+
+clearClipboardHistoryButton?.addEventListener("click", async () => {
+  await chrome.storage.local.set({ clipboardBackups: [] });
+  renderClipboardHistory([]);
 });
 
 toggleEnabled.addEventListener("change", async () => {
@@ -243,4 +305,5 @@ reportButton.addEventListener("click", async () => {
   toggleEnabled.checked = settings.enabled;
   renderWhitelist(settings.whitelist);
   renderHistory(settings.history);
+  renderClipboardHistory(settings.clipboardBackups);
 })();

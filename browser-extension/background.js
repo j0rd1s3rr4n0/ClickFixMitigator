@@ -22,6 +22,7 @@ const LIST_REFRESH_MINUTES = 3;
 const REPORT_FLUSH_MINUTES = 5;
 const REPORT_DEDUPE_WINDOW_MS = 15 * 60 * 1000;
 const REPORT_QUEUE_LIMIT = 300;
+const CLIPBOARD_BACKUP_LIMIT = 50;
 
 const COMMAND_REGEX =
   /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d|reg\s+add|rundll32|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic)\b/i;
@@ -60,46 +61,62 @@ async function getSettings() {
 }
 
 function t(key, substitutions) {
+  if (activeMessages?.[key]?.message) {
+    return formatMessage(activeMessages[key].message, substitutions);
+  }
   return chrome.i18n.getMessage(key, substitutions) || key;
 }
 
-const ALERT_ES_MESSAGES = {
-  alertMismatch: "Discrepancia entre selección y portapapeles.",
-  alertCommand: "Patrón de comando sospechoso detectado.",
-  alertClipboardCommand: "Comando sospechoso detectado en el portapapeles.",
-  alertWinR: "La página sugiere usar Win+R/Run dialog.",
-  alertWinX: "La página sugiere usar Win+X para abrir la terminal.",
-  alertBrowserError: "La página muestra un error falso del navegador.",
-  alertFixAction: "La página pide aplicar una solución rápida o copiar un comando.",
-  alertCaptcha: "Posible captcha falso detectado.",
-  alertConsole: "La página intenta que pegues en la consola de DevTools.",
-  alertShell: "La página te pide pegar comandos en CMD/PowerShell/Ejecutar.",
-  alertPasteSequence: "La página guía el pegado con Ctrl+V/Enter.",
-  alertFileExplorer: "La página pide pegar una ruta en el Explorador de archivos.",
-  alertCopyTrigger: "La página intenta copiar comandos al portapapeles.",
-  alertEvasion: "Se detectó contenido de comandos ofuscado o codificado.",
-  alertSnippet: "Fragmento detectado: \"$1\"",
-  alertClipboardBlocked: "Portapapeles bloqueado: \"$1\""
-};
+const SUPPORTED_LOCALES = ["en", "es"];
+const DEFAULT_LOCALE = "en";
+let activeMessages = null;
 
 function formatMessage(message, substitutions) {
   if (!substitutions) {
     return message;
   }
   const values = Array.isArray(substitutions) ? substitutions : [substitutions];
-  return values.reduce(
-    (result, value, index) => result.split(`$${index + 1}`).join(value),
-    message
-  );
+  return values.reduce((result, value, index) => {
+    return result.replaceAll(`$${index + 1}`, value);
+  }, message);
 }
 
-function tEsMessage(key, substitutions) {
-  const message = ALERT_ES_MESSAGES[key];
-  if (!message) {
-    return t(key, substitutions);
+function normalizeLocale(locale) {
+  if (!locale) {
+    return DEFAULT_LOCALE;
   }
-  return formatMessage(message, substitutions);
+  const lower = locale.toLowerCase();
+  if (SUPPORTED_LOCALES.includes(lower)) {
+    return lower;
+  }
+  const base = lower.split("-")[0];
+  return SUPPORTED_LOCALES.includes(base) ? base : DEFAULT_LOCALE;
 }
+
+async function loadLocaleMessages(locale) {
+  try {
+    const response = await fetch(chrome.runtime.getURL(`_locales/${locale}/messages.json`));
+    if (!response.ok) {
+      activeMessages = null;
+      return;
+    }
+    activeMessages = await response.json();
+  } catch (error) {
+    activeMessages = null;
+  }
+}
+
+async function initLocale() {
+  const { uiLanguage } = await chrome.storage.local.get({ uiLanguage: "" });
+  const selectedLocale = normalizeLocale(uiLanguage || chrome.i18n.getUILanguage());
+  await loadLocaleMessages(selectedLocale);
+}
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.uiLanguage) {
+    initLocale();
+  }
+});
 
 function extractHostname(url) {
   try {
@@ -137,6 +154,8 @@ let blocklistCache = { items: [], fetchedAt: 0 };
 let allowlistCache = { items: [], fetchedAt: 0 };
 let reportQueue = [];
 const reportHashes = new Map();
+
+initLocale();
 
 async function refreshBlocklist() {
   const settings = await getSettings();
@@ -237,6 +256,27 @@ async function incrementAlertCount() {
 async function incrementBlockCount() {
   const settings = await getSettings();
   await chrome.storage.local.set({ blockCount: (settings.blockCount ?? 0) + 1 });
+}
+
+async function addClipboardBackupEntry({ text, url, malicious }) {
+  if (!text) {
+    return;
+  }
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return;
+  }
+  const entry = {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    text: trimmed,
+    url: url || "",
+    timestamp: Date.now(),
+    malicious: Boolean(malicious)
+  };
+  const stored = await chrome.storage.local.get({ clipboardBackups: [] });
+  const existing = Array.isArray(stored.clipboardBackups) ? stored.clipboardBackups : [];
+  const next = [entry, ...existing].slice(0, CLIPBOARD_BACKUP_LIMIT);
+  await chrome.storage.local.set({ clipboardBackups: next });
 }
 
 function buildAlertReasons(details) {
@@ -1070,6 +1110,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           setClipboardBlock(clipboardText);
           if (saveClipboardBackup) {
             blockedClipboardText = clipboardText;
+            await addClipboardBackupEntry({
+              text: clipboardText,
+              url: message.url,
+              malicious: true
+            });
           }
           requestClipboardReplace(sender?.tab?.id, "");
         }

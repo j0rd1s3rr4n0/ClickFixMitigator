@@ -64,6 +64,7 @@ function applyTranslations() {
   document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
     element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
   });
+  document.title = t("optionsTitle");
 }
 
 async function loadLocaleMessages(locale) {
