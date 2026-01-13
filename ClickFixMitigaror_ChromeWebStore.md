@@ -183,45 +183,40 @@ URL de la política de privacidad*
 
 ---
 
-Contenido sugerido para la sección de Privacidad
+Contenido sugerido para la sección de Privacidad (relleno según la captura)
 
 Descripción de un solo propósito
-Proteger a los usuarios detectando patrones de ClickFix y alertas de portapapeles sospechosas, con registros mínimos para mejorar la seguridad.
+Detectar patrones de ClickFix y discrepancias del portapapeles para alertar y proteger al usuario mientras navega.
 
 Justificación de storage
-Se usa para guardar configuraciones locales, allowlist/blocklist, historial de alertas y la cola de reportes para evitar pérdida de datos entre reinicios.
+Guardar configuración local, allowlist/blocklist, historial de alertas y cola de reportes para mantener la protección y evitar pérdida de datos tras reinicios.
 
 Justificación de notifications
-Se usa para mostrar alertas inmediatas cuando se detectan patrones peligrosos y para informar acciones de bloqueo/restauración.
+Mostrar avisos inmediatos cuando se detectan patrones peligrosos o acciones de bloqueo/restauración.
 
 Justificación de clipboardRead
-Se usa para comparar el texto copiado con el portapapeles y detectar discrepancias sospechosas asociadas a ClickFix.
+Comparar el texto copiado con el contenido del portapapeles para identificar discrepancias sospechosas asociadas a ClickFix.
 
 Justificación de clipboardWrite
-Se usa para limpiar el portapapeles cuando se detecta contenido malicioso y evitar su pegado accidental.
+Limpiar el portapapeles cuando se detecta contenido malicioso para evitar pegados accidentales.
 
 Justificación de alarms
-Se usa para actualizar allowlist/blocklist periódicamente y enviar reportes en intervalos configurados.
+Ejecutar sincronizaciones periódicas de allowlist/blocklist y el envío programado de reportes.
 
 Justificación de Permiso de host
-Se requiere acceso a los sitios donde se detectan patrones de ClickFix y para consultar las listas remotas de allowlist/blocklist.
+Permitir la detección en los sitios visitados y la descarga de listas remotas de allowlist/blocklist.
 
 ¿Usas código remoto?
-No, no estoy usando Código remoto
+Sí, estoy usando Código remoto
 
 Justificación
-No se carga ni ejecuta código externo; todo el JavaScript se incluye en el paquete de la extensión.
+Se consumen listas públicas remotas (allowlist/blocklist) y reportes se envían a un servidor externo; no se ejecuta código JS remoto.
 
-Uso de datos
-Qué datos de los usuarios se recopilan:
-- Ubicación (país aproximado derivado del idioma/región del navegador).
-- Historial web (URL/hostname donde se detectan alertas).
-- Contenido de sitios web (fragmentos relevantes del texto detectado en alertas).
+Uso de datos (selecciones)
+- Ubicación.
 
-Certificaciones
-- No vendo ni transfiero los datos de los usuarios a terceros, excepto en los casos de uso aprobados.
+Certificaciones (selecciones)
 - No uso ni transfiero datos de usuarios para propósitos no relacionados con el propósito específico de mi elemento.
-- No uso ni transfiero datos del usuario para determinar su solvencia o realizar actividades crediticias.
 
 URL de la política de privacidad*
 https://jordiserrano.me/privacy/clickfix-mitigator
