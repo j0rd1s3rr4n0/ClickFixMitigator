@@ -283,13 +283,13 @@ function buildHighlightedHtml(text, snippets) {
 }
 
 function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", snippets = []) {
-  const title = t("blockedTitle");
+  const title = tBlocked("blockedTitle");
   const filteredReasons = reasons.filter(Boolean);
   const reason = filteredReasons.length
-    ? t("blockedReasonDefault")
+    ? tBlocked("blockedReasonDefault")
     : reasonText
-      ? t("blockedReasonWithDetail", reasonText)
-      : t("blockedReasonDefault");
+      ? tBlocked("blockedReasonWithDetail", reasonText)
+      : tBlocked("blockedReasonDefault");
   const container = document.createElement("div");
   container.style.cssText = [
     "min-height:100vh",
@@ -333,7 +333,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
   ].join(";");
 
   const reasonsTitle = document.createElement("div");
-  reasonsTitle.textContent = t("blockedReasonsTitle");
+  reasonsTitle.textContent = tBlocked("blockedReasonsTitle");
   reasonsTitle.style.cssText = [
     "margin-top:18px",
     "font-size:15px",
@@ -368,14 +368,14 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
   });
 
   const hostText = document.createElement("div");
-  hostText.textContent = hostname ? t("blockedHost", hostname) : "";
+  hostText.textContent = hostname ? tBlocked("blockedHost", hostname) : "";
   hostText.style.cssText = [
     "font-size:14px",
     "color:#7f1d1d"
   ].join(";");
 
   const contextLabel = document.createElement("div");
-  contextLabel.textContent = t("blockedContextTitle");
+  contextLabel.textContent = tBlocked("blockedContextTitle");
   contextLabel.style.cssText = [
     "margin-top:18px",
     "font-size:15px",
@@ -416,7 +416,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
 
   const reportButton = document.createElement("button");
   reportButton.type = "button";
-  reportButton.textContent = t("blockedReport");
+  reportButton.textContent = tBlocked("blockedReport");
   reportButton.style.cssText = [
     "padding:12px 20px",
     "border-radius:999px",
@@ -430,7 +430,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
 
   const allowOnceButton = document.createElement("button");
   allowOnceButton.type = "button";
-  allowOnceButton.textContent = t("blockedAllowOnce");
+  allowOnceButton.textContent = tBlocked("blockedAllowOnce");
   allowOnceButton.style.cssText = [
     "padding:12px 20px",
     "border-radius:999px",
@@ -444,7 +444,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
 
   const allowSessionButton = document.createElement("button");
   allowSessionButton.type = "button";
-  allowSessionButton.textContent = t("blockedAllowSession");
+  allowSessionButton.textContent = tBlocked("blockedAllowSession");
   allowSessionButton.style.cssText = [
     "padding:12px 20px",
     "border-radius:999px",
@@ -458,7 +458,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
 
   const allowAlwaysButton = document.createElement("button");
   allowAlwaysButton.type = "button";
-  allowAlwaysButton.textContent = t("blockedAllowAlways");
+  allowAlwaysButton.textContent = tBlocked("blockedAllowAlways");
   allowAlwaysButton.style.cssText = [
     "padding:12px 20px",
     "border-radius:999px",
@@ -472,7 +472,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
 
   const backButton = document.createElement("button");
   backButton.type = "button";
-  backButton.textContent = t("blockedBack");
+  backButton.textContent = tBlocked("blockedBack");
   backButton.style.cssText = [
     "padding:12px 20px",
     "border-radius:999px",
@@ -523,7 +523,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       previousUrl: getReferrerUrl()
     });
     reportButton.disabled = true;
-    reportButton.textContent = t("blockedReported");
+    reportButton.textContent = tBlocked("blockedReported");
   });
 
   backButton.addEventListener("click", () => {
@@ -882,7 +882,7 @@ function notifyCopyTriggerDetected() {
 }
 
 function renderBlockedPage(hostname) {
-  buildBlockedPage(hostname || window.location.hostname, t("blockedReasonReported"));
+  buildBlockedPage(hostname || window.location.hostname, tBlocked("blockedReasonReported"));
 }
 
 function checkReportedSite() {
@@ -1075,8 +1075,8 @@ chrome.runtime.onMessage.addListener((message) => {
     }
     buildBlockedPage(
       message.hostname || getHostname(window.location.href),
-      message.reason,
-      message.reasons || [],
+      message.reasonEs || message.reason,
+      message.reasonsEs || message.reasons || [],
       message.contextText || "",
       message.snippets || []
     );

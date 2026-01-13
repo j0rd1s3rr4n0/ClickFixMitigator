@@ -407,8 +407,10 @@ async function triggerAlert(details) {
     await incrementBlockCount();
   }
   const reasons = buildAlertReasons(details);
+  const reasonsEs = buildAlertReasonsEs(details);
   const snippets = buildAlertSnippets(details);
   const message = reasons.join(" ");
+  const messageEs = reasonsEs.join(" ");
   const hostname = extractHostname(details.url);
   const timestamp = new Date(details.timestamp).toISOString();
   const reportHostname = details.reportHostname === false ? "" : hostname;
@@ -490,6 +492,8 @@ async function triggerAlert(details) {
         hostname,
         reason: message,
         reasons,
+        reasonEs: messageEs,
+        reasonsEs,
         contextText: details.detectedContent || "",
         snippets
       });
@@ -508,6 +512,8 @@ async function triggerAlert(details) {
             hostname,
             reason: message,
             reasons,
+            reasonEs: messageEs,
+            reasonsEs,
             contextText: details.detectedContent || "",
             snippets
           });
