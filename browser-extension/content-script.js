@@ -283,13 +283,13 @@ function buildHighlightedHtml(text, snippets) {
 }
 
 function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", snippets = []) {
-  const title = t("blockedTitle");
+  const title = tBlocked("blockedTitle");
   const filteredReasons = reasons.filter(Boolean);
   const reason = filteredReasons.length
-    ? t("blockedReasonDefault")
+    ? tBlocked("blockedReasonDefault")
     : reasonText
-      ? t("blockedReasonWithDetail", reasonText)
-      : t("blockedReasonDefault");
+      ? tBlocked("blockedReasonWithDetail", reasonText)
+      : tBlocked("blockedReasonDefault");
   const container = document.createElement("div");
   container.className = "clickfix-blocked";
 
@@ -411,7 +411,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       previousUrl: getReferrerUrl()
     });
     reportButton.disabled = true;
-    reportButton.textContent = t("blockedReported");
+    reportButton.textContent = tBlocked("blockedReported");
   });
 
   backButton.addEventListener("click", () => {
@@ -916,7 +916,7 @@ function notifyCopyTriggerDetected() {
 }
 
 function renderBlockedPage(hostname) {
-  buildBlockedPage(hostname || window.location.hostname, t("blockedReasonReported"));
+  buildBlockedPage(hostname || window.location.hostname, tBlocked("blockedReasonReported"));
 }
 
 function checkReportedSite() {
@@ -1109,8 +1109,8 @@ chrome.runtime.onMessage.addListener((message) => {
     }
     buildBlockedPage(
       message.hostname || getHostname(window.location.href),
-      message.reason,
-      message.reasons || [],
+      message.reasonEs || message.reason,
+      message.reasonsEs || message.reasons || [],
       message.contextText || "",
       message.snippets || []
     );
