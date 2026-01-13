@@ -454,19 +454,13 @@ async function triggerAlert(details) {
     blocked: shouldBlockPage && !allowlisted
   });
 
-  const svgIcon = [
-    "data:image/svg+xml;utf8,",
-    "<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128' viewBox='0 0 128 128'>",
-    "<rect width='128' height='128' rx='20' fill='%23b91c1c'/>",
-    "<path d='M36 36h56v12H36zM36 58h56v12H36zM36 80h56v12H36z' fill='white'/>",
-    "</svg>"
-  ].join("");
+  const iconUrl = chrome.runtime.getURL("icons/icon-128.png");
 
   const notificationId = await new Promise((resolve) => {
     chrome.notifications.create(
       {
         type: "basic",
-        iconUrl: svgIcon,
+        iconUrl,
         title: t("appName"),
         message,
         buttons: details.blockedClipboardText
