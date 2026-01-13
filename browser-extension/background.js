@@ -8,6 +8,7 @@ const DEFAULT_SETTINGS = {
   allowlistSources: [],
   saveClipboardBackup: true,
   sendCountry: true,
+  reportQueue: [],
   alertCount: 0,
   blockCount: 0,
   blocklistUpdatedAt: 0,
@@ -17,8 +18,10 @@ const DEFAULT_SETTINGS = {
 const CLICKFIX_BLOCKLIST_URL = "https://jordiserrano.me/ClickFix/clickfixlist";
 const CLICKFIX_ALLOWLIST_URL = "https://jordiserrano.me/ClickFix/clickfixallowlist";
 const CLICKFIX_REPORT_URL = "https://jordiserrano.me/ClickFix/clickfix-report.php";
-const BLOCKLIST_REFRESH_MINUTES = 0.5;
-const STATS_REPORT_MINUTES = 60;
+const LIST_REFRESH_MINUTES = 3;
+const REPORT_FLUSH_MINUTES = 5;
+const REPORT_DEDUPE_WINDOW_MS = 15 * 60 * 1000;
+const REPORT_QUEUE_LIMIT = 300;
 
 const COMMAND_REGEX =
   /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d|reg\s+add|rundll32|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic)\b/i;
@@ -48,6 +51,7 @@ async function getSettings() {
     allowlistSources: stored.allowlistSources ?? [],
     saveClipboardBackup: stored.saveClipboardBackup ?? true,
     sendCountry: stored.sendCountry ?? true,
+    reportQueue: stored.reportQueue ?? [],
     alertCount: stored.alertCount ?? 0,
     blockCount: stored.blockCount ?? 0,
     blocklistUpdatedAt: stored.blocklistUpdatedAt ?? 0,
@@ -93,6 +97,8 @@ function matchesHostname(hostname, entry) {
 
 let blocklistCache = { items: [], fetchedAt: 0 };
 let allowlistCache = { items: [], fetchedAt: 0 };
+let reportQueue = [];
+const reportHashes = new Map();
 
 async function refreshBlocklist() {
   const settings = await getSettings();
@@ -331,7 +337,7 @@ async function triggerAlert(details) {
     timestamp,
     reportHostname: details.reportHostname !== false
   });
-  reportClickfix({
+  enqueueReport({
     type: "alert",
     url: reportUrl,
     hostname: reportHostname,
@@ -517,15 +523,17 @@ async function addToWhitelist(hostname) {
 chrome.runtime.onInstalled.addListener(() => {
   refreshBlocklist();
   refreshAllowlist();
-  chrome.alarms.create("clickfix-refresh", { periodInMinutes: BLOCKLIST_REFRESH_MINUTES });
-  chrome.alarms.create("clickfix-stats", { periodInMinutes: STATS_REPORT_MINUTES });
+  chrome.alarms.create("clickfix-refresh", { periodInMinutes: LIST_REFRESH_MINUTES });
+  chrome.alarms.create("clickfix-reports", { periodInMinutes: REPORT_FLUSH_MINUTES });
+  restoreReportQueue();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   refreshBlocklist();
   refreshAllowlist();
-  chrome.alarms.create("clickfix-refresh", { periodInMinutes: BLOCKLIST_REFRESH_MINUTES });
-  chrome.alarms.create("clickfix-stats", { periodInMinutes: STATS_REPORT_MINUTES });
+  chrome.alarms.create("clickfix-refresh", { periodInMinutes: LIST_REFRESH_MINUTES });
+  chrome.alarms.create("clickfix-reports", { periodInMinutes: REPORT_FLUSH_MINUTES });
+  restoreReportQueue();
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -533,8 +541,8 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     refreshBlocklist();
     refreshAllowlist();
   }
-  if (alarm.name === "clickfix-stats") {
-    sendStatsReport();
+  if (alarm.name === "clickfix-reports") {
+    flushReportQueue();
   }
 });
 
@@ -568,23 +576,25 @@ async function getAllowlistItems() {
   return allowlistCache.items;
 }
 
-async function reportClickfix(details) {
+async function sendReport(details) {
   try {
     await fetch(CLICKFIX_REPORT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(details)
     });
+    return true;
   } catch (error) {
     // Ignore reporting errors to avoid breaking the user flow.
   }
+  return false;
 }
 
 async function sendStatsReport() {
   const settings = await getSettings();
   const alertSites = buildAlertSites(settings.history ?? []);
   const country = settings.sendCountry ? chrome.i18n.getUILanguage() : "";
-  reportClickfix({
+  enqueueReport({
     type: "stats",
     timestamp: Date.now(),
     data: {
@@ -596,6 +606,85 @@ async function sendStatsReport() {
       country
     }
   });
+}
+
+function stableStringify(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    const keys = Object.keys(value).sort();
+    return `{${keys.map((key) => `"${key}":${stableStringify(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+
+function cleanReportHashes(now) {
+  for (const [hash, timestamp] of reportHashes.entries()) {
+    if (now - timestamp > REPORT_DEDUPE_WINDOW_MS) {
+      reportHashes.delete(hash);
+    }
+  }
+}
+
+function buildReportHash(details) {
+  const normalized = { ...details };
+  const timestamp =
+    typeof normalized.timestamp === "number" ? normalized.timestamp : Date.now();
+  normalized.timestamp_bucket = Math.floor(
+    timestamp / (REPORT_FLUSH_MINUTES * 60 * 1000)
+  );
+  delete normalized.timestamp;
+  return stableStringify(normalized);
+}
+
+async function restoreReportQueue() {
+  const settings = await getSettings();
+  reportQueue = Array.isArray(settings.reportQueue) ? settings.reportQueue : [];
+  const now = Date.now();
+  reportQueue.forEach((entry) => {
+    reportHashes.set(buildReportHash(entry), now);
+  });
+}
+
+async function persistReportQueue() {
+  await chrome.storage.local.set({ reportQueue });
+}
+
+async function enqueueReport(details) {
+  const now = Date.now();
+  cleanReportHashes(now);
+  const hash = buildReportHash(details);
+  if (reportHashes.has(hash)) {
+    return;
+  }
+  reportHashes.set(hash, now);
+  reportQueue.push(details);
+  if (reportQueue.length > REPORT_QUEUE_LIMIT) {
+    reportQueue = reportQueue.slice(-REPORT_QUEUE_LIMIT);
+  }
+  await persistReportQueue();
+}
+
+async function flushReportQueue() {
+  if (!reportQueue.length) {
+    await restoreReportQueue();
+  }
+  if (!reportQueue.length) {
+    await sendStatsReport();
+    return;
+  }
+  const pending = [...reportQueue];
+  const remaining = [];
+  for (const entry of pending) {
+    const ok = await sendReport(entry);
+    if (!ok) {
+      remaining.push(entry);
+    }
+  }
+  reportQueue = remaining;
+  await persistReportQueue();
+  await sendStatsReport();
 }
 
 function buildAlertSites(history) {
@@ -691,7 +780,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "manualReport") {
-    reportClickfix({
+    enqueueReport({
       url: message.url,
       hostname: message.hostname || extractHostname(message.url),
       timestamp: message.timestamp ?? Date.now(),
