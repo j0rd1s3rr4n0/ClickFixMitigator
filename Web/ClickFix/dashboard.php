@@ -2443,7 +2443,185 @@ $chartLabels = [
 
       <div class="layout">
         <div>
-          <section class="card">
+          <section class="card" id="public-lists-section">
+            <div class="section-title">
+              <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'alert_analytics'), ENT_QUOTES, 'UTF-8'); ?></h2>
+              <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'latest_reports'), ENT_QUOTES, 'UTF-8'); ?></span>
+            </div>
+            <div class="chart-grid">
+              <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'alerts_by_day'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-alerts-day" height="140"></canvas>
+              </div>
+              <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'alerts_by_hour'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-alerts-hour" height="140"></canvas>
+              </div>
+              <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'country_distribution'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-alerts-country" height="140"></canvas>
+              </div>
+              <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'signal_types'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-alerts-signals" height="140"></canvas>
+              </div>
+            </div>
+          </section>
+
+          <section class="card" style="margin-top: 24px;" id="recent-detections-section">
+            <div class="section-title">
+              <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'recent_detections'), ENT_QUOTES, 'UTF-8'); ?></h2>
+              <?php if ($isAdmin): ?>
+                <form method="post" class="form-actions js-ajax" data-refresh-target="#recent-detections-section">
+                  <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                  <input type="hidden" name="action" value="clear_unaccepted" />
+                  <button class="button-secondary" type="submit" onclick="return confirm('<?= htmlspecialchars(t($translations, $currentLanguage, 'confirm_clear'), ENT_QUOTES, 'UTF-8'); ?>');">
+                    <?= htmlspecialchars(t($translations, $currentLanguage, 'clear_unaccepted'), ENT_QUOTES, 'UTF-8'); ?>
+                  </button>
+                  <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'clear_unaccepted_help'), ENT_QUOTES, 'UTF-8'); ?></span>
+                </form>
+              <?php endif; ?>
+            </div>
+            <?php if (empty($recentDetections)): ?>
+              <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_detections'), ENT_QUOTES, 'UTF-8'); ?></div>
+            <?php else: ?>
+              <?php foreach ($recentDetections as $entry): ?>
+                <details class="report-card">
+                  <summary>
+                    <?= htmlspecialchars($entry['hostname'], ENT_QUOTES, 'UTF-8'); ?>
+                    <?php if ($entry['blocked']): ?>
+                      <span class="badge badge-blocked"><?= htmlspecialchars(t($translations, $currentLanguage, 'blocked'), ENT_QUOTES, 'UTF-8'); ?></span>
+                    <?php endif; ?>
+                    <?php if ($entry['accepted']): ?>
+                      <span class="badge"><?= htmlspecialchars(t($translations, $currentLanguage, 'accepted'), ENT_QUOTES, 'UTF-8'); ?></span>
+                    <?php endif; ?>
+                    <span class="report-meta">
+                      <?= htmlspecialchars($entry['timestamp'], ENT_QUOTES, 'UTF-8'); ?>
+                    </span>
+                  </summary>
+                  <?php if (!empty($entry['url'])): ?>
+                    <div class="report-section">
+                      <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'url'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                      <div class="muted">
+                        <a href="<?= htmlspecialchars($entry['url'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener">
+                          <?= htmlspecialchars($entry['url'], ENT_QUOTES, 'UTF-8'); ?>
+                        </a>
+                      </div>
+                    </div>
+                  <?php endif; ?>
+                  <?php if (!empty($entry['message'])): ?>
+                    <div class="report-section">
+                      <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'summary'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                      <div class="muted"><?= htmlspecialchars($entry['message'], ENT_QUOTES, 'UTF-8'); ?></div>
+                    </div>
+                  <?php endif; ?>
+                  <?php if (!empty($entry['signals'])): ?>
+                    <div class="report-section">
+                      <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'detected_signals'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                      <div class="chip-list">
+                        <?php foreach ($entry['signals'] as $signalLabel): ?>
+                          <span class="chip signal-chip"><?= htmlspecialchars($signalLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+                        <?php endforeach; ?>
+                      </div>
+                    </div>
+                  <?php endif; ?>
+                  <?php if (!empty($entry['detected'])): ?>
+                    <div class="report-section">
+                      <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'detected_content'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                      <pre><?= htmlspecialchars($entry['detected'], ENT_QUOTES, 'UTF-8'); ?></pre>
+                    </div>
+                  <?php endif; ?>
+                  <?php if (!empty($entry['full_context'])): ?>
+                    <div class="report-section context-panel">
+                      <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'full_context'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                      <pre><?= htmlspecialchars($entry['full_context'], ENT_QUOTES, 'UTF-8'); ?></pre>
+                    </div>
+                  <?php endif; ?>
+                  <?php if ($isAdmin && !$entry['accepted']): ?>
+                    <form method="post" class="form-actions js-ajax" style="margin-top: 12px;" data-refresh-target="#recent-detections-section">
+                      <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                      <input type="hidden" name="action" value="accept_detection" />
+                      <input type="hidden" name="detection_id" value="<?= (int) $entry['id']; ?>" />
+                      <button class="button-primary" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'mark_accepted'), ENT_QUOTES, 'UTF-8'); ?></button>
+                    </form>
+                  <?php endif; ?>
+                </details>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </section>
+
+          <section class="card" style="margin-top: 24px;">
+            <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'appeal_title'), ENT_QUOTES, 'UTF-8'); ?></h2>
+            <form method="post" class="form-grid js-ajax" data-reset="true">
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+              <input type="hidden" name="action" value="appeal" />
+              <label>
+                <?= htmlspecialchars(t($translations, $currentLanguage, 'domain'), ENT_QUOTES, 'UTF-8'); ?>
+                <input type="text" name="domain" placeholder="example.com" required />
+              </label>
+              <label>
+                <?= htmlspecialchars(t($translations, $currentLanguage, 'appeal_reason'), ENT_QUOTES, 'UTF-8'); ?>
+                <textarea name="reason" required></textarea>
+              </label>
+              <label>
+                <?= htmlspecialchars(t($translations, $currentLanguage, 'contact_optional'), ENT_QUOTES, 'UTF-8'); ?>
+                <input type="text" name="contact" placeholder="mail@domain.com" />
+              </label>
+              <div class="form-actions">
+                <button class="button-primary" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'submit_appeal'), ENT_QUOTES, 'UTF-8'); ?></button>
+              </div>
+            </form>
+          </section>
+
+          <?php if ($isAdmin): ?>
+            <section class="card" style="margin-top: 24px;" id="recent-appeals-section">
+              <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'recent_appeals'), ENT_QUOTES, 'UTF-8'); ?></h2>
+              <?php if (empty($appeals)): ?>
+                <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_requests'), ENT_QUOTES, 'UTF-8'); ?></div>
+              <?php else: ?>
+                <?php foreach ($appeals as $appeal): ?>
+                  <details class="report-card">
+                    <summary>
+                      <?= htmlspecialchars((string) ($appeal['domain'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                      <span class="report-meta">
+                        <?= htmlspecialchars((string) ($appeal['created_at'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                      </span>
+                    </summary>
+                    <div class="report-section">
+                      <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'reason'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                      <div class="muted"><?= htmlspecialchars((string) ($appeal['reason'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                    </div>
+                    <?php if (!empty($appeal['contact'])): ?>
+                      <div class="report-section">
+                        <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'contact_optional'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                        <div class="muted"><?= htmlspecialchars((string) ($appeal['contact'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                      </div>
+                    <?php endif; ?>
+                    <div class="report-section">
+                      <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'status'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                      <div class="muted"><?= htmlspecialchars((string) ($appeal['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                    </div>
+                    <?php if (!in_array((string) ($appeal['status'] ?? ''), ['approved', 'rejected'], true)): ?>
+                      <form method="post" class="form-actions js-ajax" style="margin-top: 12px;" data-refresh-target="#recent-appeals-section">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+                        <input type="hidden" name="action" value="appeal_decision" />
+                        <input type="hidden" name="appeal_id" value="<?= (int) ($appeal['id'] ?? 0); ?>" />
+                        <button class="button-primary button-approve" type="submit" name="decision" value="approve">
+                          <?= htmlspecialchars(t($translations, $currentLanguage, 'approve'), ENT_QUOTES, 'UTF-8'); ?>
+                        </button>
+                        <button class="button-secondary button-reject" type="submit" name="decision" value="reject">
+                          <?= htmlspecialchars(t($translations, $currentLanguage, 'reject_appeal'), ENT_QUOTES, 'UTF-8'); ?>
+                        </button>
+                        <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'appeal_actions'), ENT_QUOTES, 'UTF-8'); ?></span>
+                      </form>
+                    <?php endif; ?>
+                  </details>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </section>
+          <?php endif; ?>
+
+          <section class="card" style="margin-top: 24px;" id="public-lists-section">
             <div class="section-title">
               <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'alert_analytics'), ENT_QUOTES, 'UTF-8'); ?></h2>
               <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'latest_reports'), ENT_QUOTES, 'UTF-8'); ?></span>
