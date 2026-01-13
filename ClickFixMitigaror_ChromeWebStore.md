@@ -183,10 +183,13 @@ URL de la política de privacidad*
 
 ---
 
-Contenido sugerido para la sección de Privacidad (relleno según la captura)
+Contenido sugerido para la sección de Privacidad (relleno para este proyecto)
 
 Descripción de un solo propósito
 Detectar patrones de ClickFix y discrepancias del portapapeles para alertar y proteger al usuario mientras navega.
+
+Justificación del permiso
+El conjunto de permisos se usa únicamente para detectar patrones de ClickFix, avisar al usuario y mantener listas de protección actualizadas.
 
 Justificación de storage
 Guardar configuración local, allowlist/blocklist, historial de alertas y cola de reportes para mantener la protección y evitar pérdida de datos tras reinicios.
@@ -206,17 +209,27 @@ Ejecutar sincronizaciones periódicas de allowlist/blocklist y el envío program
 Justificación de Permiso de host
 Permitir la detección en los sitios visitados y la descarga de listas remotas de allowlist/blocklist.
 
-¿Usas código remoto?
+¿Usas código remoto? (selección)
 Sí, estoy usando Código remoto
 
-Justificación
+Justificación (código remoto)
 Se consumen listas públicas remotas (allowlist/blocklist) y reportes se envían a un servidor externo; no se ejecuta código JS remoto.
 
-Uso de datos (selecciones)
-- Ubicación.
+Uso de datos (checks)
+✅ Ubicación.
+⬜ Información de identificación personal.
+⬜ Información de salud.
+⬜ Información financiera y de pagos.
+⬜ Información de autenticación.
+⬜ Comunicaciones personales.
+⬜ Historial web.
+⬜ Actividad del usuario.
+⬜ Contenido de sitios web.
 
-Certificaciones (selecciones)
-- No uso ni transfiero datos de usuarios para propósitos no relacionados con el propósito específico de mi elemento.
+Certificaciones (checks)
+⬜ No vendo ni transfiero los datos de los usuarios a terceros, excepto en los casos de uso aprobados.
+✅ No uso ni transfiero datos de usuarios para propósitos no relacionados con el propósito específico de mi elemento.
+⬜ No uso ni transfiero datos del usuario para determinar su solvencia o realizar actividades crediticias.
 
 URL de la política de privacidad*
 https://jordiserrano.me/privacy/clickfix-mitigator
