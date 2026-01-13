@@ -68,8 +68,64 @@ function getReferrerUrl() {
 }
 
 function t(key, substitutions) {
+  if (activeMessages?.[key]?.message) {
+    return formatMessage(activeMessages[key].message, substitutions);
+  }
   return chrome.i18n.getMessage(key, substitutions) || key;
 }
+
+const SUPPORTED_LOCALES = ["en", "es"];
+const DEFAULT_LOCALE = "en";
+let activeMessages = null;
+
+function formatMessage(message, substitutions) {
+  if (!substitutions) {
+    return message;
+  }
+  const values = Array.isArray(substitutions) ? substitutions : [substitutions];
+  return values.reduce((result, value, index) => {
+    return result.replaceAll(`$${index + 1}`, value);
+  }, message);
+}
+
+function normalizeLocale(locale) {
+  if (!locale) {
+    return DEFAULT_LOCALE;
+  }
+  const lower = locale.toLowerCase();
+  if (SUPPORTED_LOCALES.includes(lower)) {
+    return lower;
+  }
+  const base = lower.split("-")[0];
+  return SUPPORTED_LOCALES.includes(base) ? base : DEFAULT_LOCALE;
+}
+
+async function loadLocaleMessages(locale) {
+  try {
+    const response = await fetch(chrome.runtime.getURL(`_locales/${locale}/messages.json`));
+    if (!response.ok) {
+      activeMessages = null;
+      return;
+    }
+    activeMessages = await response.json();
+  } catch (error) {
+    activeMessages = null;
+  }
+}
+
+async function initLocale() {
+  const { uiLanguage } = await chrome.storage.local.get({ uiLanguage: "" });
+  const selectedLocale = normalizeLocale(uiLanguage || chrome.i18n.getUILanguage());
+  await loadLocaleMessages(selectedLocale);
+}
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.uiLanguage) {
+    initLocale();
+  }
+});
+
+initLocale();
 
 async function getBlocklistStatus() {
   return new Promise((resolve) => {
