@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy Policy - ClickFix Mitigator</title>
+  <meta name="description" content="ClickFix Mitigator privacy policy (multi-language)." />
+  <style>
+    :root{
+      --bg:#0b0f14; --card:#111827; --text:#e5e7eb; --muted:#9ca3af;
+      --accent:#60a5fa; --border:rgba(255,255,255,.10);
+      --shadow:0 12px 40px rgba(0,0,0,.35);
+      --radius:16px; --max: 920px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; padding:48px 18px;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 20% 0%, rgba(96,165,250,.18), transparent 55%),
+                  radial-gradient(900px 500px at 80% 10%, rgba(34,197,94,.10), transparent 50%),
+                  var(--bg);
+      color:var(--text);
+      line-height:1.6;
+    }
+    a{color:var(--accent); text-decoration:none}
+    a:hover{text-decoration:underline}
+    .wrap{max-width:var(--max); margin:0 auto}
+    header{
+      padding:28px 26px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      display:flex; gap:16px; align-items:flex-start; justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    h1{margin:0 0 10px; font-size:clamp(26px, 3.2vw, 38px); letter-spacing:-.02em}
+    .sub{margin:0; color:var(--muted)}
+    .lang{
+      display:flex; gap:10px; align-items:center;
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:999px;
+      background: rgba(0,0,0,.18);
+    }
+    select{
+      background: transparent;
+      color: var(--text);
+      border: 0;
+      outline: none;
+      font-size: 14px;
+      cursor: pointer;
+      appearance: none;
+    }
+    option{color:#111827}
+    main{
+      margin-top:18px;
+      background: rgba(17,24,39,.65);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    nav{
+      padding:14px 18px;
+      border-bottom:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      display:flex; flex-wrap:wrap; gap:10px;
+    }
+    nav a{
+      font-size:14px; color:var(--muted);
+      padding:8px 10px; border:1px solid rgba(255,255,255,.08);
+      border-radius:999px;
+      background: rgba(0,0,0,.12);
+    }
+    nav a:hover{color:var(--text); border-color:rgba(96,165,250,.35)}
+    section{padding:22px 26px; border-bottom:1px solid rgba(255,255,255,.06)}
+    section:last-child{border-bottom:0}
+    h2{margin:0 0 10px; font-size:18px; letter-spacing:-.01em}
+    p{margin:0 0 12px}
+    ul{margin:0 0 12px 18px; padding:0}
+    li{margin:6px 0}
+    .note{
+      padding:12px 14px;
+      border-left:4px solid rgba(96,165,250,.65);
+      background: rgba(96,165,250,.10);
+      border-radius:12px;
+    }
+    footer{margin-top:18px; color:var(--muted); font-size:14px; text-align:center}
+    .muted{color:var(--muted)}
+    [hidden]{display:none !important}
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1 data-i18n="title">Política de Privacidad</h1>
+        <p class="sub">
+          <strong>ClickFix Mitigator</strong>
+          · <span data-i18n="updated_label">Última actualización:</span>
+          <time id="updated" datetime="2025-01-01">1 de enero de 2025</time>
+        </p>
+      </div>
+
+      <div class="lang" role="group" aria-label="Language selector">
+        <span class="muted" data-i18n="lang">Idioma</span>
+        <select id="langSelect" aria-label="Select language">
+          <option value="es">Español</option>
+          <option value="ca">Català</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+    </header>
+
+    <main>
+      <nav aria-label="Índice">
+        <a href="#responsable" data-i18n="nav_1">1. Responsable</a>
+        <a href="#datos" data-i18n="nav_2">2. Datos</a>
+        <a href="#finalidad" data-i18n="nav_3">3. Finalidad</a>
+        <a href="#base-legal" data-i18n="nav_4">4. Base legal</a>
+        <a href="#comparticion" data-i18n="nav_5">5. Compartición</a>
+        <a href="#retencion" data-i18n="nav_6">6. Retención</a>
+        <a href="#seguridad" data-i18n="nav_7">7. Seguridad</a>
+        <a href="#derechos" data-i18n="nav_8">8. Derechos</a>
+        <a href="#cambios" data-i18n="nav_9">9. Cambios</a>
+        <a href="#contacto" data-i18n="nav_10">10. Contacto</a>
+      </nav>
+
+      <section id="responsable">
+        <h2 data-i18n="h_1">1. Responsable del tratamiento</h2>
+        <p data-i18n="p_1">
+          ClickFix Mitigator es una extensión de navegador diseñada para detectar patrones de ataque tipo ClickFix y alertar al usuario sobre posibles riesgos relacionados con el uso del portapapeles.
+        </p>
+      </section>
+
+      <section id="datos">
+        <h2 data-i18n="h_2">2. Datos que se recopilan</h2>
+        <p data-i18n="p_2">
+          La extensión puede procesar y/o enviar los siguientes datos exclusivamente con fines de seguridad:
+        </p>
+        <ul>
+          <li data-i18n="li_2_1"><strong>Eventos de detección:</strong> URL, hostname, fecha y hora (timestamp), señales detectadas, mensaje de alerta y fragmentos relevantes del contenido analizado.</li>
+          <li data-i18n="li_2_2"><strong>Estadísticas de uso:</strong> número de alertas generadas, número de bloqueos y estado de activación de la extensión.</li>
+          <li data-i18n="li_2_3"><strong>Listas locales:</strong> allowlist y blocklist almacenadas localmente en el navegador del usuario.</li>
+        </ul>
+        <p class="note" data-i18n="note_2">
+          No se recopilan datos personales como nombre, correo electrónico o cualquier información que permita identificar directamente al usuario.
+        </p>
+      </section>
+
+      <section id="finalidad">
+        <h2 data-i18n="h_3">3. Finalidad del tratamiento</h2>
+        <p data-i18n="p_3">Los datos se utilizan únicamente para:</p>
+        <ul>
+          <li data-i18n="li_3_1">Detectar y bloquear patrones de ataque ClickFix.</li>
+          <li data-i18n="li_3_2">Generar alertas de seguridad en tiempo real.</li>
+          <li data-i18n="li_3_3">Mejorar la eficacia del sistema mediante estadísticas agregadas.</li>
+          <li data-i18n="li_3_4">Mantener y optimizar listas de allowlist y blocklist.</li>
+        </ul>
+      </section>
+
+      <section id="base-legal">
+        <h2 data-i18n="h_4">4. Base legal</h2>
+        <p data-i18n="p_4">
+          El tratamiento se realiza sobre la base del interés legítimo en la seguridad y protección del usuario frente a amenazas informáticas.
+        </p>
+      </section>
+
+      <section id="comparticion">
+        <h2 data-i18n="h_5">5. Compartición de datos</h2>
+        <ul>
+          <li data-i18n="li_5_1">Los datos pueden enviarse al servidor de ClickFix Mitigator para el procesamiento de alertas y estadísticas.</li>
+          <li data-i18n="li_5_2"><strong>No se venden, alquilan ni ceden datos a terceros</strong>, salvo cuando sea estrictamente necesario para operar el servicio.</li>
+        </ul>
+      </section>
+
+      <section id="retencion">
+        <h2 data-i18n="h_6">6. Retención</h2>
+        <p data-i18n="p_6">
+          Los datos se conservan únicamente durante el tiempo necesario para cumplir las finalidades indicadas y para garantizar la integridad de los registros de seguridad.
+        </p>
+      </section>
+
+      <section id="seguridad">
+        <h2 data-i18n="h_7">7. Seguridad</h2>
+        <p data-i18n="p_7">
+          Se aplican medidas técnicas y organizativas razonables para proteger los datos transmitidos y almacenados frente a accesos no autorizados, pérdida o alteración.
+        </p>
+      </section>
+
+      <section id="derechos">
+        <h2 data-i18n="h_8">8. Derechos del usuario</h2>
+        <p data-i18n="p_8">
+          El usuario puede solicitar información o ejercer sus derechos de acceso, rectificación o eliminación mediante los canales de contacto indicados en el sitio oficial.
+        </p>
+      </section>
+
+      <section id="cambios">
+        <h2 data-i18n="h_9">9. Cambios en la política</h2>
+        <p data-i18n="p_9">
+          Esta política puede actualizarse periódicamente. Las modificaciones se publicarán en este documento.
+        </p>
+      </section>
+
+      <section id="contacto">
+        <h2 data-i18n="h_10">10. Contacto</h2>
+        <p>
+          <strong data-i18n="contact_label">Sitio oficial:</strong>
+          <a href="https://jordiserrano.me" rel="noopener noreferrer">https://jordiserrano.me</a>
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <p>© <span id="y"></span> ClickFix Mitigator · <span data-i18n="footer">Hecho para protegerte del “copiar/pegar” traicionero.</span></p>
+    </footer>
+  </div>
+
+  <script>
+    // --- Utilities ---
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+    // Persist language
+    const STORAGE_KEY = "cfm_lang";
+    const supported = ["es","ca","en"];
+
+    // Pretty date per locale (same underlying datetime)
+    const updatedISO = "2025-01-01";
+    const updatedEl = $("#updated");
+    updatedEl.setAttribute("datetime", updatedISO);
+
+    function formatUpdated(locale){
+      const dt = new Date(updatedISO + "T00:00:00Z");
+      try{
+        return new Intl.DateTimeFormat(locale, { year:"numeric", month:"long", day:"numeric" }).format(dt);
+      }catch{
+        return updatedEl.textContent;
+      }
+    }
+
+    const i18n = {
+      es: {
+        title: "Política de Privacidad",
+        updated_label: "Última actualización:",
+        lang: "Idioma",
+        nav_1:"1. Responsable", nav_2:"2. Datos", nav_3:"3. Finalidad", nav_4:"4. Base legal",
+        nav_5:"5. Compartición", nav_6:"6. Retención", nav_7:"7. Seguridad", nav_8:"8. Derechos",
+        nav_9:"9. Cambios", nav_10:"10. Contacto",
+        h_1:"1. Responsable del tratamiento",
+        p_1:"ClickFix Mitigator es una extensión de navegador diseñada para detectar patrones de ataque tipo ClickFix y alertar al usuario sobre posibles riesgos relacionados con el uso del portapapeles.",
+        h_2:"2. Datos que se recopilan",
+        p_2:"La extensión puede procesar y/o enviar los siguientes datos exclusivamente con fines de seguridad:",
+        li_2_1:"<strong>Eventos de detección:</strong> URL, hostname, fecha y hora (timestamp), señales detectadas, mensaje de alerta y fragmentos relevantes del contenido analizado.",
+        li_2_2:"<strong>Estadísticas de uso:</strong> número de alertas generadas, número de bloqueos y estado de activación de la extensión.",
+        li_2_3:"<strong>Listas locales:</strong> allowlist y blocklist almacenadas localmente en el navegador del usuario.",
+        note_2:"No se recopilan datos personales como nombre, correo electrónico o cualquier información que permita identificar directamente al usuario.",
+        h_3:"3. Finalidad del tratamiento",
+        p_3:"Los datos se utilizan únicamente para:",
+        li_3_1:"Detectar y bloquear patrones de ataque ClickFix.",
+        li_3_2:"Generar alertas de seguridad en tiempo real.",
+        li_3_3:"Mejorar la eficacia del sistema mediante estadísticas agregadas.",
+        li_3_4:"Mantener y optimizar listas de allowlist y blocklist.",
+        h_4:"4. Base legal",
+        p_4:"El tratamiento se realiza sobre la base del interés legítimo en la seguridad y protección del usuario frente a amenazas informáticas.",
+        h_5:"5. Compartición de datos",
+        li_5_1:"Los datos pueden enviarse al servidor de ClickFix Mitigator para el procesamiento de alertas y estadísticas.",
+        li_5_2:"<strong>No se venden, alquilan ni ceden datos a terceros</strong>, salvo cuando sea estrictamente necesario para operar el servicio.",
+        h_6:"6. Retención",
+        p_6:"Los datos se conservan únicamente durante el tiempo necesario para cumplir las finalidades indicadas y para garantizar la integridad de los registros de seguridad.",
+        h_7:"7. Seguridad",
+        p_7:"Se aplican medidas técnicas y organizativas razonables para proteger los datos transmitidos y almacenados frente a accesos no autorizados, pérdida o alteración.",
+        h_8:"8. Derechos del usuario",
+        p_8:"El usuario puede solicitar información o ejercer sus derechos de acceso, rectificación o eliminación mediante los canales de contacto indicados en el sitio oficial.",
+        h_9:"9. Cambios en la política",
+        p_9:"Esta política puede actualizarse periódicamente. Las modificaciones se publicarán en este documento.",
+        h_10:"10. Contacto",
+        contact_label:"Sitio oficial:",
+        footer:"Hecho para protegerte del “copiar/pegar” traicionero."
+      },
+
+      ca: {
+        title: "Política de Privacitat",
+        updated_label: "Última actualització:",
+        lang: "Idioma",
+        nav_1:"1. Responsable", nav_2:"2. Dades", nav_3:"3. Finalitat", nav_4:"4. Base legal",
+        nav_5:"5. Compartició", nav_6:"6. Conservació", nav_7:"7. Seguretat", nav_8:"8. Drets",
+        nav_9:"9. Canvis", nav_10:"10. Contacte",
+        h_1:"1. Responsable del tractament",
+        p_1:"ClickFix Mitigator és una extensió de navegador dissenyada per detectar patrons d’atac tipus ClickFix i alertar l’usuari sobre possibles riscos relacionats amb l’ús del porta-retalls.",
+        h_2:"2. Dades que es recopilen",
+        p_2:"L’extensió pot processar i/o enviar les dades següents exclusivament amb finalitats de seguretat:",
+        li_2_1:"<strong>Esdeveniments de detecció:</strong> URL, hostname, data i hora (timestamp), senyals detectats, missatge d’alerta i fragments rellevants del contingut analitzat.",
+        li_2_2:"<strong>Estadístiques d’ús:</strong> nombre d’alertes generades, nombre de bloquejos i estat d’activació de l’extensió.",
+        li_2_3:"<strong>Llistes locals:</strong> allowlist i blocklist emmagatzemades localment al navegador de l’usuari.",
+        note_2:"No es recopilen dades personals com el nom, el correu electrònic o qualsevol informació que permeti identificar directament l’usuari.",
+        h_3:"3. Finalitat del tractament",
+        p_3:"Les dades s’utilitzen únicament per a:",
+        li_3_1:"Detectar i bloquejar patrons d’atac ClickFix.",
+        li_3_2:"Generar alertes de seguretat en temps real.",
+        li_3_3:"Millorar l’eficàcia del sistema mitjançant estadístiques agregades.",
+        li_3_4:"Mantenir i optimitzar llistes d’allowlist i blocklist.",
+        h_4:"4. Base legal",
+        p_4:"El tractament es basa en l’<strong>interès legítim</strong> de protegir la seguretat de l’usuari davant d’amenaces informàtiques.",
+        h_5:"5. Compartició de dades",
+        li_5_1:"Les dades poden enviar-se al servidor de ClickFix Mitigator per al processament d’alertes i estadístiques.",
+        li_5_2:"<strong>No es venen, lloguen ni cedeixen dades a tercers</strong>, excepte quan sigui estrictament necessari per operar el servei.",
+        h_6:"6. Conservació",
+        p_6:"Les dades es conserven únicament durant el temps necessari per complir les finalitats indicades i garantir la integritat dels registres de seguretat.",
+        h_7:"7. Seguretat",
+        p_7:"S’apliquen mesures tècniques i organitzatives raonables per protegir les dades transmeses i emmagatzemades davant d’accessos no autoritzats, pèrdua o alteració.",
+        h_8:"8. Drets de l’usuari",
+        p_8:"L’usuari pot sol·licitar informació o exercir els seus drets d’accés, rectificació o supressió mitjançant els canals de contacte indicats al lloc oficial.",
+        h_9:"9. Canvis en aquesta política",
+        p_9:"Aquesta política pot actualitzar-se periòdicament. Les modificacions es publicaran en aquest document.",
+        h_10:"10. Contacte",
+        contact_label:"Lloc oficial:",
+        footer:"Fet per protegir-te del “copiar/enganxar” traïdor."
+      },
+
+      en: {
+        title: "Privacy Policy",
+        updated_label: "Last updated:",
+        lang: "Language",
+        nav_1:"1. Controller", nav_2:"2. Data", nav_3:"3. Purpose", nav_4:"4. Legal basis",
+        nav_5:"5. Sharing", nav_6:"6. Retention", nav_7:"7. Security", nav_8:"8. User rights",
+        nav_9:"9. Changes", nav_10:"10. Contact",
+        h_1:"1. Data controller",
+        p_1:"ClickFix Mitigator is a browser extension designed to detect ClickFix-style attack patterns and warn users about potential clipboard-related risks.",
+        h_2:"2. Data collected",
+        p_2:"The extension may process and/or send the following data strictly for security purposes:",
+        li_2_1:"<strong>Detection events:</strong> URL, hostname, timestamp, detected signals, alert message, and relevant snippets of analyzed content.",
+        li_2_2:"<strong>Usage statistics:</strong> number of alerts, number of blocks, and extension enabled/disabled status.",
+        li_2_3:"<strong>Local lists:</strong> allowlist and blocklist stored locally in the user’s browser.",
+        note_2:"No personal data such as name, email address, or information that directly identifies the user is collected.",
+        h_3:"3. Purpose of processing",
+        p_3:"Data is used only to:",
+        li_3_1:"Detect and block ClickFix attack patterns.",
+        li_3_2:"Generate real-time security alerts.",
+        li_3_3:"Improve effectiveness through aggregated statistics.",
+        li_3_4:"Maintain and optimize allowlist and blocklist rules.",
+        h_4:"4. Legal basis",
+        p_4:"Processing is based on our <strong>legitimate interest</strong> in protecting users from security threats.",
+        h_5:"5. Data sharing",
+        li_5_1:"Data may be sent to ClickFix Mitigator servers to process alerts and statistics.",
+        li_5_2:"<strong>We do not sell, rent, or share data with third parties</strong> except when strictly necessary to operate the service.",
+        h_6:"6. Retention",
+        p_6:"Data is retained only for as long as necessary to fulfill the purposes described and to preserve the integrity of security logs.",
+        h_7:"7. Security",
+        p_7:"Reasonable technical and organizational measures are applied to protect transmitted and stored data against unauthorized access, loss, or alteration.",
+        h_8:"8. User rights",
+        p_8:"Users may request information or exercise their rights of access, rectification, or deletion through the contact channels listed on the official site.",
+        h_9:"9. Changes to this policy",
+        p_9:"This policy may be updated periodically. Changes will be published in this document.",
+        h_10:"10. Contact",
+        contact_label:"Official site:",
+        footer:"Built to protect you from the sneaky side of copy/paste."
+      }
+    };
+
+    function applyLang(lang){
+      const dict = i18n[lang] || i18n.es;
+
+      // translate simple text nodes & HTML nodes
+      $$("[data-i18n]").forEach(el => {
+        const key = el.getAttribute("data-i18n");
+        const val = dict[key];
+        if (val == null) return;
+
+        // If translation contains tags (<strong>...), use innerHTML; else textContent
+        if (/[<>]/.test(val)) el.innerHTML = val;
+        else el.textContent = val;
+      });
+
+      // Update lang attr, title, and formatted date
+      document.documentElement.lang = lang;
+      document.title = `${dict.title} - ClickFix Mitigator`;
+      updatedEl.textContent = formatUpdated(lang);
+
+      // Save
+      localStorage.setItem(STORAGE_KEY, lang);
+    }
+
+    // Footer year
+    document.getElementById("y").textContent = new Date().getFullYear();
+
+    // Init language (saved -> browser -> default es)
+    const saved = localStorage.getItem(STORAGE_KEY);
+    const browserLang = (navigator.language || "es").slice(0,2).toLowerCase();
+    const initial = supported.includes(saved) ? saved : (supported.includes(browserLang) ? browserLang : "es");
+
+    const langSelect = $("#langSelect");
+    langSelect.value = initial;
+    applyLang(initial);
+
+    langSelect.addEventListener("change", (e) => applyLang(e.target.value));
+  </script>
+</body>
+</html>
