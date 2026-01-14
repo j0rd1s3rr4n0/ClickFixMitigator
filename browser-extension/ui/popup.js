@@ -1,10 +1,12 @@
 const DEFAULT_SETTINGS = {
   enabled: true,
+  blockAllClipboard: false,
   whitelist: [],
   history: []
 };
 
 const toggleEnabled = document.getElementById("toggle-enabled");
+const toggleBlockAll = document.getElementById("toggle-block-all");
 const whitelistInput = document.getElementById("whitelist-input");
 const addDomainButton = document.getElementById("add-domain");
 const whitelistList = document.getElementById("whitelist-list");
@@ -17,7 +19,7 @@ const reportButton = document.getElementById("report-site");
 const reportStatus = document.getElementById("report-status");
 const languageSelect = document.getElementById("language-select");
 
-const SUPPORTED_LOCALES = ["en", "es"];
+const SUPPORTED_LOCALES = ["en", "es", "de", "fr", "nl"];
 const DEFAULT_LOCALE = "en";
 let activeMessages = null;
 
@@ -110,6 +112,7 @@ async function loadSettings() {
   const settings = await chrome.storage.local.get({ ...DEFAULT_SETTINGS, clipboardBackups: [] });
   return {
     enabled: settings.enabled ?? true,
+    blockAllClipboard: settings.blockAllClipboard ?? false,
     whitelist: settings.whitelist ?? [],
     history: settings.history ?? [],
     clipboardBackups: settings.clipboardBackups ?? []
@@ -263,6 +266,10 @@ toggleEnabled.addEventListener("change", async () => {
   await chrome.storage.local.set({ enabled: toggleEnabled.checked });
 });
 
+toggleBlockAll?.addEventListener("change", async () => {
+  await chrome.storage.local.set({ blockAllClipboard: toggleBlockAll.checked });
+});
+
 async function reportSite(targetUrl) {
   if (!targetUrl) {
     reportStatus.textContent = t("popupReportStatusMissing");
@@ -303,6 +310,9 @@ reportButton.addEventListener("click", async () => {
   await initLanguageSelector();
   const settings = await loadSettings();
   toggleEnabled.checked = settings.enabled;
+  if (toggleBlockAll) {
+    toggleBlockAll.checked = settings.blockAllClipboard;
+  }
   renderWhitelist(settings.whitelist);
   renderHistory(settings.history);
   renderClipboardHistory(settings.clipboardBackups);
