@@ -864,7 +864,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "checkAllowlist") {
     (async () => {
-      const allowlisted = message.url ? await isAllowlisted(message.url) : false;
+      const allowlisted = await isAllowlisted(message.url);
       sendResponse({ allowlisted });
     })();
     return true;

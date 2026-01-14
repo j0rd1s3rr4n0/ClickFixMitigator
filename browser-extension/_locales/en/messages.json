@@ -130,14 +130,6 @@
       }
     }
   },
-  "blockAllClipboardBlockedWriteText": {
-    "message": "Clipboard blocked: navigator.clipboard.writeText"
-  },
-  "blockAllClipboardBlockedWrite": {
-    "message": "Clipboard blocked: ClipboardItem.write"
-  },
-  "blockAllClipboardBlockedExecCommand": {
-    "message": "Clipboard blocked: document.execCommand('copy')"
   "blockAllClipboardBlocked": {
     "message": "JavaScript clipboard copying was blocked."
   },
