@@ -1006,7 +1006,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const shouldAlert =
         (hasPageHints && signalScore >= 2) ||
         (hasPageHints && commandMatch) ||
-        (hasPageHints && mismatch);
+        (hasPageHints && mismatch) ||
+        clipboardCommandWarning;
       const clipboardWarningOnly =
         clipboardCommandWarning && !hasPageHints && !mismatch && signalScore < 2;
       const nonClipboardSignal =
@@ -1073,8 +1074,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           fullContext: message.fullContext || "",
           previousUrl: message.previousUrl || "",
           tabId: sender?.tab?.id ?? null,
-          suppressPageBlock: clipboardWarningOnly,
-          incrementBlockCount: !clipboardWarningOnly,
+          incrementBlockCount: true,
           reportHostname: !clipboardOnlyReport
         });
 
