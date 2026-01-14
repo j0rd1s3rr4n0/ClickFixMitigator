@@ -24,10 +24,12 @@ This checklist covers end-to-end verification for the extension, Windows agent, 
 - [ ] Copy text on a page → change clipboard externally → copy again → confirm mismatch alert.
 - [ ] Confirm clipboard read/write behavior on sites that **allow** clipboard APIs.
 - [ ] Confirm no console errors on sites that **block** clipboard APIs via Permissions-Policy.
+- [ ] Confirm notifications appear (and include the packaged icon) when a mismatch is detected.
 
 ### Whitelist / allowlist
 - [ ] Add a domain to whitelist in popup/options.
 - [ ] Confirm the blocked page does **not** appear for whitelisted sites.
+- [ ] Remove a domain from whitelist and re-check that the block triggers again.
 
 ## Windows agent (optional)
 
@@ -38,6 +40,7 @@ This checklist covers end-to-end verification for the extension, Windows agent, 
 ### Detection
 - [ ] Copy/paste suspicious command lines and confirm agent logs/report.
 - [ ] Confirm benign clipboard events do not trigger false positives.
+- [ ] Verify the agent can recover after a clipboard permission denial.
 
 ## Backend + dashboard (optional)
 
@@ -49,3 +52,4 @@ This checklist covers end-to-end verification for the extension, Windows agent, 
 - [ ] POST a sample report to `clickfix-report.php`.
 - [ ] Confirm new entry appears in `dashboard.php`.
 - [ ] Validate accept/reject and appeal flows.
+- [ ] Trigger the intel cache refresh and confirm `intel-cache.json` updates.
