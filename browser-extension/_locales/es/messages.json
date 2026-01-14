@@ -11,6 +11,9 @@
   "closeButton": {
     "message": "Cerrar"
   },
+  "blockAllClipboardUnavailable": {
+    "message": "El modo Bloquear todo no puede activarse en esta página."
+  },
   "notificationRestoreClipboard": {
     "message": "Restaurar portapapeles"
   },
@@ -127,6 +130,17 @@
       }
     }
   },
+  "blockAllClipboardBlockedWriteText": {
+    "message": "Portapapeles bloqueado: navigator.clipboard.writeText"
+  },
+  "blockAllClipboardBlockedWrite": {
+    "message": "Portapapeles bloqueado: ClipboardItem.write"
+  },
+  "blockAllClipboardBlockedExecCommand": {
+    "message": "Portapapeles bloqueado: document.execCommand('copy')"
+  "blockAllClipboardBlocked": {
+    "message": "Se bloqueó el copiado de portapapeles por JavaScript."
+  },
   "manualReportReason": {
     "message": "Reporte manual del usuario"
   },
@@ -216,6 +230,9 @@
   "optionsStateTitle": {
     "message": "Estado"
   },
+  "optionsBlockAllClipboard": {
+    "message": "Bloquear todo el copiado por JavaScript"
+  },
   "optionsClipboardBackup": {
     "message": "Guardar respaldo del portapapeles"
   },
@@ -281,5 +298,14 @@
   },
   "languageSpanish": {
     "message": "Español"
+  },
+  "languageGerman": {
+    "message": "Alemán"
+  },
+  "languageFrench": {
+    "message": "Francés"
+  },
+  "languageDutch": {
+    "message": "Neerlandés"
   }
 }

@@ -11,6 +11,9 @@
   "closeButton": {
     "message": "Close"
   },
+  "blockAllClipboardUnavailable": {
+    "message": "Block All mode can’t be enabled on this page."
+  },
   "notificationRestoreClipboard": {
     "message": "Restore clipboard"
   },
@@ -127,6 +130,17 @@
       }
     }
   },
+  "blockAllClipboardBlockedWriteText": {
+    "message": "Clipboard blocked: navigator.clipboard.writeText"
+  },
+  "blockAllClipboardBlockedWrite": {
+    "message": "Clipboard blocked: ClipboardItem.write"
+  },
+  "blockAllClipboardBlockedExecCommand": {
+    "message": "Clipboard blocked: document.execCommand('copy')"
+  "blockAllClipboardBlocked": {
+    "message": "JavaScript clipboard copying was blocked."
+  },
   "manualReportReason": {
     "message": "Manual user report"
   },
@@ -216,6 +230,9 @@
   "optionsStateTitle": {
     "message": "Status"
   },
+  "optionsBlockAllClipboard": {
+    "message": "Block all JavaScript clipboard copying"
+  },
   "optionsClipboardBackup": {
     "message": "Keep previous clipboard backup"
   },
@@ -281,5 +298,14 @@
   },
   "languageSpanish": {
     "message": "Spanish"
+  },
+  "languageGerman": {
+    "message": "German"
+  },
+  "languageFrench": {
+    "message": "French"
+  },
+  "languageDutch": {
+    "message": "Dutch"
   }
 }

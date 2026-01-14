@@ -22,3 +22,5 @@ Esta extensión MV3 detecta patrones comunes de ataques ClickFix, discrepancias 
 - Usa el popup para activar o desactivar detecciones, gestionar la lista blanca por dominio y revisar alertas recientes.
 - El popup incluye un formulario para reportar manualmente un sitio.
 - Las opciones avanzadas muestran el historial completo, permiten limpiar datos y añadir listas externas de ClickFix para bloquear más dominios.
+- Activa el modo **Bloquear todo** para impedir cualquier copia al portapapeles realizada por JavaScript (el copiado con teclado sigue funcionando).
+- Disponible en inglés, español, alemán, francés y neerlandés.
