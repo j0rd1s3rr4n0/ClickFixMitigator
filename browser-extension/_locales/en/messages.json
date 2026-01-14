@@ -11,6 +11,9 @@
   "closeButton": {
     "message": "Close"
   },
+  "blockAllClipboardUnavailable": {
+    "message": "Block All mode can’t be enabled on this page."
+  },
   "notificationRestoreClipboard": {
     "message": "Restore clipboard"
   },
