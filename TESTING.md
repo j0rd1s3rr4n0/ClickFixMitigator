@@ -10,11 +10,12 @@ This checklist covers end-to-end verification for the extension, Windows agent, 
 - [ ] Open a regular web page and confirm the extension icon is visible.
 
 ### ClickFix detection flows
-- [ ] Open a demo page (see `demo/` or `browser-extension/test/`).
+- [ ] Open a demo page from `demo/` (e.g. `demo/attacker-sample.html`, `demo/attacker-winlogo.html`, `demo/demo-cloudflare.html`).
+- [ ] Also validate the `browser-extension/test/attacker-sample.html` page to confirm extension-specific flows.
 - [ ] Add text containing **Win + R** or **Run dialog** patterns; confirm alert/banner.
 - [ ] Add text containing command-like patterns (powershell/cmd) and confirm alert/banner.
 - [ ] Insert a fake captcha message and confirm alert/banner.
-- [ ] Trigger the blocked-page flow and verify:
+- [ ] Trigger the blocked-page flow (from a blocklisted demo) and verify:
   - Title, reason, detections, context appear.
   - Buttons respond (report/allow once/allow session/allow always/back).
   - Block page fully covers the viewport.
