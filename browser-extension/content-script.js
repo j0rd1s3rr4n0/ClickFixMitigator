@@ -47,6 +47,13 @@ let blockAllActive = false;
 
 const BLOCK_ALL_UPDATE_TYPE = "CLICKFIX_BLOCK_ALL_UPDATE";
 const BLOCK_ALL_BLOCKED_TYPE = "CLICKFIX_BLOCK_ALL_BLOCKED";
+const isTopFrame = (() => {
+  try {
+    return window.top === window;
+  } catch (error) {
+    return false;
+  }
+})();
 
 function getHostname(url) {
   try {
@@ -1301,10 +1308,12 @@ function handleSelectionChange() {
 }
 
 function startMonitoring() {
-  document.addEventListener("copy", () => handleCopyCut("copy"));
-  document.addEventListener("cut", () => handleCopyCut("cut"));
-  document.addEventListener("paste", () => handlePaste());
-  document.addEventListener("selectionchange", handleSelectionChange);
+  if (isTopFrame) {
+    document.addEventListener("copy", () => handleCopyCut("copy"));
+    document.addEventListener("cut", () => handleCopyCut("cut"));
+    document.addEventListener("paste", () => handlePaste());
+    document.addEventListener("selectionchange", handleSelectionChange);
+  }
 
   const initMonitoring = () => {
     notifyWinRDetected();
@@ -1318,8 +1327,10 @@ function startMonitoring() {
     notifyFileExplorerDetected();
     notifyCommandDetected();
     notifyCopyTriggerDetected();
-    monitorClipboardChanges();
-    setInterval(monitorClipboardChanges, 1000);
+    if (isTopFrame) {
+      monitorClipboardChanges();
+      setInterval(monitorClipboardChanges, 1000);
+    }
     const observer = new MutationObserver(() => {
       notifyWinRDetected();
       notifyWinXDetected();
@@ -1358,10 +1369,16 @@ function startMonitoring() {
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === "replaceClipboard") {
+    if (!isTopFrame) {
+      return;
+    }
     writeClipboardText(message.text ?? "");
     return;
   }
   if (message?.type === "restoreClipboard") {
+    if (!isTopFrame) {
+      return;
+    }
     writeClipboardText(message.text ?? "");
     return;
   }
