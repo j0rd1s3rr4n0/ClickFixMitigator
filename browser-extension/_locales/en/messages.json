@@ -130,6 +130,9 @@
       }
     }
   },
+  "blockAllClipboardBlocked": {
+    "message": "JavaScript clipboard copying was blocked."
+  },
   "manualReportReason": {
     "message": "Manual user report"
   },
@@ -216,6 +219,9 @@
   "optionsStateTitle": {
     "message": "Status"
   },
+  "optionsBlockAllClipboard": {
+    "message": "Block all JavaScript clipboard copying"
+  },
   "optionsClipboardBackup": {
     "message": "Keep previous clipboard backup"
   },
@@ -281,5 +287,14 @@
   },
   "languageSpanish": {
     "message": "Spanish"
+  },
+  "languageGerman": {
+    "message": "German"
+  },
+  "languageFrench": {
+    "message": "French"
+  },
+  "languageDutch": {
+    "message": "Dutch"
   }
 }
