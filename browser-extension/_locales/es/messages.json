@@ -11,6 +11,9 @@
   "closeButton": {
     "message": "Cerrar"
   },
+  "blockAllClipboardUnavailable": {
+    "message": "El modo Bloquear todo no puede activarse en esta página."
+  },
   "notificationRestoreClipboard": {
     "message": "Restaurar portapapeles"
   },
@@ -141,6 +144,9 @@
   },
   "popupDetectionActive": {
     "message": "Detección activa"
+  },
+  "popupAllowlistActive": {
+    "message": "Allowlist activo"
   },
   "popupWhitelistTitle": {
     "message": "Lista blanca"

@@ -389,6 +389,101 @@ function sendPageAlert(alertType, snippet) {
   });
 }
 
+function showBanner(text) {
+  const existing = document.getElementById("clickfix-mitigator-banner");
+  if (existing) {
+    const messageNode = existing.querySelector("[data-clickfix-message]");
+    if (messageNode) {
+      messageNode.textContent = text;
+    }
+    return;
+  }
+  const banner = document.createElement("div");
+  banner.id = "clickfix-mitigator-banner";
+  banner.style.cssText = [
+    "position:fixed",
+    "top:16px",
+    "right:16px",
+    "z-index:2147483647",
+    "background:linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
+    "color:#fff",
+    "padding:16px 18px",
+    "font-family:system-ui, sans-serif",
+    "font-size:14px",
+    "border-radius:16px",
+    "box-shadow:0 18px 40px rgba(15, 23, 42, 0.35)",
+    "display:flex",
+    "gap:14px",
+    "align-items:flex-start",
+    "max-width:360px",
+    "border:1px solid rgba(255,255,255,0.2)"
+  ].join(";");
+
+  const icon = document.createElement("div");
+  icon.style.cssText = [
+    "width:40px",
+    "height:40px",
+    "border-radius:12px",
+    "background:rgba(255,255,255,0.15)",
+    "display:flex",
+    "align-items:center",
+    "justify-content:center",
+    "flex-shrink:0"
+  ].join(";");
+  icon.innerHTML =
+    "<svg width='22' height='22' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>" +
+    "<path d='M12 3l9 16H3L12 3z' fill='white'/>" +
+    "<path d='M12 8.5v5.5' stroke='#991b1b' stroke-width='2' stroke-linecap='round'/>" +
+    "<circle cx='12' cy='17' r='1.4' fill='#991b1b'/>" +
+    "</svg>";
+
+  const content = document.createElement("div");
+  content.style.cssText = [
+    "display:flex",
+    "flex-direction:column",
+    "gap:6px",
+    "flex:1"
+  ].join(";");
+
+  const title = document.createElement("div");
+  title.textContent = t("bannerTitle");
+  title.style.cssText = [
+    "font-weight:700",
+    "font-size:13px",
+    "letter-spacing:0.3px",
+    "text-transform:uppercase"
+  ].join(";");
+
+  const message = document.createElement("div");
+  message.textContent = text;
+  message.setAttribute("data-clickfix-message", "true");
+  message.style.cssText = [
+    "line-height:1.4",
+    "font-size:14px"
+  ].join(";");
+
+  const closeButton = document.createElement("button");
+  closeButton.textContent = t("closeButton");
+  closeButton.style.cssText = [
+    "background:rgba(255,255,255,0.15)",
+    "color:#fff",
+    "border:none",
+    "padding:6px 10px",
+    "border-radius:999px",
+    "cursor:pointer",
+    "font-size:12px",
+    "font-weight:600"
+  ].join(";");
+  closeButton.addEventListener("click", () => banner.remove());
+
+  content.appendChild(title);
+  content.appendChild(message);
+  banner.appendChild(icon);
+  banner.appendChild(content);
+  banner.appendChild(closeButton);
+  document.body.appendChild(banner);
+}
+
 function collectFullContext() {
   if (!document.body) {
     return "";
@@ -411,6 +506,137 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function renderBanner(text, variant = "alert") {
+  const existing = document.getElementById("clickfix-mitigator-banner");
+  if (existing) {
+    const messageNode = existing.querySelector("[data-clickfix-message]");
+    if (messageNode) {
+      messageNode.textContent = text;
+    }
+    return;
+  }
+  const banner = document.createElement("div");
+  banner.id = "clickfix-mitigator-banner";
+  const isSubtle = variant === "subtle";
+  banner.style.cssText = [
+    "position:fixed",
+    "top:16px",
+    "right:16px",
+    "z-index:2147483647",
+    isSubtle
+      ? "background:rgba(15, 23, 42, 0.92)"
+      : "background:linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
+    "color:#fff",
+    isSubtle ? "padding:10px 12px" : "padding:16px 18px",
+    "font-family:system-ui, sans-serif",
+    isSubtle ? "font-size:12px" : "font-size:14px",
+    "border-radius:12px",
+    "box-shadow:0 14px 30px rgba(15, 23, 42, 0.28)",
+    "display:flex",
+    "gap:12px",
+    "align-items:flex-start",
+    "max-width:320px",
+    isSubtle ? "border:1px solid rgba(148, 163, 184, 0.35)" : "border:1px solid rgba(255,255,255,0.2)"
+  ].join(";");
+
+  const icon = document.createElement("div");
+  icon.style.cssText = [
+    "width:32px",
+    "height:32px",
+    "border-radius:10px",
+    isSubtle ? "background:rgba(148, 163, 184, 0.18)" : "background:rgba(255,255,255,0.15)",
+    "display:flex",
+    "align-items:center",
+    "justify-content:center",
+    "flex-shrink:0"
+  ].join(";");
+  icon.innerHTML =
+    "<svg width='18' height='18' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>" +
+    "<path d='M12 3l9 16H3L12 3z' fill='white'/>" +
+    "<path d='M12 8.5v5.5' stroke='#991b1b' stroke-width='2' stroke-linecap='round'/>" +
+    "<circle cx='12' cy='17' r='1.4' fill='#991b1b'/>" +
+    "</svg>";
+
+  const content = document.createElement("div");
+  content.style.cssText = [
+    "display:flex",
+    "flex-direction:column",
+    "gap:4px",
+    "flex:1"
+  ].join(";");
+
+  const title = document.createElement("div");
+  title.textContent = t("bannerTitle");
+  title.style.cssText = [
+    "font-weight:700",
+    "font-size:11px",
+    "letter-spacing:0.3px",
+    "text-transform:uppercase"
+  ].join(";");
+
+  const message = document.createElement("div");
+  message.textContent = text;
+  message.setAttribute("data-clickfix-message", "true");
+  message.style.cssText = [
+    "line-height:1.4",
+    "font-size:12px"
+  ].join(";");
+
+  const closeButton = document.createElement("button");
+  closeButton.textContent = t("closeButton");
+  closeButton.style.cssText = [
+    "background:rgba(255,255,255,0.15)",
+    "color:#fff",
+    "border:none",
+    "padding:4px 8px",
+    "border-radius:999px",
+    "cursor:pointer",
+    "font-size:11px",
+    "font-weight:600"
+  ].join(";");
+  closeButton.addEventListener("click", () => banner.remove());
+
+  content.appendChild(title);
+  content.appendChild(message);
+  banner.appendChild(icon);
+  banner.appendChild(content);
+  banner.appendChild(closeButton);
+  document.body.appendChild(banner);
+}
+
+function injectBlockAllScript() {
+  if (!document.documentElement) {
+    return false;
+  }
+  document.documentElement.dataset.clickfixBlockallInjected = "false";
+  const script = document.createElement("script");
+  script.textContent = `
+    (() => {
+      try {
+        window.blockAllInjected = true;
+        if (document.documentElement) {
+          document.documentElement.dataset.clickfixBlockallInjected = "true";
+        }
+      } catch (error) {}
+    })();
+  `;
+  (document.head || document.documentElement).appendChild(script);
+  script.remove();
+  return true;
+}
+
+function checkBlockAllInjection() {
+  if (!document.documentElement || blockAllInjectionChecked) {
+    return;
+  }
+  blockAllInjectionChecked = true;
+  const injected = document.documentElement.dataset.clickfixBlockallInjected === "true";
+  if (!injected) {
+    console.info("[ClickFix Mitigator] Block All script could not be injected on this page.");
+    renderBanner(t("blockAllClipboardUnavailable"), "subtle");
+  }
 }
 
 function buildHighlightedHtml(text, snippets) {
@@ -1340,10 +1566,12 @@ function handleSelectionChange() {
 }
 
 function startMonitoring() {
-  document.addEventListener("copy", () => handleCopyCut("copy"));
-  document.addEventListener("cut", () => handleCopyCut("cut"));
-  document.addEventListener("paste", () => handlePaste());
-  document.addEventListener("selectionchange", handleSelectionChange);
+  if (isTopFrame) {
+    document.addEventListener("copy", () => handleCopyCut("copy"));
+    document.addEventListener("cut", () => handleCopyCut("cut"));
+    document.addEventListener("paste", () => handlePaste());
+    document.addEventListener("selectionchange", handleSelectionChange);
+  }
 
   const initMonitoring = () => {
     notifyWinRDetected();
@@ -1357,8 +1585,10 @@ function startMonitoring() {
     notifyFileExplorerDetected();
     notifyCommandDetected();
     notifyCopyTriggerDetected();
-    monitorClipboardChanges();
-    setInterval(monitorClipboardChanges, 1000);
+    if (isTopFrame) {
+      monitorClipboardChanges();
+      setInterval(monitorClipboardChanges, 1000);
+    }
     const observer = new MutationObserver(() => {
       notifyWinRDetected();
       notifyWinXDetected();
@@ -1395,12 +1625,39 @@ function startMonitoring() {
   startMonitoring();
 })();
 
+const clipboardBlockedMessageMap = {
+  writeText: "blockAllClipboardBlockedWriteText",
+  write: "blockAllClipboardBlockedWrite",
+  execCommand: "blockAllClipboardBlockedExecCommand"
+};
+
+window.addEventListener("message", (event) => {
+  if (event.source !== window) {
+    return;
+  }
+  const data = event.data;
+  if (!data || data.type !== "blockAllClipboardBlocked") {
+    return;
+  }
+  const messageKey = clipboardBlockedMessageMap[data.method];
+  if (!messageKey) {
+    return;
+  }
+  showBanner(t(messageKey));
+});
+
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === "replaceClipboard") {
+    if (!isTopFrame) {
+      return;
+    }
     writeClipboardText(message.text ?? "");
     return;
   }
   if (message?.type === "restoreClipboard") {
+    if (!isTopFrame) {
+      return;
+    }
     writeClipboardText(message.text ?? "");
     return;
   }
