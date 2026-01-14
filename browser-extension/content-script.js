@@ -42,6 +42,11 @@ let copyTriggerDetected = false;
 let lastClipboardSnapshot = "";
 let clipboardWatchRunning = false;
 let lastScanSnapshot = { text: "", html: "", timestamp: 0 };
+let blockAllInjected = false;
+let blockAllActive = false;
+
+const BLOCK_ALL_UPDATE_TYPE = "CLICKFIX_BLOCK_ALL_UPDATE";
+const BLOCK_ALL_BLOCKED_TYPE = "CLICKFIX_BLOCK_ALL_BLOCKED";
 
 function getHostname(url) {
   try {
@@ -74,7 +79,7 @@ function t(key, substitutions) {
   return chrome.i18n.getMessage(key, substitutions) || key;
 }
 
-const SUPPORTED_LOCALES = ["en", "es"];
+const SUPPORTED_LOCALES = ["en", "es", "de", "fr", "nl"];
 const DEFAULT_LOCALE = "en";
 let activeMessages = null;
 
@@ -119,6 +124,205 @@ async function initLocale() {
   await loadLocaleMessages(selectedLocale);
 }
 
+function injectBlockAllScript() {
+  if (blockAllInjected || !document.documentElement) {
+    return;
+  }
+  const script = document.createElement("script");
+  script.textContent = `
+    (() => {
+      const UPDATE_TYPE = ${JSON.stringify(BLOCK_ALL_UPDATE_TYPE)};
+      const BLOCKED_TYPE = ${JSON.stringify(BLOCK_ALL_BLOCKED_TYPE)};
+      let enabled = false;
+
+      const originalWriteText = navigator.clipboard?.writeText?.bind(navigator.clipboard);
+      const originalWrite = navigator.clipboard?.write?.bind(navigator.clipboard);
+      const originalExecCommand = document.execCommand?.bind(document);
+
+      function notifyBlocked(method, text) {
+        window.postMessage(
+          {
+            type: BLOCKED_TYPE,
+            method,
+            text: text ? String(text).slice(0, 200) : ""
+          },
+          "*"
+        );
+      }
+
+      function shouldBlock() {
+        return enabled;
+      }
+
+      if (originalWriteText) {
+        navigator.clipboard.writeText = function (text) {
+          if (shouldBlock()) {
+            notifyBlocked("writeText", text);
+            return Promise.reject(new Error("ClickFix Mitigator blocked clipboard writeText"));
+          }
+          return originalWriteText(text);
+        };
+      }
+
+      if (originalWrite) {
+        navigator.clipboard.write = function (items) {
+          if (shouldBlock()) {
+            notifyBlocked("write", "");
+            return Promise.reject(new Error("ClickFix Mitigator blocked clipboard write"));
+          }
+          return originalWrite(items);
+        };
+      }
+
+      if (originalExecCommand) {
+        document.execCommand = function (command, ...args) {
+          if (shouldBlock() && String(command).toLowerCase() === "copy") {
+            notifyBlocked("execCommand", "");
+            return false;
+          }
+          return originalExecCommand(command, ...args);
+        };
+      }
+
+      window.addEventListener("message", (event) => {
+        if (event.source !== window) {
+          return;
+        }
+        if (event.data?.type === UPDATE_TYPE) {
+          enabled = Boolean(event.data.enabled);
+        }
+      });
+    })();
+  `;
+  document.documentElement.appendChild(script);
+  script.remove();
+  blockAllInjected = true;
+}
+
+async function updateBlockAllClipboardState() {
+  const { blockAllClipboard, enabled } = await chrome.storage.local.get({
+    blockAllClipboard: false,
+    enabled: true
+  });
+  const allowlisted = await new Promise((resolve) => {
+    safeSendMessage({ type: "checkAllowlist", url: window.location.href }, (response) => {
+      resolve(Boolean(response?.allowlisted));
+    });
+  });
+  const shouldEnable = Boolean(blockAllClipboard && enabled && !allowlisted);
+  if (!blockAllInjected) {
+    injectBlockAllScript();
+  }
+  if (shouldEnable !== blockAllActive) {
+    blockAllActive = shouldEnable;
+    window.postMessage({ type: BLOCK_ALL_UPDATE_TYPE, enabled: blockAllActive }, "*");
+  }
+}
+
+function showBanner(text) {
+  const existing = document.getElementById("clickfix-mitigator-banner");
+  if (existing) {
+    const messageNode = existing.querySelector("[data-clickfix-message]");
+    if (messageNode) {
+      messageNode.textContent = text;
+    }
+    return;
+  }
+  const banner = document.createElement("div");
+  banner.id = "clickfix-mitigator-banner";
+  banner.style.cssText = [
+    "position:fixed",
+    "top:16px",
+    "right:16px",
+    "z-index:2147483647",
+    "background:linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
+    "color:#fff",
+    "padding:16px 18px",
+    "font-family:system-ui, sans-serif",
+    "font-size:14px",
+    "border-radius:16px",
+    "box-shadow:0 18px 40px rgba(15, 23, 42, 0.35)",
+    "display:flex",
+    "gap:14px",
+    "align-items:flex-start",
+    "max-width:360px",
+    "border:1px solid rgba(255,255,255,0.2)"
+  ].join(";");
+
+  const icon = document.createElement("div");
+  icon.style.cssText = [
+    "width:40px",
+    "height:40px",
+    "border-radius:12px",
+    "background:rgba(255,255,255,0.15)",
+    "display:flex",
+    "align-items:center",
+    "justify-content:center",
+    "flex-shrink:0"
+  ].join(";");
+  icon.innerHTML =
+    "<svg width='22' height='22' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>" +
+    "<path d='M12 3l9 16H3L12 3z' fill='white'/>" +
+    "<path d='M12 8.5v5.5' stroke='#991b1b' stroke-width='2' stroke-linecap='round'/>" +
+    "<circle cx='12' cy='17' r='1.4' fill='#991b1b'/>" +
+    "</svg>";
+
+  const content = document.createElement("div");
+  content.style.cssText = [
+    "display:flex",
+    "flex-direction:column",
+    "gap:6px",
+    "flex:1"
+  ].join(";");
+
+  const title = document.createElement("div");
+  title.textContent = t("bannerTitle");
+  title.style.cssText = [
+    "font-weight:700",
+    "font-size:13px",
+    "letter-spacing:0.3px",
+    "text-transform:uppercase"
+  ].join(";");
+
+  const message = document.createElement("div");
+  message.textContent = text;
+  message.setAttribute("data-clickfix-message", "true");
+  message.style.cssText = [
+    "line-height:1.4",
+    "font-size:14px"
+  ].join(";");
+
+  const closeButton = document.createElement("button");
+  closeButton.textContent = t("closeButton");
+  closeButton.style.cssText = [
+    "background:rgba(255,255,255,0.15)",
+    "color:#fff",
+    "border:none",
+    "padding:6px 10px",
+    "border-radius:999px",
+    "cursor:pointer",
+    "font-size:12px",
+    "font-weight:600"
+  ].join(";");
+  closeButton.addEventListener("click", () => banner.remove());
+
+  content.appendChild(title);
+  content.appendChild(message);
+  banner.appendChild(icon);
+  banner.appendChild(content);
+  banner.appendChild(closeButton);
+  document.body.appendChild(banner);
+}
+
+window.addEventListener("message", (event) => {
+  if (event.source !== window) {
+    return;
+  }
+  if (event.data?.type === BLOCK_ALL_BLOCKED_TYPE) {
+    showBanner(t("blockAllClipboardBlocked"));
+  }
+});
+
 function safeSendMessage(message, callback) {
   if (!chrome?.runtime?.id) {
     if (callback) {
@@ -148,6 +352,16 @@ function safeSendMessage(message, callback) {
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes.uiLanguage) {
     initLocale();
+  }
+  if (
+    area === "local" &&
+    (changes.blockAllClipboard ||
+      changes.enabled ||
+      changes.whitelist ||
+      changes.allowlist ||
+      changes.allowlistUpdatedAt)
+  ) {
+    updateBlockAllClipboardState();
   }
 });
 
@@ -325,11 +539,15 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
   const iconWrap = document.createElement("div");
   iconWrap.className = "clickfix-icon";
   iconWrap.innerHTML =
-    "<svg width='28' height='28' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>" +
+    "<svg width='30' height='30' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>" +
     "<path d='M12 3l9 16H3L12 3z' fill='white'/>" +
-    "<path d='M12 8.5v5.5' stroke='#991b1b' stroke-width='2' stroke-linecap='round'/>" +
-    "<circle cx='12' cy='17' r='1.4' fill='#991b1b'/>" +
+    "<path d='M12 8.5v5.5' stroke='#7f1d1d' stroke-width='2' stroke-linecap='round'/>" +
+    "<circle cx='12' cy='17' r='1.4' fill='#7f1d1d'/>" +
     "</svg>";
+
+  const brand = document.createElement("div");
+  brand.className = "clickfix-brand";
+  brand.textContent = "ClickFix Mitigator";
 
   const heading = document.createElement("div");
   heading.textContent = title;
@@ -461,6 +679,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
   const header = document.createElement("div");
   header.className = "clickfix-header";
   header.appendChild(iconWrap);
+  header.appendChild(brand);
   header.appendChild(heading);
 
   card.appendChild(header);
@@ -497,52 +716,74 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 0;
-      background: radial-gradient(circle at top, #fff7f8 0%, #feecec 48%, #fde2e5 100%);
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      padding: 32px 16px;
+      background: radial-gradient(circle at top, #fff1f3 0%, #ffe4e6 45%, #fde2e5 100%);
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
     }
     .clickfix-card {
-      width: min(920px, 100%);
-      background: #fff;
+      width: min(960px, 100%);
+      background: #ffffff;
       border-radius: 32px;
-      padding: clamp(28px, 4vw, 40px);
-      box-shadow: 0 28px 60px rgba(185, 28, 28, 0.18);
-      text-align: center;
+      padding: clamp(28px, 4vw, 44px);
+      box-shadow: 0 30px 80px rgba(159, 18, 57, 0.2);
+      text-align: left;
+      border: 1px solid rgba(248, 113, 113, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+    .clickfix-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(248, 113, 113, 0.08), rgba(248, 113, 113, 0));
+      pointer-events: none;
     }
     .clickfix-header {
       display: flex;
-      flex-direction: column;
       align-items: center;
-      gap: 12px;
+      gap: 16px;
+      position: relative;
+      z-index: 1;
     }
     .clickfix-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 16px;
-      background: #dc2626;
+      width: 64px;
+      height: 64px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 12px 24px rgba(220, 38, 38, 0.25);
+      box-shadow: 0 16px 30px rgba(220, 38, 38, 0.28);
+    }
+    .clickfix-brand {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: #f97316;
     }
     .clickfix-title {
-      font-size: clamp(22px, 3vw, 32px);
+      font-size: clamp(24px, 3vw, 34px);
       font-weight: 800;
-      color: #b91c1c;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
+      color: #991b1b;
+      margin-left: auto;
+      line-height: 1.1;
     }
     .clickfix-subtitle {
-      margin-top: 14px;
-      font-size: 15px;
+      margin-top: 18px;
+      font-size: 16px;
       font-weight: 600;
-      color: #b91c1c;
+      color: #7f1d1d;
+      position: relative;
+      z-index: 1;
     }
     .clickfix-section-title {
-      margin-top: 22px;
+      margin-top: 24px;
       font-size: 15px;
       font-weight: 700;
       color: #7f1d1d;
+      position: relative;
+      z-index: 1;
     }
     .clickfix-reason-list {
       margin: 12px 0 0;
@@ -552,12 +793,14 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       flex-direction: column;
       gap: 10px;
       text-align: left;
+      position: relative;
+      z-index: 1;
     }
     .clickfix-reason-chip {
       padding: 12px 14px;
       border-radius: 14px;
-      background: #fff1f2;
-      border: 1px solid #fecdd3;
+      background: #fff5f5;
+      border: 1px solid rgba(248, 113, 113, 0.35);
       color: #7f1d1d;
       font-size: 14px;
       line-height: 1.4;
@@ -566,9 +809,9 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       margin-top: 12px;
       padding: 12px 14px;
       border-radius: 16px;
-      background: #f8fbff;
-      border: 1px solid #cfe0ff;
-      color: #0f172a;
+      background: #fffafc;
+      border: 1px solid rgba(251, 113, 133, 0.25);
+      color: #111827;
       font-size: 13px;
       line-height: 1.5;
       max-height: 320px;
@@ -576,23 +819,31 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       width: 100%;
       text-align: left;
       white-space: pre-wrap;
+      position: relative;
+      z-index: 1;
     }
     .clickfix-host {
       margin-top: 10px;
       font-size: 13px;
       color: #7f1d1d;
+      position: relative;
+      z-index: 1;
     }
     .clickfix-actions {
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
       justify-content: center;
-      margin-top: 24px;
+      margin-top: 28px;
+      position: relative;
+      z-index: 1;
     }
     .clickfix-back-actions {
       display: flex;
       justify-content: center;
       margin-top: 14px;
+      position: relative;
+      z-index: 1;
     }
     .clickfix-btn {
       padding: 12px 20px;
@@ -607,7 +858,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       border: 2px solid;
     }
     .clickfix-btn-solid.primary {
-      background: #b91c1c;
+      background: #991b1b;
       color: #fff;
     }
     .clickfix-btn-outline.danger {
@@ -628,9 +879,11 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       cursor: default;
     }
     @media (max-width: 640px) {
-      .clickfix-card { padding: 24px; }
+      .clickfix-card { padding: 24px; text-align: left; }
       .clickfix-actions { gap: 8px; }
       .clickfix-btn { width: 100%; }
+      .clickfix-header { flex-direction: column; align-items: flex-start; }
+      .clickfix-title { margin-left: 0; }
     }
   `;
   head.appendChild(style);
@@ -1137,6 +1390,7 @@ function startMonitoring() {
 }
 
 (async () => {
+  await updateBlockAllClipboardState();
   await checkBlocklistAndBlock();
   startMonitoring();
 })();
@@ -1178,97 +1432,6 @@ chrome.runtime.onMessage.addListener((message) => {
     return;
   }
   if (message?.type === "showBanner") {
-    const existing = document.getElementById("clickfix-mitigator-banner");
-    if (existing) {
-      const messageNode = existing.querySelector("[data-clickfix-message]");
-      if (messageNode) {
-        messageNode.textContent = message.text;
-      }
-      return;
-    }
-    const banner = document.createElement("div");
-    banner.id = "clickfix-mitigator-banner";
-    banner.style.cssText = [
-      "position:fixed",
-      "top:16px",
-      "right:16px",
-      "z-index:2147483647",
-      "background:linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
-      "color:#fff",
-      "padding:16px 18px",
-      "font-family:system-ui, sans-serif",
-      "font-size:14px",
-      "border-radius:16px",
-      "box-shadow:0 18px 40px rgba(15, 23, 42, 0.35)",
-      "display:flex",
-      "gap:14px",
-      "align-items:flex-start",
-      "max-width:360px",
-      "border:1px solid rgba(255,255,255,0.2)"
-    ].join(";");
-
-    const icon = document.createElement("div");
-    icon.style.cssText = [
-      "width:40px",
-      "height:40px",
-      "border-radius:12px",
-      "background:rgba(255,255,255,0.15)",
-      "display:flex",
-      "align-items:center",
-      "justify-content:center",
-      "flex-shrink:0"
-    ].join(";");
-    icon.innerHTML =
-      "<svg width='22' height='22' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>" +
-      "<path d='M12 3l9 16H3L12 3z' fill='white'/>" +
-      "<path d='M12 8.5v5.5' stroke='#991b1b' stroke-width='2' stroke-linecap='round'/>" +
-      "<circle cx='12' cy='17' r='1.4' fill='#991b1b'/>" +
-      "</svg>";
-
-    const content = document.createElement("div");
-    content.style.cssText = [
-      "display:flex",
-      "flex-direction:column",
-      "gap:6px",
-      "flex:1"
-    ].join(";");
-
-    const title = document.createElement("div");
-    title.textContent = t("bannerTitle");
-    title.style.cssText = [
-      "font-weight:700",
-      "font-size:13px",
-      "letter-spacing:0.3px",
-      "text-transform:uppercase"
-    ].join(";");
-
-    const text = document.createElement("div");
-    text.textContent = message.text;
-    text.setAttribute("data-clickfix-message", "true");
-    text.style.cssText = [
-      "line-height:1.4",
-      "font-size:14px"
-    ].join(";");
-
-    const closeButton = document.createElement("button");
-    closeButton.textContent = t("closeButton");
-    closeButton.style.cssText = [
-      "background:rgba(255,255,255,0.15)",
-      "color:#fff",
-      "border:none",
-      "padding:6px 10px",
-      "border-radius:999px",
-      "cursor:pointer",
-      "font-size:12px",
-      "font-weight:600"
-    ].join(";");
-    closeButton.addEventListener("click", () => banner.remove());
-
-    content.appendChild(title);
-    content.appendChild(text);
-    banner.appendChild(icon);
-    banner.appendChild(content);
-    banner.appendChild(closeButton);
-    document.body.appendChild(banner);
+    showBanner(message.text);
   }
 });

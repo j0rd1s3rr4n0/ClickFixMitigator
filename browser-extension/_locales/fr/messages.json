@@ -1,0 +1,297 @@
+{
+  "appName": {
+    "message": "ClickFix Mitigator"
+  },
+  "appDescription": {
+    "message": "Détecte les schémas ClickFix et les écarts du presse-papiers."
+  },
+  "bannerTitle": {
+    "message": "Alerte ClickFix Mitigator"
+  },
+  "closeButton": {
+    "message": "Fermer"
+  },
+  "notificationRestoreClipboard": {
+    "message": "Restaurer le presse-papiers"
+  },
+  "notificationKeepClean": {
+    "message": "Garder propre"
+  },
+  "blockedTitle": {
+    "message": "Site bloqué pour un possible ClickFix"
+  },
+  "blockedReasonDefault": {
+    "message": "Motif : schémas ClickFix détectés"
+  },
+  "blockedReasonWithDetail": {
+    "message": "Motif : $1",
+    "placeholders": {
+      "detail": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonReported": {
+    "message": "Motif : signalement ClickFix"
+  },
+  "blockedStay": {
+    "message": "Rester sur le site"
+  },
+  "blockedBack": {
+    "message": "Revenir"
+  },
+  "blockedReport": {
+    "message": "Signaler le site"
+  },
+  "blockedAllowOnce": {
+    "message": "Autoriser une fois"
+  },
+  "blockedAllowSession": {
+    "message": "Autoriser pour la session"
+  },
+  "blockedAllowAlways": {
+    "message": "Toujours autoriser"
+  },
+  "blockedReported": {
+    "message": "Signalé"
+  },
+  "blockedHost": {
+    "message": "Site : $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonsTitle": {
+    "message": "Détections"
+  },
+  "blockedContextTitle": {
+    "message": "Contexte détecté"
+  },
+  "alertMismatch": {
+    "message": "Écart entre la sélection et le presse-papiers."
+  },
+  "alertCommand": {
+    "message": "Schéma de commande suspect détecté."
+  },
+  "alertClipboardCommand": {
+    "message": "Commande suspecte détectée dans le presse-papiers."
+  },
+  "alertWinR": {
+    "message": "La page suggère d'utiliser Win+R/Run."
+  },
+  "alertWinX": {
+    "message": "La page suggère d'utiliser Win+X pour ouvrir le terminal."
+  },
+  "alertBrowserError": {
+    "message": "La page affiche une fausse erreur du navigateur."
+  },
+  "alertFixAction": {
+    "message": "La page demande un correctif rapide ou de copier une commande."
+  },
+  "alertCaptcha": {
+    "message": "Faux captcha possible détecté."
+  },
+  "alertConsole": {
+    "message": "La page demande de coller dans la console DevTools."
+  },
+  "alertShell": {
+    "message": "La page demande de coller des commandes dans CMD/PowerShell/Exécuter."
+  },
+  "alertPasteSequence": {
+    "message": "La page guide le collage avec Ctrl+V/Entrée."
+  },
+  "alertFileExplorer": {
+    "message": "La page demande de coller un chemin dans l'explorateur de fichiers."
+  },
+  "alertCopyTrigger": {
+    "message": "La page tente de copier des commandes dans le presse-papiers."
+  },
+  "alertEvasion": {
+    "message": "Contenu de commande obfusqué ou encodé détecté."
+  },
+  "alertSnippet": {
+    "message": "Extrait détecté : \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertClipboardBlocked": {
+    "message": "Presse-papiers bloqué : \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockAllClipboardBlocked": {
+    "message": "La copie JavaScript vers le presse-papiers a été bloquée."
+  },
+  "manualReportReason": {
+    "message": "Signalement manuel de l'utilisateur"
+  },
+  "blocklistReason": {
+    "message": "Bloqué par liste"
+  },
+  "popupTitle": {
+    "message": "ClickFix Mitigator"
+  },
+  "popupDetectionActive": {
+    "message": "Détection active"
+  },
+  "popupWhitelistTitle": {
+    "message": "Liste d'autorisation"
+  },
+  "popupWhitelistPlaceholder": {
+    "message": "exemple.fr"
+  },
+  "popupAdd": {
+    "message": "Ajouter"
+  },
+  "popupWhitelistEmpty": {
+    "message": "Aucun domaine dans la liste d'autorisation."
+  },
+  "popupRecentAlerts": {
+    "message": "Alertes récentes"
+  },
+  "popupClearHistory": {
+    "message": "Effacer l'historique"
+  },
+  "popupClipboardTitle": {
+    "message": "Sauvegardes du presse-papiers"
+  },
+  "popupClipboardEmpty": {
+    "message": "Aucune sauvegarde du presse-papiers."
+  },
+  "popupClipboardClear": {
+    "message": "Effacer les sauvegardes"
+  },
+  "popupClipboardCopy": {
+    "message": "Copier"
+  },
+  "popupClipboardCopied": {
+    "message": "Copié"
+  },
+  "popupReportTitle": {
+    "message": "Signaler le site"
+  },
+  "popupReportHint": {
+    "message": "Envoyer un signalement manuel pour bloquer un domaine spécifique."
+  },
+  "popupReportPlaceholder": {
+    "message": "https://exemple-site.fr"
+  },
+  "popupReportButton": {
+    "message": "Signaler"
+  },
+  "popupReportStatusMissing": {
+    "message": "Saisissez une URL ou utilisez l'onglet actuel."
+  },
+  "popupReportStatusSent": {
+    "message": "Signalement envoyé : $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupReportStatusInvalid": {
+    "message": "URL invalide."
+  },
+  "popupReportStatusNoTab": {
+    "message": "Impossible de détecter l'onglet actif."
+  },
+  "popupOptionsLink": {
+    "message": "Options avancées"
+  },
+  "optionsTitle": {
+    "message": "Options avancées"
+  },
+  "optionsSubtitle": {
+    "message": "Configurer la détection et consulter l'historique des alertes."
+  },
+  "optionsStateTitle": {
+    "message": "Statut"
+  },
+  "optionsBlockAllClipboard": {
+    "message": "Bloquer toutes les copies JavaScript vers le presse-papiers"
+  },
+  "optionsClipboardBackup": {
+    "message": "Conserver la sauvegarde du presse-papiers"
+  },
+  "optionsSendCountry": {
+    "message": "Partager le pays dans les signalements"
+  },
+  "optionsWhitelistTitle": {
+    "message": "Liste d'autorisation"
+  },
+  "optionsWhitelistAdd": {
+    "message": "Ajouter un domaine"
+  },
+  "optionsBlocklistTitle": {
+    "message": "Listes de blocage supplémentaires"
+  },
+  "optionsBlocklistHint": {
+    "message": "Ajoutez des URLs de listes ClickFix (une par liste) pour les fusionner avec la liste principale."
+  },
+  "optionsBlocklistPlaceholder": {
+    "message": "https://exemple.fr/clickfixlist"
+  },
+  "optionsBlocklistAdd": {
+    "message": "Ajouter une liste"
+  },
+  "optionsBlocklistEmpty": {
+    "message": "Aucune liste supplémentaire."
+  },
+  "optionsAllowlistTitle": {
+    "message": "Listes d'autorisation supplémentaires"
+  },
+  "optionsAllowlistHint": {
+    "message": "Ajoutez des URLs d'autorisation (une par liste) pour les fusionner avec la liste principale."
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://exemple.fr/clickfixallowlist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "Ajouter une liste"
+  },
+  "optionsAllowlistEmpty": {
+    "message": "Aucune liste supplémentaire."
+  },
+  "optionsHistoryTitle": {
+    "message": "Historique complet"
+  },
+  "historyClipboardOnly": {
+    "message": "Presse-papiers uniquement"
+  },
+  "optionsHistoryEmpty": {
+    "message": "Aucune alerte récente."
+  },
+  "optionsClearHistory": {
+    "message": "Effacer l'historique"
+  },
+  "optionsRemove": {
+    "message": "Retirer"
+  },
+  "languageTitle": {
+    "message": "Langue"
+  },
+  "languageEnglish": {
+    "message": "Anglais"
+  },
+  "languageSpanish": {
+    "message": "Espagnol"
+  },
+  "languageGerman": {
+    "message": "Allemand"
+  },
+  "languageFrench": {
+    "message": "Français"
+  },
+  "languageDutch": {
+    "message": "Néerlandais"
+  }
+}

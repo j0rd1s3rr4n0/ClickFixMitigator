@@ -1,5 +1,6 @@
 const DEFAULT_SETTINGS = {
   enabled: true,
+  blockAllClipboard: false,
   whitelist: [],
   history: [],
   blocklistSources: [],
@@ -9,6 +10,7 @@ const DEFAULT_SETTINGS = {
 };
 
 const toggleEnabled = document.getElementById("toggle-enabled");
+const toggleBlockAll = document.getElementById("toggle-block-all");
 const whitelistInput = document.getElementById("whitelist-input");
 const addDomainButton = document.getElementById("add-domain");
 const whitelistList = document.getElementById("whitelist-list");
@@ -24,7 +26,7 @@ const historyContainer = document.getElementById("history");
 const clearHistoryButton = document.getElementById("clear-history");
 const languageSelect = document.getElementById("language-select");
 
-const SUPPORTED_LOCALES = ["en", "es"];
+const SUPPORTED_LOCALES = ["en", "es", "de", "fr", "nl"];
 const DEFAULT_LOCALE = "en";
 let activeMessages = null;
 
@@ -96,6 +98,7 @@ async function loadSettings() {
   const settings = await chrome.storage.local.get(DEFAULT_SETTINGS);
   return {
     enabled: settings.enabled ?? true,
+    blockAllClipboard: settings.blockAllClipboard ?? false,
     whitelist: settings.whitelist ?? [],
     history: settings.history ?? [],
     blocklistSources: settings.blocklistSources ?? [],
@@ -270,6 +273,10 @@ toggleEnabled.addEventListener("change", async () => {
   await chrome.storage.local.set({ enabled: toggleEnabled.checked });
 });
 
+toggleBlockAll?.addEventListener("change", async () => {
+  await chrome.storage.local.set({ blockAllClipboard: toggleBlockAll.checked });
+});
+
 toggleClipboardBackup.addEventListener("change", async () => {
   await chrome.storage.local.set({ saveClipboardBackup: toggleClipboardBackup.checked });
 });
@@ -282,6 +289,9 @@ toggleSendCountry.addEventListener("change", async () => {
   await initLanguageSelector();
   const settings = await loadSettings();
   toggleEnabled.checked = settings.enabled;
+  if (toggleBlockAll) {
+    toggleBlockAll.checked = settings.blockAllClipboard;
+  }
   toggleClipboardBackup.checked = settings.saveClipboardBackup;
   toggleSendCountry.checked = settings.sendCountry;
   renderWhitelist(settings.whitelist);
