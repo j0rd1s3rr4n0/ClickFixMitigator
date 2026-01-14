@@ -485,13 +485,19 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
   const style = document.createElement("style");
   style.textContent = `
     :root { color-scheme: light; }
-    body { margin: 0; }
+    html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+    }
     .clickfix-blocked {
       min-height: 100vh;
+      height: 100vh;
+      width: 100vw;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 40px 24px;
+      padding: 0;
       background: radial-gradient(circle at top, #fff7f8 0%, #feecec 48%, #fde2e5 100%);
       font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     }
@@ -698,6 +704,10 @@ async function readClipboardText() {
     if (!navigator.clipboard || !navigator.clipboard.readText) {
       return { text: "", available: false };
     }
+    const policy = document.permissionsPolicy || document.featurePolicy;
+    if (policy?.allowsFeature && !policy.allowsFeature("clipboard-read")) {
+      return { text: "", available: false };
+    }
     const text = await navigator.clipboard.readText();
     return { text: text.slice(0, MAX_SELECTION_LENGTH), available: true };
   } catch (error) {
@@ -708,6 +718,10 @@ async function readClipboardText() {
 async function writeClipboardText(text) {
   try {
     if (!navigator.clipboard || !navigator.clipboard.writeText) {
+      return false;
+    }
+    const policy = document.permissionsPolicy || document.featurePolicy;
+    if (policy?.allowsFeature && !policy.allowsFeature("clipboard-write")) {
       return false;
     }
     await navigator.clipboard.writeText(text);
@@ -733,11 +747,23 @@ function getScanSnapshot() {
   const root = document.documentElement;
   const textContent = root?.textContent || "";
   const htmlContent = root?.innerHTML || "";
+  const pageTitle = document.title || "";
+  let pageUrl = "";
+  let pagePath = "";
+  try {
+    const url = new URL(window.location.href || "");
+    pageUrl = decodeURIComponent(url.href);
+    pagePath = decodeURIComponent(url.pathname || "");
+  } catch (error) {
+    pageUrl = window.location.href || "";
+  }
   const inlineAssets = Array.from(document.querySelectorAll("script,style"))
     .map((node) => node.textContent || "")
     .filter(Boolean)
     .join("\n");
-  const combinedText = [textContent, inlineAssets].filter(Boolean).join("\n");
+  const combinedText = [textContent, pageTitle, pageUrl, pagePath, inlineAssets]
+    .filter(Boolean)
+    .join("\n");
   lastScanSnapshot = {
     text: trimScanValue(combinedText),
     html: trimScanValue(htmlContent),
