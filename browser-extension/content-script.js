@@ -748,12 +748,20 @@ function getScanSnapshot() {
   const textContent = root?.textContent || "";
   const htmlContent = root?.innerHTML || "";
   const pageTitle = document.title || "";
-  const pageUrl = decodeURIComponent(window.location.href || "");
+  let pageUrl = "";
+  let pagePath = "";
+  try {
+    const url = new URL(window.location.href || "");
+    pageUrl = decodeURIComponent(url.href);
+    pagePath = decodeURIComponent(url.pathname || "");
+  } catch (error) {
+    pageUrl = window.location.href || "";
+  }
   const inlineAssets = Array.from(document.querySelectorAll("script,style"))
     .map((node) => node.textContent || "")
     .filter(Boolean)
     .join("\n");
-  const combinedText = [textContent, pageTitle, pageUrl, inlineAssets]
+  const combinedText = [textContent, pageTitle, pageUrl, pagePath, inlineAssets]
     .filter(Boolean)
     .join("\n");
   lastScanSnapshot = {

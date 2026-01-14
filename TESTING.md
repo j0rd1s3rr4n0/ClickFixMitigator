@@ -13,7 +13,7 @@ This checklist covers end-to-end verification for the extension, Windows agent, 
 ### ClickFix detection flows
 - [ ] Open a demo page from `demo/` (e.g. `demo/attacker-sample.html`, `demo/attacker-winlogo.html`, `demo/demo-cloudflare.html`).
 - [ ] Also validate the `browser-extension/test/attacker-sample.html` page to confirm extension-specific flows.
-- [ ] Open local files (`file://`) with `.pdf`, `.webp`, or other formats that include ClickFix text and confirm detections fire.
+- [ ] Open local files (`file://`) of any type (PDF, WebP, images, HTML, etc.) that include ClickFix patterns and confirm detections fire.
 - [ ] Add text containing **Win + R** or **Run dialog** patterns; confirm alert/banner.
 - [ ] Add text containing command-like patterns (powershell/cmd) and confirm alert/banner.
 - [ ] Insert a fake captcha message and confirm alert/banner.
