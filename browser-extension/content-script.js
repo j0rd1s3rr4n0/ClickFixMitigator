@@ -485,13 +485,19 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
   const style = document.createElement("style");
   style.textContent = `
     :root { color-scheme: light; }
-    body { margin: 0; }
+    html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+    }
     .clickfix-blocked {
       min-height: 100vh;
+      height: 100vh;
+      width: 100vw;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 40px 24px;
+      padding: 0;
       background: radial-gradient(circle at top, #fff7f8 0%, #feecec 48%, #fde2e5 100%);
       font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     }
