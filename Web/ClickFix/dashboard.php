@@ -441,6 +441,15 @@ function t(array $translations, string $lang, string $key): string
     return $translations[$lang][$key] ?? $translations['es'][$key] ?? $key;
 }
 
+function safeSubstr(string $value, int $start, int $length): string
+{
+    if (function_exists('mb_substr')) {
+        return mb_substr($value, $start, $length);
+    }
+
+    return substr($value, $start, $length);
+}
+
 $intelSources = [
     [
         'id' => 'hudsonrock',
@@ -1174,8 +1183,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $username = trim((string) ($_POST['username'] ?? ''));
             $password = (string) ($_POST['password'] ?? '');
             $adminInput = trim((string) ($_POST['admin_code'] ?? ''));
-            $username = mb_substr($username, 0, 64);
-            $password = mb_substr($password, 0, 128);
+            $username = safeSubstr($username, 0, 64);
+            $password = safeSubstr($password, 0, 128);
             if ($username === '' || $password === '') {
                 $flashErrors[] = t($translations, $currentLanguage, 'flash_required_credentials');
             } else {
@@ -1208,8 +1217,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'login' && $pdo instanceof PDO) {
             $username = trim((string) ($_POST['username'] ?? ''));
             $password = (string) ($_POST['password'] ?? '');
-            $username = mb_substr($username, 0, 64);
-            $password = mb_substr($password, 0, 128);
+            $username = safeSubstr($username, 0, 64);
+            $password = safeSubstr($password, 0, 128);
             $rateLimited = ($attempts['count'] ?? 0) >= 8;
             if ($rateLimited) {
                 $flashErrors[] = t($translations, $currentLanguage, 'flash_invalid_credentials');
@@ -1525,8 +1534,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $password = (string) ($_POST['password'] ?? '');
             $role = (string) ($_POST['role'] ?? 'analyst');
             $verified = (int) ($_POST['verified'] ?? 0);
-            $username = mb_substr($username, 0, 64);
-            $password = mb_substr($password, 0, 128);
+            $username = safeSubstr($username, 0, 64);
+            $password = safeSubstr($password, 0, 128);
             if (!$isAdmin) {
                 $flashErrors[] = t($translations, $currentLanguage, 'flash_admin_required');
             } elseif ($username === '' || $password === '') {
