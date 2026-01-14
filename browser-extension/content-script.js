@@ -699,7 +699,7 @@ async function readClipboardText() {
       return { text: "", available: false };
     }
     const policy = document.permissionsPolicy || document.featurePolicy;
-    if (policy && !policy.allowsFeature("clipboard-read")) {
+    if (policy?.allowsFeature && !policy.allowsFeature("clipboard-read")) {
       return { text: "", available: false };
     }
     const text = await navigator.clipboard.readText();
@@ -712,6 +712,10 @@ async function readClipboardText() {
 async function writeClipboardText(text) {
   try {
     if (!navigator.clipboard || !navigator.clipboard.writeText) {
+      return false;
+    }
+    const policy = document.permissionsPolicy || document.featurePolicy;
+    if (policy?.allowsFeature && !policy.allowsFeature("clipboard-write")) {
       return false;
     }
     await navigator.clipboard.writeText(text);
