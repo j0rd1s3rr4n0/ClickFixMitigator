@@ -1,0 +1,297 @@
+{
+  "appName": {
+    "message": "ClickFix Mitigator"
+  },
+  "appDescription": {
+    "message": "Erkennt ClickFix-Muster und Zwischenablage-Abweichungen."
+  },
+  "bannerTitle": {
+    "message": "ClickFix Mitigator Warnung"
+  },
+  "closeButton": {
+    "message": "Schließen"
+  },
+  "notificationRestoreClipboard": {
+    "message": "Zwischenablage wiederherstellen"
+  },
+  "notificationKeepClean": {
+    "message": "Sauber halten"
+  },
+  "blockedTitle": {
+    "message": "Seite wegen möglichem ClickFix blockiert"
+  },
+  "blockedReasonDefault": {
+    "message": "Grund: ClickFix-Muster erkannt"
+  },
+  "blockedReasonWithDetail": {
+    "message": "Grund: $1",
+    "placeholders": {
+      "detail": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonReported": {
+    "message": "Grund: ClickFix-Meldung"
+  },
+  "blockedStay": {
+    "message": "Auf der Seite bleiben"
+  },
+  "blockedBack": {
+    "message": "Zurück"
+  },
+  "blockedReport": {
+    "message": "Seite melden"
+  },
+  "blockedAllowOnce": {
+    "message": "Einmal erlauben"
+  },
+  "blockedAllowSession": {
+    "message": "Für Sitzung erlauben"
+  },
+  "blockedAllowAlways": {
+    "message": "Immer erlauben"
+  },
+  "blockedReported": {
+    "message": "Gemeldet"
+  },
+  "blockedHost": {
+    "message": "Seite: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonsTitle": {
+    "message": "Erkennungen"
+  },
+  "blockedContextTitle": {
+    "message": "Erkannter Kontext"
+  },
+  "alertMismatch": {
+    "message": "Abweichung zwischen Auswahl und Zwischenablage."
+  },
+  "alertCommand": {
+    "message": "Verdächtiges Befehlsmuster erkannt."
+  },
+  "alertClipboardCommand": {
+    "message": "Verdächtiger Befehl in der Zwischenablage erkannt."
+  },
+  "alertWinR": {
+    "message": "Die Seite schlägt Win+R/Run-Dialog vor."
+  },
+  "alertWinX": {
+    "message": "Die Seite schlägt Win+X zum Öffnen des Terminals vor."
+  },
+  "alertBrowserError": {
+    "message": "Die Seite zeigt einen gefälschten Browserfehler."
+  },
+  "alertFixAction": {
+    "message": "Die Seite fordert eine schnelle Lösung oder das Kopieren eines Befehls an."
+  },
+  "alertCaptcha": {
+    "message": "Mögliches Fake-Captcha erkannt."
+  },
+  "alertConsole": {
+    "message": "Die Seite fordert zum Einfügen in die DevTools-Konsole auf."
+  },
+  "alertShell": {
+    "message": "Die Seite fordert zum Einfügen in CMD/PowerShell/Run auf."
+  },
+  "alertPasteSequence": {
+    "message": "Die Seite führt durch Einfügen mit Strg+V/Enter."
+  },
+  "alertFileExplorer": {
+    "message": "Die Seite fordert zum Einfügen eines Pfads im Datei-Explorer auf."
+  },
+  "alertCopyTrigger": {
+    "message": "Die Seite versucht, Befehle in die Zwischenablage zu kopieren."
+  },
+  "alertEvasion": {
+    "message": "Verschleierter oder codierter Befehlsinhalt erkannt."
+  },
+  "alertSnippet": {
+    "message": "Erkanntes Fragment: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertClipboardBlocked": {
+    "message": "Zwischenablage blockiert: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockAllClipboardBlocked": {
+    "message": "JavaScript-Zwischenablage wurde blockiert."
+  },
+  "manualReportReason": {
+    "message": "Manuelle Benutzer-Meldung"
+  },
+  "blocklistReason": {
+    "message": "Durch Liste blockiert"
+  },
+  "popupTitle": {
+    "message": "ClickFix Mitigator"
+  },
+  "popupDetectionActive": {
+    "message": "Erkennung aktiv"
+  },
+  "popupWhitelistTitle": {
+    "message": "Allowlist"
+  },
+  "popupWhitelistPlaceholder": {
+    "message": "beispiel.de"
+  },
+  "popupAdd": {
+    "message": "Hinzufügen"
+  },
+  "popupWhitelistEmpty": {
+    "message": "Keine Domains in der Allowlist."
+  },
+  "popupRecentAlerts": {
+    "message": "Letzte Warnungen"
+  },
+  "popupClearHistory": {
+    "message": "Verlauf löschen"
+  },
+  "popupClipboardTitle": {
+    "message": "Zwischenablage-Backups"
+  },
+  "popupClipboardEmpty": {
+    "message": "Keine Zwischenablage-Backups."
+  },
+  "popupClipboardClear": {
+    "message": "Zwischenablage-Backups löschen"
+  },
+  "popupClipboardCopy": {
+    "message": "Kopieren"
+  },
+  "popupClipboardCopied": {
+    "message": "Kopiert"
+  },
+  "popupReportTitle": {
+    "message": "Seite melden"
+  },
+  "popupReportHint": {
+    "message": "Sende eine manuelle Meldung, um eine Domain zu blockieren."
+  },
+  "popupReportPlaceholder": {
+    "message": "https://beispiel-seite.de"
+  },
+  "popupReportButton": {
+    "message": "Melden"
+  },
+  "popupReportStatusMissing": {
+    "message": "URL eingeben oder aktuellen Tab verwenden."
+  },
+  "popupReportStatusSent": {
+    "message": "Meldung gesendet: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupReportStatusInvalid": {
+    "message": "Ungültige URL."
+  },
+  "popupReportStatusNoTab": {
+    "message": "Aktiver Tab konnte nicht erkannt werden."
+  },
+  "popupOptionsLink": {
+    "message": "Erweiterte Optionen"
+  },
+  "optionsTitle": {
+    "message": "Erweiterte Optionen"
+  },
+  "optionsSubtitle": {
+    "message": "Erkennungsverhalten konfigurieren und Warnhistorie ansehen."
+  },
+  "optionsStateTitle": {
+    "message": "Status"
+  },
+  "optionsBlockAllClipboard": {
+    "message": "Alle JavaScript-Zwischenablagen blockieren"
+  },
+  "optionsClipboardBackup": {
+    "message": "Zwischenablage-Backup behalten"
+  },
+  "optionsSendCountry": {
+    "message": "Land in Meldungen teilen"
+  },
+  "optionsWhitelistTitle": {
+    "message": "Allowlist"
+  },
+  "optionsWhitelistAdd": {
+    "message": "Domain hinzufügen"
+  },
+  "optionsBlocklistTitle": {
+    "message": "Zusätzliche Blocklisten"
+  },
+  "optionsBlocklistHint": {
+    "message": "Füge ClickFix-Listen-URLs hinzu (eine pro Liste), um sie mit der Hauptliste zu kombinieren."
+  },
+  "optionsBlocklistPlaceholder": {
+    "message": "https://beispiel.de/clickfixlist"
+  },
+  "optionsBlocklistAdd": {
+    "message": "Liste hinzufügen"
+  },
+  "optionsBlocklistEmpty": {
+    "message": "Keine zusätzlichen Listen."
+  },
+  "optionsAllowlistTitle": {
+    "message": "Zusätzliche Allowlists"
+  },
+  "optionsAllowlistHint": {
+    "message": "Füge Allowlist-URLs hinzu (eine pro Liste), um sie mit der Hauptliste zu kombinieren."
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://beispiel.de/clickfixallowlist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "Liste hinzufügen"
+  },
+  "optionsAllowlistEmpty": {
+    "message": "Keine zusätzlichen Listen."
+  },
+  "optionsHistoryTitle": {
+    "message": "Vollständiger Verlauf"
+  },
+  "historyClipboardOnly": {
+    "message": "Nur Zwischenablage"
+  },
+  "optionsHistoryEmpty": {
+    "message": "Keine aktuellen Warnungen."
+  },
+  "optionsClearHistory": {
+    "message": "Verlauf löschen"
+  },
+  "optionsRemove": {
+    "message": "Entfernen"
+  },
+  "languageTitle": {
+    "message": "Sprache"
+  },
+  "languageEnglish": {
+    "message": "Englisch"
+  },
+  "languageSpanish": {
+    "message": "Spanisch"
+  },
+  "languageGerman": {
+    "message": "Deutsch"
+  },
+  "languageFrench": {
+    "message": "Französisch"
+  },
+  "languageDutch": {
+    "message": "Niederländisch"
+  }
+}

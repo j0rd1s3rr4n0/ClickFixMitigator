@@ -1,5 +1,6 @@
 const DEFAULT_SETTINGS = {
   enabled: true,
+  blockAllClipboard: false,
   whitelist: [],
   allowlist: [],
   history: [],
@@ -44,6 +45,7 @@ async function getSettings() {
   const stored = await chrome.storage.local.get(DEFAULT_SETTINGS);
   return {
     enabled: stored.enabled ?? true,
+    blockAllClipboard: stored.blockAllClipboard ?? false,
     whitelist: stored.whitelist ?? [],
     allowlist: stored.allowlist ?? [],
     history: stored.history ?? [],
@@ -67,7 +69,7 @@ function t(key, substitutions) {
   return chrome.i18n.getMessage(key, substitutions) || key;
 }
 
-const SUPPORTED_LOCALES = ["en", "es"];
+const SUPPORTED_LOCALES = ["en", "es", "de", "fr", "nl"];
 const DEFAULT_LOCALE = "en";
 let activeMessages = null;
 
@@ -856,6 +858,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const items = await getBlocklistItems();
       const blocked = items.some((entry) => entry === hostname || hostname.endsWith(`.${entry}`));
       sendResponse({ blocked, hostname });
+    })();
+    return true;
+  }
+
+  if (message.type === "checkAllowlist") {
+    (async () => {
+      const allowlisted = await isAllowlisted(message.url);
+      sendResponse({ allowlisted });
     })();
     return true;
   }

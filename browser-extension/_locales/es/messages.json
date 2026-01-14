@@ -135,6 +135,8 @@
   },
   "blockAllClipboardBlockedExecCommand": {
     "message": "Portapapeles bloqueado: document.execCommand('copy')"
+  "blockAllClipboardBlocked": {
+    "message": "Se bloqueó el copiado de portapapeles por JavaScript."
   },
   "manualReportReason": {
     "message": "Reporte manual del usuario"
@@ -222,6 +224,9 @@
   "optionsStateTitle": {
     "message": "Estado"
   },
+  "optionsBlockAllClipboard": {
+    "message": "Bloquear todo el copiado por JavaScript"
+  },
   "optionsClipboardBackup": {
     "message": "Guardar respaldo del portapapeles"
   },
@@ -287,5 +292,14 @@
   },
   "languageSpanish": {
     "message": "Español"
+  },
+  "languageGerman": {
+    "message": "Alemán"
+  },
+  "languageFrench": {
+    "message": "Francés"
+  },
+  "languageDutch": {
+    "message": "Neerlandés"
   }
 }

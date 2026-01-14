@@ -42,6 +42,18 @@ let copyTriggerDetected = false;
 let lastClipboardSnapshot = "";
 let clipboardWatchRunning = false;
 let lastScanSnapshot = { text: "", html: "", timestamp: 0 };
+let blockAllInjected = false;
+let blockAllActive = false;
+
+const BLOCK_ALL_UPDATE_TYPE = "CLICKFIX_BLOCK_ALL_UPDATE";
+const BLOCK_ALL_BLOCKED_TYPE = "CLICKFIX_BLOCK_ALL_BLOCKED";
+const isTopFrame = (() => {
+  try {
+    return window.top === window;
+  } catch (error) {
+    return false;
+  }
+})();
 
 function getHostname(url) {
   try {
@@ -74,7 +86,7 @@ function t(key, substitutions) {
   return chrome.i18n.getMessage(key, substitutions) || key;
 }
 
-const SUPPORTED_LOCALES = ["en", "es"];
+const SUPPORTED_LOCALES = ["en", "es", "de", "fr", "nl"];
 const DEFAULT_LOCALE = "en";
 let activeMessages = null;
 
@@ -119,6 +131,205 @@ async function initLocale() {
   await loadLocaleMessages(selectedLocale);
 }
 
+function injectBlockAllScript() {
+  if (blockAllInjected || !document.documentElement) {
+    return;
+  }
+  const script = document.createElement("script");
+  script.textContent = `
+    (() => {
+      const UPDATE_TYPE = ${JSON.stringify(BLOCK_ALL_UPDATE_TYPE)};
+      const BLOCKED_TYPE = ${JSON.stringify(BLOCK_ALL_BLOCKED_TYPE)};
+      let enabled = false;
+
+      const originalWriteText = navigator.clipboard?.writeText?.bind(navigator.clipboard);
+      const originalWrite = navigator.clipboard?.write?.bind(navigator.clipboard);
+      const originalExecCommand = document.execCommand?.bind(document);
+
+      function notifyBlocked(method, text) {
+        window.postMessage(
+          {
+            type: BLOCKED_TYPE,
+            method,
+            text: text ? String(text).slice(0, 200) : ""
+          },
+          "*"
+        );
+      }
+
+      function shouldBlock() {
+        return enabled;
+      }
+
+      if (originalWriteText) {
+        navigator.clipboard.writeText = function (text) {
+          if (shouldBlock()) {
+            notifyBlocked("writeText", text);
+            return Promise.reject(new Error("ClickFix Mitigator blocked clipboard writeText"));
+          }
+          return originalWriteText(text);
+        };
+      }
+
+      if (originalWrite) {
+        navigator.clipboard.write = function (items) {
+          if (shouldBlock()) {
+            notifyBlocked("write", "");
+            return Promise.reject(new Error("ClickFix Mitigator blocked clipboard write"));
+          }
+          return originalWrite(items);
+        };
+      }
+
+      if (originalExecCommand) {
+        document.execCommand = function (command, ...args) {
+          if (shouldBlock() && String(command).toLowerCase() === "copy") {
+            notifyBlocked("execCommand", "");
+            return false;
+          }
+          return originalExecCommand(command, ...args);
+        };
+      }
+
+      window.addEventListener("message", (event) => {
+        if (event.source !== window) {
+          return;
+        }
+        if (event.data?.type === UPDATE_TYPE) {
+          enabled = Boolean(event.data.enabled);
+        }
+      });
+    })();
+  `;
+  document.documentElement.appendChild(script);
+  script.remove();
+  blockAllInjected = true;
+}
+
+async function updateBlockAllClipboardState() {
+  const { blockAllClipboard, enabled } = await chrome.storage.local.get({
+    blockAllClipboard: false,
+    enabled: true
+  });
+  const allowlisted = await new Promise((resolve) => {
+    safeSendMessage({ type: "checkAllowlist", url: window.location.href }, (response) => {
+      resolve(Boolean(response?.allowlisted));
+    });
+  });
+  const shouldEnable = Boolean(blockAllClipboard && enabled && !allowlisted);
+  if (!blockAllInjected) {
+    injectBlockAllScript();
+  }
+  if (shouldEnable !== blockAllActive) {
+    blockAllActive = shouldEnable;
+    window.postMessage({ type: BLOCK_ALL_UPDATE_TYPE, enabled: blockAllActive }, "*");
+  }
+}
+
+function showBanner(text) {
+  const existing = document.getElementById("clickfix-mitigator-banner");
+  if (existing) {
+    const messageNode = existing.querySelector("[data-clickfix-message]");
+    if (messageNode) {
+      messageNode.textContent = text;
+    }
+    return;
+  }
+  const banner = document.createElement("div");
+  banner.id = "clickfix-mitigator-banner";
+  banner.style.cssText = [
+    "position:fixed",
+    "top:16px",
+    "right:16px",
+    "z-index:2147483647",
+    "background:linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
+    "color:#fff",
+    "padding:16px 18px",
+    "font-family:system-ui, sans-serif",
+    "font-size:14px",
+    "border-radius:16px",
+    "box-shadow:0 18px 40px rgba(15, 23, 42, 0.35)",
+    "display:flex",
+    "gap:14px",
+    "align-items:flex-start",
+    "max-width:360px",
+    "border:1px solid rgba(255,255,255,0.2)"
+  ].join(";");
+
+  const icon = document.createElement("div");
+  icon.style.cssText = [
+    "width:40px",
+    "height:40px",
+    "border-radius:12px",
+    "background:rgba(255,255,255,0.15)",
+    "display:flex",
+    "align-items:center",
+    "justify-content:center",
+    "flex-shrink:0"
+  ].join(";");
+  icon.innerHTML =
+    "<svg width='22' height='22' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>" +
+    "<path d='M12 3l9 16H3L12 3z' fill='white'/>" +
+    "<path d='M12 8.5v5.5' stroke='#991b1b' stroke-width='2' stroke-linecap='round'/>" +
+    "<circle cx='12' cy='17' r='1.4' fill='#991b1b'/>" +
+    "</svg>";
+
+  const content = document.createElement("div");
+  content.style.cssText = [
+    "display:flex",
+    "flex-direction:column",
+    "gap:6px",
+    "flex:1"
+  ].join(";");
+
+  const title = document.createElement("div");
+  title.textContent = t("bannerTitle");
+  title.style.cssText = [
+    "font-weight:700",
+    "font-size:13px",
+    "letter-spacing:0.3px",
+    "text-transform:uppercase"
+  ].join(";");
+
+  const message = document.createElement("div");
+  message.textContent = text;
+  message.setAttribute("data-clickfix-message", "true");
+  message.style.cssText = [
+    "line-height:1.4",
+    "font-size:14px"
+  ].join(";");
+
+  const closeButton = document.createElement("button");
+  closeButton.textContent = t("closeButton");
+  closeButton.style.cssText = [
+    "background:rgba(255,255,255,0.15)",
+    "color:#fff",
+    "border:none",
+    "padding:6px 10px",
+    "border-radius:999px",
+    "cursor:pointer",
+    "font-size:12px",
+    "font-weight:600"
+  ].join(";");
+  closeButton.addEventListener("click", () => banner.remove());
+
+  content.appendChild(title);
+  content.appendChild(message);
+  banner.appendChild(icon);
+  banner.appendChild(content);
+  banner.appendChild(closeButton);
+  document.body.appendChild(banner);
+}
+
+window.addEventListener("message", (event) => {
+  if (event.source !== window) {
+    return;
+  }
+  if (event.data?.type === BLOCK_ALL_BLOCKED_TYPE) {
+    showBanner(t("blockAllClipboardBlocked"));
+  }
+});
+
 function safeSendMessage(message, callback) {
   if (!chrome?.runtime?.id) {
     if (callback) {
@@ -148,6 +359,16 @@ function safeSendMessage(message, callback) {
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes.uiLanguage) {
     initLocale();
+  }
+  if (
+    area === "local" &&
+    (changes.blockAllClipboard ||
+      changes.enabled ||
+      changes.whitelist ||
+      changes.allowlist ||
+      changes.allowlistUpdatedAt)
+  ) {
+    updateBlockAllClipboardState();
   }
 });
 
@@ -1182,10 +1403,12 @@ function handleSelectionChange() {
 }
 
 function startMonitoring() {
-  document.addEventListener("copy", () => handleCopyCut("copy"));
-  document.addEventListener("cut", () => handleCopyCut("cut"));
-  document.addEventListener("paste", () => handlePaste());
-  document.addEventListener("selectionchange", handleSelectionChange);
+  if (isTopFrame) {
+    document.addEventListener("copy", () => handleCopyCut("copy"));
+    document.addEventListener("cut", () => handleCopyCut("cut"));
+    document.addEventListener("paste", () => handlePaste());
+    document.addEventListener("selectionchange", handleSelectionChange);
+  }
 
   const initMonitoring = () => {
     notifyWinRDetected();
@@ -1199,8 +1422,10 @@ function startMonitoring() {
     notifyFileExplorerDetected();
     notifyCommandDetected();
     notifyCopyTriggerDetected();
-    monitorClipboardChanges();
-    setInterval(monitorClipboardChanges, 1000);
+    if (isTopFrame) {
+      monitorClipboardChanges();
+      setInterval(monitorClipboardChanges, 1000);
+    }
     const observer = new MutationObserver(() => {
       notifyWinRDetected();
       notifyWinXDetected();
@@ -1232,6 +1457,7 @@ function startMonitoring() {
 }
 
 (async () => {
+  await updateBlockAllClipboardState();
   await checkBlocklistAndBlock();
   startMonitoring();
 })();
@@ -1259,10 +1485,16 @@ window.addEventListener("message", (event) => {
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === "replaceClipboard") {
+    if (!isTopFrame) {
+      return;
+    }
     writeClipboardText(message.text ?? "");
     return;
   }
   if (message?.type === "restoreClipboard") {
+    if (!isTopFrame) {
+      return;
+    }
     writeClipboardText(message.text ?? "");
     return;
   }
