@@ -55,3 +55,9 @@ This checklist covers end-to-end verification for the extension, Windows agent, 
 - [ ] Confirm new entry appears in `dashboard.php`.
 - [ ] Validate accept/reject and appeal flows.
 - [ ] Trigger the intel cache refresh and confirm `intel-cache.json` updates.
+
+## Legacy entrypoints (backward compatibility)
+
+- [ ] Open `/dashboard.php` at the repo root and confirm it loads the current dashboard UI.
+- [ ] Open `/PrivacyPolicy.html` at the repo root and confirm it redirects to `Web/ClickFix/PrivacyPolicy.html`.
+- [ ] Confirm the legacy SVGs render (`assets/flow-1-deception.svg`, `assets/flow-2-interruption.svg`, `assets/flow-3-block.svg`).
