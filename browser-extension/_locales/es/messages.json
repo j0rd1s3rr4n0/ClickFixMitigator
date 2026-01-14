@@ -11,6 +11,9 @@
   "closeButton": {
     "message": "Cerrar"
   },
+  "blockAllClipboardUnavailable": {
+    "message": "El modo Bloquear todo no puede activarse en esta página."
+  },
   "notificationRestoreClipboard": {
     "message": "Restaurar portapapeles"
   },
