@@ -127,6 +127,14 @@
       }
     }
   },
+  "blockAllClipboardBlockedWriteText": {
+    "message": "Portapapeles bloqueado: navigator.clipboard.writeText"
+  },
+  "blockAllClipboardBlockedWrite": {
+    "message": "Portapapeles bloqueado: ClipboardItem.write"
+  },
+  "blockAllClipboardBlockedExecCommand": {
+    "message": "Portapapeles bloqueado: document.execCommand('copy')"
   "blockAllClipboardBlocked": {
     "message": "Se bloqueó el copiado de portapapeles por JavaScript."
   },
