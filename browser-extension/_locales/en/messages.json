@@ -139,6 +139,9 @@
   "popupDetectionActive": {
     "message": "Detection active"
   },
+  "popupAllowlistActive": {
+    "message": "Allowlist active"
+  },
   "popupWhitelistTitle": {
     "message": "Allowlist"
   },

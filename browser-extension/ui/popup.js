@@ -16,6 +16,7 @@ const reportInput = document.getElementById("report-input");
 const reportButton = document.getElementById("report-site");
 const reportStatus = document.getElementById("report-status");
 const languageSelect = document.getElementById("language-select");
+const allowlistStatus = document.getElementById("allowlist-status");
 
 const SUPPORTED_LOCALES = ["en", "es"];
 const DEFAULT_LOCALE = "en";
@@ -60,6 +61,14 @@ function applyTranslations() {
   document.title = t("popupTitle");
 }
 
+function sendRuntimeMessage(message) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(message, (response) => {
+      resolve(response);
+    });
+  });
+}
+
 function removeDuplicateReportSections() {
   const reportInputs = document.querySelectorAll("#report-input");
   const reportButtons = document.querySelectorAll("#report-site");
@@ -79,6 +88,22 @@ function removeDuplicateReportSections() {
       element.remove();
     }
   });
+}
+
+async function updateAllowlistStatus() {
+  if (!allowlistStatus) {
+    return;
+  }
+  allowlistStatus.hidden = true;
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  const url = tabs?.[0]?.url;
+  if (!url) {
+    return;
+  }
+  const response = await sendRuntimeMessage({ type: "checkAllowlist", url });
+  if (response?.allowlisted) {
+    allowlistStatus.hidden = false;
+  }
 }
 
 async function loadLocaleMessages(locale) {
@@ -306,4 +331,5 @@ reportButton.addEventListener("click", async () => {
   renderWhitelist(settings.whitelist);
   renderHistory(settings.history);
   renderClipboardHistory(settings.clipboardBackups);
+  await updateAllowlistStatus();
 })();

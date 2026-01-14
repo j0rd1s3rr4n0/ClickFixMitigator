@@ -860,6 +860,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "checkAllowlist") {
+    (async () => {
+      const allowlisted = message.url ? await isAllowlisted(message.url) : false;
+      sendResponse({ allowlisted });
+    })();
+    return true;
+  }
+
   if (message.type === "allowSite") {
     (async () => {
       await addToWhitelist(message.hostname);
