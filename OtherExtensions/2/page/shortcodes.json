@@ -1,0 +1,1274 @@
+{
+	"ShowBlock": {
+		"name": "ShowBlock",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "Pick a block to show",
+				"selector": "[opt-type='block-v3']",
+				"multiple": true,
+				"name": false
+			}
+		]
+	},
+	"HideBlock": {
+		"name": "HideBlock",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "Pick a block to hide",
+				"selector": "[opt-type='block-v3']",
+				"multiple": true,
+				"name": false
+			}
+		]
+	},
+	"ShowColumn": {
+		"name": "ShowColumn",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "opt-id",
+				"description": "Pick a column to show",
+				"selector": ".col[opt-id]",
+				"multiple": true,
+				"name": false
+			}
+		]
+	},
+	"HideColumn": {
+		"name": "HideColumn",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "opt-id",
+				"description": "Pick a column to hide",
+				"selector": ".col[opt-id]",
+				"multiple": true,
+				"name": false
+			}
+		]
+	},
+	"ShowElement": {
+		"name": "ShowElement",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "opt-id",
+				"description": "Pick an element to show",
+				"selector": ".opt-element[opt-id]",
+				"multiple": true,
+				"name": false
+			}
+		]
+	},
+	"HideElement": {
+		"name": "HideElement",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "opt-id",
+				"description": "Pick an element to hide",
+				"selector": ".opt-element[opt-id]",
+				"multiple": true,
+				"name": false
+			}
+		]
+	},
+	"ShowField": {
+		"name": "ShowField",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "name",
+				"description": "Pick a field to show",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": true,
+				"name": false
+			}
+		]
+	},
+	"HideField": {
+		"name": "HideField",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "name",
+				"description": "Pick a field to hide",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": true,
+				"name": false
+			}
+		]
+	},
+	"Tabs": {
+		"name": "Tabs",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "Pick the blocks",
+				"selector": "[opt-type='block-v3']",
+				"multiple": true,
+				"name": false
+			}
+		]
+	},
+	"Timer": {
+		"name": "Timer",
+		"params": [
+			{
+				"required": true,
+				"type": "list",
+				"description": "Choose timer type",
+				"list": [
+					{
+						"name": "type={0}hours",
+						"title": "Hour(s)",
+						"type":  "input",
+						"regex": "^[0-9]$+",
+						"required": true
+					},
+					{
+						"name": "type={0}minutes",
+						"title": "Minute(s)",
+						"type": "input",
+						"regex": "^[0-9]$+"
+					},
+					{
+						"name": "type={0}seconds",
+						"title": "Second(s)",
+						"type": "input",
+						"regex": "^[0-9]$+"
+					},
+					{
+						"name": "type=every_half",
+						"title": "Twice in an hour"
+					},
+					{
+						"name": "type=every_3/4",
+						"title": "Once in an hour, at XX:45"
+					},
+					{
+						"name": "type=every_hour",
+						"title": "Once in an hour, at XX:00"
+					},
+					{
+						"name": "type=next({0})",
+						"title": "Next time (pick the time)",
+						"type": "input",
+						"regex": "^[0-9]$+"
+					},
+					{
+						"name": "param={0}",
+						"title": "Pick time from URL parameter",
+						"type": "input",
+						"regex": "^\\w+$"
+					},
+					{
+						"name": "minutes={0}",
+						"title": "After X minute(s)",
+						"type": "input",
+						"regex": "^\\w+$"
+					}
+				]
+			},
+			{
+				"type": "list",
+				"description": "Which parts to display on the timer",
+				"list": [
+					{
+						"name": "display=no",
+						"title": "Do not display empty parts"
+					},
+					{
+						"name": "display=\"{0}\"",
+						"title": "Pick which parts to display",
+						"type": "list_multiselect",
+						"list": ["days","hours","minutes","seconds"]
+					}
+				]
+			}
+		]
+	},
+	"PhoneVerification": {
+		"name": "PhoneVerification",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "Pick field",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": false,
+				"include_parent": false,
+				"name": "field={0}"
+			},
+			{
+				"name": "message=\"{0}\"",
+				"type": "string",
+				"description": "Error message"
+			},
+			{
+				"name": "submit={0}",
+				"type": "list",
+				"description": "Submit the form or not",
+				"list": [
+					{"value": "yes","title": "Yes"},
+					{"value": "no","title": "No"}
+				]
+			},
+			{
+				"name": "background-color={0}",
+				"type": "string",
+				"description": "Background color"
+			},
+			{
+				"name": "dropdown-divider-color={0}",
+				"type": "string",
+				"description": "Divider color"
+			},
+			{
+				"name": "dropdown-bg-hover={0}",
+				"type": "string",
+				"description": "Background color(On mouse over)"
+			},
+			{
+				"name": "line-height={0}",
+				"type": "string",
+				"description": "Line height"
+			},
+			{
+				"name": "margin-top={0}",
+				"type": "string",
+				"description": "Top margin"
+			},
+			{
+				"name": "margin-right={0}",
+				"type": "string",
+				"description": "Right margin"
+			},
+			{
+				"name": "margin-bottom={0}",
+				"type": "string",
+				"description": "Bottom margin"
+			},
+			{
+				"name": "margin-left={0}",
+				"type": "string",
+				"description": "Left margin"
+			}
+		]
+	},
+	"EmailVerification": {
+		"name": "EmailVerification",
+		"params": [
+			{
+				"type": "ui_element",
+				"field": "id",
+				"description": "Pick field",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": false,
+				"include_parent": false,
+				"name": "field={0}"
+			},
+			{
+				"name": "reject={0}",
+				"type": "list",
+				"description": "Pick reject level",
+				"list": [
+					{"value": "risky","title": "Risky"},
+					{"value": "unknown","title": "Unknown"},
+					{"value": "undeliverable","title": "Undeliverable"}
+				]
+			},
+			{
+				"name": "message=\"{0}\"",
+				"type": "string",
+				"description": "Error message"
+			},
+			{
+				"name": "suggestion={0}",
+				"type": "list",
+				"description": "Show email suggestion or not",
+				"list": [
+					{"value": "yes","title": "Yes"},
+					{"value": "no","title": "No"}
+				]
+			},
+			{
+				"name": "submit={0}",
+				"type": "list",
+				"description": "Submit the form or not",
+				"list": [
+					{"value": "yes","title": "Yes"},
+					{"value": "no","title": "No"}
+				]
+			}
+
+		]
+	},
+	"GetAddress": {
+		"name": "GetAddress",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "Pick field",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": false,
+				"include_parent": false,
+				"name": false
+			},
+			{
+				"name": "hide={0}",
+				"type": "list",
+				"description": "Hide the default Ontraport address fields",
+				"list": [
+					{"value": "no","title": "No"},
+					{"value": "yes","title": "Yes"}
+				]
+			},
+			{
+				"name": "language={0}",
+				"type": "string",
+				"description": "ISO 639-1 (2 letter) language code"
+			},
+			{
+				"name": "google_key={0}",
+				"type": "string",
+				"description": "Google Places API key"
+			}
+		]
+	},
+	"QrScan": {
+		"name": "QrScan",
+		"params": [
+			{
+				"name": "{0}",
+				"type": "string",
+				"description": "Anchor"
+			},
+			{
+				"name": "{0}",
+				"type": "string",
+				"description": "Redirect URL (Use {QR} for QR data)"
+			}
+		]
+	},
+	"Signature": {
+		"name": "Signature",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "name",
+				"description": "Pick field",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": false,
+				"name": false
+			}
+		]
+	},
+	"Schedule": {
+		"name": "Schedule",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "name",
+				"description": "Pick field",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": false,
+				"name": false
+			},
+			{
+				"name": "{0}",
+				"type": "string",
+				"description": "Public scheduling token (Clickfix key)"
+			},
+			{
+				"name": "type={0}",
+				"type": "list",
+				"description": "Public scheduling token (Clickfix key)",
+				"list": [
+					{"value": "left","title": "Left"},
+					{"value": "center","title": "Center"},
+					{"value": "right","title": "Right"}
+				]
+			}
+		]
+	},
+	"ScheduleTimer": {
+		"name": "ScheduleTimer",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "name",
+				"description": "Pick field",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": false,
+				"name": "token={0}"
+			},
+			{
+				"name": "token={0}",
+				"type": "string",
+				"description": "Public scheduling token (Clickfix key)"
+			},
+			{
+				"name": "display={0}",
+				"type": "list",
+				"description": "Display zero timer elements or not (zero parts of the timer)",
+				"list": [
+					{"value": "yes","title": "Yes"},
+					{"value": "no","title": "No"}
+				]
+			}
+		]
+	},
+	"UploadBox": {
+		"name": "UploadBox",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "name",
+				"description": "Pick field",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": false,
+				"name": false
+			},
+			{
+				"name": "{0}",
+				"type": "string",
+				"description": "Clickfix token"
+			}
+		]
+	},
+	"UploadToField": {
+		"name": "UploadToField",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "name",
+				"description": "Pick field",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": false,
+				"name": false
+			}
+		]
+	},
+	"ToNumber": {
+		"name": "ToNumber",
+		"params": [
+			{
+				"name": "$_var",
+				"type": "string",
+				"description": "Value"
+			}
+		]
+	},
+	"EncryptBeforeSubmit": {
+		"name": "EncryptBeforeSubmit",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "name",
+				"description": "Pick field",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": true,
+				"name": "fields={0}"
+			},
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "Pick a form",
+				"selector": "[opt-type='block-v3']"
+			},
+			{
+				"name": "key={0}",
+				"type": "string",
+				"description": "Public key"
+			}
+		]
+	},
+	"SyncFields": {
+		"name": "SyncFields",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "Pick fields",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": true,
+				"include_parent": false,
+				"name": "{0}"
+			}
+		]
+	},
+	"SyncCoupon": {
+		"name": "SyncCoupon",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "Pick field",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": false,
+				"name": "{0}"
+			}
+		]
+	},
+	"CSSColumn": {
+		"name": "CSSColumn",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "opt-id",
+				"description": "Pick a column to style",
+				"selector": ".col[opt-id]",
+				"multiple": true,
+				"name": false
+			},
+			{
+				"name": "\"{0}\"",
+				"type": "string",
+				"description": "CSS Style"
+			}
+		]
+	},
+	"CSSElement": {
+		"name": "CSSElement",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "opt-id",
+				"description": "Pick an element to style",
+				"selector": ".opt-element[opt-id]",
+				"multiple": true,
+				"name": false
+			},
+			{
+				"name": "\"{0}\"",
+				"type": "string",
+				"description": "CSS Style"
+			}
+		]
+	},
+	"PhoneStyle": {
+		"name": "PhoneStyle",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "name",
+				"description": "Pick a field to style",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": true,
+				"name": "field={0}"
+			},
+			{
+				"name": "background-color={0}",
+				"type": "string",
+				"description": "Background color"
+			},
+			{
+				"name": "dropdown-divider-color={0}",
+				"type": "string",
+				"description": "Dropdown divider color"
+			},
+			{
+				"name": "dropdown-bg-hover={0}",
+				"type": "string",
+				"description": "Dropdown background color on hover"
+			},
+			{
+				"name": "line-height={0}px",
+				"type": "string",
+				"description": "The height of the line in pixels"
+			},
+			{
+				"name": "margin-top={0}px",
+				"type": "string",
+				"description": "The height of the margin on top in pixels"
+			},
+			{
+				"name": "margin-bottom={0}px",
+				"type": "string",
+				"description": "The height of the margin at the bottom in pixels"
+			},
+			{
+				"name": "margin-left={0}px",
+				"type": "string",
+				"description": "The height of the margin at the left in pixels"
+			},
+			{
+				"name": "margin-right={0}px",
+				"type": "string",
+				"description": "The height of the margin at the right in pixels"
+			}
+		]
+	},
+	"FloatingBlock": {
+		"name": "FloatingBlock",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "Pick a block to make floating",
+				"selector": "[opt-type='block-v3']",
+				"multiple": true,
+				"name": "{0}"
+			},
+			{
+				"name": "top={0}",
+				"type": "string",
+				"description": "Block distance from the top of the page, pixels or percentage (e.g 100/100px or 50%),"
+			},
+			{
+				"name": "bottom={0}",
+				"type": "string",
+				"description": "Block distance from the bottom of the page, pixels or percentage (e.g 100/100px or 50%),"
+			},
+			{
+				"name": "left={0}",
+				"type": "string",
+				"description": "Block distance from the left of the page, pixels or percentage (e.g 100/100px or 50%),"
+			},
+			{
+				"name": "right={0}",
+				"type": "string",
+				"description": "Block distance from the right of the page, pixels or percentage (e.g 100/100px or 50%),"
+			}
+		]
+	},
+	"StickyBlock": {
+		"name": "StickyBlock",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "The Block ID you want to make sticky.",
+				"selector": "[opt-type='block-v3']",
+				"multiple": true,
+				"name": "{0}"
+			},
+			{
+				"name": "{0}",
+				"type": "string",
+				"description": "Scroll offset, Block will become sticky after user scrolls down the page by X pixels."
+			}
+		]
+	},
+	"StickyColumn": {
+		"name": "StickyColumn",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "The Column ID you want to make sticky.",
+				"selector": ".col[opt-id]",
+				"multiple": true,
+				"name": "{0}"
+			},
+			{
+				"name": "{0}",
+				"type": "string",
+				"description": "Scroll offset, Block will become sticky after user scrolls down the page by X pixels."
+			}
+		]
+	},
+	"StickyElement": {
+		"name": "StickyElement",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "The Element ID you want to make sticky.",
+				"selector": ".opt-element[opt-id]",
+				"multiple": true,
+				"name": "{0}"
+			},
+			{
+				"name": "{0}",
+				"type": "string",
+				"description": "Scroll offset, Block will become sticky after user scrolls down the page by X pixels."
+			}
+		]
+	},
+	"ProgressBar": {
+		"name": "ProgressBar",
+		"params": [
+			{
+				"name": "x={0}",
+				"type": "string",
+				"description": "Progress value"
+			},
+			{
+				"name": "y={0}",
+				"type": "string",
+				"description": "Progress MAX value"
+			},
+			{
+				"name": "type={0}",
+				"type": "list",
+				"description": "Progress bar style",
+				"list": [
+					{"title": "Solid", "value":  "solid"},
+					{"title": "Dots", "value":  "dots"}
+				]
+			},
+			{
+				"name": "height={0}",
+				"type": "string",
+				"description": "A height in pixels"
+			},
+			{
+				"name": "color={0}",
+				"type": "string",
+				"description": "A color. Can be red or #FFF for example."
+			},
+			{
+				"name": "background={0}",
+				"type": "string",
+				"description": "A color. Can be red or #FFF for example."
+			},
+			{
+				"name": "border-size={0}",
+				"type": "string",
+				"description": "Border size in pixels"
+			},
+			{
+				"name": "border-style={0}",
+				"type": "list",
+				"list": [
+					{"title": "Solid", "value": "solid"},
+					{"title": "Dashed", "value": "dashed"},
+					{"title": "Dotted", "value": "dotted"}
+				],
+				"description": "Border style"
+			},
+			{
+				"name": "padding={0}",
+				"type": "string",
+				"description": "A padding in pixels"
+			}
+		]
+	},
+	"CopyFields": {
+		"name": "CopyFields",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "name",
+				"description": "Pick field",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": true,
+				"name": "fields={0}"
+			},
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "Pick a block containing fields to copy to",
+				"selector": "[opt-type='block-v3']",
+				"multiple": true,
+				"name": "to {0}"
+			}
+		]
+	},
+	"FillField": {
+		"name": "FillField",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "name",
+				"description": "Pick field",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": true,
+				"name": "fields={0} with"
+			},
+			{
+				"required": true,
+				"name": "{0}",
+				"type": "list",
+				"list": [
+					{
+						"title": "Text value",
+						"value": ""
+					},
+					{
+						"title": "Url parameter",
+						"value": "url"
+					}
+				]
+			},
+			{
+				"name": "{0}",
+				"type": "string",
+				"description": "Parameter name or text"
+			}
+		]
+	},
+	"Random": {
+		"name": "Random",
+		"params": []
+	},
+	"FillBump": {
+		"name": "FillBump",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "opt-id",
+				"description": "Pick bump",
+				"selector": ".opt-order-bump",
+				"multiple": true,
+				"name": "{0}"
+			},
+			{
+				"required": true,
+				"name": "with {0}",
+				"type": "list",
+				"list": [
+					{
+						"title": "Checked",
+						"value": "checked"
+					},
+					{
+						"title": "Unchecked",
+						"value": "unchecked"
+					}
+				]
+			}
+		]
+	},
+	"FillCoupon": {
+		"name": "FillCoupon",
+		"params": [
+			{
+				"type": "list",
+				"required": true,
+				"description": "Value",
+				"list": [
+					{
+						"name": "{0}",
+						"title": "URL parameter",
+						"type":  "input",
+						"regex": "^[0-9]$+"
+					},
+					{
+						"name": "\"{0}\"",
+						"title": "Text value",
+						"type":  "input",
+						"regex": "^[0-9]$+"
+					}
+				]
+			}
+		]
+	},
+	"FillFrame": {
+		"name": "FillFrame",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "Pick frame",
+				"selector": "iframe",
+				"multiple": true,
+				"name": "#{0}"
+			},
+			{
+				"name": "{0}",
+				"type": "string",
+				"description": "List of parameters, separated by commas"
+			}
+		]
+	},
+	"FromURL": {
+		"name": "FromURL",
+		"params": [
+			{
+				"name": "{0}",
+				"type": "string",
+				"description": "List of URL parameters, separated by commas"
+			},
+			{
+				"name": "or \"{0}\"",
+				"type": "string",
+				"description": "Text to show if parameter was not present"
+			}
+		]
+	},
+	"MultiStep": {
+		"name": "MultiStep",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "Pick a block",
+				"selector": "[opt-type='block-v3']",
+				"multiple": true,
+				"name": false
+			},
+			{
+				"name": "{0}",
+				"type": "string",
+				"description": "Anchor that will be triggered on form submission"
+			},
+			{
+				"name": "except={0}",
+				"type": "string",
+				"description": "Submits the form normally if this anchor is found in the URL"
+			}
+		]
+	},
+	"Redirect": {
+		"name": "Redirect",
+		"params": [
+			{
+				"name": "url=\"{0}\"",
+				"type": "string",
+				"description": "Redirect URL or #anchor (If you include {FromURL:param}, it will be replaced with param from the URL)"
+			}
+		]
+	},
+	"SearchReplace": {
+		"name": "SearchReplace",
+		"params": [
+			{
+				"name": "search={0}",
+				"type": "string",
+				"description": "String to search on the page or in the block"
+			},
+			{
+				"name": "replace={0}",
+				"type": "string",
+				"description": "String to replace with"
+			},
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "Pick a block to monitor",
+				"selector": "[opt-type='block-v3']",
+				"multiple": true,
+				"name": "monitor={0}"
+			}
+		]
+	},
+	"Submit": {
+		"name": "Submit",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "id",
+				"description": "Pick a block containing form to submit",
+				"selector": "[opt-type='block-v3']",
+				"multiple": true,
+				"name": "#{0}"
+			}
+		]
+	},
+	"ShowAfter": {
+		"name": "ShowAfter",
+		"params": [
+			{
+				"required": true,
+				"type": "list",
+				"description": "Select time unit",
+				"list": [
+					{
+						"name": "{0}s",
+						"title": "Seconds",
+						"type":  "input",
+						"regex": "^[0-9]$+",
+						"required": true
+					},
+					{
+						"name": "{0}m",
+						"title": "Minutes",
+						"type":  "input",
+						"regex": "^[0-9]$+",
+						"required": true
+					},
+					{
+						"name": "{0}h",
+						"title": "Hours",
+						"type":  "input",
+						"regex": "^[0-9]$+",
+						"required": true
+					}
+				]
+			}
+		]
+	},
+	"TheYear": {
+		"name": "TheYear",
+		"params": []
+	},
+	"Today": {
+		"name": "Today",
+		"params": [
+			{
+				"description": "Choose format",
+				"type": "list",
+				"list": [
+					{
+						"name": "{0}",
+						"title": "Custom date format",
+						"type":  "input",
+						"regex": "^[0-9]$+"
+					},
+					{
+						"title": "Long date",
+						"name": "date_format=long"
+					},
+					{
+						"title": "Short date",
+						"name": "date_format=abb"
+					},
+					{
+						"title": "Standard slash date",
+						"name": "date_format=ss"
+					},
+					{
+						"title": "Standard dash date",
+						"name": "date_format=sd"
+					},
+					{
+						"title": "European slash date",
+						"name": "date_format=es"
+					},
+					{
+						"title": "European dash date",
+						"name": "date_format=ed"
+					},
+					{
+						"title": "Day of the week date",
+						"name": "date_format=dayname"
+					},
+					{
+						"title": "Unix timestamp",
+						"name": "date_format=unix"
+					}
+				]
+			}
+		]
+	},
+	"UpdateQuantity": {
+		"name": "UpdateQuantity",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "opt-id",
+				"description": "Pick field",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": false,
+				"name": "{0}"
+			},
+			{
+				"name": "quantity={0}",
+				"type": "string",
+				"description": "Quantity"
+			}
+
+		]
+	},
+	"Validate": {
+		"name": "Validate",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "name",
+				"description": "Pick field",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": true,
+				"name": false
+			},
+			{
+				"description": "Choose validation type",
+				"type": "list",
+				"list": [
+					{
+						"title": "IBAN",
+						"value": "IBAN"
+					}
+				]
+			},
+			{
+				"name": "\"{0}\"",
+				"type": "string",
+				"description": "Validation message"
+			}
+		]
+	},
+	"Tooltip": {
+		"name": "Tooltip",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "opt-id",
+				"description": "Pick element",
+				"selector": ".opt-element[opt-id]",
+				"multiple": true,
+				"name": false
+			},
+			{
+				"description": "Delay",
+				"type": "string",
+				"name": "delay={0}"
+			},
+			{
+				"description": "Follow cursor",
+				"type": "list",
+				"name": "follow-cursor={0}",
+				"list": [
+					{
+						"title": "Yes",
+						"value": "yes"
+					},
+					{
+						"title": "No",
+						"value": "no"
+					}
+				]
+			},
+			{
+				"description": "Interactive",
+				"type": "list",
+				"name": "interactive={0}",
+				"list": [
+					{
+						"title": "Yes",
+						"value": "yes"
+					},
+					{
+						"title": "No",
+						"value": "no"
+					}
+				]
+			},
+			{
+				"description": "Placement",
+				"type": "list",
+				"name": "placement={0}",
+				"list": [
+					{
+						"title": "Top",
+						"value": "top"
+					},
+					{
+						"title": "Right",
+						"value": "right"
+					},
+					{
+						"title": "Bottom",
+						"value": "bottom"
+					},
+					{
+						"title": "Left",
+						"value": "left"
+					}
+				]
+			}
+		]
+	},
+	"StarRating": {
+		"name": "StarRating",
+		"params": [
+			{
+				"required": true,
+				"type": "ui_element",
+				"field": "name",
+				"description": "Pick a field to hide",
+				"selector": "input:not([type=button]):not([type=submit]):not([type=reset]),textarea,select",
+				"multiple": true,
+				"name": "rater={0}"
+			},
+			{
+				"name": "max={0}",
+				"type": "string",
+				"description": "Max stars"
+			},
+			{
+				"name": "star-size={0}",
+				"type": "string",
+				"description": "Star size"
+			},
+			{
+				"name": "rating={0}",
+				"type": "string",
+				"description": "Rating"
+			}
+		]
+	},
+	"Format": {
+		"name": "Format",
+		"params": [
+			{
+				"name": "data={0}",
+				"type": "string",
+				"description": "Data"
+			},
+			{
+				"name": "type={0}",
+				"type": "list",
+				"description": "Data type",
+				"list": [
+					{
+						"title": "Number",
+						"value": "number"
+					}
+				]
+			},
+			{
+				"name": "style={0}",
+				"type": "list",
+				"description": "Data type",
+				"list": [
+					{
+						"title": "Dot",
+						"value": "dot"
+					},
+					{
+						"title": "Comma",
+						"value": "comma"
+					}
+				]
+			}
+		]
+	}
+}

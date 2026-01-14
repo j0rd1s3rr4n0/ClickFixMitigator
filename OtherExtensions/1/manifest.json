@@ -1,0 +1,47 @@
+{
+   "action": {
+      "default_icon": {
+         "128": "icons/dark128.png",
+         "16": "icons/dark16.png",
+         "48": "icons/dark48.png"
+      },
+      "default_popup": "popup.html"
+   },
+   "background": {
+      "service_worker": "background.js"
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "css": [ "warning.css" ],
+      "js": [ "inject-protection.js" ],
+      "match_about_blank": true,
+      "matches": [ "\u003Call_urls>" ],
+      "run_at": "document_start",
+      "world": "MAIN"
+   }, {
+      "all_frames": true,
+      "css": [ "warning.css" ],
+      "js": [ "config.js", "content.js" ],
+      "match_about_blank": true,
+      "matches": [ "\u003Call_urls>" ],
+      "run_at": "document_start"
+   } ],
+   "description": "ClickFix attack protection by BinHex.Ninja - Blocks ClickFix attacks, clipboard hijacking, and malicious social engineering attempts",
+   "host_permissions": [ "\u003Call_urls>" ],
+   "icons": {
+      "128": "icons/dark128.png",
+      "16": "icons/dark16.png",
+      "48": "icons/dark48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3XRdupN39OGOa3hF+ArurLzvV6DTazQgip37cvTyf9X7/MbEIXBYe2eI/wFFo7/kJ5KjHno2pw2W70pAM+JJkg3IptOlGJALEswtwX8yyjsA6mVjK1MLKmEgi4edtQAXAZRioDSwIomsr1CXd50WiB57h3TJuXlAR5mt6H3h147Uk/qhQS3d2BoRdGg8r2hPHVNUtKxPFj1RuErHSYfFew3/7yZEKhKexz/6G7DjRlF9uyFiGpK3yY73chLYEAXu/AqMnluysCkeMiSJxJHM0qQJ4lEZZx+y6oPeyNFW0CloG7PIKioZmvlJ1H5ur/LUUx7LAadructEFQkftgzGUQIDAQAB",
+   "manifest_version": 3,
+   "name": "BinHex.Ninja Security",
+   "options_page": "settings.html",
+   "permissions": [ "storage" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "1.0.1",
+   "web_accessible_resources": [ {
+      "matches": [ "\u003Call_urls>" ],
+      "resources": [ "inject-protection.js", "icons/dark.svg", "icons/light.svg", "icons/dark16.png", "icons/dark48.png", "icons/dark128.png", "icons/light16.png", "icons/light48.png", "icons/light128.png" ]
+   } ]
+}

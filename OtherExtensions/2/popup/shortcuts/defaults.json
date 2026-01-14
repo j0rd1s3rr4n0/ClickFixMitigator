@@ -1,0 +1,18 @@
+[
+  {
+    "name": "shortcut_save",
+    "shortcut": "CTRL+S"
+  },
+  {
+    "name": "shortcut_search",
+    "shortcut": "CTRL+SHIFT+F"
+  },
+  {
+    "name": "shortcut_back",
+    "shortcut": "CTRL+BACKSPACE"
+  },
+  {
+    "name": "shortcut_open_clone",
+    "shortcut": "CTRL+SHIFT+U"
+  }
+]

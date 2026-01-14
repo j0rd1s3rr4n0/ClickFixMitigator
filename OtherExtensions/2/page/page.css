@@ -1,0 +1,328 @@
+[data-klikfx-overlay] {
+	position: absolute;
+	background: rgba(0,0,0,0.7);
+	z-index: 2147483500;
+	overflow: hidden;
+	text-align: center;
+	color: #FFF;
+	user-select: contain;
+	display: inline-block;
+	padding: 4px;
+	margin-top: -4px;
+	margin-left: -4px;
+	border-radius: 3px;
+	border: 1px solid rgba(255,255,255,0.7);
+	box-sizing: content-box !important;
+	line-height: normal !important;
+	cursor: pointer;
+}
+
+[data-klikfx-overlay].selected {
+	background: rgba(154, 100, 0, 0.9);
+}
+
+[data-klikfx-overlay]:before {
+	content: '';
+	display: inline-block;
+	height: 100%;
+	vertical-align: middle;
+}
+
+._clickfix_sms:not([hidden]) {
+	position: relative;
+	bottom: 0;
+	width: 250px;
+	background: #F1F1F1;
+	border-bottom: none;
+	z-index: 2147483400;
+}
+
+._clickfix_sms_root * {
+	box-sizing: border-box;
+}
+._clickfix_sms.minimized ._clickfix_sms_messages, ._clickfix_sms.minimized ._clickfix_sms_form {
+	display: none;
+}
+._clickfix_sms_header {
+	font-size: 14px !important;
+	background: #0b2e13;
+	color: #FFF;
+	padding: 10px;
+	border-radius: 7px 7px 0 0;
+	font-family: sans-serif;
+	cursor: pointer;
+	user-select: none;
+}
+._clickfix_sms_messages {
+	height: 230px;
+	padding: 10px;
+	border-left: 1px solid #DDD;
+	border-right: 1px solid #DDD;
+	overflow-x: hidden;
+	overflow-y: auto;
+}
+._clickfix_sms_message {
+	font-size: 12px;
+	font-family: sans-serif;
+	border-radius: 10px;
+	background: #5A7D63;
+	display: inline-block;
+	padding: 7px 10px;
+	color: #FFF;
+	margin-bottom: 3px;
+}
+._clickfix_sms_message_wrapper.outbound {
+	text-align: right;
+}
+._clickfix_sms_message_wrapper.outbound ._clickfix_sms_message {
+	background: #555;
+}
+._clickfix_sms_form {
+	height: 44px;
+	border: 1px solid #DDD;
+	border-bottom: none;
+}
+._clickfix_sms_form textarea {
+	border: none;
+	display: block;
+	height: 100%;
+	width: 100%;
+	outline: none;
+	font-family: sans-serif;
+	resize: none;
+	padding: 5px;
+}
+._clickfix_sms_load_more {
+	text-align: center;
+	margin-bottom: 5px;
+}
+._clickfix_sms_load_more a {
+	color: #333;
+	font-size: 14px;
+	text-decoration: none;
+}
+._clickfix_sms_load_more a:hover {
+	text-decoration: underline;
+}
+._clickfix_sms_close_chat {
+	float: right;
+	color: #FFF;
+	text-decoration: none;
+	font-size: 18px;
+	margin-top: -2px;
+}
+#_clickfix_sms_root {
+	position: fixed;
+	right: 0;
+	bottom: 0;
+}
+#_clickfix_sms_root > div {
+	display: inline-block;
+	margin-right: 20px;
+}
+
+body._cf_sc_builder_open {
+	padding-left: 340px;
+	line-height: normal;
+}
+
+body:not(._cf_sc_builder_open) #_cf_builder_wrapper {
+	display: none !important;
+}
+
+#_cf_builder {
+	position: fixed;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 340px;
+	z-index: 2147483601;
+}
+
+._cf_sc_builder {
+	height: 100%;
+	border-right: 1px solid #ccc;
+	background: #eee;
+}
+
+._cf_sc_notepad {
+	position: relative;
+	width: 100%;
+	height: 50%;
+	background: #FFF;
+}
+
+._cf_sc_notepad ._cfb_copy_btn {
+	position: absolute;
+	right: 10px;
+	top: 10px;
+	background: rgba(0,0,0,0.6);
+	padding: 7px;
+	font-size: 12px;
+	color: #FFF !important;
+	transition: background-color 0.1s linear;
+}
+
+._cf_sc_notepad ._cfb_copy_btn:hover {
+	background: rgba(0,0,0,0.5);
+}
+
+._cf_sc_notepad #shortcodes-notepad {
+	height: 100%;
+	resize: none;
+	outline: none !important;
+	border: none !important;
+	border-bottom: 1px solid #ccc !important;
+	padding: 10px;
+	font-family: monospace;
+	overflow-y: auto;
+}
+._cf_sc_buttons ._cf_fb_col {
+	display: flex;
+	justify-content: space-evenly;
+	padding-top: 10px;
+	user-select: none;
+}
+._cf_sc_buttons {
+	flex-direction: column;
+}
+._cf_sc_buttons ._cf_sc_button {
+	flex: 0 0 calc(50% - 20px);
+	background: #FFF;
+	border-bottom: 1px solid #e0e0e0;
+	border-right: 1px solid #e0e0e0;
+	padding: 25px 5px;
+	text-align: center;
+	cursor: pointer;
+	word-break: normal;
+	font-size: 14px;
+}
+
+._cf_sc_selecting_block {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: #FFF;
+}
+._cf_sc_selecting_block > ._cf_sc_selecting_text {
+	display: block;
+	text-align: center;
+	padding: 30px;
+}
+._cf_sc_actions_block {
+	position: relative;
+	height: 50%;
+	overflow-y: auto;
+	padding-bottom: 10px;
+}
+
+._cf_sc_selection_done_wrapper {
+	text-align: center;
+}
+
+._cf_builder_btn {
+	background: rgb(18, 133, 255);
+	color: #FFF;
+	padding: 6px 15px;
+	border-radius: 2px;
+	box-shadow: 0 1px 3px rgba(0,0,0,.15);
+	display: inline-block;
+	cursor: pointer;
+}
+
+._cf_builder_btn:hover {
+	background: #0059cb;
+	box-shadow: 0 2px 5px rgba(0,0,0,.3);
+}
+
+._cf_builder_done_btn {
+	float: right;
+}
+._cf_builder_cancel_btn {
+	float: left;
+	background: rgb(247 148 31);
+}
+
+._cf_builder_cancel_btn:hover {
+	background: rgb(222 135 33);
+}
+
+._cf_hidden {
+	display: none;
+}
+
+._cf_sc_builder_fields {
+	height: 50%;
+	background: #FFFFFF;
+	padding: 10px;
+	overflow-y: auto;
+}
+._sc_builder_buttons {
+	margin-top: 10px;
+}
+._sc_builder_select {
+	display: initial;
+}
+._cf_sc_builder_fields input {
+	padding: 0 10px !important;
+	box-sizing: border-box !important;
+}
+.clear {
+	display: block;
+	clear: both;
+}
+._cf_builder_elem_wrapper {
+	position: relative;
+}
+
+._cf_builder_elem_wrapper:after {
+	content: ' ';
+	display: block;
+	clear: both;
+}
+
+._cf_builder_elem_wrapper ._cf_builder_pick_btn {
+	position: absolute;
+	right: 0;
+	top: 50%;
+	transform: translateY(-50%);
+}
+
+._cf_builder_elem_wrapper input {
+	padding-right: 65px !important;
+}
+._cf_sc_back_wrapper {
+	margin-top: 10px;
+	text-align: center;
+}
+._cf_sc_picking_indicator {
+	display: none;
+	position: fixed;
+	top: 10px;
+	right: 10px;
+	background: rgba(0,0,0,0.5);
+	padding: 5px 10px;
+	text-align: center;
+	color: #FFF;
+	pointer-events: none;
+	z-index: 2147483600;
+	border: 1px solid rgba(255,255,255,0.6);
+}
+
+._sc_builder_select2 {
+	z-index: 2147483601;
+}
+
+._cf_sc_picking_indicator.show {
+	display: block;
+}
+
+._cf_builder_elem_wrapper._cf_field_error input {
+	border-color: red !important;
+}
+
+._cf_builder_elem_wrapper._cf_field_error label {
+	color: red !important;
+}

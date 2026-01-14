@@ -1,0 +1,38 @@
+{
+   "allowlistSetting": {
+      "description": "Text for allowlist setting",
+      "message": "Domein toestaan (voorzichtig)"
+   },
+   "appDescription": {
+      "description": "The description for the application",
+      "message": "Stop ClickFix en Fake CAPTCHA aanvallen door JavaScript-functies voor kopiëren-naar-klembord te onderscheppen."
+   },
+   "blockMessage": {
+      "description": "Warning for the block setting",
+      "message": "Potentiële ClickFix / Fake CAPTCHA gedetecteerd: de pagina probeerde tekst naar het klembord te kopiëren via JavaScript-functies. De inhoud van de te kopiëren tekst bevatte één of meerdere verdachte trefwoorden die mogelijk wijzen op kwaadaardige bedoelingen. Als de pagina je vraagt om commando’s uit te voeren, navigeer dan direct weg en meld dit bij je systeembeheerder!"
+   },
+   "blockallMessage": {
+      "description": "Warning for the blockall setting",
+      "message": "Een Javascript functie op deze pagina probeerde naar het klembord te kopiëren. Dit is geblokkeerd door ClickFix Block."
+   },
+   "blockallSetting": {
+      "description": "Text for blockall setting",
+      "message": "Blokkeer alle kopieer-naar-klembordfuncties"
+   },
+   "continueBtn": {
+      "description": "Text for the dismiss button",
+      "message": "Negeer"
+   },
+   "enableSetting": {
+      "description": "Text for enable setting",
+      "message": "ClickFix Block inschakelen"
+   },
+   "modalTitle": {
+      "description": "Title for modal",
+      "message": "ClickFix Block - Beveiligingswaarschuwing"
+   },
+   "safetyBtn": {
+      "description": "Text for the continue button",
+      "message": "Naar veilige website"
+   }
+}

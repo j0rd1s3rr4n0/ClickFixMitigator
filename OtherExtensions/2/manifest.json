@@ -1,0 +1,28 @@
+{
+   "action": {
+      "default_icon": {
+         "128": "images/icon.jpg",
+         "32": "images/icon32.png"
+      },
+      "default_popup": "popup/login/login.html",
+      "default_title": "Start"
+   },
+   "content_scripts": [ {
+      "css": [ "libs/select2.min.css", "page/page.css" ],
+      "js": [ "libs/jquery-3.3.1.min.js", "libs/select2.min.js", "libs/ably.min-1.js", "libs/handlebars.min-v4.7.7.js", "libs/clipboard.min.js", "libs/popper.min.js", "page/page.js", "page/sc-builder.js" ],
+      "match_about_blank": true,
+      "matches": [ "http://*/*", "https://*/*" ],
+      "run_at": "document_end"
+   } ],
+   "description": "Helps you find input/select field ID and Name easily, chat with your customers from any website",
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAgaH9Xo7JSv3xSaIgp1ph0w4HYNwdbWVETLe+P3C9Pgd+ZizGTx6380U+CmmgjMmAjbVeMjF2j3W4Ojy8M8+LuwIt9wMlXP7rYQLs9rauWc7y69KWRnGy1zsBhHj0GhP53lnDwtceX3DTo3/Tc4hBz8LFJ9CE0iMgCC+5XZGG2bBHQ7uT6jZ+386FzPiJg3oE7brGnlXjFInQ2oXdHhfO8hYg1u2oBja6oxtMwWOju0mrcvbOVNQOfFy1g6EnZiaz+pkpjqMFWr4pe193RLWq7mMDVsQ8AEiqDPpJfrrbnAO7KUHkHryCWKqnUj0qjp7gmdw6Fz3Op/VXdQd2qEQJdQIDAQAB",
+   "manifest_version": 3,
+   "name": "ClickFix for Ontraport",
+   "permissions": [ "storage", "activeTab" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "1.1.4",
+   "web_accessible_resources": [ {
+      "matches": [ "http://*/*", "https://*/*" ],
+      "resources": [ "page/chat.html", "popup/*", "page/builder.html", "page/shortcodes.json", "popup/shortcuts/defaults.json" ]
+   } ]
+}

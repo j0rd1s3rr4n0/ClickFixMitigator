@@ -1,0 +1,26 @@
+<div class="_clickfix_sms">
+    <div class="_clickfix_sms_header">
+        {{firstname}} {{lastname}}&nbsp;
+        <a href="#" class="_clickfix_sms_close_chat">&times;</a>
+    </div>
+
+    <div class="_clickfix_sms_messages">
+        {{#if it.loading}}
+        <div class="_clickfix_sms_loading">Loading Messages...</div>
+        {{else if it.canLoadMore}}
+        <div class="_clickfix_sms_load_more"><a href="#">Load More</a></div>
+        {{/if}}
+
+        {{#each list}}
+        <div class="_clickfix_sms_message_wrapper {{#if this.type==='outbound'}}outbound{{else}}inbound{{/if}} {{#if this.sending}}sending{{/if}}">
+            <div class="_clickfix_sms_message">
+                {{this.text}}
+            </div>
+        </div>
+        {{/each}}
+    </div>
+
+    <div class="_clickfix_sms_form">
+        <textarea placeholder="Type and hit Enter"></textarea>
+    </div>
+</div>

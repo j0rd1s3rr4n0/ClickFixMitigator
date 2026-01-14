@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Field Finder</title>
+    <link rel="stylesheet" href="../../bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../popup.css">
+</head>
+<body>
+<div class="page">
+    <div id="loading">
+        <div class="spinner">
+            <div class="rect1"></div>
+            <div class="rect2"></div>
+            <div class="rect3"></div>
+            <div class="rect4"></div>
+            <div class="rect5"></div>
+        </div>
+    </div>
+    <div class="logo text-center">
+        <img src="../../images/logo.png" width="300" alt="">
+    </div>
+    <div class="e-page shortcuts" style="width: 500px">
+
+        <br>
+        <br>
+        <button class="btn btn-primary navigation-btn">< Home</button>
+        <br>
+        <br>
+        <table class="table table-responsive">
+            <thead>
+            <tr>
+                <th>Shortcut</th>
+                <th>Does What</th>
+                <th>Clear</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>Save</td>
+                <td><input type="text" class="shortcut-input form-control" id="shortcut_save" value="CTRL+S"></td>
+                <td>
+                    <a href="#" class="clear-shortcut" data-target="shortcut_save">Clear</a>
+                </td>
+            </tr>
+            <tr>
+                <td>Get cursor to search box</td>
+                <td><input type="text" class="shortcut-input form-control" id="shortcut_search" value="CTRL+SHIFT+F"></td>
+                <td>
+                    <a href="#" class="clear-shortcut" data-target="shortcut_search">Clear</a>
+                </td>
+            </tr>
+            <tr>
+                <td>Back</td>
+                <td><input type="text" class="shortcut-input form-control" id="shortcut_back" value="CTRL+BACKSPACE"></td>
+                <td>
+                    <a href="#" class="clear-shortcut" data-target="shortcut_back">Clear</a>
+                </td>
+            </tr>
+            <tr>
+                <td>Open a copy of current tab</td>
+                <td><input type="text" class="shortcut-input form-control" id="shortcut_open_clone" value="CTRL+SHIFT+U"></td>
+                <td>
+                    <a href="#" class="clear-shortcut" data-target="shortcut_open_clone">Clear</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+<script src="../../libs/axios.min.js"></script>
+<script src="../../libs/jquery-3.3.1.min.js"></script>
+<script src="shortcuts.js"></script>
+</body>
+</html>

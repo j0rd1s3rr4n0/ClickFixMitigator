@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Field Finder</title>
+    <link rel="stylesheet" href="../../bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../popup.css">
+</head>
+<body>
+<div class="page">
+    <div id="loading">
+        <div class="spinner">
+            <div class="rect1"></div>
+            <div class="rect2"></div>
+            <div class="rect3"></div>
+            <div class="rect4"></div>
+            <div class="rect5"></div>
+        </div>
+    </div>
+    <div class="logo text-center">
+        <img src="../../images/logo.png" width="300" alt="">
+    </div>
+    <div class="e-page login">
+        <form class="form login-form">
+
+            <div class="alert alert-danger d-none" id="wrong-license" role="alert">
+                Please double check your license key!
+            </div>
+            <div class="form-group">
+                <input type="text" id="license" class="form-control" placeholder="Please enter your license key">
+            </div>
+            <div class="form-group">
+                <button class="btn btn-warning float-right">Login</button>
+            </div>
+            <div class="clearfix"></div>
+
+            <div class="links" style="padding-top: 20px">
+                <a href="https://app.clickfix.io/clickfix-plugin/" target="_blank">Find my key</a><br>
+                <a href="https://clickfix.io" target="_blank">Create a free account</a>
+            </div>
+        </form>
+    </div>
+
+</div>
+<script src="../../libs/axios.min.js"></script>
+<script src="../../libs/jquery-3.3.1.min.js"></script>
+<script src="login.js"></script>
+</body>
+</html>

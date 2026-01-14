@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ClickFix Block - (c) Eye Security, 2025</title>
+  <style>
+  /* The switch - the box around the slider */
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 24px;
+  }
+
+  /* Hide default HTML checkbox */
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  /* The slider */
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    -webkit-transition: .1s;
+    transition: .1s;
+  }
+
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    -webkit-transition: .1s;
+    transition: .1s;
+  }
+
+  input:checked + .slider {
+    background-color: #F49719;
+  }
+
+  input:focus + .slider {
+    box-shadow: 0 0 1px #F49719;
+  }
+
+  input:checked + .slider:before {
+    -webkit-transform: translateX(16px);
+    -ms-transform: translateX(16px);
+    transform: translateX(16px);
+  }
+
+  /* Rounded sliders */
+  .slider.round {
+    border-radius: 20px;
+  }
+
+  .slider.round:before {
+    border-radius: 50%;
+  }
+  .table {
+    text-align: left;
+    font-size: 12px;
+    font-family: "Silka", sans-serif;
+    font-weight: normal;
+    width: 300px;
+    color: #BADEF0;
+  }
+  th {
+    font-weight: normal;
+  }
+  body {
+    display: flex;
+    background-color: #192440;
+  }
+</style>
+</head>
+<body>
+  <table class="table">
+    <tr>
+      <th>
+        <label class="switch">
+        <input type="checkbox" id="enabled">
+        <span class="slider round"></span>
+        </label>
+      </th>
+      <th id="enable-text">Enable ClickFix Block</th>
+    </tr>
+    <tr>
+      <th>
+        <label for="blockall" class="switch">
+        <input type="checkbox" id="blockall">
+        <span class="slider round"></span>
+        </label>
+      </th>
+      <th id="blockall-text">Block all copy-to-clipboard functions</th>
+    </tr>
+    <tr>
+      <th>
+        <label for="allowlist" class="switch">
+        <input type="checkbox" id="allowlist">
+        <span class="slider round"></span>
+        </label>
+      </th>
+      <th id="allowlist-text">Allowlist domain (use with caution)</th>
+    </tr>
+  </table>
+
+</body>
+</html>
+<script src="popup.js"></script>

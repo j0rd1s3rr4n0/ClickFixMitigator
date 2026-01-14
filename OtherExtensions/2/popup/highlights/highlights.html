@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Field Finder</title>
+    <link rel="stylesheet" href="../../bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../popup.css">
+</head>
+<body>
+<div class="page">
+    <div id="loading">
+        <div class="spinner">
+            <div class="rect1"></div>
+            <div class="rect2"></div>
+            <div class="rect3"></div>
+            <div class="rect4"></div>
+            <div class="rect5"></div>
+        </div>
+    </div>
+    <div class="logo text-center">
+        <img src="../../images/logo.png" width="300" alt="">
+    </div>
+    <div class="e-page highlights" style="width: 500px">
+        <button class="btn btn-primary navigation-btn">&lt; Home</button>
+        <br>
+        <br>
+
+        <h5>Highlight</h5>
+
+        <div class="btn-group-vertical" style="width: 100%">
+            <button class="btn btn-outline-dark" id="display_names">Highlight Field Names</button>
+            <button class="btn btn-outline-dark" id="display_bumps">Highlight Bumps</button>
+            <button class="btn btn-outline-dark" id="display_block_ids">Highlight Block IDs</button>
+            <button class="btn btn-outline-dark" id="display_column_ids">Highlight Column IDs</button>
+            <button class="btn btn-outline-dark" id="display_element_ids">Highlight Element IDs</button>
+            <button class="btn btn-outline-dark" id="display_ids">Highlight Field IDs</button>
+            <button class="btn btn-outline-danger" id="reset">Reset</button>
+        </div>
+    </div>
+</div>
+<script src="../../libs/axios.min.js"></script>
+<script src="../../libs/jquery-3.3.1.min.js"></script>
+<script src="highlights.js"></script>
+</body>
+</html>

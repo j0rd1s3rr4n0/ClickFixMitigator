@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Field Finder</title>
+    <link rel="stylesheet" href="../bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<div class="page">
+    <div id="loading">
+        <div class="spinner">
+            <div class="rect1"></div>
+            <div class="rect2"></div>
+            <div class="rect3"></div>
+            <div class="rect4"></div>
+            <div class="rect5"></div>
+        </div>
+    </div>
+    <div class="logo text-center">
+        <img src="../images/logo.png" width="300" alt="">
+    </div>
+    <div class="e-page login d-none">
+        <form class="form login-form">
+
+            <div class="alert alert-danger d-none" id="wrong-license" role="alert">
+                Please double check your license key!
+            </div>
+            <div class="form-group">
+                <input type="text" id="license" class="form-control" placeholder="Please enter your license key">
+            </div>
+            <div class="form-group">
+                <button class="btn btn-warning float-right">Login</button>
+            </div>
+            <div class="clearfix"></div>
+
+            <div class="links" style="padding-top: 20px">
+                <a href="https://app.clickfix.io/clickfix-plugin/" target="_blank">Find my key</a><br>
+                <a href="https://clickfix.io" target="_blank">Create a free account</a>
+            </div>
+        </form>
+    </div>
+    <div class="navigation e-page d-none">
+        <div class="card highlight-btn">Highlight</div>
+        <div class="card sc-builder">Shortcode Builder</div>
+
+        <div class="clear"></div>
+        <br>
+        <br>
+        <span class="switch switch-sm">
+          <input type="checkbox" class="switch" id="shortcuts">
+          <label for="shortcuts">Shortcuts</label>
+        </span>&emsp;&emsp;
+        <a href="#" class="edit-shortcuts">Edit</a>
+        <br>
+        <br>
+        <a href="#" class="sms-chat-settings">SMS Chat Settings</a>
+        <br>
+        <br>
+        <a href="#" class="logout float-right">Log Out</a>
+    </div>
+    <div class="e-page highlights d-none" style="width: 500px">
+        <button class="btn btn-primary navigation-btn">&lt; Home</button>
+        <br>
+        <br>
+
+        <h5>Highlight</h5>
+
+        <div class="btn-group-vertical" style="width: 100%">
+            <button class="btn btn-outline-dark" id="display_names">Highlight Field Names</button>
+            <button class="btn btn-outline-dark" id="display_bumps">Highlight Bumps</button>
+            <button class="btn btn-outline-dark" id="display_block_ids">Highlight Block IDs</button>
+            <button class="btn btn-outline-dark" id="display_column_ids">Highlight Column IDs</button>
+            <button class="btn btn-outline-dark" id="display_element_ids">Highlight Element IDs</button>
+            <button class="btn btn-outline-dark" id="display_ids">Highlight Field IDs</button>
+            <button class="btn btn-outline-danger" id="reset">Reset</button>
+        </div>
+    </div>
+    <div class="e-page shortcuts d-none" style="width: 500px">
+
+        <br>
+        <br>
+        <button class="btn btn-primary navigation-btn">< Home</button>
+        <br>
+        <br>
+        <table class="table table-responsive">
+            <thead>
+            <tr>
+                <th>Shortcut</th>
+                <th>Does What</th>
+                <th>Clear</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>Save</td>
+                <td><input type="text" class="shortcut-input form-control" id="shortcut_save" value="CTRL+S"></td>
+                <td>
+                    <a href="#" class="clear-shortcut" data-target="shortcut_save">Clear</a>
+                </td>
+            </tr>
+            <tr>
+                <td>Get cursor to search box</td>
+                <td><input type="text" class="shortcut-input form-control" id="shortcut_search" value="CTRL+SHIFT+F"></td>
+                <td>
+                    <a href="#" class="clear-shortcut" data-target="shortcut_search">Clear</a>
+                </td>
+            </tr>
+            <tr>
+                <td>Back</td>
+                <td><input type="text" class="shortcut-input form-control" id="shortcut_back" value="CTRL+BACKSPACE"></td>
+                <td>
+                    <a href="#" class="clear-shortcut" data-target="shortcut_back">Clear</a>
+                </td>
+            </tr>
+            <tr>
+                <td>Open a copy of current tab</td>
+                <td><input type="text" class="shortcut-input form-control" id="shortcut_open_clone" value="CTRL+SHIFT+U"></td>
+                <td>
+                    <a href="#" class="clear-shortcut" data-target="shortcut_open_clone">Clear</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="e-page sms_chat_settings d-none" style="width: 500px">
+
+        <br>
+        <br>
+        <button class="btn btn-primary navigation-btn">< Home</button>
+        <br>
+        <br>
+        <div>
+            <div class="form-group">
+                <label for="sms_token">SMS Token</label>
+                <input type="text" id="sms_token" class="form-control">
+            </div>
+
+            <div class="form-group" style="text-align: right">
+                <button class="btn btn-primary" id="save_sms_settings">Save</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+<script src="../libs/axios.min.js"></script>
+<script src="../libs/jquery-3.3.1.min.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+{
+   "allowlistSetting": {
+      "description": "Text for allowlist setting",
+      "message": "Allowlist domain (use with caution)"
+   },
+   "appDescription": {
+      "description": "The description for the application",
+      "message": "Block ClickFix and Fake CAPTCHAs by hooking JavaScript copy-to-clipboard functions."
+   },
+   "blockMessage": {
+      "description": "Warning for the block setting",
+      "message": "Potential ClickFix / Fake CAPTCHA detected: the page tried to copy to the clipboard using native JavaScript functions. The contents of the text to copy contained one or more suspicious keywords that possibly indicate malicious intent. If the page is asking you to run commands, navigate away now and report it to your admin!"
+   },
+   "blockallMessage": {
+      "description": "Warning for the blockall setting",
+      "message": "A Javascript function on this page tried to copy to the clipboard. This was blocked by ClickFix Block."
+   },
+   "blockallSetting": {
+      "description": "Text for blockall setting",
+      "message": "Block all copy-to-clipboard functions"
+   },
+   "continueBtn": {
+      "description": "Text for the dismiss button",
+      "message": "Dismiss"
+   },
+   "enableSetting": {
+      "description": "Text for enable setting",
+      "message": "Enable ClickFix Block"
+   },
+   "modalTitle": {
+      "description": "Title for modal",
+      "message": "ClickFix Block - Security Warning"
+   },
+   "safetyBtn": {
+      "description": "Text for the continue button",
+      "message": "Get me to safety"
+   }
+}

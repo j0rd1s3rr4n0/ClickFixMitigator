@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Language" content="en">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to BinHex.Ninja Security</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: #000000;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 700px;
+            width: 100%;
+        }
+
+        .welcome-card {
+            background: #000000;
+            border: 1px solid #222222;
+            padding: 40px 32px;
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 16px;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #ffffff;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            color: #666666;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .version {
+            color: #666666;
+            font-size: 12px;
+        }
+
+        .content-section {
+            margin: 32px 0;
+        }
+
+        .content-section h2 {
+            font-size: 18px;
+            color: #ffffff;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        .info-box {
+            background: #000000;
+            border: 1px solid #222222;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .info-box p {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #666666;
+            margin-bottom: 12px;
+        }
+
+        .info-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-box strong {
+            color: #ffffff;
+        }
+
+        .features-list {
+            list-style: none;
+            margin: 16px 0;
+        }
+
+        .features-list li {
+            padding: 10px 0;
+            padding-left: 24px;
+            position: relative;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #666666;
+        }
+
+        .features-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .data-collection-section {
+            background: #000000;
+            border: 1px solid #222222;
+            padding: 24px;
+            margin: 24px 0;
+        }
+
+        .data-collection-section h3 {
+            font-size: 16px;
+            color: #ffffff;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .data-collection-section p {
+            color: #666666;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: flex-start;
+            padding: 14px;
+            background: #000000;
+            border: 1px solid #222222;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .radio-option:hover {
+            border-color: #ffffff;
+        }
+
+        .radio-option.selected {
+            border-color: #ffffff;
+        }
+
+        .radio-option input[type="radio"] {
+            margin-right: 12px;
+            margin-top: 2px;
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .radio-content {
+            flex: 1;
+        }
+
+        .radio-title {
+            font-weight: 500;
+            color: #ffffff;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        .radio-description {
+            font-size: 12px;
+            color: #666666;
+            line-height: 1.5;
+        }
+
+        .emphasis {
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px 24px;
+            border: 1px solid #ffffff;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-primary {
+            background: #ffffff;
+            color: #000000;
+        }
+
+        .btn-primary:hover {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .why-section {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #222222;
+        }
+
+        .why-section h3 {
+            font-size: 14px;
+            color: #ffffff;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .why-section p {
+            color: #666666;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        .highlight-box {
+            background: #000000;
+            border: 1px solid #222222;
+            padding: 12px;
+            margin: 16px 0;
+        }
+
+        .highlight-box p {
+            color: #666666;
+            font-size: 12px;
+            margin: 0;
+        }
+
+        .highlight-box strong {
+            color: #ffffff;
+        }
+
+        .theme-toggle-wrapper {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .theme-toggle-btn {
+            padding: 10px 20px;
+            background: #ffffff;
+            color: #000000;
+            border: 1px solid #ffffff;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .theme-toggle-btn:hover {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        /* Light Mode */
+        [data-theme="light"] body {
+            background: #ffffff;
+            color: #000000;
+        }
+
+        [data-theme="light"] .welcome-card {
+            background: #ffffff;
+            border: 1px solid #dddddd;
+        }
+
+        [data-theme="light"] h1 {
+            color: #000000;
+        }
+
+        [data-theme="light"] .subtitle {
+            color: #999999;
+        }
+
+        [data-theme="light"] .version {
+            color: #999999;
+        }
+
+        [data-theme="light"] .content-section h2 {
+            color: #000000;
+        }
+
+        [data-theme="light"] .info-box {
+            background: #ffffff;
+            border: 1px solid #dddddd;
+        }
+
+        [data-theme="light"] .info-box p {
+            color: #666666;
+        }
+
+        [data-theme="light"] .info-box strong {
+            color: #000000;
+        }
+
+        [data-theme="light"] .features-list li {
+            color: #666666;
+        }
+
+        [data-theme="light"] .features-list li:before {
+            color: #000000;
+        }
+
+        [data-theme="light"] .data-collection-section {
+            background: #ffffff;
+            border: 1px solid #dddddd;
+        }
+
+        [data-theme="light"] .data-collection-section h3 {
+            color: #000000;
+        }
+
+        [data-theme="light"] .data-collection-section p {
+            color: #666666;
+        }
+
+        [data-theme="light"] .radio-option {
+            background: #ffffff;
+            border: 1px solid #dddddd;
+        }
+
+        [data-theme="light"] .radio-option:hover {
+            border-color: #000000;
+        }
+
+        [data-theme="light"] .radio-option.selected {
+            border-color: #000000;
+        }
+
+        [data-theme="light"] .radio-title {
+            color: #000000;
+        }
+
+        [data-theme="light"] .radio-description {
+            color: #666666;
+        }
+
+        [data-theme="light"] .emphasis {
+            color: #000000;
+        }
+
+        [data-theme="light"] .btn-primary {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        [data-theme="light"] .btn-primary:hover {
+            background: #ffffff;
+            color: #000000;
+        }
+
+        [data-theme="light"] .why-section {
+            border-top: 1px solid #dddddd;
+        }
+
+        [data-theme="light"] .why-section h3 {
+            color: #000000;
+        }
+
+        [data-theme="light"] .why-section p {
+            color: #666666;
+        }
+
+        [data-theme="light"] .highlight-box {
+            background: #ffffff;
+            border: 1px solid #dddddd;
+        }
+
+        [data-theme="light"] .highlight-box p {
+            color: #666666;
+        }
+
+        [data-theme="light"] .highlight-box strong {
+            color: #000000;
+        }
+
+        [data-theme="light"] .theme-toggle-btn {
+            background: #000000;
+            color: #ffffff;
+            border: 1px solid #000000;
+        }
+
+        [data-theme="light"] .theme-toggle-btn:hover {
+            background: #ffffff;
+            color: #000000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="welcome-card">
+            <div class="theme-toggle-wrapper">
+                <button class="theme-toggle-btn" id="theme-toggle-btn">Theme: Auto</button>
+            </div>
+            
+            <div class="logo-section">
+                <img src="icons/light.svg" alt="BinHex.Ninja Security" class="logo">
+                <h1>BinHex.Ninja Security</h1>
+                <p class="subtitle">Advanced Protection Against ClickFix Attacks</p>
+                <p class="version">Version 1.0.0</p>
+            </div>
+
+            <div class="content-section">
+                <h2>🎉 Welcome!</h2>
+                <p class="info-box">
+                    Thank you for installing <strong>BinHex.Ninja Security</strong>. Your browser is now protected against ClickFix attacks, clipboard hijacking, and malicious social engineering attempts.
+                </p>
+
+                <ul class="features-list">
+                    <li><strong>Real-time Protection:</strong> Automatically scans pages for malicious commands and social engineering tactics</li>
+                    <li><strong>Clipboard Security:</strong> Prevents malicious clipboard manipulation</li>
+                    <li><strong>Zero Configuration Required:</strong> Protection is active immediately, even without data collection</li>
+                    <li><strong>Privacy-First Design:</strong> Works completely offline if you prefer</li>
+                </ul>
+            </div>
+
+            <div class="data-collection-section">
+                <h3>📊 Help Us Improve Protection</h3>
+                <p>
+                    BinHex.Ninja is a <span class="emphasis">one-person research initiative</span> dedicated to ClickFix attack research and helping individuals stay ahead of evolving threats. 
+                    Your anonymized data helps identify new attack patterns and improves detection for thousands of users worldwide.
+                </p>
+
+                <div class="radio-group">
+                    <label class="radio-option selected" data-value="none">
+                        <input type="radio" name="dataCollection" value="none" checked>
+                        <div class="radio-content">
+                            <div class="radio-title">🚫 No Data Collection (Default)</div>
+                            <div class="radio-description">
+                                No data is sent to any server. All protection features work locally. Perfect for maximum privacy.
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="radio-option" data-value="anonymous">
+                        <input type="radio" name="dataCollection" value="anonymous">
+                        <div class="radio-content">
+                            <div class="radio-title">🔒 Anonymous Reporting</div>
+                            <div class="radio-description">
+                                Share threat detections anonymously: URL, OS, detected command, and detection reason only. 
+                                <strong>No IP address, no location, no personal data.</strong> Data is <strong>encrypted in transit</strong> using ECDH + AES-256-GCM.
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="radio-option" data-value="full">
+                        <input type="radio" name="dataCollection" value="full">
+                        <div class="radio-content">
+                            <div class="radio-title">🌐 Full Reporting (Research Support)</div>
+                            <div class="radio-description">
+                                Anonymous data + IP address + geolocation. Helps build comprehensive threat intelligence maps. 
+                                Data is <strong>encrypted in transit</strong> and <strong>never sold or shared</strong> with third parties.
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="highlight-box">
+                    <p><strong>🔐 Security:</strong> All data is encrypted in transit using ECDH + AES-256-GCM. The server decrypts and stores logs for research purposes. Data is never sold or shared with third parties.</p>
+                </div>
+            </div>
+
+            <div class="why-section">
+                <h3>Why This Matters</h3>
+                <p>
+                    ClickFix attacks are rapidly evolving. By sharing anonymized detection data, you help us:
+                </p>
+                <ul class="features-list">
+                    <li>Identify new ClickFix attack campaigns in real-time</li>
+                    <li>Update detection patterns to protect all users</li>
+                    <li>Build threat intelligence for the security community</li>
+                    <li>Safeguard thousands of users from falling victim</li>
+                </ul>
+                <p style="margin-top: 15px; color: #888888;">
+                    <strong>You can change this setting anytime</strong> in the extension settings. Your choice is respected.
+                </p>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" id="continueBtn">
+                    Continue to Extension
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="theme.js"></script>
+    <script src="onboarding.js"></script>
+</body>
+</html>
+

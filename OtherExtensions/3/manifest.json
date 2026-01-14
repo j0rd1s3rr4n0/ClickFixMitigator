@@ -1,0 +1,30 @@
+{
+   "action": {
+      "default_popup": "popup.html"
+   },
+   "background": {
+      "service_worker": "background.js"
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "exclude_matches": [ "https://chromewebstore.google.com/*", "https://cloud.google.com/*", "https://*.cloud.google.com/*", "https://admin.google.com/*", "https://*.microsoft.com/*", "https://*.microsoftonline.com/*", "https://portal.azure.com/*", "https://*.aws.amazon.com/*" ],
+      "js": [ "inject.js" ],
+      "matches": [ "https://*/*", "http://*/*" ],
+      "run_at": "document_start",
+      "world": "MAIN"
+   } ],
+   "default_locale": "en",
+   "description": "__MSG_appDescription__",
+   "externally_connectable": {
+      "matches": [ "\u003Call_urls>" ]
+   },
+   "icons": {
+      "128": "assets/eye.ico"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzLtpPF08dvALhHd9jLTHbRQ2TpxbG/j2vuTa9OGvwk07sw6k5zAKmjnmhNelWJJN8A5Ge7QhbUY/Or6CScfwxRtym7q2ZoYAUSJN6I9EyXlJyLpUMPFGlUlKcjRWdIBKJa7gUaKTXBrBz6eKNosEMToHnb0/oN8RP3l9NxAoAGETGddQvljgvoX/Z7gbOy88ai9GrTfla0ecVvvb/QqSRdpWWhFcAzBg3v/I8/BF8c0r2lrMu4b73q+FVKXe+M+c018FIljmXt+UULI7FljTeo8cE6ZntI6zmCyyFGz4uKjlt/+pKZy7VbDqx80Qpfwe5iAkt81JJ4Xw7GyO9k6bUQIDAQAB",
+   "manifest_version": 3,
+   "name": "ClickFix Block",
+   "permissions": [ "storage", "activeTab" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "0.0.7"
+}

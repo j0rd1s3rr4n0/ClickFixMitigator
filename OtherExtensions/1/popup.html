@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Language" content="en">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BinHex.Ninja Security</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 360px;
+            min-height: 400px;
+            background: #000000;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            padding: 0;
+        }
+
+        .header {
+            background: #000000;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #333333;
+        }
+
+        .logo {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 10px;
+        }
+
+        .header h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 4px;
+        }
+
+        .header .tagline {
+            font-size: 11px;
+            color: #666666;
+            font-weight: 400;
+        }
+
+        .status-container {
+            padding: 16px;
+        }
+
+        .status-card {
+            background: #000000;
+            border: 1px solid #222222;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .status-icon {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .status-icon.active {
+            color: #ffffff;
+        }
+
+        .status-icon.warning {
+            color: #666666;
+        }
+
+        .status-title {
+            font-size: 12px;
+            font-weight: 500;
+            color: #ffffff;
+        }
+
+        .status-value {
+            font-size: 12px;
+            color: #999999;
+            line-height: 1.4;
+        }
+
+        .status-value.success {
+            color: #ffffff;
+        }
+
+        .status-value.error {
+            color: #999999;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .stat-box {
+            background: #000000;
+            padding: 12px;
+            border: 1px solid #222222;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: #666666;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .recent-detections {
+            margin-top: 8px;
+        }
+
+        .detection-item {
+            background: #000000;
+            padding: 10px;
+            margin-bottom: 8px;
+            border: 1px solid #222222;
+            border-left: 2px solid #ffffff;
+            font-size: 11px;
+        }
+
+        .detection-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .detection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .detection-time {
+            color: #666666;
+            font-size: 10px;
+        }
+
+        .detection-badge {
+            font-size: 9px;
+            padding: 2px 6px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: 1px solid #333333;
+        }
+
+        .detection-badge-clipboard {
+            background: #ffffff;
+            color: #000000;
+        }
+
+        .detection-badge-page {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        .detection-url {
+            color: #ffffff;
+            font-weight: 400;
+            word-break: break-all;
+            font-size: 10px;
+            line-height: 1.4;
+        }
+
+        .actions {
+            padding: 0 16px 16px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #333333;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            margin-bottom: 8px;
+            background: #000000;
+            color: #ffffff;
+        }
+
+        .btn:last-child {
+            margin-bottom: 0;
+        }
+
+        .btn-primary {
+            background: #ffffff;
+            color: #000000;
+            border: 1px solid #ffffff;
+        }
+
+        .btn-primary:hover {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        .btn-secondary {
+            background: #000000;
+            color: #ffffff;
+            border: 1px solid #333333;
+        }
+
+        .btn-secondary:hover {
+            background: #ffffff;
+            color: #000000;
+            border: 1px solid #ffffff;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 20px;
+            color: #666666;
+            font-size: 12px;
+        }
+
+        .empty-state svg {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 10px;
+            opacity: 0.3;
+        }
+
+        .divider {
+            height: 1px;
+            background: #222222;
+            margin: 12px 0;
+        }
+
+        .info-text {
+            font-size: 10px;
+            color: #666666;
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        .theme-toggle {
+            padding: 8px 12px;
+            background: #000000;
+            color: #ffffff;
+            border: 1px solid #333333;
+            font-size: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            margin-bottom: 8px;
+        }
+
+        .theme-toggle:hover {
+            background: #ffffff;
+            color: #000000;
+            border: 1px solid #ffffff;
+        }
+
+        /* Light Mode */
+        [data-theme="light"] body {
+            background: #ffffff;
+            color: #000000;
+        }
+
+        [data-theme="light"] .header {
+            background: #ffffff;
+            border-bottom: 1px solid #dddddd;
+        }
+
+        [data-theme="light"] .header h1 {
+            color: #000000;
+        }
+
+        [data-theme="light"] .header .tagline {
+            color: #999999;
+        }
+
+        [data-theme="light"] .status-card {
+            background: #ffffff;
+            border: 1px solid #dddddd;
+        }
+
+        [data-theme="light"] .status-title {
+            color: #000000;
+        }
+
+        [data-theme="light"] .status-value {
+            color: #666666;
+        }
+
+        [data-theme="light"] .status-value.success {
+            color: #000000;
+        }
+
+        [data-theme="light"] .stat-box {
+            background: #ffffff;
+            border: 1px solid #dddddd;
+        }
+
+        [data-theme="light"] .stat-label {
+            color: #999999;
+        }
+
+        [data-theme="light"] .stat-value {
+            color: #000000;
+        }
+
+        [data-theme="light"] .detection-item {
+            background: #ffffff;
+            border: 1px solid #dddddd;
+            border-left: 2px solid #000000;
+        }
+
+        [data-theme="light"] .detection-time {
+            color: #999999;
+        }
+
+        [data-theme="light"] .detection-badge {
+            border: 1px solid #cccccc;
+        }
+
+        [data-theme="light"] .detection-badge-clipboard {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        [data-theme="light"] .detection-badge-page {
+            background: #ffffff;
+            color: #000000;
+        }
+
+        [data-theme="light"] .detection-url {
+            color: #000000;
+        }
+
+        [data-theme="light"] .btn-primary {
+            background: #000000;
+            color: #ffffff;
+            border: 1px solid #000000;
+        }
+
+        [data-theme="light"] .btn-primary:hover {
+            background: #ffffff;
+            color: #000000;
+        }
+
+        [data-theme="light"] .btn-secondary {
+            background: #ffffff;
+            color: #000000;
+            border: 1px solid #cccccc;
+        }
+
+        [data-theme="light"] .btn-secondary:hover {
+            background: #000000;
+            color: #ffffff;
+            border: 1px solid #000000;
+        }
+
+        [data-theme="light"] .theme-toggle {
+            background: #ffffff;
+            color: #000000;
+            border: 1px solid #cccccc;
+        }
+
+        [data-theme="light"] .theme-toggle:hover {
+            background: #000000;
+            color: #ffffff;
+            border: 1px solid #000000;
+        }
+
+        [data-theme="light"] .empty-state {
+            color: #999999;
+        }
+
+        [data-theme="light"] .info-text {
+            color: #999999;
+        }
+
+        [data-theme="light"] .divider {
+            background: #dddddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="icons/light.svg" alt="BinHex.Ninja" class="logo">
+        <h1>BinHex.Ninja Security</h1>
+        <p class="tagline">Protection Against ClickFix Attacks</p>
+    </div>
+
+    <div class="status-container">
+        <!-- Protection Status -->
+        <div class="status-card">
+            <div class="status-header">
+                <svg class="status-icon active" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 22C12 22 20 18 20 12V5L12 2L4 5V12C4 18 12 22 12 22Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="status-title">Protection Status</span>
+            </div>
+            <div class="status-value success" id="protection-status">Active - Monitoring all pages</div>
+        </div>
+
+        <!-- Encryption Status -->
+        <div class="status-card">
+            <div class="status-header">
+                <svg class="status-icon" id="encryption-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+                    <path d="M12 15V17M8 11V7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7V11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span class="status-title">Encryption Status</span>
+            </div>
+            <div class="status-value" id="encryption-status">Checking...</div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="status-card">
+            <div class="status-header">
+                <svg class="status-icon warning" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="status-title">Detection Statistics</span>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-label">Total Blocked</div>
+                    <div class="stat-value" id="total-blocked">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">This Session</div>
+                    <div class="stat-value" id="session-blocked">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Detections -->
+        <div class="status-card" id="recent-card">
+            <div class="status-header">
+                <svg class="status-icon" style="color: #ff898f;" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 8V12L15 15M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="status-title">Recent Detections</span>
+            </div>
+            <div class="recent-detections" id="recent-detections">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 22C12 22 20 18 20 12V5L12 2L4 5V12C4 18 12 22 12 22Z" stroke="currentColor" stroke-width="2"/>
+                        <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <p>No threats detected</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button class="btn btn-primary" id="settings-btn">Open Settings</button>
+        <button class="btn btn-secondary" id="refresh-btn">Refresh Status</button>
+        <button class="btn theme-toggle" id="theme-toggle-btn">Theme: Auto</button>
+        <p class="info-text">Version 1.0.0 • BinHex.Ninja Security</p>
+    </div>
+
+    <script src="theme.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html>

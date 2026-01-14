@@ -1,0 +1,580 @@
+/* BinHex.Ninja Security - ClickFix Attack Protection Warning */
+
+#clickfix-malware-warning {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2147483647;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* Backdrop */
+#clickfix-malware-warning .warning-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+/* Main content card */
+#clickfix-malware-warning .warning-content {
+    background: #000000;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    border: 1px solid #ffffff;
+}
+
+/* Header section */
+#clickfix-malware-warning .warning-header {
+    padding: 40px 40px 28px;
+    text-align: center;
+    border-bottom: 1px solid #222222;
+    background: #000000;
+}
+
+#clickfix-malware-warning .sq-logo {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 20px;
+    display: block;
+}
+
+#clickfix-malware-warning h1 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 8px 0;
+    line-height: 1.2;
+}
+
+#clickfix-malware-warning .subtitle {
+    font-size: 13px;
+    font-weight: 400;
+    color: #666666;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Body content */
+#clickfix-malware-warning .warning-body {
+    padding: 32px 40px 40px;
+    background: #000000;
+}
+
+/* Threat badge */
+#clickfix-malware-warning .threat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #000000;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    letter-spacing: 0.05em;
+    border: 1px solid #ffffff;
+    text-transform: uppercase;
+}
+
+#clickfix-malware-warning .shield-icon {
+    width: 14px;
+    height: 14px;
+    stroke-width: 2;
+}
+
+/* Main message */
+#clickfix-malware-warning .main-message {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #ffffff;
+    margin: 0 0 28px 0;
+    font-weight: 400;
+}
+
+#clickfix-malware-warning .main-message strong {
+    font-weight: 500;
+    color: #ffffff;
+}
+
+/* Section styling */
+#clickfix-malware-warning .detection-section,
+#clickfix-malware-warning .info-section {
+    margin-bottom: 28px;
+}
+
+#clickfix-malware-warning h3 {
+    font-size: 11px;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 12px 0;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+#clickfix-malware-warning h4 {
+    font-size: 10px;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 10px 0;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* Threat list */
+#clickfix-malware-warning .threat-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+#clickfix-malware-warning .threat-list li {
+    padding: 12px 14px;
+    background: #000000;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #ffffff;
+    line-height: 1.5;
+    font-weight: 400;
+    border: 1px solid #222222;
+    border-left: 2px solid #ffffff;
+}
+
+#clickfix-malware-warning .threat-list li:last-child {
+    margin-bottom: 0;
+}
+
+/* Enhanced detection items with icons and descriptions */
+#clickfix-malware-warning .detection-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px;
+    background: #000000;
+    margin-bottom: 8px;
+    border: 1px solid #222222;
+    border-left: 2px solid #ffffff;
+}
+
+#clickfix-malware-warning .detection-item:last-child {
+    margin-bottom: 0;
+}
+
+#clickfix-malware-warning .detection-icon {
+    font-size: 16px;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+#clickfix-malware-warning .detection-details {
+    flex: 1;
+}
+
+#clickfix-malware-warning .detection-details strong {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+#clickfix-malware-warning .detection-details p {
+    font-size: 12px;
+    color: #666666;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Info list */
+#clickfix-malware-warning .info-section p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #666666;
+    margin: 0 0 10px 0;
+}
+
+#clickfix-malware-warning .info-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+#clickfix-malware-warning .info-list li {
+    padding-left: 20px;
+    position: relative;
+    font-size: 13px;
+    color: #666666;
+    line-height: 1.6;
+    margin-bottom: 8px;
+}
+
+#clickfix-malware-warning .info-list li:before {
+    content: "▸";
+    position: absolute;
+    left: 6px;
+    color: #ffffff;
+    font-weight: 500;
+}
+
+#clickfix-malware-warning .info-list li:last-child {
+    margin-bottom: 0;
+}
+
+/* Action buttons */
+#clickfix-malware-warning .action-section {
+    margin: 32px 0 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#clickfix-malware-warning .secondary-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#clickfix-malware-warning button {
+    border: 1px solid #ffffff;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    font-weight: 500;
+}
+
+#clickfix-malware-warning button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#clickfix-malware-warning .btn-primary {
+    background: #ffffff;
+    color: #000000;
+    padding: 14px 20px;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+}
+
+#clickfix-malware-warning .btn-primary:hover {
+    background: #000000;
+    color: #ffffff;
+}
+
+#clickfix-malware-warning .btn-subtext {
+    font-size: 11px;
+    font-weight: 400;
+    color: inherit;
+    opacity: 0.7;
+}
+
+#clickfix-malware-warning .btn-secondary {
+    background: #000000;
+    color: #ffffff;
+    padding: 12px 20px;
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+    border: 1px solid #333333;
+}
+
+#clickfix-malware-warning .btn-secondary:hover {
+    background: #ffffff;
+    color: #000000;
+    border-color: #ffffff;
+}
+
+#clickfix-malware-warning .btn-secondary .btn-subtext {
+    color: inherit;
+    font-size: 10px;
+    opacity: 0.6;
+}
+
+#clickfix-malware-warning .btn-text {
+    background: transparent;
+    color: #666666;
+    padding: 10px 20px;
+    font-size: 12px;
+    width: 100%;
+    text-align: center;
+    font-weight: 400;
+    border: 1px solid transparent;
+}
+
+#clickfix-malware-warning .btn-text:hover {
+    background: #000000;
+    color: #ffffff;
+    border-color: #333333;
+}
+
+/* Footer tips */
+#clickfix-malware-warning .footer-tips {
+    padding-top: 28px;
+    border-top: 1px solid #222222;
+}
+
+#clickfix-malware-warning .tips-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+#clickfix-malware-warning .tips-list li {
+    font-size: 12px;
+    color: #666666;
+    line-height: 1.5;
+    padding-left: 18px;
+    position: relative;
+}
+
+#clickfix-malware-warning .tips-list li:before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+/* Scrollbar styling */
+#clickfix-malware-warning .warning-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+#clickfix-malware-warning .warning-content::-webkit-scrollbar-track {
+    background: #000000;
+}
+
+#clickfix-malware-warning .warning-content::-webkit-scrollbar-thumb {
+    background: #333333;
+    border: 2px solid #000000;
+}
+
+#clickfix-malware-warning .warning-content::-webkit-scrollbar-thumb:hover {
+    background: #444444;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    #clickfix-malware-warning {
+        padding: 10px;
+    }
+
+    #clickfix-malware-warning .warning-backdrop {
+        padding: 10px;
+    }
+
+    #clickfix-malware-warning .warning-header {
+        padding: 28px 20px 20px;
+    }
+
+    #clickfix-malware-warning .sq-logo {
+        width: 48px;
+        height: 48px;
+        margin-bottom: 16px;
+    }
+
+    #clickfix-malware-warning h1 {
+        font-size: 20px;
+    }
+
+    #clickfix-malware-warning .subtitle {
+        font-size: 12px;
+    }
+
+    #clickfix-malware-warning .warning-body {
+        padding: 24px 20px 28px;
+    }
+
+    #clickfix-malware-warning .main-message {
+        font-size: 13px;
+    }
+
+    #clickfix-malware-warning .tips-list {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    #clickfix-malware-warning .warning-header {
+        padding: 24px 16px 16px;
+    }
+
+    #clickfix-malware-warning .warning-body {
+        padding: 20px 16px 24px;
+    }
+
+    #clickfix-malware-warning h1 {
+        font-size: 18px;
+    }
+}
+
+/* Light Mode */
+[data-theme="light"] #clickfix-malware-warning .warning-backdrop {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+[data-theme="light"] #clickfix-malware-warning .warning-content {
+    background: #ffffff;
+    border: 1px solid #000000;
+}
+
+[data-theme="light"] #clickfix-malware-warning .warning-header {
+    background: #ffffff;
+    border-bottom: 1px solid #dddddd;
+}
+
+[data-theme="light"] #clickfix-malware-warning h1 {
+    color: #000000;
+}
+
+[data-theme="light"] #clickfix-malware-warning .subtitle {
+    color: #999999;
+}
+
+[data-theme="light"] #clickfix-malware-warning .warning-body {
+    background: #ffffff;
+}
+
+[data-theme="light"] #clickfix-malware-warning .threat-badge {
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #000000;
+}
+
+[data-theme="light"] #clickfix-malware-warning .main-message {
+    color: #000000;
+}
+
+[data-theme="light"] #clickfix-malware-warning .main-message strong {
+    color: #000000;
+}
+
+[data-theme="light"] #clickfix-malware-warning h3,
+[data-theme="light"] #clickfix-malware-warning h4 {
+    color: #000000;
+}
+
+[data-theme="light"] #clickfix-malware-warning .threat-list li {
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #dddddd;
+    border-left: 2px solid #000000;
+}
+
+[data-theme="light"] #clickfix-malware-warning .detection-item {
+    background: #ffffff;
+    border: 1px solid #dddddd;
+    border-left: 2px solid #000000;
+}
+
+[data-theme="light"] #clickfix-malware-warning .detection-details strong {
+    color: #000000;
+}
+
+[data-theme="light"] #clickfix-malware-warning .detection-details p {
+    color: #666666;
+}
+
+[data-theme="light"] #clickfix-malware-warning .info-section p {
+    color: #666666;
+}
+
+[data-theme="light"] #clickfix-malware-warning .info-list li {
+    color: #666666;
+}
+
+[data-theme="light"] #clickfix-malware-warning .info-list li:before {
+    color: #000000;
+}
+
+[data-theme="light"] #clickfix-malware-warning .btn-primary {
+    background: #000000;
+    color: #ffffff;
+}
+
+[data-theme="light"] #clickfix-malware-warning .btn-primary:hover {
+    background: #ffffff;
+    color: #000000;
+}
+
+[data-theme="light"] #clickfix-malware-warning .btn-secondary {
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #cccccc;
+}
+
+[data-theme="light"] #clickfix-malware-warning .btn-secondary:hover {
+    background: #000000;
+    color: #ffffff;
+    border-color: #000000;
+}
+
+[data-theme="light"] #clickfix-malware-warning .btn-text {
+    color: #999999;
+}
+
+[data-theme="light"] #clickfix-malware-warning .btn-text:hover {
+    background: #ffffff;
+    color: #000000;
+    border-color: #cccccc;
+}
+
+[data-theme="light"] #clickfix-malware-warning .footer-tips {
+    border-top: 1px solid #dddddd;
+}
+
+[data-theme="light"] #clickfix-malware-warning .tips-list li {
+    color: #999999;
+}
+
+[data-theme="light"] #clickfix-malware-warning .tips-list li:before {
+    color: #000000;
+}
+
+[data-theme="light"] #clickfix-malware-warning .warning-content::-webkit-scrollbar-track {
+    background: #ffffff;
+}
+
+[data-theme="light"] #clickfix-malware-warning .warning-content::-webkit-scrollbar-thumb {
+    background: #cccccc;
+    border: 2px solid #ffffff;
+}
+
+[data-theme="light"] #clickfix-malware-warning .warning-content::-webkit-scrollbar-thumb:hover {
+    background: #999999;
+}
+
+/* Print styles */
+@media print {
+    #clickfix-malware-warning {
+        display: none;
+    }
+}

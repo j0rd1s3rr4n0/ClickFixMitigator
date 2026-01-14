@@ -1,0 +1,38 @@
+{
+   "allowlistSetting": {
+      "description": "Text for allowlist setting",
+      "message": "Domain erlauben (Vorsicht)"
+   },
+   "appDescription": {
+      "description": "The description for the application",
+      "message": "Blockiere ClickFix und gefälschte CAPTCHAs durch das Abfangen von JavaScript-Funktionen zum Kopieren in die Zwischenablage."
+   },
+   "blockMessage": {
+      "description": "Warning for the block setting",
+      "message": "Möglicher ClickFix / gefälschtes CAPTCHA erkannt: Die Seite hat versucht, mit nativen JavaScript-Funktionen in die Zwischenablage zu kopieren. Der zu kopierende Text enthielt ein oder mehrere verdächtige Schlüsselwörter, die möglicherweise auf böswillige Absichten hinweisen. Wenn die Seite Sie auffordert, Befehle auszuführen, verlassen Sie sie jetzt und melden Sie dies Ihrem Administrator!"
+   },
+   "blockallMessage": {
+      "description": "Warning for the blockall setting",
+      "message": "Eine JavaScript-Funktion auf dieser Seite hat versucht, in die Zwischenablage zu kopieren. Dies wurde von ClickFix Block blockiert."
+   },
+   "blockallSetting": {
+      "description": "Text for blockall setting",
+      "message": "Alle Kopieren-in-die-Zwischenablage-Funktionen blockieren"
+   },
+   "continueBtn": {
+      "description": "Text for the dismiss button",
+      "message": "Schließen"
+   },
+   "enableSetting": {
+      "description": "Text for enable setting",
+      "message": "ClickFix Block aktivieren"
+   },
+   "modalTitle": {
+      "description": "Title for modal",
+      "message": "ClickFix Block - Sicherheitswarnung"
+   },
+   "safetyBtn": {
+      "description": "Text for the continue button",
+      "message": "Bring mich in Sicherheit"
+   }
+}
