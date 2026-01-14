@@ -7,11 +7,13 @@ This checklist covers end-to-end verification for the extension, Windows agent, 
 ### Load + permissions
 - [ ] Load `browser-extension/` via **chrome://extensions** → **Load unpacked**.
 - [ ] Confirm permissions include clipboard + notifications.
+- [ ] Enable **Allow access to file URLs** to validate `file://` pages.
 - [ ] Open a regular web page and confirm the extension icon is visible.
 
 ### ClickFix detection flows
 - [ ] Open a demo page from `demo/` (e.g. `demo/attacker-sample.html`, `demo/attacker-winlogo.html`, `demo/demo-cloudflare.html`).
 - [ ] Also validate the `browser-extension/test/attacker-sample.html` page to confirm extension-specific flows.
+- [ ] Open local files (`file://`) with `.pdf`, `.webp`, or other formats that include ClickFix text and confirm detections fire.
 - [ ] Add text containing **Win + R** or **Run dialog** patterns; confirm alert/banner.
 - [ ] Add text containing command-like patterns (powershell/cmd) and confirm alert/banner.
 - [ ] Insert a fake captcha message and confirm alert/banner.

@@ -747,11 +747,15 @@ function getScanSnapshot() {
   const root = document.documentElement;
   const textContent = root?.textContent || "";
   const htmlContent = root?.innerHTML || "";
+  const pageTitle = document.title || "";
+  const pageUrl = decodeURIComponent(window.location.href || "");
   const inlineAssets = Array.from(document.querySelectorAll("script,style"))
     .map((node) => node.textContent || "")
     .filter(Boolean)
     .join("\n");
-  const combinedText = [textContent, inlineAssets].filter(Boolean).join("\n");
+  const combinedText = [textContent, pageTitle, pageUrl, inlineAssets]
+    .filter(Boolean)
+    .join("\n");
   lastScanSnapshot = {
     text: trimScanValue(combinedText),
     html: trimScanValue(htmlContent),
