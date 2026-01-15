@@ -68,6 +68,15 @@ These are fetched with a TTL cache in `Web/ClickFix/data/intel-cache.json` and c
 - `Web/ClickFix/` — PHP endpoint, dashboard, and SQLite data.
 - `assets/` — comic strip images for documentation.
 - `demo/` — ClickFix proof-of-concepts and example pages.
+- `docs/` — feature ledger and reintegration plan for legacy functionality.
+
+## Legacy entrypoints and assets
+
+For backward compatibility with older deployments, the repository restores legacy routes and assets:
+
+- `dashboard.php` (repo root) delegates to the canonical dashboard at `Web/ClickFix/dashboard.php`.
+- `PrivacyPolicy.html` (repo root) redirects to `Web/ClickFix/PrivacyPolicy.html`.
+- `assets/flow-*.svg` provides the original SVG flow diagrams alongside newer PNGs.
 
 ---
 
