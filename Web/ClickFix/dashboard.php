@@ -190,6 +190,7 @@ $translations = [
         'intel_focus' => 'Cobertura de amenazas',
         'intel_focus_subtitle' => 'Enfoques clave aprendidos de ClickGrab y PasteEater',
         'language' => 'Idioma',
+        'version' => 'Versión',
         'filter_table' => 'Filtrar tabla',
         'filter_placeholder' => 'Buscar en la tabla...',
         'filter_no_results' => 'Sin resultados.',
@@ -393,6 +394,7 @@ $translations = [
         'intel_focus' => 'Threat coverage',
         'intel_focus_subtitle' => 'Key focus areas learned from ClickGrab and PasteEater',
         'language' => 'Language',
+        'version' => 'Version',
         'filter_table' => 'Filter table',
         'filter_placeholder' => 'Search within table...',
         'filter_no_results' => 'No results.',
@@ -1812,6 +1814,8 @@ $chartLabels = [
     'signals' => t($translations, $currentLanguage, 'signal_types')
 ];
 
+$dashboardVersion = '0.2.0';
+
   $chartPayload = [
     'daily' => [
         'labels' => array_keys($chartData['daily']),
@@ -1843,8 +1847,10 @@ $chartLabels = [
         color-scheme: dark;
         --bg: #0b1020;
         --surface: rgba(16, 23, 42, 0.85);
+        --surface-strong: rgba(10, 15, 28, 0.95);
         --surface-alt: rgba(30, 41, 59, 0.7);
         --border: rgba(148, 163, 184, 0.16);
+        --outline: rgba(148, 163, 184, 0.28);
         --text: #e2e8f0;
         --muted: #94a3b8;
         --primary: #60a5fa;
@@ -1878,6 +1884,17 @@ $chartLabels = [
         gap: 16px;
         margin-bottom: 18px;
       }
+      .brand {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .brand-title {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+      }
       .brand h1 {
         margin: 0;
         font-size: 28px;
@@ -1898,8 +1915,22 @@ $chartLabels = [
         border-radius: 999px;
         font-size: 12px;
         font-weight: 600;
-        background: var(--surface-alt);
+        background: var(--surface-strong);
         color: var(--text);
+      }
+      .version-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--outline);
+        background: rgba(59, 130, 246, 0.15);
+        color: #bfdbfe;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
       }
       .status-pill.enabled {
         background: #dcfce7;
@@ -2047,6 +2078,29 @@ $chartLabels = [
         margin: 0;
         color: var(--muted);
       }
+      .hero-metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+      }
+      .mini-stat {
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--outline);
+        background: rgba(15, 23, 42, 0.8);
+        display: grid;
+        gap: 6px;
+      }
+      .mini-stat span {
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .mini-stat strong {
+        font-size: 18px;
+      }
       .hero-actions {
         display: grid;
         gap: 12px;
@@ -2064,9 +2118,20 @@ $chartLabels = [
         gap: 10px;
         padding: 18px;
         border-radius: 18px;
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.8));
-        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.85));
+        border: 1px solid var(--outline);
         box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+      }
+      .stat-card::after {
+        content: "";
+        position: absolute;
+        inset: -40% 60% auto auto;
+        width: 120px;
+        height: 120px;
+        background: radial-gradient(circle, rgba(59, 130, 246, 0.35), transparent 70%);
+        opacity: 0.5;
       }
       .stat-label {
         font-size: 12px;
@@ -2125,6 +2190,8 @@ $chartLabels = [
         font-size: 12px;
         max-width: 100%;
         table-layout: fixed;
+        border-radius: 12px;
+        overflow: hidden;
       }
       th,
       td {
@@ -2140,6 +2207,13 @@ $chartLabels = [
         letter-spacing: 0.08em;
         font-size: 11px;
         color: var(--muted);
+        background: rgba(15, 23, 42, 0.9);
+        position: sticky;
+        top: 0;
+        z-index: 1;
+      }
+      tbody tr:hover {
+        background: rgba(59, 130, 246, 0.08);
       }
       td a {
         word-break: break-all;
@@ -2492,7 +2566,13 @@ $chartLabels = [
       <div class="toast-container" aria-live="polite" aria-atomic="true"></div>
       <div class="top-bar">
         <div class="brand">
-          <h1><?= htmlspecialchars(t($translations, $currentLanguage, 'app_title'), ENT_QUOTES, 'UTF-8'); ?></h1>
+          <div class="brand-title">
+            <h1><?= htmlspecialchars(t($translations, $currentLanguage, 'app_title'), ENT_QUOTES, 'UTF-8'); ?></h1>
+            <span class="version-pill" title="<?= htmlspecialchars(t($translations, $currentLanguage, 'version'), ENT_QUOTES, 'UTF-8'); ?>">
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'version'), ENT_QUOTES, 'UTF-8'); ?>
+              <?= htmlspecialchars($dashboardVersion, ENT_QUOTES, 'UTF-8'); ?>
+            </span>
+          </div>
           <div class="muted">
             <?= htmlspecialchars(t($translations, $currentLanguage, 'last_update'), ENT_QUOTES, 'UTF-8'); ?>:
             <?= htmlspecialchars((string) ($stats['last_update'] ?? 'N/D'), ENT_QUOTES, 'UTF-8'); ?>
@@ -2566,6 +2646,20 @@ $chartLabels = [
             <?php if ($isAdmin): ?>
               <span class="chip"><?= htmlspecialchars(t($translations, $currentLanguage, 'alerted_sites'), ENT_QUOTES, 'UTF-8'); ?>: <?= (int) count($stats['alert_sites']); ?></span>
             <?php endif; ?>
+          </div>
+          <div class="hero-metrics">
+            <div class="mini-stat">
+              <span><?= htmlspecialchars(t($translations, $currentLanguage, 'alerts_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
+              <strong><?= (int) $stats['alerts_24h']; ?></strong>
+            </div>
+            <div class="mini-stat">
+              <span><?= htmlspecialchars(t($translations, $currentLanguage, 'blocks_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
+              <strong><?= (int) $stats['blocks_24h']; ?></strong>
+            </div>
+            <div class="mini-stat">
+              <span><?= htmlspecialchars(t($translations, $currentLanguage, 'unique_hosts'), ENT_QUOTES, 'UTF-8'); ?></span>
+              <strong><?= (int) $stats['unique_hosts']; ?></strong>
+            </div>
           </div>
         </div>
         <div class="hero-actions">
