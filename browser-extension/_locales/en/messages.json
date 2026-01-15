@@ -130,6 +130,14 @@
       }
     }
   },
+  "alertConfidenceScore": {
+    "message": "Confidence score: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
   "blockAllClipboardBlocked": {
     "message": "JavaScript clipboard copying was blocked."
   },

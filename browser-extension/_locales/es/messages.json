@@ -130,6 +130,14 @@
       }
     }
   },
+  "alertConfidenceScore": {
+    "message": "Puntuación de confianza: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
   "blockAllClipboardBlocked": {
     "message": "Se bloqueó el copiado de portapapeles por JavaScript."
   },

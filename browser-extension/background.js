@@ -281,6 +281,29 @@ async function addClipboardBackupEntry({ text, url, malicious }) {
   await chrome.storage.local.set({ clipboardBackups: next });
 }
 
+function computeDetectionScore(details) {
+  const weights = [
+    ["commandMatch", 35],
+    ["shellHint", 20],
+    ["evasionHint", 15],
+    ["mismatch", 10],
+    ["clipboardWarning", 10],
+    ["winRHint", 10],
+    ["winXHint", 10],
+    ["pasteSequenceHint", 10],
+    ["consoleHint", 8],
+    ["fileExplorerHint", 6],
+    ["copyTriggerHint", 6],
+    ["browserErrorHint", 5],
+    ["fixActionHint", 5],
+    ["captchaHint", 5]
+  ];
+  const score = weights.reduce((total, [key, weight]) => {
+    return details[key] ? total + weight : total;
+  }, 0);
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
 function buildAlertReasons(details) {
   const parts = [];
   const addReason = (message) => {
@@ -349,6 +372,9 @@ function buildAlertReasons(details) {
         : details.blockedClipboardText;
     addReason(t("alertClipboardBlocked", snippet));
   }
+  if (Number.isFinite(details.confidenceScore)) {
+    addReason(t("alertConfidenceScore", details.confidenceScore));
+  }
   return parts;
 }
 
@@ -383,6 +409,7 @@ function buildAlertSnippets(details) {
 }
 
 async function triggerAlert(details) {
+  const confidenceScore = computeDetectionScore(details);
   console.debug("[ClickFix] triggerAlert start", {
     url: details.url,
     tabId: details.tabId,
@@ -401,16 +428,18 @@ async function triggerAlert(details) {
       pasteSequenceHint: details.pasteSequenceHint,
       fileExplorerHint: details.fileExplorerHint,
       copyTriggerHint: details.copyTriggerHint,
-      evasionHint: details.evasionHint
+      evasionHint: details.evasionHint,
+      confidenceScore
     }
   });
+  const detailsWithScore = { ...details, confidenceScore };
   await incrementAlertCount();
   if (details.incrementBlockCount !== false) {
     await incrementBlockCount();
   }
-  const reasons = buildAlertReasons(details);
-  const reasonsEs = buildAlertReasonsEs(details);
-  const snippets = buildAlertSnippets(details);
+  const reasons = buildAlertReasons(detailsWithScore);
+  const reasonsEs = buildAlertReasonsEs(detailsWithScore);
+  const snippets = buildAlertSnippets(detailsWithScore);
   const message = reasons.join(" ");
   const messageEs = reasonsEs.join(" ");
   const hostname = extractHostname(details.url);
@@ -451,7 +480,8 @@ async function triggerAlert(details) {
       pasteSequenceHint: details.pasteSequenceHint,
       fileExplorerHint: details.fileExplorerHint,
       copyTriggerHint: details.copyTriggerHint,
-      evasionHint: details.evasionHint
+      evasionHint: details.evasionHint,
+      confidenceScore
     },
     blocked: shouldBlockPage && !allowlisted
   });
