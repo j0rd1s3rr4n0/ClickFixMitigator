@@ -127,6 +127,14 @@
       }
     }
   },
+  "alertConfidenceScore": {
+    "message": "Vertrauensscore: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
   "blockAllClipboardBlocked": {
     "message": "JavaScript-Zwischenablage wurde blockiert."
   },

@@ -127,6 +127,14 @@
       }
     }
   },
+  "alertConfidenceScore": {
+    "message": "Betrouwbaarheidsscore: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
   "blockAllClipboardBlocked": {
     "message": "JavaScript-klembordkopie is geblokkeerd."
   },

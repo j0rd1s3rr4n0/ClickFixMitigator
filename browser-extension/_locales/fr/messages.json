@@ -120,9 +120,17 @@
     }
   },
   "alertClipboardBlocked": {
-    "message": "Presse-papiers bloqué : \"$1\"",
+    "message": "Presse-papiers bloqué : \"$1\"",
     "placeholders": {
       "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertConfidenceScore": {
+    "message": "Score de confiance : $1/100",
+    "placeholders": {
+      "score": {
         "content": "$1"
       }
     }
