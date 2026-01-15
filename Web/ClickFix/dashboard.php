@@ -452,6 +452,25 @@ function safeSubstr(string $value, int $start, int $length): string
     return substr($value, $start, $length);
 }
 
+function redactCredentials(string $value, bool $isAdmin): string
+{
+    if ($isAdmin || $value === '') {
+        return $value;
+    }
+    $patterns = [
+        '/("?(?:user(?:name)?|login|email)"?\s*[:=]\s*)("?[^\s",;]+")/i' => '$1REDACTED',
+        '/("?(?:pass(?:word)?|passwd)"?\s*[:=]\s*)("?[^\s",;]+")/i' => '$1REDACTED',
+        '/("?(?:user(?:name)?|login|email)"?\s*=>\s*)("?[^\s",;]+")/i' => '$1REDACTED',
+        '/("?(?:pass(?:word)?|passwd)"?\s*=>\s*)("?[^\s",;]+")/i' => '$1REDACTED',
+        '/(\b(?:user(?:name)?|login|email)\b\s+)(\S+)/i' => '$1REDACTED',
+        '/(\b(?:pass(?:word)?|passwd)\b\s+)(\S+)/i' => '$1REDACTED'
+    ];
+    foreach ($patterns as $pattern => $replacement) {
+        $value = preg_replace($pattern, $replacement, $value);
+    }
+    return $value;
+}
+
 $intelSources = [
     [
         'id' => 'hudsonrock',
@@ -1814,7 +1833,7 @@ $chartLabels = [
     'signals' => t($translations, $currentLanguage, 'signal_types')
 ];
 
-$dashboardVersion = '0.2.0';
+$dashboardVersion = '0.4.0';
 
   $chartPayload = [
     'daily' => [
@@ -2789,6 +2808,11 @@ $dashboardVersion = '0.2.0';
               <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_detections'), ENT_QUOTES, 'UTF-8'); ?></div>
             <?php else: ?>
               <?php foreach ($recentDetections as $entry): ?>
+                <?php
+                  $displayMessage = redactCredentials((string) $entry['message'], $isAdmin);
+                  $displayDetected = redactCredentials((string) $entry['detected'], $isAdmin);
+                  $displayContext = redactCredentials((string) $entry['full_context'], $isAdmin);
+                ?>
                 <details class="report-card">
                   <summary>
                     <?= htmlspecialchars($entry['hostname'], ENT_QUOTES, 'UTF-8'); ?>
@@ -2815,7 +2839,7 @@ $dashboardVersion = '0.2.0';
                   <?php if (!empty($entry['message'])): ?>
                     <div class="report-section">
                       <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'summary'), ENT_QUOTES, 'UTF-8'); ?></strong>
-                      <div class="muted"><?= htmlspecialchars($entry['message'], ENT_QUOTES, 'UTF-8'); ?></div>
+                      <div class="muted"><?= htmlspecialchars($displayMessage, ENT_QUOTES, 'UTF-8'); ?></div>
                     </div>
                   <?php endif; ?>
                   <?php if (!empty($entry['signals'])): ?>
@@ -2831,13 +2855,13 @@ $dashboardVersion = '0.2.0';
                   <?php if (!empty($entry['detected'])): ?>
                     <div class="report-section">
                       <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'detected_content'), ENT_QUOTES, 'UTF-8'); ?></strong>
-                      <pre><?= htmlspecialchars($entry['detected'], ENT_QUOTES, 'UTF-8'); ?></pre>
+                      <pre><?= htmlspecialchars($displayDetected, ENT_QUOTES, 'UTF-8'); ?></pre>
                     </div>
                   <?php endif; ?>
                   <?php if (!empty($entry['full_context'])): ?>
                     <div class="report-section context-panel">
                       <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'full_context'), ENT_QUOTES, 'UTF-8'); ?></strong>
-                      <pre><?= htmlspecialchars($entry['full_context'], ENT_QUOTES, 'UTF-8'); ?></pre>
+                      <pre><?= htmlspecialchars($displayContext, ENT_QUOTES, 'UTF-8'); ?></pre>
                     </div>
                   <?php endif; ?>
                   <?php if ($isAdmin && !$entry['accepted']): ?>
@@ -3013,6 +3037,11 @@ $dashboardVersion = '0.2.0';
               <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_detections'), ENT_QUOTES, 'UTF-8'); ?></div>
             <?php else: ?>
               <?php foreach ($recentDetections as $entry): ?>
+                <?php
+                  $displayMessage = redactCredentials((string) $entry['message'], $isAdmin);
+                  $displayDetected = redactCredentials((string) $entry['detected'], $isAdmin);
+                  $displayContext = redactCredentials((string) $entry['full_context'], $isAdmin);
+                ?>
                 <details class="report-card">
                   <summary>
                     <?= htmlspecialchars($entry['hostname'], ENT_QUOTES, 'UTF-8'); ?>
@@ -3039,7 +3068,7 @@ $dashboardVersion = '0.2.0';
                   <?php if (!empty($entry['message'])): ?>
                     <div class="report-section">
                       <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'summary'), ENT_QUOTES, 'UTF-8'); ?></strong>
-                      <div class="muted"><?= htmlspecialchars($entry['message'], ENT_QUOTES, 'UTF-8'); ?></div>
+                      <div class="muted"><?= htmlspecialchars($displayMessage, ENT_QUOTES, 'UTF-8'); ?></div>
                     </div>
                   <?php endif; ?>
                   <?php if (!empty($entry['signals'])): ?>
@@ -3055,13 +3084,13 @@ $dashboardVersion = '0.2.0';
                   <?php if (!empty($entry['detected'])): ?>
                     <div class="report-section">
                       <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'detected_content'), ENT_QUOTES, 'UTF-8'); ?></strong>
-                      <pre><?= htmlspecialchars($entry['detected'], ENT_QUOTES, 'UTF-8'); ?></pre>
+                      <pre><?= htmlspecialchars($displayDetected, ENT_QUOTES, 'UTF-8'); ?></pre>
                     </div>
                   <?php endif; ?>
                   <?php if (!empty($entry['full_context'])): ?>
                     <div class="report-section context-panel">
                       <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'full_context'), ENT_QUOTES, 'UTF-8'); ?></strong>
-                      <pre><?= htmlspecialchars($entry['full_context'], ENT_QUOTES, 'UTF-8'); ?></pre>
+                      <pre><?= htmlspecialchars($displayContext, ENT_QUOTES, 'UTF-8'); ?></pre>
                     </div>
                   <?php endif; ?>
                   <?php if ($isAdmin && !$entry['accepted']): ?>
@@ -3237,6 +3266,11 @@ $dashboardVersion = '0.2.0';
               <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_detections'), ENT_QUOTES, 'UTF-8'); ?></div>
             <?php else: ?>
               <?php foreach ($recentDetections as $entry): ?>
+                <?php
+                  $displayMessage = redactCredentials((string) $entry['message'], $isAdmin);
+                  $displayDetected = redactCredentials((string) $entry['detected'], $isAdmin);
+                  $displayContext = redactCredentials((string) $entry['full_context'], $isAdmin);
+                ?>
                 <details class="report-card">
                   <summary>
                     <?= htmlspecialchars($entry['hostname'], ENT_QUOTES, 'UTF-8'); ?>
@@ -3263,7 +3297,7 @@ $dashboardVersion = '0.2.0';
                   <?php if (!empty($entry['message'])): ?>
                     <div class="report-section">
                       <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'summary'), ENT_QUOTES, 'UTF-8'); ?></strong>
-                      <div class="muted"><?= htmlspecialchars($entry['message'], ENT_QUOTES, 'UTF-8'); ?></div>
+                      <div class="muted"><?= htmlspecialchars($displayMessage, ENT_QUOTES, 'UTF-8'); ?></div>
                     </div>
                   <?php endif; ?>
                   <?php if (!empty($entry['signals'])): ?>
@@ -3279,13 +3313,13 @@ $dashboardVersion = '0.2.0';
                   <?php if (!empty($entry['detected'])): ?>
                     <div class="report-section">
                       <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'detected_content'), ENT_QUOTES, 'UTF-8'); ?></strong>
-                      <pre><?= htmlspecialchars($entry['detected'], ENT_QUOTES, 'UTF-8'); ?></pre>
+                      <pre><?= htmlspecialchars($displayDetected, ENT_QUOTES, 'UTF-8'); ?></pre>
                     </div>
                   <?php endif; ?>
                   <?php if (!empty($entry['full_context'])): ?>
                     <div class="report-section context-panel">
                       <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'full_context'), ENT_QUOTES, 'UTF-8'); ?></strong>
-                      <pre><?= htmlspecialchars($entry['full_context'], ENT_QUOTES, 'UTF-8'); ?></pre>
+                      <pre><?= htmlspecialchars($displayContext, ENT_QUOTES, 'UTF-8'); ?></pre>
                     </div>
                   <?php endif; ?>
                   <?php if ($isAdmin && !$entry['accepted']): ?>
@@ -3807,6 +3841,10 @@ $dashboardVersion = '0.2.0';
                         </thead>
                         <tbody>
                           <?php foreach ($reportLogStructured as $entry): ?>
+                            <?php
+                              $displayMessage = redactCredentials((string) $entry['message'], $isAdmin);
+                              $displayDetected = redactCredentials((string) $entry['detected_content'], $isAdmin);
+                            ?>
                             <tr>
                               <td><?= htmlspecialchars($entry['received_at'], ENT_QUOTES, 'UTF-8'); ?></td>
                               <td>
@@ -3817,8 +3855,8 @@ $dashboardVersion = '0.2.0';
                                 <?php endif; ?>
                               </td>
                               <td><?= htmlspecialchars($entry['hostname'], ENT_QUOTES, 'UTF-8'); ?></td>
-                              <td><?= htmlspecialchars($entry['message'], ENT_QUOTES, 'UTF-8'); ?></td>
-                              <td><?= htmlspecialchars($entry['detected_content'], ENT_QUOTES, 'UTF-8'); ?></td>
+                              <td><?= htmlspecialchars($displayMessage, ENT_QUOTES, 'UTF-8'); ?></td>
+                              <td><?= htmlspecialchars($displayDetected, ENT_QUOTES, 'UTF-8'); ?></td>
                               <td><?= $entry['blocked'] ? htmlspecialchars(t($translations, $currentLanguage, 'blocked'), ENT_QUOTES, 'UTF-8') : ''; ?></td>
                               <td><?= htmlspecialchars($entry['country'], ENT_QUOTES, 'UTF-8'); ?></td>
                             </tr>
