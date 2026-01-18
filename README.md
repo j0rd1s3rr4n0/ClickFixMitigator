@@ -1,5 +1,33 @@
 # ClickFix Mitigator
 
+<p align="center">
+  <a href="https://github.com/jordiserrano/ClickFixMitigator/stargazers">
+    <img src="https://img.shields.io/github/stars/jordiserrano/ClickFixMitigator?style=for-the-badge" alt="GitHub stars" />
+  </a>
+  <a href="https://github.com/jordiserrano/ClickFixMitigator/issues">
+    <img src="https://img.shields.io/github/issues/jordiserrano/ClickFixMitigator?style=for-the-badge" alt="Open issues" />
+  </a>
+  <a href="https://github.com/jordiserrano/ClickFixMitigator/pulls">
+    <img src="https://img.shields.io/github/issues-pr/jordiserrano/ClickFixMitigator?style=for-the-badge" alt="Open pull requests" />
+  </a>
+  <a href="https://github.com/jordiserrano/ClickFixMitigator/graphs/contributors">
+    <img src="https://img.shields.io/github/contributors/jordiserrano/ClickFixMitigator?style=for-the-badge" alt="Contributors" />
+  </a>
+  <a href="https://github.com/jordiserrano/ClickFixMitigator/tags">
+    <img src="https://img.shields.io/github/v/tag/jordiserrano/ClickFixMitigator?style=for-the-badge" alt="Latest tag" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/github/license/jordiserrano/ClickFixMitigator?style=for-the-badge" alt="License" />
+  </a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/defense--first-security-blue?style=flat-square" alt="Defense-first" />
+  <img src="https://img.shields.io/badge/mv3-extension-orange?style=flat-square" alt="MV3 extension" />
+  <img src="https://img.shields.io/badge/php%2Bsqlite-backend-purple?style=flat-square" alt="PHP + SQLite" />
+  <img src="https://img.shields.io/badge/windows-agent-green?style=flat-square" alt="Windows agent" />
+</p>
+
 ClickFix Mitigator is a complete, defense‑first reference implementation for understanding, detecting, and mitigating **ClickFix-style social engineering** campaigns. These attacks trick users into running commands (commonly via **Win + R**, terminal prompts, or “copy/paste to fix” workflows). This repository provides:
 
 - A **browser extension** that detects suspicious flows and clipboard anomalies.

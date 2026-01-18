@@ -1833,7 +1833,7 @@ $chartLabels = [
     'signals' => t($translations, $currentLanguage, 'signal_types')
 ];
 
-$dashboardVersion = '0.5.0';
+$dashboardVersion = '0.6.0';
 
   $chartPayload = [
     'daily' => [
