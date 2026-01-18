@@ -1,0 +1,311 @@
+{
+  "appName": {
+    "message": "ClickFix Mitigator"
+  },
+  "appDescription": {
+    "message": "Detects ClickFix patterns and clipboard mismatches."
+  },
+  "bannerTitle": {
+    "message": "ClickFix Mitigator Alert"
+  },
+  "closeButton": {
+    "message": "Close"
+  },
+  "blockAllClipboardUnavailable": {
+    "message": "Block All mode can’t be enabled on this page."
+  },
+  "notificationRestoreClipboard": {
+    "message": "Restore clipboard"
+  },
+  "notificationKeepClean": {
+    "message": "Keep clean"
+  },
+  "blockedTitle": {
+    "message": "Site blocked for possible ClickFix"
+  },
+  "blockedReasonDefault": {
+    "message": "Reason: ClickFix patterns detected"
+  },
+  "blockedReasonWithDetail": {
+    "message": "Reason: $1",
+    "placeholders": {
+      "detail": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonReported": {
+    "message": "Reason: ClickFix report"
+  },
+  "blockedStay": {
+    "message": "Stay on site"
+  },
+  "blockedBack": {
+    "message": "Go back"
+  },
+  "blockedReport": {
+    "message": "Report site"
+  },
+  "blockedAllowOnce": {
+    "message": "Allow once"
+  },
+  "blockedAllowSession": {
+    "message": "Allow for session"
+  },
+  "blockedAllowAlways": {
+    "message": "Always allow"
+  },
+  "blockedReported": {
+    "message": "Reported"
+  },
+  "blockedHost": {
+    "message": "Site: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonsTitle": {
+    "message": "Detections"
+  },
+  "blockedContextTitle": {
+    "message": "Detected context"
+  },
+  "alertMismatch": {
+    "message": "Mismatch between selection and clipboard."
+  },
+  "alertCommand": {
+    "message": "Suspicious command pattern detected."
+  },
+  "alertClipboardCommand": {
+    "message": "Suspicious command detected in the clipboard."
+  },
+  "alertWinR": {
+    "message": "The page suggests using Win+R/Run dialog."
+  },
+  "alertWinX": {
+    "message": "The page suggests using Win+X to open the terminal."
+  },
+  "alertBrowserError": {
+    "message": "The page shows a fake browser error."
+  },
+  "alertFixAction": {
+    "message": "The page asks for a quick fix or to copy a command."
+  },
+  "alertCaptcha": {
+    "message": "Possible fake captcha detected."
+  },
+  "alertConsole": {
+    "message": "The page asks you to paste into the DevTools console."
+  },
+  "alertShell": {
+    "message": "The page asks you to paste commands in CMD/PowerShell/Run."
+  },
+  "alertPasteSequence": {
+    "message": "The page guides pasting with Ctrl+V/Enter."
+  },
+  "alertFileExplorer": {
+    "message": "The page asks you to paste a path in File Explorer."
+  },
+  "alertCopyTrigger": {
+    "message": "The page attempts to copy commands to the clipboard."
+  },
+  "alertEvasion": {
+    "message": "Obfuscated or encoded command content detected."
+  },
+  "alertSnippet": {
+    "message": "Detected snippet: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertClipboardBlocked": {
+    "message": "Clipboard blocked: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertConfidenceScore": {
+    "message": "Confidence score: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockAllClipboardBlocked": {
+    "message": "JavaScript clipboard copying was blocked."
+  },
+  "manualReportReason": {
+    "message": "Manual user report"
+  },
+  "blocklistReason": {
+    "message": "Blocked by list"
+  },
+  "popupTitle": {
+    "message": "ClickFix Mitigator"
+  },
+  "popupDetectionActive": {
+    "message": "Detection active"
+  },
+  "popupAllowlistActive": {
+    "message": "Allowlist active"
+  },
+  "popupWhitelistTitle": {
+    "message": "Allowlist"
+  },
+  "popupWhitelistPlaceholder": {
+    "message": "example.com"
+  },
+  "popupAdd": {
+    "message": "Add"
+  },
+  "popupWhitelistEmpty": {
+    "message": "No domains in allowlist."
+  },
+  "popupRecentAlerts": {
+    "message": "Recent alerts"
+  },
+  "popupClearHistory": {
+    "message": "Clear history"
+  },
+  "popupClipboardTitle": {
+    "message": "Clipboard backups"
+  },
+  "popupClipboardEmpty": {
+    "message": "No clipboard backups."
+  },
+  "popupClipboardClear": {
+    "message": "Clear clipboard backups"
+  },
+  "popupClipboardCopy": {
+    "message": "Copy"
+  },
+  "popupClipboardCopied": {
+    "message": "Copied"
+  },
+  "popupReportTitle": {
+    "message": "Report site"
+  },
+  "popupReportHint": {
+    "message": "Send a manual report to block a specific domain."
+  },
+  "popupReportPlaceholder": {
+    "message": "https://example-site.com"
+  },
+  "popupReportButton": {
+    "message": "Report"
+  },
+  "popupReportStatusMissing": {
+    "message": "Enter a URL or use the current tab."
+  },
+  "popupReportStatusSent": {
+    "message": "Report sent: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupReportStatusInvalid": {
+    "message": "Invalid URL."
+  },
+  "popupReportStatusNoTab": {
+    "message": "Could not detect the active tab."
+  },
+  "popupOptionsLink": {
+    "message": "Advanced options"
+  },
+  "optionsTitle": {
+    "message": "Advanced options"
+  },
+  "optionsSubtitle": {
+    "message": "Configure detection behavior and review alert history."
+  },
+  "optionsStateTitle": {
+    "message": "Status"
+  },
+  "optionsBlockAllClipboard": {
+    "message": "Block all JavaScript clipboard copying"
+  },
+  "optionsClipboardBackup": {
+    "message": "Keep previous clipboard backup"
+  },
+  "optionsSendCountry": {
+    "message": "Share country in reports"
+  },
+  "optionsWhitelistTitle": {
+    "message": "Allowlist"
+  },
+  "optionsWhitelistAdd": {
+    "message": "Add domain"
+  },
+  "optionsBlocklistTitle": {
+    "message": "Additional blocklists"
+  },
+  "optionsBlocklistHint": {
+    "message": "Add ClickFix list URLs (one per list) to merge with the main list."
+  },
+  "optionsBlocklistPlaceholder": {
+    "message": "https://example.com/clickfixlist"
+  },
+  "optionsBlocklistAdd": {
+    "message": "Add list"
+  },
+  "optionsBlocklistEmpty": {
+    "message": "No additional lists."
+  },
+  "optionsAllowlistTitle": {
+    "message": "Additional allowlists"
+  },
+  "optionsAllowlistHint": {
+    "message": "Add allowlist URLs (one per list) to merge with the main list."
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://example.com/clickfixallowlist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "Add list"
+  },
+  "optionsAllowlistEmpty": {
+    "message": "No additional lists."
+  },
+  "optionsHistoryTitle": {
+    "message": "Full history"
+  },
+  "historyClipboardOnly": {
+    "message": "Clipboard only"
+  },
+  "optionsHistoryEmpty": {
+    "message": "No recent alerts."
+  },
+  "optionsClearHistory": {
+    "message": "Clear history"
+  },
+  "optionsRemove": {
+    "message": "Remove"
+  },
+  "languageTitle": {
+    "message": "Language"
+  },
+  "languageEnglish": {
+    "message": "English"
+  },
+  "languageSpanish": {
+    "message": "Spanish"
+  },
+  "languageGerman": {
+    "message": "German"
+  },
+  "languageFrench": {
+    "message": "French"
+  },
+  "languageDutch": {
+    "message": "Dutch"
+  }
+}

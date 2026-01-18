@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ClickFix Mitigator</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1 data-i18n="popupTitle">ClickFix Mitigator</h1>
+      <label class="toggle">
+        <input id="toggle-enabled" type="checkbox" />
+        <span data-i18n="popupDetectionActive">Detección activa</span>
+      </label>
+      <label class="toggle">
+        <input id="toggle-block-all" type="checkbox" />
+        <span data-i18n="optionsBlockAllClipboard">Bloquear todo el copiado por JavaScript</span>
+      </label>
+    </header>
+
+    <section>
+      <h2 data-i18n="popupWhitelistTitle">Lista blanca</h2>
+      <div class="row">
+        <input id="whitelist-input" type="text" placeholder="ejemplo.com" data-i18n-placeholder="popupWhitelistPlaceholder" />
+        <button id="add-domain" type="button" data-i18n="popupAdd">Agregar</button>
+      </div>
+      <ul id="whitelist-list"></ul>
+    </section>
+
+    <section>
+      <h2 data-i18n="popupRecentAlerts">Alertas recientes</h2>
+      <div id="history"></div>
+      <button id="clear-history" type="button" class="secondary" data-i18n="popupClearHistory">Limpiar historial</button>
+    </section>
+
+    <section>
+      <h2 data-i18n="popupClipboardTitle">Historial de portapapeles</h2>
+      <div id="clipboard-history"></div>
+      <button id="clear-clipboard-history" type="button" class="secondary" data-i18n="popupClipboardClear">Limpiar portapapeles</button>
+    </section>
+
+    <section>
+      <h2 data-i18n="popupReportTitle">Reportar sitio</h2>
+      <p class="hint" data-i18n="popupReportHint">Envía un reporte manual para bloquear un dominio específico.</p>
+      <div class="row">
+        <input id="report-input" type="text" placeholder="https://sitio-ejemplo.com" data-i18n-placeholder="popupReportPlaceholder" />
+        <button id="report-site" type="button" data-i18n="popupReportButton">Reportar</button>
+      </div>
+      <div id="report-status" class="hint"></div>
+    </section>
+
+    <section>
+      <h2 data-i18n="languageTitle">Idioma</h2>
+      <div class="row">
+        <select id="language-select">
+          <option value="es" data-i18n="languageSpanish">Español</option>
+          <option value="en" data-i18n="languageEnglish">English</option>
+          <option value="de" data-i18n="languageGerman">Deutsch</option>
+          <option value="fr" data-i18n="languageFrench">Français</option>
+          <option value="nl" data-i18n="languageDutch">Nederlands</option>
+        </select>
+      </div>
+    </section>
+
+    <footer>
+      <a href="options.html" target="_blank" rel="noreferrer" data-i18n="popupOptionsLink">Opciones avanzadas</a>
+    </footer>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

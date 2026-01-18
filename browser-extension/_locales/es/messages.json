@@ -1,0 +1,311 @@
+{
+  "appName": {
+    "message": "ClickFix Mitigator"
+  },
+  "appDescription": {
+    "message": "Detecta patrones de ClickFix y discrepancias de portapapeles."
+  },
+  "bannerTitle": {
+    "message": "Alerta de ClickFix Mitigator"
+  },
+  "closeButton": {
+    "message": "Cerrar"
+  },
+  "blockAllClipboardUnavailable": {
+    "message": "El modo Bloquear todo no puede activarse en esta página."
+  },
+  "notificationRestoreClipboard": {
+    "message": "Restaurar portapapeles"
+  },
+  "notificationKeepClean": {
+    "message": "Mantener limpio"
+  },
+  "blockedTitle": {
+    "message": "Sitio web bloqueado por posible ClickFix"
+  },
+  "blockedReasonDefault": {
+    "message": "Motivo: patrones ClickFix detectados"
+  },
+  "blockedReasonWithDetail": {
+    "message": "Motivo: $1",
+    "placeholders": {
+      "detail": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonReported": {
+    "message": "Motivo: ClickFix report"
+  },
+  "blockedStay": {
+    "message": "Permanecer en web"
+  },
+  "blockedBack": {
+    "message": "Volver atrás"
+  },
+  "blockedReport": {
+    "message": "Reportar sitio"
+  },
+  "blockedAllowOnce": {
+    "message": "Permitir una vez"
+  },
+  "blockedAllowSession": {
+    "message": "Permitir esta sesión"
+  },
+  "blockedAllowAlways": {
+    "message": "Permitir siempre"
+  },
+  "blockedReported": {
+    "message": "Reportado"
+  },
+  "blockedHost": {
+    "message": "Sitio: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonsTitle": {
+    "message": "Detecciones"
+  },
+  "blockedContextTitle": {
+    "message": "Contexto detectado"
+  },
+  "alertMismatch": {
+    "message": "Discrepancia entre selección y portapapeles."
+  },
+  "alertCommand": {
+    "message": "Patrón de comando sospechoso detectado."
+  },
+  "alertClipboardCommand": {
+    "message": "Comando sospechoso detectado en el portapapeles."
+  },
+  "alertWinR": {
+    "message": "La página sugiere usar Win+R/Run dialog."
+  },
+  "alertWinX": {
+    "message": "La página sugiere usar Win+X para abrir la terminal."
+  },
+  "alertBrowserError": {
+    "message": "La página muestra un error falso del navegador."
+  },
+  "alertFixAction": {
+    "message": "La página pide aplicar una solución rápida o copiar un comando."
+  },
+  "alertCaptcha": {
+    "message": "Posible captcha falso detectado."
+  },
+  "alertConsole": {
+    "message": "La página intenta que pegues en la consola de DevTools."
+  },
+  "alertShell": {
+    "message": "La página te pide pegar comandos en CMD/PowerShell/Ejecutar."
+  },
+  "alertPasteSequence": {
+    "message": "La página guía el pegado con Ctrl+V/Enter."
+  },
+  "alertFileExplorer": {
+    "message": "La página pide pegar una ruta en el Explorador de archivos."
+  },
+  "alertCopyTrigger": {
+    "message": "La página intenta copiar comandos al portapapeles."
+  },
+  "alertEvasion": {
+    "message": "Se detectó contenido de comandos ofuscado o codificado."
+  },
+  "alertSnippet": {
+    "message": "Fragmento detectado: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertClipboardBlocked": {
+    "message": "Portapapeles bloqueado: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertConfidenceScore": {
+    "message": "Puntuación de confianza: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockAllClipboardBlocked": {
+    "message": "Se bloqueó el copiado de portapapeles por JavaScript."
+  },
+  "manualReportReason": {
+    "message": "Reporte manual del usuario"
+  },
+  "blocklistReason": {
+    "message": "Bloqueado por lista"
+  },
+  "popupTitle": {
+    "message": "ClickFix Mitigator"
+  },
+  "popupDetectionActive": {
+    "message": "Detección activa"
+  },
+  "popupAllowlistActive": {
+    "message": "Allowlist activo"
+  },
+  "popupWhitelistTitle": {
+    "message": "Lista blanca"
+  },
+  "popupWhitelistPlaceholder": {
+    "message": "ejemplo.com"
+  },
+  "popupAdd": {
+    "message": "Agregar"
+  },
+  "popupWhitelistEmpty": {
+    "message": "Sin dominios en lista blanca."
+  },
+  "popupRecentAlerts": {
+    "message": "Alertas recientes"
+  },
+  "popupClearHistory": {
+    "message": "Limpiar historial"
+  },
+  "popupClipboardTitle": {
+    "message": "Historial de portapapeles"
+  },
+  "popupClipboardEmpty": {
+    "message": "Sin respaldos del portapapeles."
+  },
+  "popupClipboardClear": {
+    "message": "Limpiar portapapeles"
+  },
+  "popupClipboardCopy": {
+    "message": "Copiar"
+  },
+  "popupClipboardCopied": {
+    "message": "Copiado"
+  },
+  "popupReportTitle": {
+    "message": "Reportar sitio"
+  },
+  "popupReportHint": {
+    "message": "Envía un reporte manual para bloquear un dominio específico."
+  },
+  "popupReportPlaceholder": {
+    "message": "https://sitio-ejemplo.com"
+  },
+  "popupReportButton": {
+    "message": "Reportar"
+  },
+  "popupReportStatusMissing": {
+    "message": "Introduce una URL o usa la pestaña actual."
+  },
+  "popupReportStatusSent": {
+    "message": "Reporte enviado: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupReportStatusInvalid": {
+    "message": "URL no válida."
+  },
+  "popupReportStatusNoTab": {
+    "message": "No se pudo detectar la pestaña activa."
+  },
+  "popupOptionsLink": {
+    "message": "Opciones avanzadas"
+  },
+  "optionsTitle": {
+    "message": "Opciones avanzadas"
+  },
+  "optionsSubtitle": {
+    "message": "Configura el comportamiento de detección y revisa alertas históricas."
+  },
+  "optionsStateTitle": {
+    "message": "Estado"
+  },
+  "optionsBlockAllClipboard": {
+    "message": "Bloquear todo el copiado por JavaScript"
+  },
+  "optionsClipboardBackup": {
+    "message": "Guardar respaldo del portapapeles"
+  },
+  "optionsSendCountry": {
+    "message": "Compartir país en reportes"
+  },
+  "optionsWhitelistTitle": {
+    "message": "Lista blanca"
+  },
+  "optionsWhitelistAdd": {
+    "message": "Agregar dominio"
+  },
+  "optionsBlocklistTitle": {
+    "message": "Listas de bloqueo adicionales"
+  },
+  "optionsBlocklistHint": {
+    "message": "Agrega URLs de listas de ClickFix (una por lista) para combinarlas con la lista principal."
+  },
+  "optionsBlocklistPlaceholder": {
+    "message": "https://ejemplo.com/clickfixlist"
+  },
+  "optionsBlocklistAdd": {
+    "message": "Agregar lista"
+  },
+  "optionsBlocklistEmpty": {
+    "message": "Sin listas adicionales."
+  },
+  "optionsAllowlistTitle": {
+    "message": "Listas de permitidos adicionales"
+  },
+  "optionsAllowlistHint": {
+    "message": "Agrega URLs de listas de permitidos (una por lista) para combinarlas con la lista principal."
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://ejemplo.com/clickfixallowlist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "Agregar lista"
+  },
+  "optionsAllowlistEmpty": {
+    "message": "Sin listas adicionales."
+  },
+  "optionsHistoryTitle": {
+    "message": "Historial completo"
+  },
+  "historyClipboardOnly": {
+    "message": "Solo portapapeles"
+  },
+  "optionsHistoryEmpty": {
+    "message": "No hay alertas recientes."
+  },
+  "optionsClearHistory": {
+    "message": "Limpiar historial"
+  },
+  "optionsRemove": {
+    "message": "Quitar"
+  },
+  "languageTitle": {
+    "message": "Idioma"
+  },
+  "languageEnglish": {
+    "message": "Inglés"
+  },
+  "languageSpanish": {
+    "message": "Español"
+  },
+  "languageGerman": {
+    "message": "Alemán"
+  },
+  "languageFrench": {
+    "message": "Francés"
+  },
+  "languageDutch": {
+    "message": "Neerlandés"
+  }
+}

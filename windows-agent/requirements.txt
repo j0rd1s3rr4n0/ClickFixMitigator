@@ -1,0 +1,6 @@
+keyboard
+psutil
+pystray
+pillow
+pywin32
+winotify

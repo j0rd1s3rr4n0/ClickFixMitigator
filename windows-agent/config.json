@@ -1,0 +1,38 @@
+{
+  "rules": {
+    "suspicious_regexes": [
+      "(?i)powershell(\\.exe)?\\s+-.*(enc|encodedcommand)",
+      "(?i)pwsh\\s+-.*(enc|encodedcommand)",
+      "(?i)cmd(\\.exe)?\\s+/[ck]",
+      "(?i)curl\\s+http",
+      "(?i)bitsadmin\\s+",
+      "(?i)invoke-webrequest",
+      "(?i)invoke-expression",
+      "(?i)iex\\b",
+      "(?i)encodedcommand",
+      "(?i)-enc\\b",
+      "(?i)frombase64string",
+      "(?i)iex\\s+\"?\\(new-object",
+      "(?i)reg\\s+add",
+      "(?i)mshta\\s+",
+      "(?i)certutil\\s+-urlcache",
+      "(?i)rundll32\\s+",
+      "(?i)wmic\\s+",
+      "(?i)schtasks\\s+",
+      "(?i)msiexec\\s+",
+      "(?i)cscript\\s+",
+      "(?i)wscript\\s+",
+      "(?i)p[\\s\\^`]*o[\\s\\^`]*w[\\s\\^`]*e[\\s\\^`]*r[\\s\\^`]*s[\\s\\^`]*h[\\s\\^`]*e[\\s\\^`]*l[\\s\\^`]*l",
+      "(?i)c[\\s\\^`]*m[\\s\\^`]*d"
+    ],
+    "exclusions": [
+      "(?i)\\bexample\\.com\\b",
+      "(?i)\\btrusted-script\\.ps1\\b"
+    ]
+  },
+  "sensitivity": {
+    "clipboard_poll_interval_s": 0.5,
+    "run_sequence_timeout_s": 8,
+    "blocked_clipboard_placeholder": "[Clipboard bloqueado]"
+  }
+}
