@@ -7,6 +7,9 @@ const DEFAULT_SETTINGS = {
   blocklist: [],
   blocklistSources: [],
   allowlistSources: [],
+  uiTheme: "system",
+  familySafe: false,
+  muteDetectionNotifications: false,
   saveClipboardBackup: true,
   sendCountry: true,
   reportQueue: [],
@@ -26,9 +29,9 @@ const REPORT_QUEUE_LIMIT = 300;
 const CLIPBOARD_BACKUP_LIMIT = 50;
 
 const COMMAND_REGEX =
-  /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d|reg\s+add|rundll32|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic)\b/i;
+  /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|bash|sh|zsh|curl|wget|rundll32|regsvr32|msbuild|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic|explorer(\.exe)?|reg\s+add|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d)\b/i;
 const SHELL_HINT_REGEX =
-  /(invoke-webrequest|invoke-restmethod|\biwr\b|\birm\b|curl\s+|wget\s+|downloadstring|frombase64string|add-mppreference|invoke-expression|iex\b|iex\s*\(|encodedcommand|\-enc\b)/i;
+  /(invoke-webrequest|invoke-restmethod|\biwr\b|\birm\b|curl\s+|wget\s+|downloadstring|frombase64string|start-bitstransfer|add-mppreference|invoke-expression|\biex\b|\biex\s*\(|encodedcommand|\-enc\b|\-encodedcommand\b|powershell\s+\-|cmd\s+\/c|bash\s+\-c|sh\s+\-c|rundll32\s+[^\s,]+,[^\s]+|regsvr32\s+\/i|certutil\s+\-urlcache|bitsadmin\s+\/transfer)/i;
 const EVASION_REGEXES = [
   /\\x[0-9a-f]{2}/i,
   /\\u[0-9a-f]{4}/i,
@@ -52,6 +55,9 @@ async function getSettings() {
     blocklist: stored.blocklist ?? [],
     blocklistSources: stored.blocklistSources ?? [],
     allowlistSources: stored.allowlistSources ?? [],
+    uiTheme: stored.uiTheme ?? "system",
+    familySafe: stored.familySafe ?? false,
+    muteDetectionNotifications: stored.muteDetectionNotifications ?? false,
     saveClipboardBackup: stored.saveClipboardBackup ?? true,
     sendCountry: stored.sendCountry ?? true,
     reportQueue: stored.reportQueue ?? [],
@@ -410,6 +416,8 @@ function buildAlertSnippets(details) {
 
 async function triggerAlert(details) {
   const confidenceScore = computeDetectionScore(details);
+  const settings = await getSettings();
+  const muteNotifications = Boolean(settings.muteDetectionNotifications);
   console.debug("[ClickFix] triggerAlert start", {
     url: details.url,
     tabId: details.tabId,
@@ -450,6 +458,7 @@ async function triggerAlert(details) {
     details.reportHostname === false ? "" : details.previousUrl || "";
   const allowlisted = await isAllowlisted(details.url);
   const shouldBlockPage = !details.suppressPageBlock;
+  const allowClipboardRestore = details.allowClipboardRestore !== false;
 
   await saveHistory({
     message,
@@ -467,6 +476,7 @@ async function triggerAlert(details) {
     detectedContent: details.detectedContent || "",
     full_context: details.fullContext || "",
     previous_url: reportPreviousUrl,
+    clipboard_source: details.clipboardSource || null,
     signals: {
       mismatch: details.mismatch,
       commandMatch: details.commandMatch,
@@ -488,30 +498,34 @@ async function triggerAlert(details) {
 
   const iconUrl = chrome.runtime.getURL("icons/icon-128.png");
 
-  const notificationId = await new Promise((resolve) => {
-    chrome.notifications.create(
-      {
-        type: "basic",
-        iconUrl,
-        title: t("appName"),
-        message,
-        buttons: details.blockedClipboardText
-          ? [
-              { title: t("notificationRestoreClipboard") },
-              { title: t("notificationKeepClean") }
-            ]
-          : undefined
-      },
-      (id) => resolve(id)
-    );
-  });
+  const notificationId = muteNotifications
+    ? null
+    : await new Promise((resolve) => {
+        chrome.notifications.create(
+          {
+            type: "basic",
+            iconUrl,
+            title: t("appName"),
+            message,
+            buttons: details.blockedClipboardText && allowClipboardRestore
+              ? [
+                  { title: t("notificationRestoreClipboard") },
+                  { title: t("notificationKeepClean") }
+                ]
+              : undefined
+          },
+          (id) => resolve(id)
+        );
+      });
 
   const targetTabId = details.tabId;
   if (targetTabId) {
-    chrome.tabs.sendMessage(targetTabId, {
-      type: "showBanner",
-      text: message
-    });
+    if (!muteNotifications) {
+      chrome.tabs.sendMessage(targetTabId, {
+        type: "showBanner",
+        text: message
+      });
+    }
     if (shouldBlockPage && !allowlisted) {
       chrome.tabs.sendMessage(targetTabId, {
         type: "blockPage",
@@ -528,10 +542,12 @@ async function triggerAlert(details) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tabId = tabs?.[0]?.id;
       if (tabId) {
-        chrome.tabs.sendMessage(tabId, {
-          type: "showBanner",
-          text: message
-        });
+        if (!muteNotifications) {
+          chrome.tabs.sendMessage(tabId, {
+            type: "showBanner",
+            text: message
+          });
+        }
         if (shouldBlockPage && !allowlisted) {
           chrome.tabs.sendMessage(tabId, {
             type: "blockPage",
@@ -695,6 +711,21 @@ async function getAllowlistItems() {
     return settings.allowlist;
   }
   return allowlistCache.items;
+}
+
+async function resolveListDecision(url) {
+  const hostname = extractHostname(url);
+  if (!hostname) {
+    return { hostname: "", allowlisted: false, blocked: false, conflict: false };
+  }
+  const allowlisted = await isAllowlisted(url);
+  const items = await getBlocklistItems();
+  const blocked = items.some((entry) => entry === hostname || hostname.endsWith(`.${entry}`));
+  const conflict = allowlisted && blocked;
+  if (conflict) {
+    console.warn("[ClickFix] List conflict detected", { hostname, url });
+  }
+  return { hostname, allowlisted, blocked, conflict };
 }
 
 async function sendReport(details) {
@@ -880,22 +911,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "checkBlocklist") {
     (async () => {
-      if (await isAllowlisted(message.url)) {
-        sendResponse({ blocked: false });
-        return;
-      }
-      const hostname = extractHostname(message.url);
-      const items = await getBlocklistItems();
-      const blocked = items.some((entry) => entry === hostname || hostname.endsWith(`.${entry}`));
-      sendResponse({ blocked, hostname });
+      const decision = await resolveListDecision(message.url);
+      sendResponse({
+        blocked: decision.blocked && !decision.allowlisted,
+        hostname: decision.hostname,
+        allowlisted: decision.allowlisted,
+        conflict: decision.conflict
+      });
     })();
     return true;
   }
 
   if (message.type === "checkAllowlist") {
     (async () => {
-      const allowlisted = await isAllowlisted(message.url);
-      sendResponse({ allowlisted });
+      const decision = await resolveListDecision(message.url);
+      sendResponse({ allowlisted: decision.allowlisted, conflict: decision.conflict });
     })();
     return true;
   }
@@ -976,114 +1006,106 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return;
   }
 
+  if (message.type === "clipboardIncident") {
+    (async () => {
+      if (await shouldIgnore(message.url)) {
+        return;
+      }
+
+      const analysis = message.analysis || {};
+      const snippet = message.snippet || "";
+      const detectedContent = message.detectedContent || snippet;
+
+      const notificationId = await triggerAlert({
+        url: message.url,
+        timestamp: message.timestamp ?? Date.now(),
+        mismatch: false,
+        commandMatch: Boolean(analysis.commandMatch),
+        shellHint: Boolean(analysis.shellHint),
+        evasionHint: Boolean(analysis.evasionHint),
+        clipboardWarning: true,
+        winRHint: false,
+        winXHint: false,
+        browserErrorHint: false,
+        fixActionHint: false,
+        captchaHint: false,
+        consoleHint: false,
+        pasteSequenceHint: false,
+        fileExplorerHint: false,
+        copyTriggerHint: false,
+        snippets: snippet ? [snippet] : [],
+        blockedClipboardText: message.blocked ? snippet : "",
+        detectedContent,
+        fullContext: message.fullContext || "",
+        previousUrl: message.previousUrl || "",
+        clipboardSource: message.source || null,
+        tabId: sender?.tab?.id ?? null,
+        incrementBlockCount: Boolean(message.blocked),
+        allowClipboardRestore: false,
+        suppressPageBlock: true,
+        reportHostname: true
+      });
+
+      if (notificationId) {
+        lastPageHint = null;
+      }
+    })();
+    return;
+  }
+
   if (message.type === "clipboardEvent") {
     (async () => {
       if (await shouldIgnore(message.url)) {
         return;
       }
 
-      const selectionAnalysis = analyzeText(message.selectionText);
-      const clipboardAnalysis = analyzeText(message.clipboardText);
+      const selectionText = message.selectionText || "";
+      const clipboardText = message.clipboardText || "";
+      const clipboardAnalysis = analyzeText(clipboardText);
       const mismatch =
         message.eventType === "copy" &&
         message.clipboardAvailable &&
-        message.selectionText &&
-        message.clipboardText &&
-        message.selectionText.trim() !== message.clipboardText.trim();
+        selectionText &&
+        clipboardText &&
+        selectionText.trim() !== clipboardText.trim();
 
-      const commandMatch =
-        selectionAnalysis.commandMatch ||
+      const clipboardSignals =
         clipboardAnalysis.commandMatch ||
-        selectionAnalysis.shellHint ||
-        clipboardAnalysis.shellHint;
-      const evasionHint = selectionAnalysis.evasionHint || clipboardAnalysis.evasionHint;
-      const clipboardCommandWarning =
-        message.eventType === "paste" &&
-        (clipboardAnalysis.commandMatch || clipboardAnalysis.shellHint || clipboardAnalysis.evasionHint);
-      const selectionHasSignals =
-        selectionAnalysis.commandMatch ||
-        selectionAnalysis.shellHint ||
-        selectionAnalysis.evasionHint;
-
-      const hints = lastPageHint?.hints || [];
-      const snippets = lastPageHint?.snippets || [];
-      const winRHint = hints.includes("winr");
-      const winXHint = hints.includes("winx");
-      const browserErrorHint = hints.includes("browser-error");
-      const fixActionHint = hints.includes("fix-action");
-      const captchaHint = hints.includes("captcha");
-      const consoleHint = hints.includes("console");
-      const shellHint = hints.includes("shell");
-      const pasteSequenceHint = hints.includes("paste-sequence");
-      const fileExplorerHint = hints.includes("file-explorer");
-      const copyTriggerHint = hints.includes("copy-trigger");
-      const actionHint =
-        winRHint ||
-        winXHint ||
-        pasteSequenceHint ||
-        consoleHint ||
-        shellHint ||
-        fileExplorerHint;
-      const contextHint = browserErrorHint || fixActionHint || captchaHint;
-      const hasPageHints =
-        winRHint ||
-        winXHint ||
-        browserErrorHint ||
-        fixActionHint ||
-        captchaHint ||
-        consoleHint ||
-        shellHint ||
-        pasteSequenceHint ||
-        fileExplorerHint ||
-        copyTriggerHint;
-      const signalScore = [
-        mismatch,
-        commandMatch || evasionHint,
-        copyTriggerHint,
-        actionHint,
-        contextHint
-      ].filter(Boolean).length;
+        clipboardAnalysis.shellHint ||
+        clipboardAnalysis.evasionHint;
+      const commandMatch = clipboardAnalysis.commandMatch || clipboardAnalysis.shellHint;
+      const evasionHint = clipboardAnalysis.evasionHint;
+      const isClipboardWatch = message.eventType === "clipboard-watch";
+      const isPaste = message.eventType === "paste";
+      const isCopy = message.eventType === "copy";
       const shouldAlert =
-        (hasPageHints && signalScore >= 2) ||
-        (hasPageHints && commandMatch) ||
-        (hasPageHints && mismatch) ||
-        clipboardCommandWarning;
-      const clipboardWarningOnly =
-        clipboardCommandWarning && !hasPageHints && !mismatch && signalScore < 2;
-      const nonClipboardSignal =
-        selectionHasSignals || mismatch || actionHint || contextHint;
-      const clipboardOnlyReport = clipboardCommandWarning && !nonClipboardSignal;
+        (isCopy && mismatch) ||
+        ((isPaste || isClipboardWatch) && clipboardSignals);
+      const clipboardWarningOnly = clipboardSignals && !mismatch;
 
       if (shouldAlert) {
         const settings = await getSettings();
         const saveClipboardBackup = settings.saveClipboardBackup ?? true;
-        const clipboardText = message.clipboardText?.trim();
-        const detectedContent = clipboardText || message.selectionText || "";
-        const isClipboardWatch = message.eventType === "clipboard-watch";
+        const trimmedClipboard = clipboardText.trim();
+        const detectedContent = trimmedClipboard || selectionText || "";
+        const snippet = detectedContent ? detectedContent.slice(0, 200) : "";
+        const snippets = snippet ? [snippet] : [];
         const shouldBlockClipboard =
           isClipboardWatch &&
-          clipboardText &&
-          (
-            commandMatch ||
-            evasionHint ||
-            winRHint ||
-            captchaHint ||
-            consoleHint ||
-            shellHint ||
-            pasteSequenceHint
-          );
+          trimmedClipboard &&
+          clipboardSignals;
 
-        if (shouldBlockClipboard && shouldThrottleClipboardBlock(clipboardText)) {
+        if (shouldBlockClipboard && shouldThrottleClipboardBlock(trimmedClipboard)) {
           return;
         }
 
         let blockedClipboardText = "";
         if (shouldBlockClipboard) {
-          setClipboardBlock(clipboardText);
+          setClipboardBlock(trimmedClipboard);
           if (saveClipboardBackup) {
-            blockedClipboardText = clipboardText;
+            blockedClipboardText = trimmedClipboard;
             await addClipboardBackupEntry({
-              text: clipboardText,
+              text: trimmedClipboard,
               url: message.url,
               malicious: true
             });
@@ -1096,16 +1118,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           timestamp: message.timestamp,
           mismatch,
           commandMatch,
-          winRHint,
-          winXHint,
-          browserErrorHint,
-          fixActionHint,
-          captchaHint,
-          consoleHint,
-          shellHint,
-          pasteSequenceHint,
-          fileExplorerHint,
-          copyTriggerHint,
+          winRHint: false,
+          winXHint: false,
+          browserErrorHint: false,
+          fixActionHint: false,
+          captchaHint: false,
+          consoleHint: false,
+          shellHint: false,
+          pasteSequenceHint: false,
+          fileExplorerHint: false,
+          copyTriggerHint: false,
           evasionHint,
           snippets,
           clipboardWarning: clipboardWarningOnly,
@@ -1115,7 +1137,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           previousUrl: message.previousUrl || "",
           tabId: sender?.tab?.id ?? null,
           incrementBlockCount: true,
-          reportHostname: !clipboardOnlyReport
+          reportHostname: true
         });
 
         if (blockedClipboardText && notificationId) {

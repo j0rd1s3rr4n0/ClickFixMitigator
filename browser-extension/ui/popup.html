@@ -6,66 +6,124 @@
     <title>ClickFix Mitigator</title>
     <link rel="stylesheet" href="style.css" />
   </head>
-  <body>
-    <header>
-      <h1 data-i18n="popupTitle">ClickFix Mitigator</h1>
-      <label class="toggle">
-        <input id="toggle-enabled" type="checkbox" />
-        <span data-i18n="popupDetectionActive">Detección activa</span>
-      </label>
-      <label class="toggle">
-        <input id="toggle-block-all" type="checkbox" />
-        <span data-i18n="optionsBlockAllClipboard">Bloquear todo el copiado por JavaScript</span>
-      </label>
-    </header>
+  <body class="popup">
+    <div class="shell">
+      <header class="hero">
+        <div class="hero-top">
+          <div class="brand">
+            <div class="brand-mark">
+              <img src="../icons/icon-48.png" alt="ClickFix Mitigator" />
+            </div>
+            <div class="brand-text">
+              <h1 data-i18n="popupTitle">ClickFix Mitigator</h1>
+              <p class="muted" data-i18n="popupRecentAlerts">Alertas recientes</p>
+            </div>
+          </div>
+          <span id="allowlist-status" class="pill" data-i18n="popupWhitelistTitle" hidden>Lista blanca</span>
+        </div>
+        <div class="toggle-group">
+          <label class="toggle">
+            <span class="toggle-copy">
+              <span class="toggle-text" data-i18n="popupDetectionActive">Detección activa</span>
+              <span class="toggle-subtext" data-i18n="popupDetectionActiveHint">Analiza instrucciones de pegado y comandos sospechosos.</span>
+            </span>
+            <input id="toggle-enabled" type="checkbox" />
+          </label>
+          <label class="toggle">
+            <span class="toggle-copy">
+              <span class="toggle-text" data-i18n="optionsBlockAllClipboard">Bloquear todo el copiado por JavaScript</span>
+              <span class="toggle-subtext" data-i18n="popupBlockAllHint">Impide que las webs escriban en el portapapeles.</span>
+            </span>
+            <input id="toggle-block-all" type="checkbox" />
+          </label>
+          <label class="toggle toggle-danger">
+            <span class="toggle-copy">
+              <span class="toggle-text" data-i18n="popupFamilySafeTitle">Modo FamilySafe</span>
+              <span class="toggle-subtext" data-i18n="popupFamilySafeHint">Bloquea el acceso sin opciones de permitir.</span>
+            </span>
+            <input id="toggle-family-safe" type="checkbox" />
+          </label>
+          <label class="toggle">
+            <span class="toggle-copy">
+              <span class="toggle-text" data-i18n="popupMuteNotificationsTitle">Silenciar notificaciones</span>
+              <span class="toggle-subtext" data-i18n="popupMuteNotificationsHint">Evita alertas del sistema y banners de detección.</span>
+            </span>
+            <input id="toggle-mute-notifications" type="checkbox" />
+          </label>
+        </div>
+      </header>
 
-    <section>
-      <h2 data-i18n="popupWhitelistTitle">Lista blanca</h2>
-      <div class="row">
-        <input id="whitelist-input" type="text" placeholder="ejemplo.com" data-i18n-placeholder="popupWhitelistPlaceholder" />
-        <button id="add-domain" type="button" data-i18n="popupAdd">Agregar</button>
-      </div>
-      <ul id="whitelist-list"></ul>
-    </section>
+      <section class="card">
+        <div class="section-head">
+          <h2 data-i18n="popupWhitelistTitle">Lista blanca</h2>
+        </div>
+        <div class="row">
+          <input id="whitelist-input" type="text" placeholder="ejemplo.com" data-i18n-placeholder="popupWhitelistPlaceholder" />
+          <button id="add-domain" type="button" data-i18n="popupAdd">Agregar</button>
+        </div>
+        <ul id="whitelist-list" class="list"></ul>
+      </section>
 
-    <section>
-      <h2 data-i18n="popupRecentAlerts">Alertas recientes</h2>
-      <div id="history"></div>
-      <button id="clear-history" type="button" class="secondary" data-i18n="popupClearHistory">Limpiar historial</button>
-    </section>
+      <section class="card">
+        <div class="section-head">
+          <h2 data-i18n="popupRecentAlerts">Alertas recientes</h2>
+          <button id="clear-history" type="button" class="ghost" data-i18n="popupClearHistory">Limpiar historial</button>
+        </div>
+        <div id="history"></div>
+      </section>
 
-    <section>
-      <h2 data-i18n="popupClipboardTitle">Historial de portapapeles</h2>
-      <div id="clipboard-history"></div>
-      <button id="clear-clipboard-history" type="button" class="secondary" data-i18n="popupClipboardClear">Limpiar portapapeles</button>
-    </section>
+      <section class="card">
+        <div class="section-head">
+          <h2 data-i18n="popupClipboardTitle">Historial de portapapeles</h2>
+          <button id="clear-clipboard-history" type="button" class="ghost" data-i18n="popupClipboardClear">Limpiar portapapeles</button>
+        </div>
+        <div id="clipboard-history"></div>
+      </section>
 
-    <section>
-      <h2 data-i18n="popupReportTitle">Reportar sitio</h2>
-      <p class="hint" data-i18n="popupReportHint">Envía un reporte manual para bloquear un dominio específico.</p>
-      <div class="row">
-        <input id="report-input" type="text" placeholder="https://sitio-ejemplo.com" data-i18n-placeholder="popupReportPlaceholder" />
-        <button id="report-site" type="button" data-i18n="popupReportButton">Reportar</button>
-      </div>
-      <div id="report-status" class="hint"></div>
-    </section>
+      <section class="card">
+        <div class="section-head">
+          <h2 data-i18n="popupReportTitle">Reportar sitio</h2>
+        </div>
+        <p class="hint" data-i18n="popupReportHint">Envía un reporte manual para bloquear un dominio específico.</p>
+        <div class="row">
+          <input id="report-input" type="text" placeholder="https://sitio-ejemplo.com" data-i18n-placeholder="popupReportPlaceholder" />
+          <button id="report-site" type="button" data-i18n="popupReportButton">Reportar</button>
+        </div>
+        <div id="report-status" class="hint"></div>
+      </section>
 
-    <section>
-      <h2 data-i18n="languageTitle">Idioma</h2>
-      <div class="row">
-        <select id="language-select">
-          <option value="es" data-i18n="languageSpanish">Español</option>
-          <option value="en" data-i18n="languageEnglish">English</option>
-          <option value="de" data-i18n="languageGerman">Deutsch</option>
-          <option value="fr" data-i18n="languageFrench">Français</option>
-          <option value="nl" data-i18n="languageDutch">Nederlands</option>
-        </select>
-      </div>
-    </section>
+      <section class="card">
+        <div class="section-head">
+          <h2 data-i18n="languageTitle">Idioma</h2>
+        </div>
+        <div class="row">
+          <select id="language-select">
+            <option value="es" data-i18n="languageSpanish">Español</option>
+            <option value="en" data-i18n="languageEnglish">English</option>
+            <option value="de" data-i18n="languageGerman">Deutsch</option>
+            <option value="fr" data-i18n="languageFrench">Français</option>
+            <option value="nl" data-i18n="languageDutch">Nederlands</option>
+          </select>
+        </div>
+      </section>
 
-    <footer>
-      <a href="options.html" target="_blank" rel="noreferrer" data-i18n="popupOptionsLink">Opciones avanzadas</a>
-    </footer>
+      <section class="card">
+        <div class="section-head">
+          <h2 data-i18n="themeTitle">Tema</h2>
+        </div>
+        <div class="row">
+          <select id="theme-select">
+            <option value="system" data-i18n="themeSystem">Sistema</option>
+            <option value="light" data-i18n="themeLight">Claro</option>
+            <option value="dark" data-i18n="themeDark">Oscuro</option>
+          </select>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <a href="options.html" target="_blank" rel="noreferrer" data-i18n="popupOptionsLink">Opciones avanzadas</a>
+      </footer>
+    </div>
 
     <script src="popup.js"></script>
   </body>

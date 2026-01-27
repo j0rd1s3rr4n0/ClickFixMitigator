@@ -8,6 +8,9 @@
   "bannerTitle": {
     "message": "ClickFix Mitigator-waarschuwing"
   },
+  "clipboardThreatWarning": {
+    "message": "Security: This page tried to copy a potentially dangerous command. Do not paste this into a terminal. It can harm your system."
+  },
   "closeButton": {
     "message": "Sluiten"
   },
@@ -301,5 +304,44 @@
   },
   "languageDutch": {
     "message": "Nederlands"
+  },
+  "popupDetectionActiveHint": {
+    "message": "Bewaakt copy/paste-lokmiddelen en opdrachtpatronen."
+  },
+  "popupBlockAllHint": {
+    "message": "Voorkomt dat pagina's naar het klembord schrijven."
+  },
+  "popupFamilySafeTitle": {
+    "message": "FamilySafe-modus"
+  },
+  "popupFamilySafeHint": {
+    "message": "Blokkeert toegang zonder omzeiling."
+  },
+  "optionsFamilySafe": {
+    "message": "FamilySafe-modus (geen omzeiling)"
+  },
+  "blockedFamilySafeNotice": {
+    "message": "FamilySafe is ingeschakeld. Deze site blijft geblokkeerd ter bescherming."
+  },
+  "themeTitle": {
+    "message": "Thema"
+  },
+  "themeSystem": {
+    "message": "Systeem"
+  },
+  "themeLight": {
+    "message": "Licht"
+  },
+  "themeDark": {
+    "message": "Donker"
+  },
+  "popupMuteNotificationsTitle": {
+    "message": "Meldingen dempen"
+  },
+  "popupMuteNotificationsHint": {
+    "message": "Onderdrukt systeemmeldingen en detectiebanners."
+  },
+  "optionsMuteNotifications": {
+    "message": "Detectiemeldingen dempen"
   }
 }

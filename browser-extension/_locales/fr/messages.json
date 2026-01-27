@@ -8,6 +8,9 @@
   "bannerTitle": {
     "message": "Alerte ClickFix Mitigator"
   },
+  "clipboardThreatWarning": {
+    "message": "Security: This page tried to copy a potentially dangerous command. Do not paste this into a terminal. It can harm your system."
+  },
   "closeButton": {
     "message": "Fermer"
   },
@@ -301,5 +304,44 @@
   },
   "languageDutch": {
     "message": "Néerlandais"
+  },
+  "popupDetectionActiveHint": {
+    "message": "Surveille les leurres de copie/colle et les motifs de commandes."
+  },
+  "popupBlockAllHint": {
+    "message": "Empeche les sites d'ecrire dans le presse-papiers."
+  },
+  "popupFamilySafeTitle": {
+    "message": "Mode FamilySafe"
+  },
+  "popupFamilySafeHint": {
+    "message": "Bloque l'acces sans option de contournement."
+  },
+  "optionsFamilySafe": {
+    "message": "Mode FamilySafe (sans contournement)"
+  },
+  "blockedFamilySafeNotice": {
+    "message": "FamilySafe est active. Ce site reste bloque pour proteger l'appareil."
+  },
+  "themeTitle": {
+    "message": "Th?me"
+  },
+  "themeSystem": {
+    "message": "Syst?me"
+  },
+  "themeLight": {
+    "message": "Clair"
+  },
+  "themeDark": {
+    "message": "Sombre"
+  },
+  "popupMuteNotificationsTitle": {
+    "message": "Couper les notifications"
+  },
+  "popupMuteNotificationsHint": {
+    "message": "D?sactive les alertes syst?me et banni?res de d?tection."
+  },
+  "optionsMuteNotifications": {
+    "message": "Couper les notifications de d?tection"
   }
 }

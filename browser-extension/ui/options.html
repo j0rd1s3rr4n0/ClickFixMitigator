@@ -23,6 +23,14 @@
         <span data-i18n="optionsBlockAllClipboard">Bloquear todo el copiado por JavaScript</span>
       </label>
       <label class="toggle">
+        <input id="toggle-family-safe" type="checkbox" />
+        <span data-i18n="optionsFamilySafe">Modo FamilySafe (sin permitir acceso)</span>
+      </label>
+      <label class="toggle">
+        <input id="toggle-mute-notifications" type="checkbox" />
+        <span data-i18n="optionsMuteNotifications">Silenciar notificaciones de detección</span>
+      </label>
+      <label class="toggle">
         <input id="toggle-clipboard-backup" type="checkbox" />
         <span data-i18n="optionsClipboardBackup">Guardar respaldo del portapapeles</span>
       </label>
@@ -41,6 +49,17 @@
           <option value="de" data-i18n="languageGerman">Deutsch</option>
           <option value="fr" data-i18n="languageFrench">Français</option>
           <option value="nl" data-i18n="languageDutch">Nederlands</option>
+        </select>
+      </div>
+    </section>
+
+    <section>
+      <h2 data-i18n="themeTitle">Tema</h2>
+      <div class="row">
+        <select id="theme-select">
+          <option value="system" data-i18n="themeSystem">Sistema</option>
+          <option value="light" data-i18n="themeLight">Claro</option>
+          <option value="dark" data-i18n="themeDark">Oscuro</option>
         </select>
       </div>
     </section>

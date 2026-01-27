@@ -8,6 +8,9 @@
   "bannerTitle": {
     "message": "Alerta de ClickFix Mitigator"
   },
+  "clipboardThreatWarning": {
+    "message": "Seguridad: esta pagina intento copiar un comando potencialmente peligroso. No pegues esto en la terminal. Puede danar tu sistema."
+  },
   "closeButton": {
     "message": "Cerrar"
   },
@@ -57,6 +60,9 @@
   },
   "blockedReported": {
     "message": "Reportado"
+  },
+  "blockedFamilySafeNotice": {
+    "message": "FamilySafe esta activo. Este sitio permanece bloqueado para proteger el equipo."
   },
   "blockedHost": {
     "message": "Sitio: $1",
@@ -307,5 +313,41 @@
   },
   "languageDutch": {
     "message": "Neerlandés"
+  },
+  "popupDetectionActiveHint": {
+    "message": "Monitorea lures de copiado/pegado y patrones de comandos."
+  },
+  "popupBlockAllHint": {
+    "message": "Evita que las webs escriban en el portapapeles."
+  },
+  "popupFamilySafeTitle": {
+    "message": "Modo FamilySafe"
+  },
+  "popupFamilySafeHint": {
+    "message": "Bloquea el acceso sin opciones para permitir."
+  },
+  "optionsFamilySafe": {
+    "message": "Modo FamilySafe (sin permitir acceso)"
+  },
+  "themeTitle": {
+    "message": "Tema"
+  },
+  "themeSystem": {
+    "message": "Sistema"
+  },
+  "themeLight": {
+    "message": "Claro"
+  },
+  "themeDark": {
+    "message": "Oscuro"
+  },
+  "popupMuteNotificationsTitle": {
+    "message": "Silenciar notificaciones"
+  },
+  "popupMuteNotificationsHint": {
+    "message": "Evita alertas del sistema y banners de detecci?n."
+  },
+  "optionsMuteNotifications": {
+    "message": "Silenciar notificaciones de detecci?n"
   }
 }

@@ -8,6 +8,9 @@
   "bannerTitle": {
     "message": "ClickFix Mitigator Alert"
   },
+  "clipboardThreatWarning": {
+    "message": "Security: This page tried to copy a potentially dangerous command. Do not paste this into a terminal. It can harm your system."
+  },
   "closeButton": {
     "message": "Close"
   },
@@ -57,6 +60,9 @@
   },
   "blockedReported": {
     "message": "Reported"
+  },
+  "blockedFamilySafeNotice": {
+    "message": "FamilySafe is enabled. This site stays blocked to protect this device."
   },
   "blockedHost": {
     "message": "Site: $1",
@@ -153,8 +159,20 @@
   "popupDetectionActive": {
     "message": "Detection active"
   },
+  "popupDetectionActiveHint": {
+    "message": "Monitors copy/paste lures and command patterns."
+  },
   "popupAllowlistActive": {
     "message": "Allowlist active"
+  },
+  "popupBlockAllHint": {
+    "message": "Prevents pages from writing to your clipboard."
+  },
+  "popupFamilySafeTitle": {
+    "message": "FamilySafe mode"
+  },
+  "popupFamilySafeHint": {
+    "message": "Blocks access with no bypass options."
   },
   "popupWhitelistTitle": {
     "message": "Allowlist"
@@ -233,6 +251,9 @@
   "optionsBlockAllClipboard": {
     "message": "Block all JavaScript clipboard copying"
   },
+  "optionsFamilySafe": {
+    "message": "FamilySafe mode (no bypass)"
+  },
   "optionsClipboardBackup": {
     "message": "Keep previous clipboard backup"
   },
@@ -307,5 +328,26 @@
   },
   "languageDutch": {
     "message": "Dutch"
+  },
+  "themeTitle": {
+    "message": "Theme"
+  },
+  "themeSystem": {
+    "message": "System"
+  },
+  "themeLight": {
+    "message": "Light"
+  },
+  "themeDark": {
+    "message": "Dark"
+  },
+  "popupMuteNotificationsTitle": {
+    "message": "Mute detection notifications"
+  },
+  "popupMuteNotificationsHint": {
+    "message": "Suppresses system alerts and detection banners."
+  },
+  "optionsMuteNotifications": {
+    "message": "Mute detection notifications"
   }
 }

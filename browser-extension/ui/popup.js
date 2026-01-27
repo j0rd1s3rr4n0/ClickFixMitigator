@@ -1,12 +1,17 @@
 const DEFAULT_SETTINGS = {
   enabled: true,
   blockAllClipboard: false,
+  familySafe: false,
+  uiTheme: "system",
+  muteDetectionNotifications: false,
   whitelist: [],
   history: []
 };
 
 const toggleEnabled = document.getElementById("toggle-enabled");
 const toggleBlockAll = document.getElementById("toggle-block-all");
+const toggleFamilySafe = document.getElementById("toggle-family-safe");
+const toggleMuteNotifications = document.getElementById("toggle-mute-notifications");
 const whitelistInput = document.getElementById("whitelist-input");
 const addDomainButton = document.getElementById("add-domain");
 const whitelistList = document.getElementById("whitelist-list");
@@ -18,6 +23,7 @@ const reportInput = document.getElementById("report-input");
 const reportButton = document.getElementById("report-site");
 const reportStatus = document.getElementById("report-status");
 const languageSelect = document.getElementById("language-select");
+const themeSelect = document.getElementById("theme-select");
 const allowlistStatus = document.getElementById("allowlist-status");
 
 const SUPPORTED_LOCALES = ["en", "es", "de", "fr", "nl"];
@@ -133,11 +139,42 @@ async function initLanguageSelector() {
   });
 }
 
+function normalizeTheme(value) {
+  return value === "dark" || value === "light" ? value : "system";
+}
+
+function applyTheme(value) {
+  const theme = normalizeTheme(value);
+  if (theme === "system") {
+    document.documentElement.removeAttribute("data-theme");
+  } else {
+    document.documentElement.dataset.theme = theme;
+  }
+  return theme;
+}
+
+async function initThemeSelector() {
+  if (!themeSelect) {
+    return;
+  }
+  const { uiTheme } = await chrome.storage.local.get({ uiTheme: "system" });
+  const selectedTheme = applyTheme(uiTheme);
+  themeSelect.value = selectedTheme;
+  themeSelect.addEventListener("change", async () => {
+    const nextTheme = normalizeTheme(themeSelect.value);
+    await chrome.storage.local.set({ uiTheme: nextTheme });
+    applyTheme(nextTheme);
+  });
+}
+
 async function loadSettings() {
   const settings = await chrome.storage.local.get({ ...DEFAULT_SETTINGS, clipboardBackups: [] });
   return {
     enabled: settings.enabled ?? true,
     blockAllClipboard: settings.blockAllClipboard ?? false,
+    familySafe: settings.familySafe ?? false,
+    uiTheme: settings.uiTheme ?? "system",
+    muteDetectionNotifications: settings.muteDetectionNotifications ?? false,
     whitelist: settings.whitelist ?? [],
     history: settings.history ?? [],
     clipboardBackups: settings.clipboardBackups ?? []
@@ -168,6 +205,7 @@ function renderWhitelist(domains) {
     item.appendChild(removeButton);
     whitelistList.appendChild(item);
   });
+  resizePopupToContent();
 }
 
 function renderHistory(history) {
@@ -175,6 +213,7 @@ function renderHistory(history) {
   if (!history.length) {
     historyContainer.textContent = t("optionsHistoryEmpty");
     historyContainer.classList.add("empty");
+    resizePopupToContent();
     return;
   }
 
@@ -186,6 +225,7 @@ function renderHistory(history) {
     card.innerHTML = `<strong>${entry.hostname}</strong><div>${entry.message}</div><small>${time}</small>`;
     historyContainer.appendChild(card);
   });
+  resizePopupToContent();
 }
 
 function renderClipboardHistory(entries) {
@@ -196,6 +236,7 @@ function renderClipboardHistory(entries) {
   if (!entries.length) {
     clipboardHistoryContainer.textContent = t("popupClipboardEmpty");
     clipboardHistoryContainer.classList.add("empty");
+    resizePopupToContent();
     return;
   }
   clipboardHistoryContainer.classList.remove("empty");
@@ -238,6 +279,22 @@ function renderClipboardHistory(entries) {
     }
     card.appendChild(actions);
     clipboardHistoryContainer.appendChild(card);
+  });
+  resizePopupToContent();
+}
+
+function resizePopupToContent() {
+  requestAnimationFrame(() => {
+    const height = Math.min(700, Math.max(360, document.documentElement.scrollHeight));
+    const contentWidth = Math.max(
+      document.documentElement.scrollWidth,
+      document.body.scrollWidth
+    );
+    const width = Math.min(520, Math.max(320, contentWidth));
+    document.documentElement.style.height = `${height}px`;
+    document.body.style.height = `${height}px`;
+    document.documentElement.style.width = `${width}px`;
+    document.body.style.width = `${width}px`;
   });
 }
 
@@ -295,6 +352,14 @@ toggleBlockAll?.addEventListener("change", async () => {
   await chrome.storage.local.set({ blockAllClipboard: toggleBlockAll.checked });
 });
 
+toggleFamilySafe?.addEventListener("change", async () => {
+  await chrome.storage.local.set({ familySafe: toggleFamilySafe.checked });
+});
+
+toggleMuteNotifications?.addEventListener("change", async () => {
+  await chrome.storage.local.set({ muteDetectionNotifications: toggleMuteNotifications.checked });
+});
+
 async function reportSite(targetUrl) {
   if (!targetUrl) {
     reportStatus.textContent = t("popupReportStatusMissing");
@@ -333,13 +398,21 @@ reportButton.addEventListener("click", async () => {
 (async () => {
   removeDuplicateReportSections();
   await initLanguageSelector();
+  await initThemeSelector();
   const settings = await loadSettings();
   toggleEnabled.checked = settings.enabled;
   if (toggleBlockAll) {
     toggleBlockAll.checked = settings.blockAllClipboard;
   }
+  if (toggleFamilySafe) {
+    toggleFamilySafe.checked = settings.familySafe;
+  }
+  if (toggleMuteNotifications) {
+    toggleMuteNotifications.checked = settings.muteDetectionNotifications;
+  }
   renderWhitelist(settings.whitelist);
   renderHistory(settings.history);
   renderClipboardHistory(settings.clipboardBackups);
   await updateAllowlistStatus();
+  resizePopupToContent();
 })();

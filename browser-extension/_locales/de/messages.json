@@ -8,6 +8,9 @@
   "bannerTitle": {
     "message": "ClickFix Mitigator Warnung"
   },
+  "clipboardThreatWarning": {
+    "message": "Security: This page tried to copy a potentially dangerous command. Do not paste this into a terminal. It can harm your system."
+  },
   "closeButton": {
     "message": "Schließen"
   },
@@ -301,5 +304,44 @@
   },
   "languageDutch": {
     "message": "Niederländisch"
+  },
+  "popupDetectionActiveHint": {
+    "message": "Ueberwacht Copy/Paste-Lures und Befehlsmuster."
+  },
+  "popupBlockAllHint": {
+    "message": "Verhindert, dass Seiten in die Zwischenablage schreiben."
+  },
+  "popupFamilySafeTitle": {
+    "message": "FamilySafe-Modus"
+  },
+  "popupFamilySafeHint": {
+    "message": "Blockiert Zugriff ohne Umgehung."
+  },
+  "optionsFamilySafe": {
+    "message": "FamilySafe-Modus (keine Umgehung)"
+  },
+  "blockedFamilySafeNotice": {
+    "message": "FamilySafe ist aktiv. Diese Seite bleibt zum Schutz blockiert."
+  },
+  "themeTitle": {
+    "message": "Thema"
+  },
+  "themeSystem": {
+    "message": "System"
+  },
+  "themeLight": {
+    "message": "Hell"
+  },
+  "themeDark": {
+    "message": "Dunkel"
+  },
+  "popupMuteNotificationsTitle": {
+    "message": "Benachrichtigungen stummschalten"
+  },
+  "popupMuteNotificationsHint": {
+    "message": "Unterdr?ckt Systemwarnungen und Erkennungsbanner."
+  },
+  "optionsMuteNotifications": {
+    "message": "Erkennungsbenachrichtigungen stummschalten"
   }
 }
