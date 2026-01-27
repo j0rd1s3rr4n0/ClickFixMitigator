@@ -10,8 +10,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 
 
-DEFAULT_PAGE_TIMEOUT = 120
-DEFAULT_WAIT_CLOSE = 60
+DEFAULT_PAGE_TIMEOUT = 60
+DEFAULT_WAIT_CLOSE = 15
 DEFAULT_BETWEEN_CLICKS = 3.25
 DEFAULT_BUTTON_TIMEOUT = 10.0
 DEFAULT_POST_LOAD_WAIT = 10.5
@@ -115,6 +115,9 @@ def build_driver(
     if not headful:
         pass # options.add_argument("--headless=new")
     # options.add_argument("--disable-gpu")
+    options.add_argument("--no-first-run")
+    options.add_argument("--no-default-browser-check")
+    options.add_argument("--remote-debugging-port=0")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1280,800")
@@ -339,41 +342,73 @@ def main() -> int:
         return 1
 
     profile_dir = Path(args.profile_dir) if args.profile_dir else None
-    driver = init_driver(
-        args.headful,
-        profile_dir,
-        args.extension,
-        args.lang,
-        args.accept_languages,
-        args.page_timeout,
-    )
+    try:
+        driver = init_driver(
+            args.headful,
+            profile_dir,
+            args.extension,
+            args.lang,
+            args.accept_languages,
+            args.page_timeout,
+        )
+    except WebDriverException as error:
+        fallback_dir = None
+        if profile_dir is not None:
+            stamp = time.strftime("%Y%m%d-%H%M%S")
+            fallback_dir = profile_dir / f"runtime-{stamp}"
+            print(f"[WARN] Chrome failed to start. Retrying with fresh profile: {fallback_dir}")
+        if fallback_dir is None:
+            raise
+        driver = init_driver(
+            args.headful,
+            fallback_dir,
+            args.extension,
+            args.lang,
+            args.accept_languages,
+            args.page_timeout,
+        )
+        profile_dir = fallback_dir
     try:
         print("[*] Initialized BotAnalyzer")
         time.sleep(30)
-        for url in urls:
-            print(f"[OPEN] {url}")
-            try:
+        try:
+            for url in urls:
+                print(f"[OPEN] {url}")
                 try:
-                    driver.get(url)
-                except WebDriverException:
-                    print(f"[TIMEOUT] {url}")
-                wait_for_dom_ready(driver, args.page_timeout)
-                if args.post_load_wait:
-                    time.sleep(args.post_load_wait)
-                found = wait_for_buttons(driver, args.button_timeout)
-                if found:
-                    print(f"[BUTTONS] {found} detected after JS load")
-                clicked = click_clickables_in_frames(driver, args.between_clicks)
-                print(f"[CLICKED] {clicked} buttons")
-                closed = wait_for_close(driver, args.wait_close)
-                if not closed:
                     try:
-                        driver.close()
+                        driver.get(url)
                     except WebDriverException:
-                        pass
+                        print(f"[TIMEOUT] {url}")
+                    wait_for_dom_ready(driver, args.page_timeout)
+                    if args.post_load_wait:
+                        time.sleep(args.post_load_wait)
+                    found = wait_for_buttons(driver, args.button_timeout)
+                    if found:
+                        print(f"[BUTTONS] {found} detected after JS load")
+                    clicked = click_clickables_in_frames(driver, args.between_clicks)
+                    print(f"[CLICKED] {clicked} buttons")
+                    closed = wait_for_close(driver, args.wait_close)
+                    if not closed:
+                        try:
+                            driver.close()
+                        except WebDriverException:
+                            pass
+                        try:
+                            driver.switch_to.window(driver.window_handles[0])
+                        except WebDriverException:
+                            driver = reset_driver(
+                                driver,
+                                args.headful,
+                                profile_dir,
+                                args.extension,
+                                args.lang,
+                                args.accept_languages,
+                                args.page_timeout,
+                            )
+                except Exception as error:
+                    error_type = type(error).__name__
+                    print(f"[ERROR] {url} -> {error_type}: {error}")
                     try:
-                        driver.switch_to.window(driver.window_handles[0])
-                    except WebDriverException:
                         driver = reset_driver(
                             driver,
                             args.headful,
@@ -383,26 +418,16 @@ def main() -> int:
                             args.accept_languages,
                             args.page_timeout,
                         )
-            except Exception as error:
-                error_type = type(error).__name__
-                print(f"[ERROR] {url} -> {error_type}: {error}")
-                try:
-                    driver = reset_driver(
-                        driver,
-                        args.headful,
-                        profile_dir,
-                        args.extension,
-                        args.lang,
-                        args.accept_languages,
-                        args.page_timeout,
-                    )
-                except Exception as reset_error:
-                    reset_type = type(reset_error).__name__
-                    print(f"[FATAL] driver reset failed ({reset_type}): {reset_error}")
-                    return 1
-            finally:
-                append_line(done_path, url)
-                remove_url_from_file(urls_path, url)
+                    except Exception as reset_error:
+                        reset_type = type(reset_error).__name__
+                        print(f"[FATAL] driver reset failed ({reset_type}): {reset_error}")
+                        return 1
+                finally:
+                    append_line(done_path, url)
+                    remove_url_from_file(urls_path, url)
+        except KeyboardInterrupt:
+            print("[CTRL+C] Exit requested. Stopping after current URL.")
+            return 0
     finally:
         try:
             driver.quit()
