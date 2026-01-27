@@ -12,10 +12,11 @@ from selenium.webdriver.common.by import By
 
 DEFAULT_PAGE_TIMEOUT = 60
 DEFAULT_WAIT_CLOSE = 15
-DEFAULT_BETWEEN_CLICKS = 3.25
+DEFAULT_BETWEEN_CLICKS = 1.25
 DEFAULT_BUTTON_TIMEOUT = 10.0
 DEFAULT_POST_LOAD_WAIT = 10.5
 DEFAULT_MAX_FRAME_DEPTH = 5
+DEFAULT_MAX_DIV_CLICKS = 1000
 
 BUTTON_SELECTORS = [
     (By.TAG_NAME, "button"),
@@ -170,6 +171,59 @@ def reset_driver(
     return init_driver(headful, profile_dir, extensions, lang, accept_languages, page_timeout)
 
 
+def clear_browser_state(driver: webdriver.Chrome) -> None:
+    try:
+        driver.execute_cdp_cmd("Network.clearBrowserCache", {})
+    except WebDriverException:
+        pass
+    try:
+        driver.execute_cdp_cmd("Network.clearBrowserCookies", {})
+    except WebDriverException:
+        pass
+    try:
+        driver.execute_cdp_cmd("Page.resetNavigationHistory", {})
+    except WebDriverException:
+        pass
+
+
+def collect_div_clickables(driver: webdriver.Chrome, limit: int = DEFAULT_MAX_DIV_CLICKS) -> list:
+    script = """
+    const max = arguments[0];
+    const results = [];
+    const tokenRegex = /(captcha|verify|check)/i;
+    const isVisible = (el) => {
+      const style = getComputedStyle(el);
+      if (style.visibility === "hidden" || style.display === "none") return false;
+      const rect = el.getBoundingClientRect();
+      if (rect.width < 8 || rect.height < 8) return false;
+      if (el.offsetParent) return true;
+      return style.position === "fixed";
+    };
+    const nodes = document.querySelectorAll("div");
+    for (const el of nodes) {
+      if (results.length >= max) break;
+      if (!isVisible(el)) continue;
+      const role = (el.getAttribute("role") || "").toLowerCase();
+      const tabIndex = el.tabIndex ?? -1;
+      const label = (el.getAttribute("aria-label") || "").toLowerCase();
+      const text = (el.className || "") + " " + (el.id || "") + " " + label;
+      if (role === "button" || el.onclick || el.getAttribute("onclick") || tabIndex >= 0 || tokenRegex.test(text)) {
+        results.push(el);
+        continue;
+      }
+      const cursor = getComputedStyle(el).cursor;
+      if (cursor === "pointer") {
+        results.push(el);
+      }
+    }
+    return results;
+    """
+    try:
+        return list(driver.execute_script(script, int(limit)))
+    except WebDriverException:
+        return []
+
+
 def collect_clickables(driver: webdriver.Chrome) -> list:
     elements = []
     for by, selector in BUTTON_SELECTORS + CLEANUP_CAPTCHA_SELECTORS:
@@ -177,6 +231,7 @@ def collect_clickables(driver: webdriver.Chrome) -> list:
             elements.extend(driver.find_elements(by, selector))
         except WebDriverException:
             continue
+    elements.extend(collect_div_clickables(driver))
     return elements
 
 
@@ -368,6 +423,11 @@ def main() -> int:
             args.page_timeout,
         )
         profile_dir = fallback_dir
+    main_window = None
+    try:
+        main_window = driver.current_window_handle
+    except WebDriverException:
+        main_window = None
     try:
         print("[*] Initialized BotAnalyzer")
         time.sleep(30)
@@ -388,14 +448,18 @@ def main() -> int:
                     clicked = click_clickables_in_frames(driver, args.between_clicks)
                     print(f"[CLICKED] {clicked} buttons")
                     closed = wait_for_close(driver, args.wait_close)
-                    if not closed:
+                    if closed:
                         try:
-                            driver.close()
+                            handles = driver.window_handles
                         except WebDriverException:
-                            pass
-                        try:
-                            driver.switch_to.window(driver.window_handles[0])
-                        except WebDriverException:
+                            handles = []
+                        if handles:
+                            if main_window in handles:
+                                driver.switch_to.window(main_window)
+                            else:
+                                main_window = handles[0]
+                                driver.switch_to.window(main_window)
+                        else:
                             driver = reset_driver(
                                 driver,
                                 args.headful,
@@ -405,6 +469,18 @@ def main() -> int:
                                 args.accept_languages,
                                 args.page_timeout,
                             )
+                            main_window = driver.current_window_handle
+                    else:
+                        try:
+                            handles = driver.window_handles
+                        except WebDriverException:
+                            handles = []
+                        if handles:
+                            if main_window in handles:
+                                driver.switch_to.window(main_window)
+                            else:
+                                main_window = handles[0]
+                                driver.switch_to.window(main_window)
                 except Exception as error:
                     error_type = type(error).__name__
                     print(f"[ERROR] {url} -> {error_type}: {error}")
@@ -418,6 +494,7 @@ def main() -> int:
                             args.accept_languages,
                             args.page_timeout,
                         )
+                        main_window = driver.current_window_handle
                     except Exception as reset_error:
                         reset_type = type(reset_error).__name__
                         print(f"[FATAL] driver reset failed ({reset_type}): {reset_error}")
@@ -425,6 +502,7 @@ def main() -> int:
                 finally:
                     append_line(done_path, url)
                     remove_url_from_file(urls_path, url)
+                    clear_browser_state(driver)
         except KeyboardInterrupt:
             print("[CTRL+C] Exit requested. Stopping after current URL.")
             return 0
