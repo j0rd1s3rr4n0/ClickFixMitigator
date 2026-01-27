@@ -33,6 +33,12 @@ CREATE TABLE IF NOT EXISTS reports (
     full_context TEXT,
     signals_json TEXT,
     blocked INTEGER DEFAULT 0,
+    accepted INTEGER DEFAULT 0,
+    accepted_by INTEGER,
+    accepted_at TEXT,
+    review_status TEXT DEFAULT 'pending',
+    reviewed_by INTEGER,
+    reviewed_at TEXT,
     user_agent TEXT,
     ip TEXT,
     country TEXT
@@ -126,6 +132,24 @@ function ensureReportsSchema(PDO $pdo, string $debugFile): void
     }
     if (!isset($existing['blocked'])) {
         $updates[] = 'ALTER TABLE reports ADD COLUMN blocked INTEGER DEFAULT 0';
+    }
+    if (!isset($existing['accepted'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN accepted INTEGER DEFAULT 0';
+    }
+    if (!isset($existing['accepted_by'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN accepted_by INTEGER';
+    }
+    if (!isset($existing['accepted_at'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN accepted_at TEXT';
+    }
+    if (!isset($existing['review_status'])) {
+        $updates[] = "ALTER TABLE reports ADD COLUMN review_status TEXT DEFAULT 'pending'";
+    }
+    if (!isset($existing['reviewed_by'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN reviewed_by INTEGER';
+    }
+    if (!isset($existing['reviewed_at'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN reviewed_at TEXT';
     }
     if (!isset($existing['previous_url'])) {
         $updates[] = 'ALTER TABLE reports ADD COLUMN previous_url TEXT';

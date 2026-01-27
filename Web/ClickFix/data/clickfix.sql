@@ -9,6 +9,12 @@ CREATE TABLE IF NOT EXISTS reports (
     full_context TEXT,
     signals_json TEXT,
     blocked INTEGER DEFAULT 0,
+    accepted INTEGER DEFAULT 0,
+    accepted_by INTEGER,
+    accepted_at TEXT,
+    review_status TEXT DEFAULT 'pending',
+    reviewed_by INTEGER,
+    reviewed_at TEXT,
     user_agent TEXT,
     ip TEXT,
     country TEXT
