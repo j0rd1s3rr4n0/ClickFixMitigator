@@ -1,0 +1,6 @@
+2026/01/27-12:16:52.197 8e8c Creating DB C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\IndexedDB\https_primaveraveiculos.com_0.indexeddb.leveldb since it was missing.
+2026/01/27-12:16:52.202 8e8c Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\IndexedDB\https_primaveraveiculos.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/01/27-12:16:52.209 17e8 Level-0 table #5: started
+2026/01/27-12:16:52.212 17e8 Level-0 table #5: 1303 bytes OK
+2026/01/27-12:16:52.213 17e8 Delete type=0 #3
+2026/01/27-12:16:52.213 8e8c Manual compaction at level-0 from '\x00\x01\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x02\x00\x00\x00' @ 0 : 0; will stop at (end)

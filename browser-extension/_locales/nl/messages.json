@@ -335,6 +335,15 @@
   "themeDark": {
     "message": "Donker"
   },
+  "linksTitle": {
+    "message": "Links"
+  },
+  "linksGithub": {
+    "message": "GitHub"
+  },
+  "linksChromeWebStore": {
+    "message": "Chrome Web Store"
+  },
   "popupMuteNotificationsTitle": {
     "message": "Meldingen dempen"
   },

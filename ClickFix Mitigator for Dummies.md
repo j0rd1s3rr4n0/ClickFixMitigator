@@ -1,5 +1,7 @@
 # ClickFix Mitigator for Dummies
 
+Revision: 2026-01-27
+
 Guía práctica para reconocer, detectar y prevenir ataques de ClickFix. La extensión y el agente son **apoyos**, no sustituyen el criterio humano ni las buenas prácticas.
 
 ## 1) Qué es ClickFix (en pocas palabras)

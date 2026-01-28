@@ -1,5 +1,7 @@
 # Reintegration Plan — Removed Features
 
+Last reviewed: 2026-01-27
+
 This plan reintroduces legacy features with minimal risk and maximal backward compatibility. Where a faithful restore conflicts with current architecture, an adapted approach is preferred.
 
 ## Prioritized Reintegration List

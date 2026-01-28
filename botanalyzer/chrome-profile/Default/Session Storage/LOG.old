@@ -1,3 +1,15 @@
-2026/01/27-11:27:32.631 2b38 Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\Session Storage/MANIFEST-000001
-2026/01/27-11:27:32.632 2b38 Recovering log #3
-2026/01/27-11:27:32.635 2b38 Reusing old log C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\Session Storage/000003.log 
+2026/01/28-08:28:46.210 c280 Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\Session Storage/MANIFEST-000001
+2026/01/28-08:28:46.211 c280 Recovering log #22
+2026/01/28-08:28:46.213 c280 Reusing old log C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\Session Storage/000022.log 
+2026/01/28-09:30:24.834 8428 Level-0 table #26: started
+2026/01/28-09:30:24.837 8428 Level-0 table #26: 12589 bytes OK
+2026/01/28-09:30:24.839 8428 Delete type=0 #22
+2026/01/28-09:30:24.840 8428 Compacting 4@0 + 1@1 files
+2026/01/28-09:30:24.847 8428 Generated table #27@0: 4104 keys, 135869 bytes
+2026/01/28-09:30:24.847 8428 Compacted 4@0 + 1@1 files => 135869 bytes
+2026/01/28-09:30:24.848 8428 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/01/28-09:30:24.849 8428 Delete type=2 #17
+2026/01/28-09:30:24.849 8428 Delete type=2 #19
+2026/01/28-09:30:24.849 8428 Delete type=2 #21
+2026/01/28-09:30:24.849 8428 Delete type=2 #23
+2026/01/28-09:30:24.849 8428 Delete type=2 #26

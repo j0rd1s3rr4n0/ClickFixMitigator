@@ -1,0 +1,18 @@
+2026/01/27-23:15:42.681 81f4 Creating DB C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\WebStorage\22\IndexedDB\indexeddb.leveldb since it was missing.
+2026/01/27-23:15:42.684 81f4 Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\WebStorage\22\IndexedDB\indexeddb.leveldb/MANIFEST-000001
+2026/01/27-23:15:42.691 8e10 Level-0 table #5: started
+2026/01/27-23:15:42.693 8e10 Level-0 table #5: 1298 bytes OK
+2026/01/27-23:15:42.694 8e10 Delete type=0 #3
+2026/01/27-23:15:42.694 8e10 Manual compaction at level-0 from '\x00\x01\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x02\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/27-23:15:58.520 b3f8 Level-0 table #7: started
+2026/01/27-23:15:58.521 b3f8 Level-0 table #7: 3104 bytes OK
+2026/01/27-23:15:58.522 b3f8 Delete type=0 #4
+2026/01/27-23:15:58.523 b3f8 Manual compaction at level-0 from (begin) .. (end); will stop at (end)
+2026/01/27-23:15:58.523 b3f8 Manual compaction at level-1 from (begin) .. (end); will stop at '\x00\x03\x00\x00\xc8\x18\x00f\x00i\x00r\x00e\x00b\x00a\x00s\x00e\x00-\x00h\x00e\x00a\x00r\x00t\x00b\x00e\x00a\x00t\x00-\x00s\x00t\x00o\x00r\x00e' @ 77 : 1
+2026/01/27-23:15:58.523 b3f8 Compacting 1@1 + 1@2 files
+2026/01/27-23:15:58.524 b3f8 Generated table #8@1: 34 keys, 2762 bytes
+2026/01/27-23:15:58.524 b3f8 Compacted 1@1 + 1@2 files => 2762 bytes
+2026/01/27-23:15:58.525 b3f8 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/01/27-23:15:58.525 b3f8 Delete type=2 #5
+2026/01/27-23:15:58.526 b3f8 Delete type=2 #7
+2026/01/27-23:15:58.526 b3f8 Manual compaction at level-1 from '\x00\x03\x00\x00\xc8\x18\x00f\x00i\x00r\x00e\x00b\x00a\x00s\x00e\x00-\x00h\x00e\x00a\x00r\x00t\x00b\x00e\x00a\x00t\x00-\x00s\x00t\x00o\x00r\x00e' @ 77 : 1 .. (end); will stop at (end)

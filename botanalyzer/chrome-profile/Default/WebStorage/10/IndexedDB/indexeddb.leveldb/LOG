@@ -1,0 +1,6 @@
+2026/01/27-12:51:57.789 6aa4 Creating DB C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\WebStorage\10\IndexedDB\indexeddb.leveldb since it was missing.
+2026/01/27-12:51:57.796 6aa4 Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\WebStorage\10\IndexedDB\indexeddb.leveldb/MANIFEST-000001
+2026/01/27-12:52:04.153 6aa4 Level-0 table #5: started
+2026/01/27-12:52:04.156 6aa4 Level-0 table #5: 29997 bytes OK
+2026/01/27-12:52:04.157 6aa4 Delete type=0 #3
+2026/01/27-12:52:04.158 6aa4 Manual compaction at level-0 from (begin) .. (end); will stop at (end)

@@ -1,3 +1,5 @@
+Actualizado: 2026-01-27
+
 Ficha de Play Store
 Idioma de edición actual
 Idioma

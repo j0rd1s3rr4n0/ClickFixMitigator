@@ -1,5 +1,7 @@
 # Testing Checklist
 
+Last updated: 2026-01-27
+
 This checklist covers end-to-end verification for the extension, Windows agent, and backend dashboard.
 
 ## Browser extension (MV3)
@@ -55,6 +57,17 @@ This checklist covers end-to-end verification for the extension, Windows agent, 
 - [ ] Confirm new entry appears in `dashboard.php`.
 - [ ] Validate accept/reject and appeal flows.
 - [ ] Trigger the intel cache refresh and confirm `intel-cache.json` updates.
+
+## Botanalyzer (optional)
+
+### Queue + output
+- [ ] Populate `botanalyzer/urls.txt` and run `python botanalyzer.py`.
+- [ ] Confirm each URL is printed, processed, and moved to `done.txt`.
+- [ ] Press Ctrl+C and verify a clean exit without stacktrace.
+
+### Interaction
+- [ ] Confirm buttons and captcha divs are clicked (including nested iframes).
+- [ ] Confirm cache/cookies/history are cleared between URLs.
 
 ## Legacy entrypoints (backward compatibility)
 

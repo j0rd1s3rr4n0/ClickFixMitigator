@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## Unreleased - 2026-01-27
+
+### Botanalyzer (Selenium)
+- `botanalyzer/botanalyzer.py`: Queue processing now prints each URL, moves processed entries from `urls.txt` to `done.txt`, and exits cleanly on Ctrl+C.
+- `botanalyzer/botanalyzer.py`: Driver lifecycle hardening (reset on errors, fallback to fresh profile) and Chrome startup stability flags.
+- `botanalyzer/botanalyzer.py`: Click targets expanded to captcha-check selectors and heuristic div clicks; nested iframe traversal for counts/clicks.
+- `botanalyzer/botanalyzer.py`: Keeps the main tab open (no forced tab close) and clears cache/cookies/history between URLs.
+- `botanalyzer/botanalyzer.py`: Auto-loads the repo `browser-extension/` when no extension is provided and forces Chrome developer mode.
+- `botanalyzer/explorar_to_urls.py`: New helper to append entries from `explorar.json` into `urls.txt` without duplicates.
+
+### Browser extension (core)
+- `browser-extension/content-script.js`: Iframe scan now walks nested frames (same-origin) for more accurate opaque iframe context.
+
+### Docs
+- Updated README and markdown docs to reflect Botanalyzer workflow and recent behavior changes.
+
 ## Unreleased - 2026-01-26
 
 ### Web dashboard (PHP)

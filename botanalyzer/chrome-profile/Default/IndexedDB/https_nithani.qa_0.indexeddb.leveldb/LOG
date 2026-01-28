@@ -1,0 +1,18 @@
+2026/01/27-22:05:02.428 81f4 Creating DB C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\IndexedDB\https_nithani.qa_0.indexeddb.leveldb since it was missing.
+2026/01/27-22:05:02.431 81f4 Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\IndexedDB\https_nithani.qa_0.indexeddb.leveldb/MANIFEST-000001
+2026/01/27-22:05:20.715 8e10 Level-0 table #5: started
+2026/01/27-22:05:20.717 8e10 Level-0 table #5: 565 bytes OK
+2026/01/27-22:05:20.718 8e10 Delete type=0 #3
+2026/01/27-22:05:20.718 81f4 Manual compaction at level-0 from '\x00\x01\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x02\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/27-22:05:22.721 b3f8 Level-0 table #7: started
+2026/01/27-22:05:22.722 b3f8 Level-0 table #7: 261 bytes OK
+2026/01/27-22:05:22.723 b3f8 Delete type=0 #4
+2026/01/27-22:05:22.723 b3f8 Manual compaction at level-0 from (begin) .. (end); will stop at (end)
+2026/01/27-22:05:22.723 b3f8 Manual compaction at level-1 from (begin) .. (end); will stop at '\x00\x00\x00\x002\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00' @ 21 : 0
+2026/01/27-22:05:22.723 b3f8 Compacting 1@1 + 1@2 files
+2026/01/27-22:05:22.725 b3f8 Generated table #8@1: 6 keys, 253 bytes
+2026/01/27-22:05:22.725 b3f8 Compacted 1@1 + 1@2 files => 253 bytes
+2026/01/27-22:05:22.726 b3f8 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/01/27-22:05:22.726 b3f8 Delete type=2 #5
+2026/01/27-22:05:22.726 b3f8 Delete type=2 #7
+2026/01/27-22:05:22.726 b3f8 Manual compaction at level-1 from '\x00\x00\x00\x002\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00' @ 21 : 0 .. (end); will stop at (end)

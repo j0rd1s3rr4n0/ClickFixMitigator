@@ -341,6 +341,15 @@
   "themeDark": {
     "message": "Oscuro"
   },
+  "linksTitle": {
+    "message": "Enlaces"
+  },
+  "linksGithub": {
+    "message": "GitHub"
+  },
+  "linksChromeWebStore": {
+    "message": "Chrome Web Store"
+  },
   "popupMuteNotificationsTitle": {
     "message": "Silenciar notificaciones"
   },

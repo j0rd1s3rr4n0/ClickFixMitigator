@@ -86,6 +86,7 @@ ClickFix campaigns weaponize trust and urgency. They lure users into executing c
 | Browser extension (MV3) | `browser-extension/` | Detects ClickFix patterns in browser context and monitors clipboard signals. |
 | Windows agent | `windows-agent/` | Observes clipboard changes, paste events, and command‑line activity. |
 | Backend + Dashboard | `Web/ClickFix/` | Receives reports, stores data in SQLite, and presents the operator UI. |
+| Botanalyzer (Selenium) | `botanalyzer/` | Automates URL visits and interaction in controlled environments. |
 | Demos / PoCs | `demo/` | Example pages to reproduce ClickFix patterns safely. |
 | Documentation | `docs/` | Feature ledger, notes, and legacy reintegration plan. |
 
@@ -119,6 +120,7 @@ ClickFix campaigns weaponize trust and urgency. They lure users into executing c
 browser-extension/   # MV3 extension code and demos
 windows-agent/       # Python agent, config, and setup
 Web/ClickFix/         # PHP backend + dashboard + SQLite data
+botanalyzer/          # Selenium automation helper
 assets/               # Illustration images
 demo/                 # Example ClickFix workflows
 docs/                 # Feature ledger and research notes
@@ -166,6 +168,15 @@ php -S 0.0.0.0:8000 -t /path/to/ClickFixMitigator
 ```
 
 Open: `http://localhost:8000/dashboard.php`
+
+### 4) Botanalyzer (optional, lab use)
+
+```powershell
+cd botanalyzer
+python botanalyzer.py
+```
+
+Botanalyzer reads `urls.txt`, visits each URL, and moves processed entries to `done.txt`. It also loads the repo extension by default when present.
 
 ---
 

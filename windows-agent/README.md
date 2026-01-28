@@ -1,5 +1,7 @@
 # Windows Agent - ClickFix Mitigator
 
+Revision: 2026-01-27
+
 Este agente de Windows monitoriza cambios del portapapeles, eventos de pegado y patrones típicos de ClickFix (Win + R, pegar y ejecutar).
 Incluye notificaciones tipo toast con detalles del proceso/ventana activa, y un icono en la bandeja del sistema para restaurar el portapapeles bloqueado.
 

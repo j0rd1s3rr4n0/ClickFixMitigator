@@ -1,5 +1,7 @@
 # Feature Ledger — ClickFix Mitigator
 
+Last reviewed: 2026-01-27
+
 This ledger inventories features across the repository history, including active, replaced, and removed capabilities. Evidence references commit hashes and/or current file locations.
 
 ## Legend
@@ -18,6 +20,14 @@ This ledger inventories features across the repository history, including active
 | FE-EXT-005 | Remote blocklist/allowlist | Fetches blocklist/allowlist and supports external sources. | Active | `f5780d1`, `464d694`; `browser-extension/background.js` | Depends on external endpoints. | Stable in HEAD. |
 | FE-EXT-006 | Report queue + dedupe | Queues reports and flushes on interval with dedupe window. | Active | `b2bed4a`; `browser-extension/background.js` | Depends on backend availability. | Stable in HEAD. |
 | FE-EXT-007 | Localization | Multi-language UI and message loading. | Active | `2330df7`, `2fdca66`; `browser-extension/_locales/` | Requires complete message coverage. | Stable in HEAD. |
+| FE-EXT-008 | Iframe context scan | Walks nested iframes (same-origin) to improve opaque iframe context reporting. | Active | `browser-extension/content-script.js` | Cross-origin frames remain opaque. | Stable in HEAD. |
+
+### Botanalyzer (Selenium)
+| ID | Feature | Description | Status | Evidence | Dependencies / Risks | Compatibility Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| FE-TOOL-001 | URL queue runner | Visits URLs from `urls.txt`, records progress in `done.txt`, and supports clean Ctrl+C exits. | Active | `botanalyzer/botanalyzer.py` | Requires Chrome + Selenium. | Stable in HEAD. |
+| FE-TOOL-002 | Click automation | Clicks buttons, captcha divs, and iframe-contained targets with heuristic div selection. | Active | `botanalyzer/botanalyzer.py` | May click unintended elements; use in lab. | Stable in HEAD. |
+| FE-TOOL-003 | Driver resilience | Auto-resets driver on errors and can fall back to fresh profiles. | Active | `botanalyzer/botanalyzer.py` | Profile reuse can still be brittle. | Stable in HEAD. |
 
 ### Backend + Dashboard (PHP + SQLite)
 | ID | Feature | Description | Status | Evidence | Dependencies / Risks | Compatibility Notes |

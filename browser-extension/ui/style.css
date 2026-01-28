@@ -490,6 +490,31 @@ li.empty,
   text-align: center;
 }
 
+.link-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.link-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--accent-strong);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.link-chip:hover {
+  background: var(--surface-alt);
+  color: var(--accent);
+}
+
 @media (max-width: 420px) {
   body.popup {
     min-width: 0;

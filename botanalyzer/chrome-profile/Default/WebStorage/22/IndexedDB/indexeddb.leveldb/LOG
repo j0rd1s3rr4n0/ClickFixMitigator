@@ -1,0 +1,50 @@
+2026/01/27-23:15:58.963 81f4 Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\WebStorage\22\IndexedDB\indexeddb.leveldb/MANIFEST-000001
+2026/01/27-23:15:58.963 81f4 Recovering log #6
+2026/01/27-23:15:58.963 81f4 Reusing old log C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\WebStorage\22\IndexedDB\indexeddb.leveldb/000006.log 
+2026/01/27-23:15:58.967 b3f8 Level-0 table #11: started
+2026/01/27-23:15:58.969 b3f8 Level-0 table #11: 811 bytes OK
+2026/01/27-23:15:58.970 b3f8 Delete type=0 #6
+2026/01/27-23:15:58.970 b3f8 Manual compaction at level-0 from '\x00\x04\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x05\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/27-23:16:28.252 8e10 Level-0 table #13: started
+2026/01/27-23:16:28.253 8e10 Level-0 table #13: 2968 bytes OK
+2026/01/27-23:16:28.255 8e10 Delete type=0 #10
+2026/01/27-23:16:28.255 81f4 Manual compaction at level-0 from '\x00\x05\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x06\x00\x00\x00' @ 0 : 0; will stop at '\x00\x05\x00\x00\x05' @ 179 : 1
+2026/01/27-23:16:28.255 81f4 Compacting 1@0 + 1@1 files
+2026/01/27-23:16:28.256 81f4 Generated table #14@0: 27 keys, 2854 bytes
+2026/01/27-23:16:28.256 81f4 Compacted 1@0 + 1@1 files => 2854 bytes
+2026/01/27-23:16:28.257 81f4 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/01/27-23:16:28.257 81f4 Delete type=2 #13
+2026/01/27-23:16:28.257 81f4 Manual compaction at level-0 from '\x00\x05\x00\x00\x05' @ 179 : 1 .. '\x00\x06\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/27-23:16:58.890 8e10 Level-0 table #16: started
+2026/01/27-23:16:58.892 8e10 Level-0 table #16: 2969 bytes OK
+2026/01/27-23:16:58.893 8e10 Delete type=2 #11
+2026/01/27-23:16:58.893 8e10 Delete type=0 #12
+2026/01/27-23:16:58.894 81f4 Manual compaction at level-0 from '\x00\x06\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x07\x00\x00\x00' @ 0 : 0; will stop at '\x00\x06\x00\x00\x05' @ 224 : 1
+2026/01/27-23:16:58.894 81f4 Compacting 1@0 + 1@1 files
+2026/01/27-23:16:58.895 81f4 Generated table #17@0: 41 keys, 4410 bytes
+2026/01/27-23:16:58.895 81f4 Compacted 1@0 + 1@1 files => 4410 bytes
+2026/01/27-23:16:58.896 81f4 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/01/27-23:16:58.896 81f4 Delete type=2 #16
+2026/01/27-23:16:58.896 81f4 Manual compaction at level-0 from '\x00\x06\x00\x00\x05' @ 224 : 1 .. '\x00\x07\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/27-23:17:29.530 8e10 Level-0 table #19: started
+2026/01/27-23:17:29.532 8e10 Level-0 table #19: 2968 bytes OK
+2026/01/27-23:17:29.532 8e10 Delete type=2 #14
+2026/01/27-23:17:29.532 8e10 Delete type=0 #15
+2026/01/27-23:17:29.533 81f4 Manual compaction at level-0 from '\x00\x07\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x08\x00\x00\x00' @ 0 : 0; will stop at '\x00\x07\x00\x00\x05' @ 269 : 1
+2026/01/27-23:17:29.533 81f4 Compacting 1@0 + 1@1 files
+2026/01/27-23:17:29.535 81f4 Generated table #20@0: 55 keys, 6729 bytes
+2026/01/27-23:17:29.535 81f4 Compacted 1@0 + 1@1 files => 6729 bytes
+2026/01/27-23:17:29.535 81f4 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/01/27-23:17:29.535 81f4 Delete type=2 #19
+2026/01/27-23:17:29.535 81f4 Manual compaction at level-0 from '\x00\x07\x00\x00\x05' @ 269 : 1 .. '\x00\x08\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/27-23:18:01.101 b3f8 Level-0 table #22: started
+2026/01/27-23:18:01.102 b3f8 Level-0 table #22: 2971 bytes OK
+2026/01/27-23:18:01.103 b3f8 Delete type=2 #17
+2026/01/27-23:18:01.103 b3f8 Delete type=0 #18
+2026/01/27-23:18:01.104 81f4 Manual compaction at level-0 from '\x00\x08\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x09\x00\x00\x00' @ 0 : 0; will stop at '\x00\x08\x00\x00\x05' @ 314 : 1
+2026/01/27-23:18:01.104 81f4 Compacting 1@0 + 1@1 files
+2026/01/27-23:18:01.105 81f4 Generated table #23@0: 69 keys, 8395 bytes
+2026/01/27-23:18:01.105 81f4 Compacted 1@0 + 1@1 files => 8395 bytes
+2026/01/27-23:18:01.106 81f4 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/01/27-23:18:01.106 81f4 Delete type=2 #22
+2026/01/27-23:18:01.106 81f4 Manual compaction at level-0 from '\x00\x08\x00\x00\x05' @ 314 : 1 .. '\x00\x09\x00\x00\x00' @ 0 : 0; will stop at (end)
