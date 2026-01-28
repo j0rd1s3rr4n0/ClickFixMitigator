@@ -2392,7 +2392,7 @@ $chartLabels = [
     'signals' => t($translations, $currentLanguage, 'signal_types')
 ];
 
-$dashboardVersion = '0.7.11';
+$dashboardVersion = '0.7.12';
 
   $chartPayload = [
     'daily' => [

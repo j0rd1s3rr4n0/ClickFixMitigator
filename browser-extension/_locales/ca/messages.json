@@ -1,0 +1,389 @@
+{
+  "appName": {
+    "message": "ClickFix Mitigator"
+  },
+  "appDescription": {
+    "message": "Detecta patrons de ClickFix i discrepàncies del porta-retalls."
+  },
+  "bannerTitle": {
+    "message": "Alerta de ClickFix Mitigator"
+  },
+  "clipboardThreatWarning": {
+    "message": "Seguretat: aquesta pàgina ha intentat copiar una ordre potencialment perillosa. No la enganxis al terminal. Pot danyar el teu sistema."
+  },
+  "closeButton": {
+    "message": "Tancar"
+  },
+  "blockAllClipboardUnavailable": {
+    "message": "El mode Bloqueja-ho tot no es pot activar en aquesta pàgina."
+  },
+  "notificationRestoreClipboard": {
+    "message": "Restaurar porta-retalls"
+  },
+  "notificationKeepClean": {
+    "message": "Mantenir net"
+  },
+  "blockedTitle": {
+    "message": "Lloc web bloquejat per possible ClickFix"
+  },
+  "blockedReasonDefault": {
+    "message": "Motiu: s'han detectat patrons ClickFix"
+  },
+  "blockedReasonWithDetail": {
+    "message": "Motiu: $1",
+    "placeholders": {
+      "detail": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonReported": {
+    "message": "Motiu: informe ClickFix"
+  },
+  "blockedStay": {
+    "message": "Restar al lloc"
+  },
+  "blockedBack": {
+    "message": "Tornar enrere"
+  },
+  "blockedReport": {
+    "message": "Informar del lloc"
+  },
+  "blockedAllowOnce": {
+    "message": "Permetre una vegada"
+  },
+  "blockedAllowSession": {
+    "message": "Permetre aquesta sessió"
+  },
+  "blockedAllowAlways": {
+    "message": "Permetre sempre"
+  },
+  "blockedReported": {
+    "message": "Informat"
+  },
+  "blockedFamilySafeNotice": {
+    "message": "FamilySafe està activat. Aquest lloc continua bloquejat per protegir aquest dispositiu."
+  },
+  "blockedHost": {
+    "message": "Lloc: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonsTitle": {
+    "message": "Deteccions"
+  },
+  "blockedContextTitle": {
+    "message": "Context detectat"
+  },
+  "alertMismatch": {
+    "message": "Desajust entre la selecció i el porta-retalls."
+  },
+  "alertCommand": {
+    "message": "S'ha detectat un patró d'ordre sospitós."
+  },
+  "alertClipboardCommand": {
+    "message": "S'ha detectat una ordre sospitosa al porta-retalls."
+  },
+  "alertWinR": {
+    "message": "La pàgina suggereix utilitzar el diàleg Win+R/Executar."
+  },
+  "alertWinX": {
+    "message": "La pàgina suggereix utilitzar Win+X per obrir el terminal."
+  },
+  "alertBrowserError": {
+    "message": "La pàgina mostra un error fals del navegador."
+  },
+  "alertFixAction": {
+    "message": "La pàgina demana un arranjament ràpid o copiar una ordre."
+  },
+  "alertCaptcha": {
+    "message": "Possible captcha fals detectat."
+  },
+  "alertConsole": {
+    "message": "La pàgina demana enganxar a la consola de DevTools."
+  },
+  "alertShell": {
+    "message": "La pàgina demana enganxar ordres a CMD/PowerShell/Executar."
+  },
+  "alertPasteSequence": {
+    "message": "La pàgina guia l'enganxat amb Ctrl+V/Enter."
+  },
+  "alertFileExplorer": {
+    "message": "La pàgina demana enganxar un camí a l'Explorador de fitxers."
+  },
+  "alertCopyTrigger": {
+    "message": "La pàgina intenta copiar ordres al porta-retalls."
+  },
+  "alertEvasion": {
+    "message": "S'ha detectat contingut d'ordres ofuscat o codificat."
+  },
+  "alertSnippet": {
+    "message": "Fragment detectat: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertClipboardBlocked": {
+    "message": "Porta-retalls bloquejat: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertConfidenceScore": {
+    "message": "Puntuació de confiança: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockAllClipboardBlocked": {
+    "message": "S'ha bloquejat la còpia al porta-retalls per JavaScript."
+  },
+  "manualReportReason": {
+    "message": "Informe manual de l'usuari"
+  },
+  "blocklistReason": {
+    "message": "Bloquejat per llista"
+  },
+  "popupTitle": {
+    "message": "ClickFix Mitigator"
+  },
+  "popupDetectionActive": {
+    "message": "Detecció activa"
+  },
+  "popupDetectionActiveHint": {
+    "message": "Supervisa els paranys de copiar/enganxar i els patrons d'ordres."
+  },
+  "popupAllowlistActive": {
+    "message": "Llista de permesos activa"
+  },
+  "popupBlockAllHint": {
+    "message": "Evita que les pàgines escriguin al porta-retalls."
+  },
+  "popupFamilySafeTitle": {
+    "message": "Mode FamilySafe"
+  },
+  "popupFamilySafeHint": {
+    "message": "Bloqueja l'accés sense opcions d'omissió."
+  },
+  "popupWhitelistTitle": {
+    "message": "Llista de permesos"
+  },
+  "popupWhitelistPlaceholder": {
+    "message": "exemple.com"
+  },
+  "popupAdd": {
+    "message": "Afegir"
+  },
+  "popupWhitelistEmpty": {
+    "message": "No hi ha dominis a la llista de permesos."
+  },
+  "popupRecentAlerts": {
+    "message": "Alertes recents"
+  },
+  "popupClearHistory": {
+    "message": "Esborrar historial"
+  },
+  "popupClipboardTitle": {
+    "message": "Còpies de seguretat del porta-retalls"
+  },
+  "popupClipboardEmpty": {
+    "message": "No hi ha còpies de seguretat del porta-retalls."
+  },
+  "popupClipboardClear": {
+    "message": "Esborrar còpies de seguretat del porta-retalls"
+  },
+  "popupClipboardCopy": {
+    "message": "Copiar"
+  },
+  "popupClipboardCopied": {
+    "message": "Copiat"
+  },
+  "popupReportTitle": {
+    "message": "Informar del lloc"
+  },
+  "popupReportHint": {
+    "message": "Envia un informe manual per bloquejar un domini específic."
+  },
+  "popupReportPlaceholder": {
+    "message": "https://exemple-lloc.com"
+  },
+  "popupReportButton": {
+    "message": "Informar"
+  },
+  "popupReportStatusMissing": {
+    "message": "Introdueix un URL o usa la pestanya actual."
+  },
+  "popupReportStatusSent": {
+    "message": "Informe enviat: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupReportStatusInvalid": {
+    "message": "URL no vàlida."
+  },
+  "popupReportStatusNoTab": {
+    "message": "No s'ha pogut detectar la pestanya activa."
+  },
+  "popupOptionsLink": {
+    "message": "Opcions avançades"
+  },
+  "optionsTitle": {
+    "message": "Opcions avançades"
+  },
+  "optionsSubtitle": {
+    "message": "Configura el comportament de detecció i revisa l'historial d'alertes."
+  },
+  "optionsStateTitle": {
+    "message": "Estat"
+  },
+  "optionsBlockAllClipboard": {
+    "message": "Bloqueja totes les còpies del porta-retalls amb JavaScript"
+  },
+  "optionsFamilySafe": {
+    "message": "Mode FamilySafe (sense omissió)"
+  },
+  "optionsClipboardBackup": {
+    "message": "Mantenir la còpia de seguretat prèvia del porta-retalls"
+  },
+  "optionsSendCountry": {
+    "message": "Compartir el país als informes"
+  },
+  "optionsWhitelistTitle": {
+    "message": "Llista de permesos"
+  },
+  "optionsWhitelistAdd": {
+    "message": "Afegir domini"
+  },
+  "optionsBlocklistTitle": {
+    "message": "Llistes de bloqueig addicionals"
+  },
+  "optionsBlocklistHint": {
+    "message": "Afegeix URL de llistes ClickFix (una per llista) per combinar-les amb la llista principal."
+  },
+  "optionsBlocklistPlaceholder": {
+    "message": "https://exemple.com/clickfixlist"
+  },
+  "optionsBlocklistAdd": {
+    "message": "Afegir llista"
+  },
+  "optionsBlocklistEmpty": {
+    "message": "No hi ha llistes addicionals."
+  },
+  "optionsAllowlistTitle": {
+    "message": "Llistes de permesos addicionals"
+  },
+  "optionsAllowlistHint": {
+    "message": "Afegeix URL de llistes de permesos (una per llista) per combinar-les amb la llista principal."
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://exemple.com/clickfixallowlist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "Afegir llista"
+  },
+  "optionsAllowlistEmpty": {
+    "message": "No hi ha llistes addicionals."
+  },
+  "optionsHistoryTitle": {
+    "message": "Historial complet"
+  },
+  "historyClipboardOnly": {
+    "message": "Només porta-retalls"
+  },
+  "optionsHistoryEmpty": {
+    "message": "No hi ha alertes recents."
+  },
+  "optionsClearHistory": {
+    "message": "Esborrar historial"
+  },
+  "optionsRemove": {
+    "message": "Eliminar"
+  },
+  "languageTitle": {
+    "message": "Idioma"
+  },
+  "languageEnglish": {
+    "message": "Anglès"
+  },
+  "languageSpanish": {
+    "message": "Espanyol"
+  },
+  "languageCatalan": {
+    "message": "Català"
+  },
+  "languageGerman": {
+    "message": "Alemany"
+  },
+  "languageFrench": {
+    "message": "Francès"
+  },
+  "languageDutch": {
+    "message": "Neerlandès"
+  },
+  "languagePortuguese": {
+    "message": "Portuguès"
+  },
+  "languageRussian": {
+    "message": "Rus"
+  },
+  "languageChinese": {
+    "message": "Xinès"
+  },
+  "languageJapanese": {
+    "message": "Japonès"
+  },
+  "languageKorean": {
+    "message": "Coreà"
+  },
+  "languageHebrew": {
+    "message": "Hebreu"
+  },
+  "languageArabic": {
+    "message": "Àrab"
+  },
+"languageHindi": {
+  "message": "Hindi"
+},
+  "themeTitle": {
+    "message": "Tema"
+  },
+  "themeSystem": {
+    "message": "Sistema"
+  },
+  "themeLight": {
+    "message": "Clar"
+  },
+  "themeDark": {
+    "message": "Fosc"
+  },
+  "linksTitle": {
+    "message": "Enllaços"
+  },
+  "linksGithub": {
+    "message": "GitHub"
+  },
+  "linksChromeWebStore": {
+    "message": "Chrome Web Store"
+  },
+  "popupMuteNotificationsTitle": {
+    "message": "Silenciar notificacions de detecció"
+  },
+  "popupMuteNotificationsHint": {
+    "message": "Suprimeix les alertes del sistema i els bàners de detecció."
+  },
+  "optionsMuteNotifications": {
+    "message": "Silenciar notificacions de detecció"
+  }
+}

@@ -1,0 +1,389 @@
+{
+  "appName": {
+    "message": "ClickFix Mitigator"
+  },
+  "appDescription": {
+    "message": "ClickFix पैटर्न और क्लिपबोर्ड असंगतियों का पता लगाता है।"
+  },
+  "bannerTitle": {
+    "message": "ClickFix Mitigator चेतावनी"
+  },
+  "clipboardThreatWarning": {
+    "message": "सुरक्षा: इस पेज ने एक संभावित रूप से खतरनाक कमांड कॉपी करने की कोशिश की। इसे टर्मिनल में पेस्ट न करें। यह आपके सिस्टम को नुकसान पहुँचा सकता है।"
+  },
+  "closeButton": {
+    "message": "बंद करें"
+  },
+  "blockAllClipboardUnavailable": {
+    "message": "इस पेज पर ब्लॉक ऑल मोड सक्षम नहीं किया जा सकता।"
+  },
+  "notificationRestoreClipboard": {
+    "message": "क्लिपबोर्ड पुनर्स्थापित करें"
+  },
+  "notificationKeepClean": {
+    "message": "साफ रखें"
+  },
+  "blockedTitle": {
+    "message": "संभावित ClickFix के लिए साइट ब्लॉक की गई"
+  },
+  "blockedReasonDefault": {
+    "message": "कारण: ClickFix पैटर्न मिले"
+  },
+  "blockedReasonWithDetail": {
+    "message": "कारण: $1",
+    "placeholders": {
+      "detail": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonReported": {
+    "message": "कारण: ClickFix रिपोर्ट"
+  },
+  "blockedStay": {
+    "message": "साइट पर रहें"
+  },
+  "blockedBack": {
+    "message": "वापस जाएँ"
+  },
+  "blockedReport": {
+    "message": "साइट रिपोर्ट करें"
+  },
+  "blockedAllowOnce": {
+    "message": "एक बार अनुमति दें"
+  },
+  "blockedAllowSession": {
+    "message": "इस सत्र के लिए अनुमति दें"
+  },
+  "blockedAllowAlways": {
+    "message": "हमेशा अनुमति दें"
+  },
+  "blockedReported": {
+    "message": "रिपोर्ट किया गया"
+  },
+  "blockedFamilySafeNotice": {
+    "message": "FamilySafe सक्षम है। यह साइट इस डिवाइस की सुरक्षा के लिए ब्लॉक रहेगी।"
+  },
+  "blockedHost": {
+    "message": "साइट: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonsTitle": {
+    "message": "पता लगाई गई चीजें"
+  },
+  "blockedContextTitle": {
+    "message": "पता लगाया गया संदर्भ"
+  },
+  "alertMismatch": {
+    "message": "चयन और क्लिपबोर्ड के बीच असंगति।"
+  },
+  "alertCommand": {
+    "message": "संदिग्ध कमांड पैटर्न मिला।"
+  },
+  "alertClipboardCommand": {
+    "message": "क्लिपबोर्ड में संदिग्ध कमांड मिला।"
+  },
+  "alertWinR": {
+    "message": "पेज Win+R/Run डायलॉग उपयोग करने का सुझाव देता है।"
+  },
+  "alertWinX": {
+    "message": "पेज टर्मिनल खोलने के लिए Win+X का सुझाव देता है।"
+  },
+  "alertBrowserError": {
+    "message": "पेज नकली ब्राउज़र त्रुटि दिखाता है।"
+  },
+  "alertFixAction": {
+    "message": "पेज त्वरित समाधान या कमांड कॉपी करने के लिए कहता है।"
+  },
+  "alertCaptcha": {
+    "message": "संभावित नकली कैप्चा मिला।"
+  },
+  "alertConsole": {
+    "message": "पेज DevTools कंसोल में पेस्ट करने को कहता है।"
+  },
+  "alertShell": {
+    "message": "पेज CMD/PowerShell/Run में कमांड पेस्ट करने को कहता है।"
+  },
+  "alertPasteSequence": {
+    "message": "पेज Ctrl+V/Enter के साथ पेस्ट करने का मार्गदर्शन करता है।"
+  },
+  "alertFileExplorer": {
+    "message": "पेज फ़ाइल एक्सप्लोरर में पाथ पेस्ट करने को कहता है।"
+  },
+  "alertCopyTrigger": {
+    "message": "पेज कमांड्स को क्लिपबोर्ड में कॉपी करने की कोशिश करता है।"
+  },
+  "alertEvasion": {
+    "message": "छुपाया हुआ या एन्कोडेड कमांड कंटेंट मिला।"
+  },
+  "alertSnippet": {
+    "message": "मिला हुआ अंश: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertClipboardBlocked": {
+    "message": "क्लिपबोर्ड ब्लॉक किया गया: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertConfidenceScore": {
+    "message": "विश्वास स्कोर: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockAllClipboardBlocked": {
+    "message": "JavaScript द्वारा क्लिपबोर्ड कॉपी ब्लॉक की गई।"
+  },
+  "manualReportReason": {
+    "message": "मैनुअल उपयोगकर्ता रिपोर्ट"
+  },
+  "blocklistReason": {
+    "message": "सूची द्वारा ब्लॉक किया गया"
+  },
+  "popupTitle": {
+    "message": "ClickFix Mitigator"
+  },
+  "popupDetectionActive": {
+    "message": "डिटेक्शन सक्रिय"
+  },
+  "popupDetectionActiveHint": {
+    "message": "कॉपी/पेस्ट लुर और कमांड पैटर्न पर नज़र रखता है।"
+  },
+  "popupAllowlistActive": {
+    "message": "अलाउलिस्ट सक्रिय"
+  },
+  "popupBlockAllHint": {
+    "message": "पेजों को आपके क्लिपबोर्ड में लिखने से रोकता है।"
+  },
+  "popupFamilySafeTitle": {
+    "message": "FamilySafe मोड"
+  },
+  "popupFamilySafeHint": {
+    "message": "बिना बायपास विकल्प के एक्सेस ब्लॉक करता है।"
+  },
+  "popupWhitelistTitle": {
+    "message": "अलाउलिस्ट"
+  },
+  "popupWhitelistPlaceholder": {
+    "message": "example.com"
+  },
+  "popupAdd": {
+    "message": "जोड़ें"
+  },
+  "popupWhitelistEmpty": {
+    "message": "अलाउलिस्ट में कोई डोमेन नहीं है।"
+  },
+  "popupRecentAlerts": {
+    "message": "हाल की चेतावनियाँ"
+  },
+  "popupClearHistory": {
+    "message": "इतिहास साफ़ करें"
+  },
+  "popupClipboardTitle": {
+    "message": "क्लिपबोर्ड बैकअप"
+  },
+  "popupClipboardEmpty": {
+    "message": "कोई क्लिपबोर्ड बैकअप नहीं।"
+  },
+  "popupClipboardClear": {
+    "message": "क्लिपबोर्ड बैकअप साफ़ करें"
+  },
+  "popupClipboardCopy": {
+    "message": "कॉपी करें"
+  },
+  "popupClipboardCopied": {
+    "message": "कॉपी हो गया"
+  },
+  "popupReportTitle": {
+    "message": "साइट रिपोर्ट करें"
+  },
+  "popupReportHint": {
+    "message": "किसी विशेष डोमेन को ब्लॉक करने के लिए मैनुअल रिपोर्ट भेजें।"
+  },
+  "popupReportPlaceholder": {
+    "message": "https://example-site.com"
+  },
+  "popupReportButton": {
+    "message": "रिपोर्ट करें"
+  },
+  "popupReportStatusMissing": {
+    "message": "एक URL दर्ज करें या वर्तमान टैब का उपयोग करें।"
+  },
+  "popupReportStatusSent": {
+    "message": "रिपोर्ट भेजी गई: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupReportStatusInvalid": {
+    "message": "अमान्य URL."
+  },
+  "popupReportStatusNoTab": {
+    "message": "सक्रिय टैब का पता नहीं चल सका।"
+  },
+  "popupOptionsLink": {
+    "message": "उन्नत विकल्प"
+  },
+  "optionsTitle": {
+    "message": "उन्नत विकल्प"
+  },
+  "optionsSubtitle": {
+    "message": "डिटेक्शन व्यवहार कॉन्फ़िगर करें और अलर्ट इतिहास देखें।"
+  },
+  "optionsStateTitle": {
+    "message": "स्थिति"
+  },
+  "optionsBlockAllClipboard": {
+    "message": "JavaScript द्वारा सभी क्लिपबोर्ड कॉपी को ब्लॉक करें"
+  },
+  "optionsFamilySafe": {
+    "message": "FamilySafe मोड (बिना बायपास)"
+  },
+  "optionsClipboardBackup": {
+    "message": "पिछला क्लिपबोर्ड बैकअप रखें"
+  },
+  "optionsSendCountry": {
+    "message": "रिपोर्ट में देश साझा करें"
+  },
+  "optionsWhitelistTitle": {
+    "message": "अलाउलिस्ट"
+  },
+  "optionsWhitelistAdd": {
+    "message": "डोमेन जोड़ें"
+  },
+  "optionsBlocklistTitle": {
+    "message": "अतिरिक्त ब्लॉकलिस्ट"
+  },
+  "optionsBlocklistHint": {
+    "message": "मुख्य सूची के साथ मिलाने के लिए ClickFix सूची URL जोड़ें (प्रति सूची एक)।"
+  },
+  "optionsBlocklistPlaceholder": {
+    "message": "https://example.com/clickfixlist"
+  },
+  "optionsBlocklistAdd": {
+    "message": "सूची जोड़ें"
+  },
+  "optionsBlocklistEmpty": {
+    "message": "कोई अतिरिक्त सूची नहीं।"
+  },
+  "optionsAllowlistTitle": {
+    "message": "अतिरिक्त अलाउलिस्ट"
+  },
+  "optionsAllowlistHint": {
+    "message": "मुख्य सूची के साथ मिलाने के लिए अलाउलिस्ट URL जोड़ें (प्रति सूची एक)।"
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://example.com/clickfixallowlist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "सूची जोड़ें"
+  },
+  "optionsAllowlistEmpty": {
+    "message": "कोई अतिरिक्त सूची नहीं।"
+  },
+  "optionsHistoryTitle": {
+    "message": "पूरा इतिहास"
+  },
+  "historyClipboardOnly": {
+    "message": "केवल क्लिपबोर्ड"
+  },
+  "optionsHistoryEmpty": {
+    "message": "कोई हालिया अलर्ट नहीं।"
+  },
+  "optionsClearHistory": {
+    "message": "इतिहास साफ़ करें"
+  },
+  "optionsRemove": {
+    "message": "हटाएँ"
+  },
+  "languageTitle": {
+    "message": "भाषा"
+  },
+  "languageEnglish": {
+    "message": "अंग्रेज़ी"
+  },
+  "languageSpanish": {
+    "message": "स्पेनिश"
+  },
+  "languageCatalan": {
+    "message": "कैटलन"
+  },
+  "languageGerman": {
+    "message": "जर्मन"
+  },
+  "languageFrench": {
+    "message": "फ्रेंच"
+  },
+  "languageDutch": {
+    "message": "डच"
+  },
+  "languagePortuguese": {
+    "message": "पुर्तगाली"
+  },
+  "languageRussian": {
+    "message": "रूसी"
+  },
+  "languageChinese": {
+    "message": "चीनी"
+  },
+  "languageJapanese": {
+    "message": "जापानी"
+  },
+  "languageKorean": {
+    "message": "कोरियाई"
+  },
+  "languageHebrew": {
+    "message": "हिब्रू"
+  },
+  "languageArabic": {
+    "message": "अरबी"
+  },
+  "languageHindi": {
+    "message": "हिन्दी"
+  },
+  "themeTitle": {
+    "message": "थीम"
+  },
+  "themeSystem": {
+    "message": "सिस्टम"
+  },
+  "themeLight": {
+    "message": "हल्का"
+  },
+  "themeDark": {
+    "message": "डार्क"
+  },
+  "linksTitle": {
+    "message": "लिंक"
+  },
+  "linksGithub": {
+    "message": "GitHub"
+  },
+  "linksChromeWebStore": {
+    "message": "Chrome Web Store"
+  },
+  "popupMuteNotificationsTitle": {
+    "message": "डिटेक्शन नोटिफिकेशन म्यूट करें"
+  },
+  "popupMuteNotificationsHint": {
+    "message": "सिस्टम अलर्ट और डिटेक्शन बैनर दबाता है।"
+  },
+  "optionsMuteNotifications": {
+    "message": "डिटेक्शन नोटिफिकेशन म्यूट करें"
+  }
+}

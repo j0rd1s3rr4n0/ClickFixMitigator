@@ -124,10 +124,28 @@ function tBlocked(key, substitutions) {
   return t(key, substitutions);
 }
 
-const SUPPORTED_LOCALES = ["en", "es", "de", "fr", "nl"];
+function buildLocalizedReasons(reasonEntries, fallbackReasons = []) {
+  if (Array.isArray(reasonEntries) && reasonEntries.length) {
+    return reasonEntries
+      .map((entry) => {
+        if (!entry || !entry.key) {
+          return "";
+        }
+        const value =
+          entry.value === undefined || entry.value === null ? undefined : entry.value;
+        return value === undefined ? tBlocked(entry.key) : tBlocked(entry.key, value);
+      })
+      .filter(Boolean);
+  }
+  return Array.isArray(fallbackReasons) ? fallbackReasons.filter(Boolean) : [];
+}
+
+const SUPPORTED_LOCALES = ["en", "es", "ca", "de", "fr", "nl", "he", "ru", "zh", "ko", "ja", "pt", "ar", "hi"];
 const DEFAULT_LOCALE = "en";
 let activeMessages = null;
 let localeReady = Promise.resolve();
+const RTL_LOCALES = new Set(["ar"]);
+let currentLocale = DEFAULT_LOCALE;
 
 function formatMessage(message, substitutions) {
   if (!substitutions) {
@@ -166,8 +184,9 @@ async function loadLocaleMessages(locale) {
 
 async function initLocale() {
   const { uiLanguage } = await chrome.storage.local.get({ uiLanguage: "" });
-  const selectedLocale = normalizeLocale(uiLanguage || chrome.i18n.getUILanguage());
+  const selectedLocale = normalizeLocale(uiLanguage || "en");
   await loadLocaleMessages(selectedLocale);
+  currentLocale = selectedLocale;
 }
 
 function ensureLocaleReady() {
@@ -221,7 +240,7 @@ function checkBlockAllInjection() {
 
 async function updateBlockAllClipboardState() {
   const { blockAllClipboard, enabled } = await chrome.storage.local.get({
-    blockAllClipboard: false,
+    blockAllClipboard: true,
     enabled: true
   });
   const allowlisted = await new Promise((resolve) => {
@@ -856,6 +875,10 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
   if (!html) {
     return;
   }
+  if (currentLocale) {
+    html.lang = currentLocale;
+    html.dir = RTL_LOCALES.has(currentLocale) ? "rtl" : "ltr";
+  }
   html.dataset.theme = resolvedTheme;
   const head = document.createElement("head");
   const style = document.createElement("style");
@@ -951,7 +974,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       border-radius: 32px;
       padding: clamp(28px, 4vw, 44px);
       box-shadow: var(--card-shadow);
-      text-align: left;
+      text-align: start;
       border: 1px solid var(--card-border);
       position: relative;
       overflow: hidden;
@@ -1037,7 +1060,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       display: flex;
       flex-direction: column;
       gap: 10px;
-      text-align: left;
+      text-align: start;
       position: relative;
       z-index: 1;
     }
@@ -1062,7 +1085,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       max-height: 320px;
       overflow: auto;
       width: 100%;
-      text-align: left;
+      text-align: start;
       white-space: pre-wrap;
       position: relative;
       z-index: 1;
@@ -1131,7 +1154,7 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
       cursor: default;
     }
     @media (max-width: 640px) {
-      .clickfix-card { padding: 24px; text-align: left; }
+      .clickfix-card { padding: 24px; text-align: start; }
       .clickfix-actions { gap: 8px; }
       .clickfix-btn { width: 100%; }
       .clickfix-header { flex-direction: column; align-items: flex-start; }
@@ -2165,10 +2188,17 @@ chrome.runtime.onMessage.addListener((message) => {
       }
     }
     ensureLocaleReady().then(() => {
+      const localizedReasons = buildLocalizedReasons(
+        message.reasonEntries,
+        message.reasons || message.reasonsEs || []
+      );
+      const localizedReasonText = localizedReasons.length
+        ? localizedReasons.join(" ")
+        : message.reason || message.reasonEs || "";
       buildBlockedPage(
         message.hostname || getHostname(window.location.href),
-        message.reasonEs || message.reason,
-        message.reasonsEs || message.reasons || [],
+        localizedReasonText,
+        localizedReasons,
         message.contextText || "",
         message.snippets || [],
         { familySafe: familySafeEnabled, theme: uiThemePreference }

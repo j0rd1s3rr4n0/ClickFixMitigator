@@ -1,6 +1,6 @@
 const DEFAULT_SETTINGS = {
   enabled: true,
-  blockAllClipboard: false,
+  blockAllClipboard: true,
   whitelist: [],
   allowlist: [],
   history: [],
@@ -48,7 +48,7 @@ async function getSettings() {
   const stored = await chrome.storage.local.get(DEFAULT_SETTINGS);
   return {
     enabled: stored.enabled ?? true,
-    blockAllClipboard: stored.blockAllClipboard ?? false,
+    blockAllClipboard: stored.blockAllClipboard ?? true,
     whitelist: stored.whitelist ?? [],
     allowlist: stored.allowlist ?? [],
     history: stored.history ?? [],
@@ -75,9 +75,10 @@ function t(key, substitutions) {
   return chrome.i18n.getMessage(key, substitutions) || key;
 }
 
-const SUPPORTED_LOCALES = ["en", "es", "de", "fr", "nl"];
+const SUPPORTED_LOCALES = ["en", "es", "ca", "de", "fr", "nl", "he", "ru", "zh", "ko", "ja", "pt", "ar", "hi"];
 const DEFAULT_LOCALE = "en";
 let activeMessages = null;
+let localeReady = Promise.resolve();
 
 function formatMessage(message, substitutions) {
   if (!substitutions) {
@@ -116,15 +117,19 @@ async function loadLocaleMessages(locale) {
 
 async function initLocale() {
   const { uiLanguage } = await chrome.storage.local.get({ uiLanguage: "" });
-  const selectedLocale = normalizeLocale(uiLanguage || chrome.i18n.getUILanguage());
+  const selectedLocale = normalizeLocale(uiLanguage || "en");
   await loadLocaleMessages(selectedLocale);
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes.uiLanguage) {
-    initLocale();
+    localeReady = initLocale();
   }
 });
+
+function ensureLocaleReady() {
+  return localeReady.catch(() => undefined);
+}
 
 function extractHostname(url) {
   try {
@@ -163,7 +168,7 @@ let allowlistCache = { items: [], fetchedAt: 0 };
 let reportQueue = [];
 const reportHashes = new Map();
 
-initLocale();
+localeReady = initLocale();
 
 async function refreshBlocklist() {
   const settings = await getSettings();
@@ -392,6 +397,88 @@ function buildAlertReasonsEs(details) {
   return buildAlertReasons(details);
 }
 
+function buildAlertReasonEntries(details) {
+  const entries = [];
+  const addEntry = (key, value) => {
+    if (!key) {
+      return;
+    }
+    const normalizedValue = value === undefined || value === null ? undefined : String(value);
+    const exists = entries.some(
+      (entry) => entry.key === key && entry.value === normalizedValue
+    );
+    if (!exists) {
+      entries.push(
+        normalizedValue === undefined ? { key } : { key, value: normalizedValue }
+      );
+    }
+  };
+  if (details.mismatch) {
+    addEntry("alertMismatch");
+  }
+  if (details.clipboardWarning) {
+    addEntry("alertClipboardCommand");
+  }
+  if (details.commandMatch) {
+    addEntry("alertCommand");
+  }
+  if (details.winRHint) {
+    addEntry("alertWinR");
+  }
+  if (details.winXHint) {
+    addEntry("alertWinX");
+  }
+  if (details.browserErrorHint) {
+    addEntry("alertBrowserError");
+  }
+  if (details.fixActionHint) {
+    addEntry("alertFixAction");
+  }
+  if (details.captchaHint) {
+    addEntry("alertCaptcha");
+  }
+  if (details.consoleHint) {
+    addEntry("alertConsole");
+  }
+  if (details.shellHint) {
+    addEntry("alertShell");
+  }
+  if (details.pasteSequenceHint) {
+    addEntry("alertPasteSequence");
+  }
+  if (details.fileExplorerHint) {
+    addEntry("alertFileExplorer");
+  }
+  if (details.copyTriggerHint) {
+    addEntry("alertCopyTrigger");
+  }
+  if (details.evasionHint) {
+    addEntry("alertEvasion");
+  }
+  const snippets = details.snippets || [];
+  snippets.forEach((snippetText) => {
+    if (!snippetText) {
+      return;
+    }
+    const snippet =
+      snippetText.length > 160
+        ? `${snippetText.slice(0, 157)}...`
+        : snippetText;
+    addEntry("alertSnippet", snippet);
+  });
+  if (details.blockedClipboardText) {
+    const snippet =
+      details.blockedClipboardText.length > CLIPBOARD_SNIPPET_LIMIT
+        ? `${details.blockedClipboardText.slice(0, CLIPBOARD_SNIPPET_LIMIT - 3)}...`
+        : details.blockedClipboardText;
+    addEntry("alertClipboardBlocked", snippet);
+  }
+  if (Number.isFinite(details.confidenceScore)) {
+    addEntry("alertConfidenceScore", details.confidenceScore);
+  }
+  return entries;
+}
+
 function buildAlertMessage(details) {
   return buildAlertReasons(details).join(" ");
 }
@@ -415,6 +502,7 @@ function buildAlertSnippets(details) {
 }
 
 async function triggerAlert(details) {
+  await ensureLocaleReady();
   const confidenceScore = computeDetectionScore(details);
   const settings = await getSettings();
   const muteNotifications = Boolean(settings.muteDetectionNotifications);
@@ -447,6 +535,7 @@ async function triggerAlert(details) {
   }
   const reasons = buildAlertReasons(detailsWithScore);
   const reasonsEs = buildAlertReasonsEs(detailsWithScore);
+  const reasonEntries = buildAlertReasonEntries(detailsWithScore);
   const snippets = buildAlertSnippets(detailsWithScore);
   const message = reasons.join(" ");
   const messageEs = reasonsEs.join(" ");
@@ -534,6 +623,7 @@ async function triggerAlert(details) {
         reasons,
         reasonEs: messageEs,
         reasonsEs,
+        reasonEntries,
         contextText: details.detectedContent || "",
         snippets
       });
@@ -556,6 +646,7 @@ async function triggerAlert(details) {
             reasons,
             reasonEs: messageEs,
             reasonsEs,
+            reasonEntries,
             contextText: details.detectedContent || "",
             snippets
           });
@@ -939,16 +1030,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "manualReport") {
-    enqueueReport({
-      url: message.url,
-      hostname: message.hostname || extractHostname(message.url),
-      timestamp: message.timestamp ?? Date.now(),
-      reason: t("manualReportReason"),
-      blocked: true,
-      manualReport: true,
-      detectedContent: "",
-      previous_url: message.previousUrl || ""
-    });
+    (async () => {
+      await ensureLocaleReady();
+      enqueueReport({
+        url: message.url,
+        hostname: message.hostname || extractHostname(message.url),
+        timestamp: message.timestamp ?? Date.now(),
+        reason: t("manualReportReason"),
+        blocked: true,
+        manualReport: true,
+        detectedContent: "",
+        previous_url: message.previousUrl || ""
+      });
+    })();
     return;
   }
 

@@ -20,7 +20,7 @@ from PIL import Image, ImageDraw
 
 
 # ---- Build/version marker (to confirm you're running the right file) ----
-AGENT_VERSION = "agent-debug-2026-01-08-keepalive-1"
+AGENT_VERSION = "agent-debug-2026-01-28-keepalive-2"
 
 CONFIG_PATH = Path(__file__).with_name("config.json")
 LOG_PATH = Path(__file__).with_name("agent.log")

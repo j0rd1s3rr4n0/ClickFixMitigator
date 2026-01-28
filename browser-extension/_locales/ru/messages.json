@@ -1,0 +1,389 @@
+{
+  "appName": {
+    "message": "ClickFix Mitigator"
+  },
+  "appDescription": {
+    "message": "Обнаруживает шаблоны ClickFix и несоответствия буфера обмена."
+  },
+  "bannerTitle": {
+    "message": "Предупреждение ClickFix Mitigator"
+  },
+  "clipboardThreatWarning": {
+    "message": "Безопасность: эта страница пыталась скопировать потенциально опасную команду. Не вставляйте это в терминал. Это может повредить вашу систему."
+  },
+  "closeButton": {
+    "message": "Закрыть"
+  },
+  "blockAllClipboardUnavailable": {
+    "message": "Режим «Блокировать всё» нельзя включить на этой странице."
+  },
+  "notificationRestoreClipboard": {
+    "message": "Восстановить буфер обмена"
+  },
+  "notificationKeepClean": {
+    "message": "Оставить чистым"
+  },
+  "blockedTitle": {
+    "message": "Сайт заблокирован из-за возможного ClickFix"
+  },
+  "blockedReasonDefault": {
+    "message": "Причина: обнаружены шаблоны ClickFix"
+  },
+  "blockedReasonWithDetail": {
+    "message": "Причина: $1",
+    "placeholders": {
+      "detail": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonReported": {
+    "message": "Причина: сообщение о ClickFix"
+  },
+  "blockedStay": {
+    "message": "Остаться на сайте"
+  },
+  "blockedBack": {
+    "message": "Назад"
+  },
+  "blockedReport": {
+    "message": "Сообщить о сайте"
+  },
+  "blockedAllowOnce": {
+    "message": "Разрешить один раз"
+  },
+  "blockedAllowSession": {
+    "message": "Разрешить на сеанс"
+  },
+  "blockedAllowAlways": {
+    "message": "Разрешать всегда"
+  },
+  "blockedReported": {
+    "message": "Сообщено"
+  },
+  "blockedFamilySafeNotice": {
+    "message": "FamilySafe включён. Этот сайт остаётся заблокированным для защиты устройства."
+  },
+  "blockedHost": {
+    "message": "Сайт: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonsTitle": {
+    "message": "Обнаружения"
+  },
+  "blockedContextTitle": {
+    "message": "Обнаруженный контекст"
+  },
+  "alertMismatch": {
+    "message": "Несоответствие между выделением и буфером обмена."
+  },
+  "alertCommand": {
+    "message": "Обнаружен подозрительный шаблон команды."
+  },
+  "alertClipboardCommand": {
+    "message": "В буфере обмена обнаружена подозрительная команда."
+  },
+  "alertWinR": {
+    "message": "Страница предлагает использовать Win+R/Выполнить."
+  },
+  "alertWinX": {
+    "message": "Страница предлагает использовать Win+X для открытия терминала."
+  },
+  "alertBrowserError": {
+    "message": "Страница показывает поддельную ошибку браузера."
+  },
+  "alertFixAction": {
+    "message": "Страница просит быстрое исправление или копирование команды."
+  },
+  "alertCaptcha": {
+    "message": "Обнаружен возможный фальшивый captcha."
+  },
+  "alertConsole": {
+    "message": "Страница просит вставить в консоль DevTools."
+  },
+  "alertShell": {
+    "message": "Страница просит вставить команды в CMD/PowerShell/Выполнить."
+  },
+  "alertPasteSequence": {
+    "message": "Страница ведёт вставку с Ctrl+V/Enter."
+  },
+  "alertFileExplorer": {
+    "message": "Страница просит вставить путь в Проводник."
+  },
+  "alertCopyTrigger": {
+    "message": "Страница пытается копировать команды в буфер обмена."
+  },
+  "alertEvasion": {
+    "message": "Обнаружено обфусцированное или закодированное содержимое команды."
+  },
+  "alertSnippet": {
+    "message": "Обнаруженный фрагмент: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertClipboardBlocked": {
+    "message": "Буфер обмена заблокирован: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertConfidenceScore": {
+    "message": "Оценка уверенности: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockAllClipboardBlocked": {
+    "message": "Копирование в буфер обмена через JavaScript заблокировано."
+  },
+  "manualReportReason": {
+    "message": "Ручной отчёт пользователя"
+  },
+  "blocklistReason": {
+    "message": "Заблокировано списком"
+  },
+  "popupTitle": {
+    "message": "ClickFix Mitigator"
+  },
+  "popupDetectionActive": {
+    "message": "Обнаружение активно"
+  },
+  "popupDetectionActiveHint": {
+    "message": "Отслеживает приманки копирования/вставки и шаблоны команд."
+  },
+  "popupAllowlistActive": {
+    "message": "Разрешающий список активен"
+  },
+  "popupBlockAllHint": {
+    "message": "Не позволяет страницам записывать в буфер обмена."
+  },
+  "popupFamilySafeTitle": {
+    "message": "Режим FamilySafe"
+  },
+  "popupFamilySafeHint": {
+    "message": "Блокирует доступ без вариантов разрешения."
+  },
+  "popupWhitelistTitle": {
+    "message": "Разрешающий список"
+  },
+  "popupWhitelistPlaceholder": {
+    "message": "пример.com"
+  },
+  "popupAdd": {
+    "message": "Добавить"
+  },
+  "popupWhitelistEmpty": {
+    "message": "Нет доменов в разрешающем списке."
+  },
+  "popupRecentAlerts": {
+    "message": "Недавние оповещения"
+  },
+  "popupClearHistory": {
+    "message": "Очистить историю"
+  },
+  "popupClipboardTitle": {
+    "message": "Резервные копии буфера"
+  },
+  "popupClipboardEmpty": {
+    "message": "Нет резервных копий буфера."
+  },
+  "popupClipboardClear": {
+    "message": "Очистить резервные копии"
+  },
+  "popupClipboardCopy": {
+    "message": "Копировать"
+  },
+  "popupClipboardCopied": {
+    "message": "Скопировано"
+  },
+  "popupReportTitle": {
+    "message": "Сообщить о сайте"
+  },
+  "popupReportHint": {
+    "message": "Отправьте ручной отчёт, чтобы заблокировать конкретный домен."
+  },
+  "popupReportPlaceholder": {
+    "message": "https://example-site.com"
+  },
+  "popupReportButton": {
+    "message": "Сообщить"
+  },
+  "popupReportStatusMissing": {
+    "message": "Введите URL или используйте текущую вкладку."
+  },
+  "popupReportStatusSent": {
+    "message": "Отчёт отправлен: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupReportStatusInvalid": {
+    "message": "Неверный URL."
+  },
+  "popupReportStatusNoTab": {
+    "message": "Не удалось определить активную вкладку."
+  },
+  "popupOptionsLink": {
+    "message": "Расширенные настройки"
+  },
+  "optionsTitle": {
+    "message": "Расширенные настройки"
+  },
+  "optionsSubtitle": {
+    "message": "Настройте обнаружение и просмотрите историю оповещений."
+  },
+  "optionsStateTitle": {
+    "message": "Состояние"
+  },
+  "optionsBlockAllClipboard": {
+    "message": "Блокировать всё копирование буфера через JavaScript"
+  },
+  "optionsFamilySafe": {
+    "message": "Режим FamilySafe (без обхода)"
+  },
+  "optionsClipboardBackup": {
+    "message": "Хранить резервную копию буфера"
+  },
+  "optionsSendCountry": {
+    "message": "Передавать страну в отчётах"
+  },
+  "optionsWhitelistTitle": {
+    "message": "Разрешающий список"
+  },
+  "optionsWhitelistAdd": {
+    "message": "Добавить домен"
+  },
+  "optionsBlocklistTitle": {
+    "message": "Дополнительные списки блокировки"
+  },
+  "optionsBlocklistHint": {
+    "message": "Добавьте URL списков ClickFix (по одному на список), чтобы объединить с основным."
+  },
+  "optionsBlocklistPlaceholder": {
+    "message": "https://example.com/clickfixlist"
+  },
+  "optionsBlocklistAdd": {
+    "message": "Добавить список"
+  },
+  "optionsBlocklistEmpty": {
+    "message": "Нет дополнительных списков."
+  },
+  "optionsAllowlistTitle": {
+    "message": "Дополнительные allowlist"
+  },
+  "optionsAllowlistHint": {
+    "message": "Добавьте URL allowlist (по одному на список), чтобы объединить с основным."
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://example.com/clickfixallowlist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "Добавить список"
+  },
+  "optionsAllowlistEmpty": {
+    "message": "Нет дополнительных allowlist."
+  },
+  "optionsHistoryTitle": {
+    "message": "Полная история"
+  },
+  "historyClipboardOnly": {
+    "message": "Только буфер обмена"
+  },
+  "optionsHistoryEmpty": {
+    "message": "Нет недавних оповещений."
+  },
+  "optionsClearHistory": {
+    "message": "Очистить историю"
+  },
+  "optionsRemove": {
+    "message": "Удалить"
+  },
+  "languageTitle": {
+    "message": "Язык"
+  },
+  "languageEnglish": {
+    "message": "Английский"
+  },
+  "languageSpanish": {
+    "message": "Испанский"
+  },
+  "languageGerman": {
+    "message": "Немецкий"
+  },
+  "languageFrench": {
+    "message": "Французский"
+  },
+  "languageDutch": {
+    "message": "Нидерландский"
+  },
+  "languagePortuguese": {
+    "message": "Португальский"
+  },
+  "languageRussian": {
+    "message": "Русский"
+  },
+  "languageChinese": {
+    "message": "Китайский"
+  },
+  "languageJapanese": {
+    "message": "Японский"
+  },
+  "languageKorean": {
+    "message": "Корейский"
+  },
+  "languageHebrew": {
+    "message": "Иврит"
+  },
+  "languageArabic": {
+    "message": "Арабский"
+  },
+"languageHindi": {
+  "message": "?????"
+},
+"languageCatalan": {
+  "message": "???????????"
+},
+  "themeTitle": {
+    "message": "Тема"
+  },
+  "themeSystem": {
+    "message": "Система"
+  },
+  "themeLight": {
+    "message": "Светлая"
+  },
+  "themeDark": {
+    "message": "Тёмная"
+  },
+  "linksTitle": {
+    "message": "Ссылки"
+  },
+  "linksGithub": {
+    "message": "GitHub"
+  },
+  "linksChromeWebStore": {
+    "message": "Chrome Web Store"
+  },
+  "popupMuteNotificationsTitle": {
+    "message": "Отключить уведомления"
+  },
+  "popupMuteNotificationsHint": {
+    "message": "Скрывает системные оповещения и баннеры обнаружения."
+  },
+  "optionsMuteNotifications": {
+    "message": "Отключить уведомления обнаружения"
+  }
+}

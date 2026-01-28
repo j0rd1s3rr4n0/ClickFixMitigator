@@ -1,0 +1,389 @@
+{
+  "appName": {
+    "message": "ClickFix Mitigator"
+  },
+  "appDescription": {
+    "message": "ClickFix 패턴과 클립보드 불일치를 감지합니다."
+  },
+  "bannerTitle": {
+    "message": "ClickFix Mitigator 경고"
+  },
+  "clipboardThreatWarning": {
+    "message": "보안: 이 페이지가 잠재적으로 위험한 명령을 복사하려고 했습니다. 터미널에 붙여넣지 마세요. 시스템에 해를 끼칠 수 있습니다."
+  },
+  "closeButton": {
+    "message": "닫기"
+  },
+  "blockAllClipboardUnavailable": {
+    "message": "이 페이지에서는 전체 차단 모드를 사용할 수 없습니다."
+  },
+  "notificationRestoreClipboard": {
+    "message": "클립보드 복원"
+  },
+  "notificationKeepClean": {
+    "message": "깨끗하게 유지"
+  },
+  "blockedTitle": {
+    "message": "가능한 ClickFix로 인해 사이트가 차단됨"
+  },
+  "blockedReasonDefault": {
+    "message": "이유: ClickFix 패턴이 감지됨"
+  },
+  "blockedReasonWithDetail": {
+    "message": "이유: $1",
+    "placeholders": {
+      "detail": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonReported": {
+    "message": "이유: ClickFix 신고"
+  },
+  "blockedStay": {
+    "message": "사이트에 머무르기"
+  },
+  "blockedBack": {
+    "message": "뒤로"
+  },
+  "blockedReport": {
+    "message": "사이트 신고"
+  },
+  "blockedAllowOnce": {
+    "message": "한 번 허용"
+  },
+  "blockedAllowSession": {
+    "message": "세션 동안 허용"
+  },
+  "blockedAllowAlways": {
+    "message": "항상 허용"
+  },
+  "blockedReported": {
+    "message": "신고됨"
+  },
+  "blockedFamilySafeNotice": {
+    "message": "FamilySafe가 활성화되어 있습니다. 이 기기를 보호하기 위해 사이트가 계속 차단됩니다."
+  },
+  "blockedHost": {
+    "message": "사이트: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonsTitle": {
+    "message": "감지 항목"
+  },
+  "blockedContextTitle": {
+    "message": "감지된 컨텍스트"
+  },
+  "alertMismatch": {
+    "message": "선택 내용과 클립보드가 일치하지 않습니다."
+  },
+  "alertCommand": {
+    "message": "의심스러운 명령 패턴이 감지되었습니다."
+  },
+  "alertClipboardCommand": {
+    "message": "클립보드에서 의심스러운 명령이 감지되었습니다."
+  },
+  "alertWinR": {
+    "message": "페이지가 Win+R/실행 사용을 제안합니다."
+  },
+  "alertWinX": {
+    "message": "페이지가 Win+X로 터미널 열기를 제안합니다."
+  },
+  "alertBrowserError": {
+    "message": "페이지에 가짜 브라우저 오류가 표시됩니다."
+  },
+  "alertFixAction": {
+    "message": "페이지가 빠른 해결 또는 명령 복사를 요구합니다."
+  },
+  "alertCaptcha": {
+    "message": "가짜 캡차 가능성이 감지되었습니다."
+  },
+  "alertConsole": {
+    "message": "페이지가 DevTools 콘솔에 붙여넣기를 요구합니다."
+  },
+  "alertShell": {
+    "message": "페이지가 CMD/PowerShell/실행에 명령을 붙여넣으라고 요청합니다."
+  },
+  "alertPasteSequence": {
+    "message": "페이지가 Ctrl+V/Enter로 붙여넣기를 안내합니다."
+  },
+  "alertFileExplorer": {
+    "message": "페이지가 파일 탐색기에 경로를 붙여넣으라고 요청합니다."
+  },
+  "alertCopyTrigger": {
+    "message": "페이지가 명령을 클립보드로 복사하려고 합니다."
+  },
+  "alertEvasion": {
+    "message": "난독화되거나 인코딩된 명령 콘텐츠가 감지되었습니다."
+  },
+  "alertSnippet": {
+    "message": "감지된 발췌: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertClipboardBlocked": {
+    "message": "클립보드가 차단됨: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertConfidenceScore": {
+    "message": "신뢰도 점수: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockAllClipboardBlocked": {
+    "message": "JavaScript 클립보드 복사가 차단되었습니다."
+  },
+  "manualReportReason": {
+    "message": "사용자 수동 신고"
+  },
+  "blocklistReason": {
+    "message": "목록에 의해 차단됨"
+  },
+  "popupTitle": {
+    "message": "ClickFix Mitigator"
+  },
+  "popupDetectionActive": {
+    "message": "감지 활성"
+  },
+  "popupDetectionActiveHint": {
+    "message": "복사/붙여넣기 유도와 명령 패턴을 모니터링합니다."
+  },
+  "popupAllowlistActive": {
+    "message": "허용 목록 활성"
+  },
+  "popupBlockAllHint": {
+    "message": "웹페이지가 클립보드에 쓰는 것을 방지합니다."
+  },
+  "popupFamilySafeTitle": {
+    "message": "FamilySafe 모드"
+  },
+  "popupFamilySafeHint": {
+    "message": "허용 옵션 없이 접근을 차단합니다."
+  },
+  "popupWhitelistTitle": {
+    "message": "허용 목록"
+  },
+  "popupWhitelistPlaceholder": {
+    "message": "example.com"
+  },
+  "popupAdd": {
+    "message": "추가"
+  },
+  "popupWhitelistEmpty": {
+    "message": "허용 목록에 도메인이 없습니다."
+  },
+  "popupRecentAlerts": {
+    "message": "최근 경고"
+  },
+  "popupClearHistory": {
+    "message": "기록 지우기"
+  },
+  "popupClipboardTitle": {
+    "message": "클립보드 백업"
+  },
+  "popupClipboardEmpty": {
+    "message": "클립보드 백업이 없습니다."
+  },
+  "popupClipboardClear": {
+    "message": "백업 지우기"
+  },
+  "popupClipboardCopy": {
+    "message": "복사"
+  },
+  "popupClipboardCopied": {
+    "message": "복사됨"
+  },
+  "popupReportTitle": {
+    "message": "사이트 신고"
+  },
+  "popupReportHint": {
+    "message": "특정 도메인을 차단하기 위한 수동 신고를 보냅니다."
+  },
+  "popupReportPlaceholder": {
+    "message": "https://example-site.com"
+  },
+  "popupReportButton": {
+    "message": "신고"
+  },
+  "popupReportStatusMissing": {
+    "message": "URL을 입력하거나 현재 탭을 사용하세요."
+  },
+  "popupReportStatusSent": {
+    "message": "신고 전송됨: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupReportStatusInvalid": {
+    "message": "유효하지 않은 URL."
+  },
+  "popupReportStatusNoTab": {
+    "message": "활성 탭을 감지할 수 없습니다."
+  },
+  "popupOptionsLink": {
+    "message": "고급 옵션"
+  },
+  "optionsTitle": {
+    "message": "고급 옵션"
+  },
+  "optionsSubtitle": {
+    "message": "감지 동작을 설정하고 경고 기록을 확인합니다."
+  },
+  "optionsStateTitle": {
+    "message": "상태"
+  },
+  "optionsBlockAllClipboard": {
+    "message": "JavaScript 클립보드 쓰기 모두 차단"
+  },
+  "optionsFamilySafe": {
+    "message": "FamilySafe 모드(우회 없음)"
+  },
+  "optionsClipboardBackup": {
+    "message": "클립보드 백업 유지"
+  },
+  "optionsSendCountry": {
+    "message": "신고에 국가 공유"
+  },
+  "optionsWhitelistTitle": {
+    "message": "허용 목록"
+  },
+  "optionsWhitelistAdd": {
+    "message": "도메인 추가"
+  },
+  "optionsBlocklistTitle": {
+    "message": "추가 차단 목록"
+  },
+  "optionsBlocklistHint": {
+    "message": "ClickFix 목록 URL(목록당 하나)을 추가하여 기본 목록과 병합합니다."
+  },
+  "optionsBlocklistPlaceholder": {
+    "message": "https://example.com/clickfixlist"
+  },
+  "optionsBlocklistAdd": {
+    "message": "목록 추가"
+  },
+  "optionsBlocklistEmpty": {
+    "message": "추가 목록이 없습니다."
+  },
+  "optionsAllowlistTitle": {
+    "message": "추가 허용 목록"
+  },
+  "optionsAllowlistHint": {
+    "message": "허용 목록 URL(목록당 하나)을 추가하여 기본 목록과 병합합니다."
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://example.com/clickfixallowlist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "목록 추가"
+  },
+  "optionsAllowlistEmpty": {
+    "message": "추가 허용 목록이 없습니다."
+  },
+  "optionsHistoryTitle": {
+    "message": "전체 기록"
+  },
+  "historyClipboardOnly": {
+    "message": "클립보드만"
+  },
+  "optionsHistoryEmpty": {
+    "message": "최근 경고가 없습니다."
+  },
+  "optionsClearHistory": {
+    "message": "기록 지우기"
+  },
+  "optionsRemove": {
+    "message": "제거"
+  },
+  "languageTitle": {
+    "message": "언어"
+  },
+  "languageEnglish": {
+    "message": "영어"
+  },
+  "languageSpanish": {
+    "message": "스페인어"
+  },
+  "languageGerman": {
+    "message": "독일어"
+  },
+  "languageFrench": {
+    "message": "프랑스어"
+  },
+  "languageDutch": {
+    "message": "네덜란드어"
+  },
+  "languagePortuguese": {
+    "message": "포르투갈어"
+  },
+  "languageRussian": {
+    "message": "러시아어"
+  },
+  "languageChinese": {
+    "message": "중국어"
+  },
+  "languageJapanese": {
+    "message": "일본어"
+  },
+  "languageKorean": {
+    "message": "한국어"
+  },
+  "languageHebrew": {
+    "message": "히브리어"
+  },
+  "languageArabic": {
+    "message": "아랍어"
+  },
+"languageHindi": {
+  "message": "???"
+},
+"languageCatalan": {
+  "message": "?????"
+},
+  "themeTitle": {
+    "message": "테마"
+  },
+  "themeSystem": {
+    "message": "시스템"
+  },
+  "themeLight": {
+    "message": "라이트"
+  },
+  "themeDark": {
+    "message": "다크"
+  },
+  "linksTitle": {
+    "message": "링크"
+  },
+  "linksGithub": {
+    "message": "GitHub"
+  },
+  "linksChromeWebStore": {
+    "message": "Chrome 웹 스토어"
+  },
+  "popupMuteNotificationsTitle": {
+    "message": "알림 끄기"
+  },
+  "popupMuteNotificationsHint": {
+    "message": "시스템 알림과 감지 배너를 숨깁니다."
+  },
+  "optionsMuteNotifications": {
+    "message": "감지 알림 끄기"
+  }
+}

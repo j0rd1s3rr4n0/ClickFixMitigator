@@ -314,6 +314,33 @@
   "languageDutch": {
     "message": "Neerlandés"
   },
+  "languagePortuguese": {
+    "message": "Portugués"
+  },
+  "languageRussian": {
+    "message": "Ruso"
+  },
+  "languageChinese": {
+    "message": "Chino"
+  },
+  "languageJapanese": {
+    "message": "Japonés"
+  },
+  "languageKorean": {
+    "message": "Coreano"
+  },
+  "languageHebrew": {
+    "message": "Hebreo"
+  },
+  "languageArabic": {
+    "message": "Árabe"
+  },
+"languageHindi": {
+  "message": "Hindi"
+},
+"languageCatalan": {
+  "message": "Catal?n"
+},
   "popupDetectionActiveHint": {
     "message": "Monitorea lures de copiado/pegado y patrones de comandos."
   },
@@ -354,9 +381,9 @@
     "message": "Silenciar notificaciones"
   },
   "popupMuteNotificationsHint": {
-    "message": "Evita alertas del sistema y banners de detecci?n."
+    "message": "Evita alertas del sistema y banners de detección."
   },
   "optionsMuteNotifications": {
-    "message": "Silenciar notificaciones de detecci?n"
+    "message": "Silenciar notificaciones de detección"
   }
 }

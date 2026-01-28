@@ -329,6 +329,33 @@
   "languageDutch": {
     "message": "Dutch"
   },
+  "languagePortuguese": {
+    "message": "Portuguese"
+  },
+  "languageRussian": {
+    "message": "Russian"
+  },
+  "languageChinese": {
+    "message": "Chinese"
+  },
+  "languageJapanese": {
+    "message": "Japanese"
+  },
+  "languageKorean": {
+    "message": "Korean"
+  },
+  "languageHebrew": {
+    "message": "Hebrew"
+  },
+  "languageArabic": {
+    "message": "Arabic"
+  },
+"languageHindi": {
+  "message": "Hindi"
+},
+"languageCatalan": {
+  "message": "Catalan"
+},
   "themeTitle": {
     "message": "Theme"
   },

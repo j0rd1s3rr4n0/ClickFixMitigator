@@ -1,0 +1,389 @@
+{
+  "appName": {
+    "message": "ClickFix Mitigator"
+  },
+  "appDescription": {
+    "message": "מזהה דפוסי ClickFix וחוסר התאמה בלוח ההעתקה."
+  },
+  "bannerTitle": {
+    "message": "התראת ClickFix Mitigator"
+  },
+  "clipboardThreatWarning": {
+    "message": "אבטחה: הדף הזה ניסה להעתיק פקודה שעלולה להיות מסוכנת. אל תדביק זאת בטרמינל. זה עלול להזיק למערכת שלך."
+  },
+  "closeButton": {
+    "message": "סגור"
+  },
+  "blockAllClipboardUnavailable": {
+    "message": "לא ניתן להפעיל מצב חסימה מלאה בדף זה."
+  },
+  "notificationRestoreClipboard": {
+    "message": "שחזר לוח העתקה"
+  },
+  "notificationKeepClean": {
+    "message": "השאר נקי"
+  },
+  "blockedTitle": {
+    "message": "האתר נחסם עקב ClickFix אפשרי"
+  },
+  "blockedReasonDefault": {
+    "message": "סיבה: זוהו דפוסי ClickFix"
+  },
+  "blockedReasonWithDetail": {
+    "message": "סיבה: $1",
+    "placeholders": {
+      "detail": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonReported": {
+    "message": "סיבה: דווח ClickFix"
+  },
+  "blockedStay": {
+    "message": "הישאר באתר"
+  },
+  "blockedBack": {
+    "message": "חזור"
+  },
+  "blockedReport": {
+    "message": "דווח על האתר"
+  },
+  "blockedAllowOnce": {
+    "message": "אפשר פעם אחת"
+  },
+  "blockedAllowSession": {
+    "message": "אפשר לסשן"
+  },
+  "blockedAllowAlways": {
+    "message": "אפשר תמיד"
+  },
+  "blockedReported": {
+    "message": "דווח"
+  },
+  "blockedFamilySafeNotice": {
+    "message": "FamilySafe מופעל. האתר נשאר חסום כדי להגן על המכשיר."
+  },
+  "blockedHost": {
+    "message": "אתר: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonsTitle": {
+    "message": "זיהויים"
+  },
+  "blockedContextTitle": {
+    "message": "הקשר מזוהה"
+  },
+  "alertMismatch": {
+    "message": "אי התאמה בין הבחירה ללוח ההעתקה."
+  },
+  "alertCommand": {
+    "message": "זוהה דפוס פקודה חשוד."
+  },
+  "alertClipboardCommand": {
+    "message": "זוהתה פקודה חשודה בלוח ההעתקה."
+  },
+  "alertWinR": {
+    "message": "הדף מציע להשתמש ב‑Win+R/הפעלה."
+  },
+  "alertWinX": {
+    "message": "הדף מציע להשתמש ב‑Win+X לפתיחת הטרמינל."
+  },
+  "alertBrowserError": {
+    "message": "הדף מציג שגיאת דפדפן מזויפת."
+  },
+  "alertFixAction": {
+    "message": "הדף מבקש תיקון מהיר או העתקת פקודה."
+  },
+  "alertCaptcha": {
+    "message": "זוהה קפצ'ה מזויף אפשרי."
+  },
+  "alertConsole": {
+    "message": "הדף מבקש להדביק לקונסולת DevTools."
+  },
+  "alertShell": {
+    "message": "הדף מבקש להדביק פקודות ב‑CMD/PowerShell/הפעלה."
+  },
+  "alertPasteSequence": {
+    "message": "הדף מנחה הדבקה עם Ctrl+V/Enter."
+  },
+  "alertFileExplorer": {
+    "message": "הדף מבקש להדביק נתיב בסייר הקבצים."
+  },
+  "alertCopyTrigger": {
+    "message": "הדף מנסה להעתיק פקודות ללוח ההעתקה."
+  },
+  "alertEvasion": {
+    "message": "זוהה תוכן פקודה מוסתר או מקודד."
+  },
+  "alertSnippet": {
+    "message": "קטע מזוהה: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertClipboardBlocked": {
+    "message": "לוח ההעתקה נחסם: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertConfidenceScore": {
+    "message": "ציון ביטחון: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockAllClipboardBlocked": {
+    "message": "העתקת לוח ההעתקה באמצעות JavaScript נחסמה."
+  },
+  "manualReportReason": {
+    "message": "דיווח ידני של המשתמש"
+  },
+  "blocklistReason": {
+    "message": "נחסם על ידי רשימה"
+  },
+  "popupTitle": {
+    "message": "ClickFix Mitigator"
+  },
+  "popupDetectionActive": {
+    "message": "זיהוי פעיל"
+  },
+  "popupDetectionActiveHint": {
+    "message": "מנטר פיתיונות העתקה/הדבקה ודפוסי פקודות."
+  },
+  "popupAllowlistActive": {
+    "message": "רשימת היתרים פעילה"
+  },
+  "popupBlockAllHint": {
+    "message": "מונע מדפים לכתוב ללוח ההעתקה."
+  },
+  "popupFamilySafeTitle": {
+    "message": "מצב FamilySafe"
+  },
+  "popupFamilySafeHint": {
+    "message": "חוסם גישה ללא אפשרויות לאפשר."
+  },
+  "popupWhitelistTitle": {
+    "message": "רשימת היתרים"
+  },
+  "popupWhitelistPlaceholder": {
+    "message": "example.com"
+  },
+  "popupAdd": {
+    "message": "הוסף"
+  },
+  "popupWhitelistEmpty": {
+    "message": "אין דומיינים ברשימת ההיתרים."
+  },
+  "popupRecentAlerts": {
+    "message": "התראות אחרונות"
+  },
+  "popupClearHistory": {
+    "message": "נקה היסטוריה"
+  },
+  "popupClipboardTitle": {
+    "message": "גיבויי לוח ההעתקה"
+  },
+  "popupClipboardEmpty": {
+    "message": "אין גיבויי לוח ההעתקה."
+  },
+  "popupClipboardClear": {
+    "message": "נקה גיבויים"
+  },
+  "popupClipboardCopy": {
+    "message": "העתק"
+  },
+  "popupClipboardCopied": {
+    "message": "הועתק"
+  },
+  "popupReportTitle": {
+    "message": "דווח על אתר"
+  },
+  "popupReportHint": {
+    "message": "שלח דיווח ידני כדי לחסום דומיין ספציפי."
+  },
+  "popupReportPlaceholder": {
+    "message": "https://example-site.com"
+  },
+  "popupReportButton": {
+    "message": "דווח"
+  },
+  "popupReportStatusMissing": {
+    "message": "הזן כתובת URL או השתמש בכרטיסייה הנוכחית."
+  },
+  "popupReportStatusSent": {
+    "message": "הדיווח נשלח: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupReportStatusInvalid": {
+    "message": "כתובת URL לא תקינה."
+  },
+  "popupReportStatusNoTab": {
+    "message": "לא ניתן לזהות את הכרטיסייה הפעילה."
+  },
+  "popupOptionsLink": {
+    "message": "אפשרויות מתקדמות"
+  },
+  "optionsTitle": {
+    "message": "אפשרויות מתקדמות"
+  },
+  "optionsSubtitle": {
+    "message": "הגדר את התנהגות הזיהוי ובדוק היסטוריית התראות."
+  },
+  "optionsStateTitle": {
+    "message": "מצב"
+  },
+  "optionsBlockAllClipboard": {
+    "message": "חסום כל העתקת לוח ההעתקה ב‑JavaScript"
+  },
+  "optionsFamilySafe": {
+    "message": "מצב FamilySafe (ללא עקיפה)"
+  },
+  "optionsClipboardBackup": {
+    "message": "שמור גיבוי לוח ההעתקה"
+  },
+  "optionsSendCountry": {
+    "message": "שתף מדינה בדיווחים"
+  },
+  "optionsWhitelistTitle": {
+    "message": "רשימת היתרים"
+  },
+  "optionsWhitelistAdd": {
+    "message": "הוסף דומיין"
+  },
+  "optionsBlocklistTitle": {
+    "message": "רשימות חסימה נוספות"
+  },
+  "optionsBlocklistHint": {
+    "message": "הוסף כתובות URL של רשימות ClickFix (אחת לכל רשימה) למיזוג עם הרשימה הראשית."
+  },
+  "optionsBlocklistPlaceholder": {
+    "message": "https://example.com/clickfixlist"
+  },
+  "optionsBlocklistAdd": {
+    "message": "הוסף רשימה"
+  },
+  "optionsBlocklistEmpty": {
+    "message": "אין רשימות נוספות."
+  },
+  "optionsAllowlistTitle": {
+    "message": "רשימות היתרים נוספות"
+  },
+  "optionsAllowlistHint": {
+    "message": "הוסף כתובות URL של allowlist (אחת לכל רשימה) למיזוג עם הרשימה הראשית."
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://example.com/clickfixallowlist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "הוסף רשימה"
+  },
+  "optionsAllowlistEmpty": {
+    "message": "אין רשימות היתרים נוספות."
+  },
+  "optionsHistoryTitle": {
+    "message": "היסטוריה מלאה"
+  },
+  "historyClipboardOnly": {
+    "message": "לוח ההעתקה בלבד"
+  },
+  "optionsHistoryEmpty": {
+    "message": "אין התראות אחרונות."
+  },
+  "optionsClearHistory": {
+    "message": "נקה היסטוריה"
+  },
+  "optionsRemove": {
+    "message": "הסר"
+  },
+  "languageTitle": {
+    "message": "שפה"
+  },
+  "languageEnglish": {
+    "message": "אנגלית"
+  },
+  "languageSpanish": {
+    "message": "ספרדית"
+  },
+  "languageGerman": {
+    "message": "גרמנית"
+  },
+  "languageFrench": {
+    "message": "צרפתית"
+  },
+  "languageDutch": {
+    "message": "הולנדית"
+  },
+  "languagePortuguese": {
+    "message": "פורטוגזית"
+  },
+  "languageRussian": {
+    "message": "רוסית"
+  },
+  "languageChinese": {
+    "message": "סינית"
+  },
+  "languageJapanese": {
+    "message": "יפנית"
+  },
+  "languageKorean": {
+    "message": "קוריאנית"
+  },
+  "languageHebrew": {
+    "message": "עברית"
+  },
+  "languageArabic": {
+    "message": "ערבית"
+  },
+"languageHindi": {
+  "message": "?????"
+},
+"languageCatalan": {
+  "message": "???????"
+},
+  "themeTitle": {
+    "message": "ערכת נושא"
+  },
+  "themeSystem": {
+    "message": "מערכת"
+  },
+  "themeLight": {
+    "message": "בהיר"
+  },
+  "themeDark": {
+    "message": "כהה"
+  },
+  "linksTitle": {
+    "message": "קישורים"
+  },
+  "linksGithub": {
+    "message": "GitHub"
+  },
+  "linksChromeWebStore": {
+    "message": "Chrome Web Store"
+  },
+  "popupMuteNotificationsTitle": {
+    "message": "השתק התראות"
+  },
+  "popupMuteNotificationsHint": {
+    "message": "מדכא התראות מערכת ובאנרי זיהוי."
+  },
+  "optionsMuteNotifications": {
+    "message": "השתק התראות זיהוי"
+  }
+}

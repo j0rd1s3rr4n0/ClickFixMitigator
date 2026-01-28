@@ -1,0 +1,389 @@
+{
+  "appName": {
+    "message": "ClickFix Mitigator"
+  },
+  "appDescription": {
+    "message": "يكتشف أنماط ClickFix وعدم تطابق الحافظة."
+  },
+  "bannerTitle": {
+    "message": "تنبيه ClickFix Mitigator"
+  },
+  "clipboardThreatWarning": {
+    "message": "الأمان: حاولت هذه الصفحة نسخ أمر قد يكون خطيراً. لا تلصقه في الطرفية. قد يضر نظامك."
+  },
+  "closeButton": {
+    "message": "إغلاق"
+  },
+  "blockAllClipboardUnavailable": {
+    "message": "لا يمكن تفعيل وضع حظر الكل في هذه الصفحة."
+  },
+  "notificationRestoreClipboard": {
+    "message": "استعادة الحافظة"
+  },
+  "notificationKeepClean": {
+    "message": "الإبقاء نظيفة"
+  },
+  "blockedTitle": {
+    "message": "تم حظر الموقع لاحتمال وجود ClickFix"
+  },
+  "blockedReasonDefault": {
+    "message": "السبب: تم اكتشاف أنماط ClickFix"
+  },
+  "blockedReasonWithDetail": {
+    "message": "السبب: $1",
+    "placeholders": {
+      "detail": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonReported": {
+    "message": "السبب: بلاغ ClickFix"
+  },
+  "blockedStay": {
+    "message": "البقاء في الموقع"
+  },
+  "blockedBack": {
+    "message": "العودة"
+  },
+  "blockedReport": {
+    "message": "الإبلاغ عن الموقع"
+  },
+  "blockedAllowOnce": {
+    "message": "السماح مرة واحدة"
+  },
+  "blockedAllowSession": {
+    "message": "السماح لهذه الجلسة"
+  },
+  "blockedAllowAlways": {
+    "message": "السماح دائماً"
+  },
+  "blockedReported": {
+    "message": "تم الإبلاغ"
+  },
+  "blockedFamilySafeNotice": {
+    "message": "وضع FamilySafe مُفعّل. يبقى هذا الموقع محظوراً لحماية هذا الجهاز."
+  },
+  "blockedHost": {
+    "message": "الموقع: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonsTitle": {
+    "message": "الاكتشافات"
+  },
+  "blockedContextTitle": {
+    "message": "السياق المكتشف"
+  },
+  "alertMismatch": {
+    "message": "عدم تطابق بين التحديد والحافظة."
+  },
+  "alertCommand": {
+    "message": "تم اكتشاف نمط أمر مريب."
+  },
+  "alertClipboardCommand": {
+    "message": "تم اكتشاف أمر مريب في الحافظة."
+  },
+  "alertWinR": {
+    "message": "تُشير الصفحة إلى استخدام Win+R/تشغيل."
+  },
+  "alertWinX": {
+    "message": "تُشير الصفحة إلى استخدام Win+X لفتح الطرفية."
+  },
+  "alertBrowserError": {
+    "message": "تعرض الصفحة خطأ متصفح مزيفاً."
+  },
+  "alertFixAction": {
+    "message": "تطلب الصفحة إصلاحاً سريعاً أو نسخ أمر."
+  },
+  "alertCaptcha": {
+    "message": "تم اكتشاف كابتشا مزيفة محتملة."
+  },
+  "alertConsole": {
+    "message": "تطلب الصفحة اللصق في وحدة تحكم أدوات المطور."
+  },
+  "alertShell": {
+    "message": "تطلب الصفحة لصق أوامر في CMD/PowerShell/Run."
+  },
+  "alertPasteSequence": {
+    "message": "تُرشد الصفحة اللصق باستخدام Ctrl+V/Enter."
+  },
+  "alertFileExplorer": {
+    "message": "تطلب الصفحة لصق مسار في مستكشف الملفات."
+  },
+  "alertCopyTrigger": {
+    "message": "تحاول الصفحة نسخ أوامر إلى الحافظة."
+  },
+  "alertEvasion": {
+    "message": "تم اكتشاف محتوى أوامر مشفَّر أو مُموَّه."
+  },
+  "alertSnippet": {
+    "message": "المقتطف المكتشف: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertClipboardBlocked": {
+    "message": "تم حظر الحافظة: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertConfidenceScore": {
+    "message": "درجة الثقة: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockAllClipboardBlocked": {
+    "message": "تم حظر نسخ الحافظة بواسطة JavaScript."
+  },
+  "manualReportReason": {
+    "message": "بلاغ يدوي من المستخدم"
+  },
+  "blocklistReason": {
+    "message": "محظور بواسطة القائمة"
+  },
+  "popupTitle": {
+    "message": "ClickFix Mitigator"
+  },
+  "popupDetectionActive": {
+    "message": "الكشف مُفعّل"
+  },
+  "popupDetectionActiveHint": {
+    "message": "يراقب إغراءات النسخ/اللصق وأنماط الأوامر."
+  },
+  "popupAllowlistActive": {
+    "message": "قائمة السماح مُفعّلة"
+  },
+  "popupBlockAllHint": {
+    "message": "يمنع الصفحات من الكتابة إلى الحافظة."
+  },
+  "popupFamilySafeTitle": {
+    "message": "وضع FamilySafe"
+  },
+  "popupFamilySafeHint": {
+    "message": "يحظر الوصول بدون خيارات تجاوز."
+  },
+  "popupWhitelistTitle": {
+    "message": "قائمة السماح"
+  },
+  "popupWhitelistPlaceholder": {
+    "message": "example.com"
+  },
+  "popupAdd": {
+    "message": "إضافة"
+  },
+  "popupWhitelistEmpty": {
+    "message": "لا توجد نطاقات في قائمة السماح."
+  },
+  "popupRecentAlerts": {
+    "message": "تنبيهات حديثة"
+  },
+  "popupClearHistory": {
+    "message": "مسح السجل"
+  },
+  "popupClipboardTitle": {
+    "message": "نسخ احتياطية للحافظة"
+  },
+  "popupClipboardEmpty": {
+    "message": "لا توجد نسخ احتياطية للحافظة."
+  },
+  "popupClipboardClear": {
+    "message": "مسح نسخ الحافظة الاحتياطية"
+  },
+  "popupClipboardCopy": {
+    "message": "نسخ"
+  },
+  "popupClipboardCopied": {
+    "message": "تم النسخ"
+  },
+  "popupReportTitle": {
+    "message": "الإبلاغ عن موقع"
+  },
+  "popupReportHint": {
+    "message": "أرسل بلاغاً يدوياً لحظر نطاق محدد."
+  },
+  "popupReportPlaceholder": {
+    "message": "https://example-site.com"
+  },
+  "popupReportButton": {
+    "message": "إبلاغ"
+  },
+  "popupReportStatusMissing": {
+    "message": "أدخل عنوان URL أو استخدم التبويب الحالي."
+  },
+  "popupReportStatusSent": {
+    "message": "تم إرسال البلاغ: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupReportStatusInvalid": {
+    "message": "عنوان URL غير صالح."
+  },
+  "popupReportStatusNoTab": {
+    "message": "تعذر اكتشاف التبويب النشط."
+  },
+  "popupOptionsLink": {
+    "message": "الخيارات المتقدمة"
+  },
+  "optionsTitle": {
+    "message": "الخيارات المتقدمة"
+  },
+  "optionsSubtitle": {
+    "message": "اضبط سلوك الكشف وراجع سجل التنبيهات."
+  },
+  "optionsStateTitle": {
+    "message": "الحالة"
+  },
+  "optionsBlockAllClipboard": {
+    "message": "حظر كل نسخ الحافظة بواسطة JavaScript"
+  },
+  "optionsFamilySafe": {
+    "message": "وضع FamilySafe (بدون تجاوز)"
+  },
+  "optionsClipboardBackup": {
+    "message": "الاحتفاظ بنسخة احتياطية سابقة للحافظة"
+  },
+  "optionsSendCountry": {
+    "message": "مشاركة الدولة في البلاغات"
+  },
+  "optionsWhitelistTitle": {
+    "message": "قائمة السماح"
+  },
+  "optionsWhitelistAdd": {
+    "message": "إضافة نطاق"
+  },
+  "optionsBlocklistTitle": {
+    "message": "قوائم الحظر الإضافية"
+  },
+  "optionsBlocklistHint": {
+    "message": "أضف عناوين قوائم ClickFix (قائمة لكل عنوان) لدمجها مع القائمة الرئيسية."
+  },
+  "optionsBlocklistPlaceholder": {
+    "message": "https://example.com/clickfixlist"
+  },
+  "optionsBlocklistAdd": {
+    "message": "إضافة قائمة"
+  },
+  "optionsBlocklistEmpty": {
+    "message": "لا توجد قوائم إضافية."
+  },
+  "optionsAllowlistTitle": {
+    "message": "قوائم السماح الإضافية"
+  },
+  "optionsAllowlistHint": {
+    "message": "أضف عناوين قوائم السماح (قائمة لكل عنوان) لدمجها مع القائمة الرئيسية."
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://example.com/clickfixallowlist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "إضافة قائمة"
+  },
+  "optionsAllowlistEmpty": {
+    "message": "لا توجد قوائم إضافية."
+  },
+  "optionsHistoryTitle": {
+    "message": "السجل الكامل"
+  },
+  "historyClipboardOnly": {
+    "message": "الحافظة فقط"
+  },
+  "optionsHistoryEmpty": {
+    "message": "لا توجد تنبيهات حديثة."
+  },
+  "optionsClearHistory": {
+    "message": "مسح السجل"
+  },
+  "optionsRemove": {
+    "message": "إزالة"
+  },
+  "languageTitle": {
+    "message": "اللغة"
+  },
+  "languageEnglish": {
+    "message": "الإنجليزية"
+  },
+  "languageSpanish": {
+    "message": "الإسبانية"
+  },
+  "languageGerman": {
+    "message": "الألمانية"
+  },
+  "languageFrench": {
+    "message": "الفرنسية"
+  },
+  "languageDutch": {
+    "message": "الهولندية"
+  },
+  "languagePortuguese": {
+    "message": "البرتغالية"
+  },
+  "languageRussian": {
+    "message": "الروسية"
+  },
+  "languageChinese": {
+    "message": "الصينية"
+  },
+  "languageJapanese": {
+    "message": "اليابانية"
+  },
+  "languageKorean": {
+    "message": "الكورية"
+  },
+  "languageHebrew": {
+    "message": "العبرية"
+  },
+  "languageArabic": {
+    "message": "العربية"
+  },
+"languageHindi": {
+  "message": "???????"
+},
+"languageCatalan": {
+  "message": "??????????"
+},
+  "themeTitle": {
+    "message": "السمة"
+  },
+  "themeSystem": {
+    "message": "سمة النظام"
+  },
+  "themeLight": {
+    "message": "فاتح"
+  },
+  "themeDark": {
+    "message": "داكن"
+  },
+  "linksTitle": {
+    "message": "روابط"
+  },
+  "linksGithub": {
+    "message": "GitHub"
+  },
+  "linksChromeWebStore": {
+    "message": "متجر Chrome الإلكتروني"
+  },
+  "popupMuteNotificationsTitle": {
+    "message": "كتم إشعارات الكشف"
+  },
+  "popupMuteNotificationsHint": {
+    "message": "يُعطّل تنبيهات النظام ولافتات الكشف."
+  },
+  "optionsMuteNotifications": {
+    "message": "كتم إشعارات الكشف"
+  }
+}

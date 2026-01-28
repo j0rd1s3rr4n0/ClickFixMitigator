@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## Unreleased - 2026-01-28
+
+### Browser extension (i18n)
+- `browser-extension/_locales/ar/messages.json`: Added full Arabic UI translation.
+- `browser-extension/_locales/de|fr|nl/messages.json`: Filled missing i18n strings so all UI text stays localized.
+- `browser-extension/content-script.js` + `browser-extension/background.js`: Blocked-page reasons now localize using the extension language.
+- `browser-extension/background.js`: Alerts now wait for locale loading so banners/notifications follow the selected language.
+- `browser-extension/content-script.js`: Blocked-page detail text now prefers localized reasons over fixed-language payloads.
+- `browser-extension/content-script.js`: Blocked-page HTML now sets lang/dir and respects RTL-friendly alignment.
+- `browser-extension/_locales/ca/messages.json`: Added full Catalan UI translation and language selector entry.
+- `browser-extension/background.js` + `browser-extension/ui/popup.js` + `browser-extension/ui/options.js` + `browser-extension/content-script.js`: Default language is English and Block All clipboard starts enabled.
+- `browser-extension/_locales/es/messages.json`: Fixed Spanish diacritics in mute notification copy.
+- `browser-extension/_locales/hi/messages.json`: Added full Hindi UI translation and language selector entry.
+- `browser-extension/ui/popup.html` + `browser-extension/ui/options.html`: Fixed Catalán label rendering.
+- `browser-extension/background.js`: Restored service worker and re-applied locale defaults + reason payloads after antivirus quarantine.
+- `browser-extension/manifest.json`: Exposed locale message bundles as web-accessible resources for content-script locale loading; version bump to `0.3.14`.
+
 ## Unreleased - 2026-01-27
 
 ### Botanalyzer (Selenium)
@@ -12,9 +29,16 @@
 
 ### Browser extension (core)
 - `browser-extension/content-script.js`: Iframe scan now walks nested frames (same-origin) for more accurate opaque iframe context.
+- `browser-extension/manifest.json`: Version bump to `0.3.1`.
 
 ### Docs
 - Updated README and markdown docs to reflect Botanalyzer workflow and recent behavior changes.
+
+### Windows agent
+- `windows-agent/agent.py`: Version marker updated to `agent-debug-2026-01-28-keepalive-2`.
+
+### Web dashboard (PHP)
+- `Web/ClickFix/dashboard.php`: Version string now `0.7.12`.
 
 ## Unreleased - 2026-01-26
 

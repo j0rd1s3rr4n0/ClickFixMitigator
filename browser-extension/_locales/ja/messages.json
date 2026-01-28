@@ -1,0 +1,389 @@
+{
+  "appName": {
+    "message": "ClickFix Mitigator"
+  },
+  "appDescription": {
+    "message": "ClickFix パターンとクリップボードの不一致を検出します。"
+  },
+  "bannerTitle": {
+    "message": "ClickFix Mitigator 警告"
+  },
+  "clipboardThreatWarning": {
+    "message": "セキュリティ: このページは危険な可能性のあるコマンドをコピーしようとしました。ターミナルに貼り付けないでください。システムに害を与える可能性があります。"
+  },
+  "closeButton": {
+    "message": "閉じる"
+  },
+  "blockAllClipboardUnavailable": {
+    "message": "このページでは「すべてブロック」モードを有効にできません。"
+  },
+  "notificationRestoreClipboard": {
+    "message": "クリップボードを復元"
+  },
+  "notificationKeepClean": {
+    "message": "清潔に保つ"
+  },
+  "blockedTitle": {
+    "message": "ClickFix の可能性によりサイトがブロックされました"
+  },
+  "blockedReasonDefault": {
+    "message": "理由: ClickFix パターンが検出されました"
+  },
+  "blockedReasonWithDetail": {
+    "message": "理由: $1",
+    "placeholders": {
+      "detail": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonReported": {
+    "message": "理由: ClickFix 報告"
+  },
+  "blockedStay": {
+    "message": "サイトに留まる"
+  },
+  "blockedBack": {
+    "message": "戻る"
+  },
+  "blockedReport": {
+    "message": "サイトを報告"
+  },
+  "blockedAllowOnce": {
+    "message": "一度だけ許可"
+  },
+  "blockedAllowSession": {
+    "message": "セッション中許可"
+  },
+  "blockedAllowAlways": {
+    "message": "常に許可"
+  },
+  "blockedReported": {
+    "message": "報告済み"
+  },
+  "blockedFamilySafeNotice": {
+    "message": "FamilySafe が有効です。このサイトはデバイス保護のためブロックされたままです。"
+  },
+  "blockedHost": {
+    "message": "サイト: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonsTitle": {
+    "message": "検出項目"
+  },
+  "blockedContextTitle": {
+    "message": "検出されたコンテキスト"
+  },
+  "alertMismatch": {
+    "message": "選択内容とクリップボードの不一致。"
+  },
+  "alertCommand": {
+    "message": "疑わしいコマンドパターンを検出しました。"
+  },
+  "alertClipboardCommand": {
+    "message": "クリップボードに疑わしいコマンドが検出されました。"
+  },
+  "alertWinR": {
+    "message": "ページが Win+R/実行 を提案しています。"
+  },
+  "alertWinX": {
+    "message": "ページが Win+X でターミナルを開くよう促しています。"
+  },
+  "alertBrowserError": {
+    "message": "ページが偽のブラウザエラーを表示しています。"
+  },
+  "alertFixAction": {
+    "message": "ページがクイック修正やコマンドのコピーを求めています。"
+  },
+  "alertCaptcha": {
+    "message": "偽のキャプチャの可能性があります。"
+  },
+  "alertConsole": {
+    "message": "ページが DevTools コンソールへの貼り付けを求めています。"
+  },
+  "alertShell": {
+    "message": "ページが CMD/PowerShell/実行 にコマンドを貼り付けるよう求めています。"
+  },
+  "alertPasteSequence": {
+    "message": "ページが Ctrl+V/Enter で貼り付ける手順を示しています。"
+  },
+  "alertFileExplorer": {
+    "message": "ページがエクスプローラーにパスを貼り付けるよう求めています。"
+  },
+  "alertCopyTrigger": {
+    "message": "ページがコマンドをクリップボードにコピーしようとしています。"
+  },
+  "alertEvasion": {
+    "message": "難読化またはエンコードされたコマンド内容を検出しました。"
+  },
+  "alertSnippet": {
+    "message": "検出された抜粋: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertClipboardBlocked": {
+    "message": "クリップボードをブロックしました: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertConfidenceScore": {
+    "message": "信頼スコア: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockAllClipboardBlocked": {
+    "message": "JavaScript によるクリップボード書き込みをブロックしました。"
+  },
+  "manualReportReason": {
+    "message": "ユーザーの手動報告"
+  },
+  "blocklistReason": {
+    "message": "リストによりブロック"
+  },
+  "popupTitle": {
+    "message": "ClickFix Mitigator"
+  },
+  "popupDetectionActive": {
+    "message": "検出が有効"
+  },
+  "popupDetectionActiveHint": {
+    "message": "コピー/貼り付け誘導とコマンドパターンを監視します。"
+  },
+  "popupAllowlistActive": {
+    "message": "許可リストが有効"
+  },
+  "popupBlockAllHint": {
+    "message": "ページがクリップボードへ書き込むのを防ぎます。"
+  },
+  "popupFamilySafeTitle": {
+    "message": "FamilySafe モード"
+  },
+  "popupFamilySafeHint": {
+    "message": "許可オプションなしでアクセスをブロックします。"
+  },
+  "popupWhitelistTitle": {
+    "message": "許可リスト"
+  },
+  "popupWhitelistPlaceholder": {
+    "message": "example.com"
+  },
+  "popupAdd": {
+    "message": "追加"
+  },
+  "popupWhitelistEmpty": {
+    "message": "許可リストにドメインがありません。"
+  },
+  "popupRecentAlerts": {
+    "message": "最近の警告"
+  },
+  "popupClearHistory": {
+    "message": "履歴をクリア"
+  },
+  "popupClipboardTitle": {
+    "message": "クリップボードのバックアップ"
+  },
+  "popupClipboardEmpty": {
+    "message": "クリップボードのバックアップがありません。"
+  },
+  "popupClipboardClear": {
+    "message": "バックアップをクリア"
+  },
+  "popupClipboardCopy": {
+    "message": "コピー"
+  },
+  "popupClipboardCopied": {
+    "message": "コピーしました"
+  },
+  "popupReportTitle": {
+    "message": "サイトを報告"
+  },
+  "popupReportHint": {
+    "message": "特定のドメインをブロックするための手動報告を送信します。"
+  },
+  "popupReportPlaceholder": {
+    "message": "https://example-site.com"
+  },
+  "popupReportButton": {
+    "message": "報告"
+  },
+  "popupReportStatusMissing": {
+    "message": "URL を入力するか現在のタブを使用してください。"
+  },
+  "popupReportStatusSent": {
+    "message": "報告を送信しました: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupReportStatusInvalid": {
+    "message": "無効な URL。"
+  },
+  "popupReportStatusNoTab": {
+    "message": "アクティブなタブを検出できませんでした。"
+  },
+  "popupOptionsLink": {
+    "message": "詳細オプション"
+  },
+  "optionsTitle": {
+    "message": "詳細オプション"
+  },
+  "optionsSubtitle": {
+    "message": "検出動作を設定し、警告履歴を確認します。"
+  },
+  "optionsStateTitle": {
+    "message": "状態"
+  },
+  "optionsBlockAllClipboard": {
+    "message": "JavaScript によるクリップボードの書き込みをすべてブロック"
+  },
+  "optionsFamilySafe": {
+    "message": "FamilySafe モード（許可なし）"
+  },
+  "optionsClipboardBackup": {
+    "message": "クリップボードのバックアップを保持"
+  },
+  "optionsSendCountry": {
+    "message": "報告で国を共有"
+  },
+  "optionsWhitelistTitle": {
+    "message": "許可リスト"
+  },
+  "optionsWhitelistAdd": {
+    "message": "ドメインを追加"
+  },
+  "optionsBlocklistTitle": {
+    "message": "追加のブロックリスト"
+  },
+  "optionsBlocklistHint": {
+    "message": "ClickFix リストの URL（1リストにつき1つ）を追加してメインリストと統合します。"
+  },
+  "optionsBlocklistPlaceholder": {
+    "message": "https://example.com/clickfixlist"
+  },
+  "optionsBlocklistAdd": {
+    "message": "リストを追加"
+  },
+  "optionsBlocklistEmpty": {
+    "message": "追加のリストはありません。"
+  },
+  "optionsAllowlistTitle": {
+    "message": "追加の許可リスト"
+  },
+  "optionsAllowlistHint": {
+    "message": "許可リストの URL（1リストにつき1つ）を追加してメインリストと統合します。"
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://example.com/clickfixallowlist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "リストを追加"
+  },
+  "optionsAllowlistEmpty": {
+    "message": "追加の許可リストはありません。"
+  },
+  "optionsHistoryTitle": {
+    "message": "完全な履歴"
+  },
+  "historyClipboardOnly": {
+    "message": "クリップボードのみ"
+  },
+  "optionsHistoryEmpty": {
+    "message": "最近の警告はありません。"
+  },
+  "optionsClearHistory": {
+    "message": "履歴をクリア"
+  },
+  "optionsRemove": {
+    "message": "削除"
+  },
+  "languageTitle": {
+    "message": "言語"
+  },
+  "languageEnglish": {
+    "message": "英語"
+  },
+  "languageSpanish": {
+    "message": "スペイン語"
+  },
+  "languageGerman": {
+    "message": "ドイツ語"
+  },
+  "languageFrench": {
+    "message": "フランス語"
+  },
+  "languageDutch": {
+    "message": "オランダ語"
+  },
+  "languagePortuguese": {
+    "message": "ポルトガル語"
+  },
+  "languageRussian": {
+    "message": "ロシア語"
+  },
+  "languageChinese": {
+    "message": "中国語"
+  },
+  "languageJapanese": {
+    "message": "日本語"
+  },
+  "languageKorean": {
+    "message": "韓国語"
+  },
+  "languageHebrew": {
+    "message": "ヘブライ語"
+  },
+  "languageArabic": {
+    "message": "アラビア語"
+  },
+"languageHindi": {
+  "message": "??????"
+},
+"languageCatalan": {
+  "message": "???????"
+},
+  "themeTitle": {
+    "message": "テーマ"
+  },
+  "themeSystem": {
+    "message": "システム"
+  },
+  "themeLight": {
+    "message": "ライト"
+  },
+  "themeDark": {
+    "message": "ダーク"
+  },
+  "linksTitle": {
+    "message": "リンク"
+  },
+  "linksGithub": {
+    "message": "GitHub"
+  },
+  "linksChromeWebStore": {
+    "message": "Chrome ウェブストア"
+  },
+  "popupMuteNotificationsTitle": {
+    "message": "通知をミュート"
+  },
+  "popupMuteNotificationsHint": {
+    "message": "システム通知と検出バナーを抑制します。"
+  },
+  "optionsMuteNotifications": {
+    "message": "検出通知をミュート"
+  }
+}

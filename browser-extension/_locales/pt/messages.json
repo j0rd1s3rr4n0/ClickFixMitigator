@@ -1,0 +1,389 @@
+{
+  "appName": {
+    "message": "ClickFix Mitigator"
+  },
+  "appDescription": {
+    "message": "Detecta padrões de ClickFix e discrepâncias na área de transferência."
+  },
+  "bannerTitle": {
+    "message": "Alerta do ClickFix Mitigator"
+  },
+  "clipboardThreatWarning": {
+    "message": "Segurança: esta página tentou copiar um comando potencialmente perigoso. Não cole isso no terminal. Pode danificar seu sistema."
+  },
+  "closeButton": {
+    "message": "Fechar"
+  },
+  "blockAllClipboardUnavailable": {
+    "message": "O modo Bloquear tudo não pode ser ativado nesta página."
+  },
+  "notificationRestoreClipboard": {
+    "message": "Restaurar área de transferência"
+  },
+  "notificationKeepClean": {
+    "message": "Manter limpo"
+  },
+  "blockedTitle": {
+    "message": "Site bloqueado por possível ClickFix"
+  },
+  "blockedReasonDefault": {
+    "message": "Motivo: padrões ClickFix detectados"
+  },
+  "blockedReasonWithDetail": {
+    "message": "Motivo: $1",
+    "placeholders": {
+      "detail": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonReported": {
+    "message": "Motivo: denúncia de ClickFix"
+  },
+  "blockedStay": {
+    "message": "Permanecer no site"
+  },
+  "blockedBack": {
+    "message": "Voltar"
+  },
+  "blockedReport": {
+    "message": "Reportar site"
+  },
+  "blockedAllowOnce": {
+    "message": "Permitir uma vez"
+  },
+  "blockedAllowSession": {
+    "message": "Permitir na sessão"
+  },
+  "blockedAllowAlways": {
+    "message": "Permitir sempre"
+  },
+  "blockedReported": {
+    "message": "Reportado"
+  },
+  "blockedFamilySafeNotice": {
+    "message": "FamilySafe está ativado. Este site permanece bloqueado para proteger este dispositivo."
+  },
+  "blockedHost": {
+    "message": "Site: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonsTitle": {
+    "message": "Detecções"
+  },
+  "blockedContextTitle": {
+    "message": "Contexto detectado"
+  },
+  "alertMismatch": {
+    "message": "Diferença entre seleção e área de transferência."
+  },
+  "alertCommand": {
+    "message": "Padrão de comando suspeito detectado."
+  },
+  "alertClipboardCommand": {
+    "message": "Comando suspeito detectado na área de transferência."
+  },
+  "alertWinR": {
+    "message": "A página sugere usar Win+R/Executar."
+  },
+  "alertWinX": {
+    "message": "A página sugere usar Win+X para abrir o terminal."
+  },
+  "alertBrowserError": {
+    "message": "A página mostra um erro falso do navegador."
+  },
+  "alertFixAction": {
+    "message": "A página pede uma correção rápida ou copiar um comando."
+  },
+  "alertCaptcha": {
+    "message": "Possível captcha falso detectado."
+  },
+  "alertConsole": {
+    "message": "A página pede para colar no console do DevTools."
+  },
+  "alertShell": {
+    "message": "A página pede para colar comandos no CMD/PowerShell/Executar."
+  },
+  "alertPasteSequence": {
+    "message": "A página orienta a colagem com Ctrl+V/Enter."
+  },
+  "alertFileExplorer": {
+    "message": "A página pede para colar um caminho no Explorador de Arquivos."
+  },
+  "alertCopyTrigger": {
+    "message": "A página tenta copiar comandos para a área de transferência."
+  },
+  "alertEvasion": {
+    "message": "Conteúdo de comando ofuscado ou codificado detectado."
+  },
+  "alertSnippet": {
+    "message": "Trecho detectado: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertClipboardBlocked": {
+    "message": "Área de transferência bloqueada: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertConfidenceScore": {
+    "message": "Pontuação de confiança: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockAllClipboardBlocked": {
+    "message": "A cópia da área de transferência por JavaScript foi bloqueada."
+  },
+  "manualReportReason": {
+    "message": "Relato manual do usuário"
+  },
+  "blocklistReason": {
+    "message": "Bloqueado por lista"
+  },
+  "popupTitle": {
+    "message": "ClickFix Mitigator"
+  },
+  "popupDetectionActive": {
+    "message": "Detecção ativa"
+  },
+  "popupDetectionActiveHint": {
+    "message": "Monitora iscas de copiar/colar e padrões de comando."
+  },
+  "popupAllowlistActive": {
+    "message": "Allowlist ativa"
+  },
+  "popupBlockAllHint": {
+    "message": "Impede que páginas escrevam na área de transferência."
+  },
+  "popupFamilySafeTitle": {
+    "message": "Modo FamilySafe"
+  },
+  "popupFamilySafeHint": {
+    "message": "Bloqueia o acesso sem opções de permitir."
+  },
+  "popupWhitelistTitle": {
+    "message": "Allowlist"
+  },
+  "popupWhitelistPlaceholder": {
+    "message": "exemplo.com"
+  },
+  "popupAdd": {
+    "message": "Adicionar"
+  },
+  "popupWhitelistEmpty": {
+    "message": "Nenhum domínio na allowlist."
+  },
+  "popupRecentAlerts": {
+    "message": "Alertas recentes"
+  },
+  "popupClearHistory": {
+    "message": "Limpar histórico"
+  },
+  "popupClipboardTitle": {
+    "message": "Backups da área de transferência"
+  },
+  "popupClipboardEmpty": {
+    "message": "Sem backups da área de transferência."
+  },
+  "popupClipboardClear": {
+    "message": "Limpar backups"
+  },
+  "popupClipboardCopy": {
+    "message": "Copiar"
+  },
+  "popupClipboardCopied": {
+    "message": "Copiado"
+  },
+  "popupReportTitle": {
+    "message": "Reportar site"
+  },
+  "popupReportHint": {
+    "message": "Envie um relato manual para bloquear um domínio específico."
+  },
+  "popupReportPlaceholder": {
+    "message": "https://site-exemplo.com"
+  },
+  "popupReportButton": {
+    "message": "Reportar"
+  },
+  "popupReportStatusMissing": {
+    "message": "Insira uma URL ou use a guia atual."
+  },
+  "popupReportStatusSent": {
+    "message": "Relato enviado: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupReportStatusInvalid": {
+    "message": "URL inválida."
+  },
+  "popupReportStatusNoTab": {
+    "message": "Não foi possível detectar a guia ativa."
+  },
+  "popupOptionsLink": {
+    "message": "Opções avançadas"
+  },
+  "optionsTitle": {
+    "message": "Opções avançadas"
+  },
+  "optionsSubtitle": {
+    "message": "Configure o comportamento de detecção e revise o histórico de alertas."
+  },
+  "optionsStateTitle": {
+    "message": "Estado"
+  },
+  "optionsBlockAllClipboard": {
+    "message": "Bloquear toda a cópia do clipboard via JavaScript"
+  },
+  "optionsFamilySafe": {
+    "message": "Modo FamilySafe (sem permitir)"
+  },
+  "optionsClipboardBackup": {
+    "message": "Manter backup do clipboard"
+  },
+  "optionsSendCountry": {
+    "message": "Compartilhar país nos relatos"
+  },
+  "optionsWhitelistTitle": {
+    "message": "Allowlist"
+  },
+  "optionsWhitelistAdd": {
+    "message": "Adicionar domínio"
+  },
+  "optionsBlocklistTitle": {
+    "message": "Listas de bloqueio adicionais"
+  },
+  "optionsBlocklistHint": {
+    "message": "Adicione URLs de listas ClickFix (uma por lista) para mesclar com a lista principal."
+  },
+  "optionsBlocklistPlaceholder": {
+    "message": "https://exemplo.com/clickfixlist"
+  },
+  "optionsBlocklistAdd": {
+    "message": "Adicionar lista"
+  },
+  "optionsBlocklistEmpty": {
+    "message": "Nenhuma lista adicional."
+  },
+  "optionsAllowlistTitle": {
+    "message": "Allowlists adicionais"
+  },
+  "optionsAllowlistHint": {
+    "message": "Adicione URLs de allowlist (uma por lista) para mesclar com a lista principal."
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://exemplo.com/clickfixallowlist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "Adicionar lista"
+  },
+  "optionsAllowlistEmpty": {
+    "message": "Nenhuma allowlist adicional."
+  },
+  "optionsHistoryTitle": {
+    "message": "Histórico completo"
+  },
+  "historyClipboardOnly": {
+    "message": "Somente área de transferência"
+  },
+  "optionsHistoryEmpty": {
+    "message": "Sem alertas recentes."
+  },
+  "optionsClearHistory": {
+    "message": "Limpar histórico"
+  },
+  "optionsRemove": {
+    "message": "Remover"
+  },
+  "languageTitle": {
+    "message": "Idioma"
+  },
+  "languageEnglish": {
+    "message": "Inglês"
+  },
+  "languageSpanish": {
+    "message": "Espanhol"
+  },
+  "languageGerman": {
+    "message": "Alemão"
+  },
+  "languageFrench": {
+    "message": "Francês"
+  },
+  "languageDutch": {
+    "message": "Holandês"
+  },
+  "languagePortuguese": {
+    "message": "Português"
+  },
+  "languageRussian": {
+    "message": "Russo"
+  },
+  "languageChinese": {
+    "message": "Chinês"
+  },
+  "languageJapanese": {
+    "message": "Japonês"
+  },
+  "languageKorean": {
+    "message": "Coreano"
+  },
+  "languageHebrew": {
+    "message": "Hebraico"
+  },
+  "languageArabic": {
+    "message": "Árabe"
+  },
+"languageHindi": {
+  "message": "Hindi"
+},
+"languageCatalan": {
+  "message": "Catal?o"
+},
+  "themeTitle": {
+    "message": "Tema"
+  },
+  "themeSystem": {
+    "message": "Sistema"
+  },
+  "themeLight": {
+    "message": "Claro"
+  },
+  "themeDark": {
+    "message": "Escuro"
+  },
+  "linksTitle": {
+    "message": "Links"
+  },
+  "linksGithub": {
+    "message": "GitHub"
+  },
+  "linksChromeWebStore": {
+    "message": "Chrome Web Store"
+  },
+  "popupMuteNotificationsTitle": {
+    "message": "Silenciar notificações"
+  },
+  "popupMuteNotificationsHint": {
+    "message": "Suprime alertas do sistema e banners de detecção."
+  },
+  "optionsMuteNotifications": {
+    "message": "Silenciar notificações de detecção"
+  }
+}

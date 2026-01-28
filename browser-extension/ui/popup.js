@@ -1,6 +1,6 @@
 const DEFAULT_SETTINGS = {
   enabled: true,
-  blockAllClipboard: false,
+  blockAllClipboard: true,
   familySafe: false,
   uiTheme: "system",
   muteDetectionNotifications: false,
@@ -26,9 +26,10 @@ const languageSelect = document.getElementById("language-select");
 const themeSelect = document.getElementById("theme-select");
 const allowlistStatus = document.getElementById("allowlist-status");
 
-const SUPPORTED_LOCALES = ["en", "es", "de", "fr", "nl"];
+const SUPPORTED_LOCALES = ["en", "es", "ca", "de", "fr", "nl", "he", "ru", "zh", "ko", "ja", "pt", "ar", "hi"];
 const DEFAULT_LOCALE = "en";
 let activeMessages = null;
+const RTL_LOCALES = new Set(["ar"]);
 
 function t(key, substitutions) {
   if (activeMessages?.[key]?.message) {
@@ -67,6 +68,10 @@ function applyTranslations() {
     element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
   });
   document.title = t("popupTitle");
+}
+
+function applyDirection(locale) {
+  document.documentElement.dir = RTL_LOCALES.has(locale) ? "rtl" : "ltr";
 }
 
 function sendRuntimeMessage(message) {
@@ -115,12 +120,17 @@ async function updateAllowlistStatus() {
 }
 
 async function loadLocaleMessages(locale) {
-  const response = await fetch(chrome.runtime.getURL(`_locales/${locale}/messages.json`));
-  if (!response.ok) {
-    throw new Error(`Failed to load locale ${locale}`);
+  try {
+    const response = await fetch(chrome.runtime.getURL(`_locales/${locale}/messages.json`));
+    if (!response.ok) {
+      throw new Error(`Failed to load locale ${locale}`);
+    }
+    activeMessages = await response.json();
+  } catch (error) {
+    activeMessages = null;
   }
-  activeMessages = await response.json();
   document.documentElement.lang = locale;
+  applyDirection(locale);
   applyTranslations();
 }
 
@@ -129,7 +139,7 @@ async function initLanguageSelector() {
     return;
   }
   const { uiLanguage } = await chrome.storage.local.get({ uiLanguage: "" });
-  const selectedLocale = normalizeLocale(uiLanguage || chrome.i18n.getUILanguage());
+  const selectedLocale = normalizeLocale(uiLanguage || "en");
   languageSelect.value = selectedLocale;
   await loadLocaleMessages(selectedLocale);
   languageSelect.addEventListener("change", async () => {

@@ -1,0 +1,389 @@
+{
+  "appName": {
+    "message": "ClickFix Mitigator"
+  },
+  "appDescription": {
+    "message": "检测 ClickFix 模式和剪贴板不匹配。"
+  },
+  "bannerTitle": {
+    "message": "ClickFix Mitigator 警报"
+  },
+  "clipboardThreatWarning": {
+    "message": "安全提示：此页面尝试复制可能危险的命令。不要将其粘贴到终端中，这可能会损害你的系统。"
+  },
+  "closeButton": {
+    "message": "关闭"
+  },
+  "blockAllClipboardUnavailable": {
+    "message": "此页面无法启用“全部阻止”模式。"
+  },
+  "notificationRestoreClipboard": {
+    "message": "恢复剪贴板"
+  },
+  "notificationKeepClean": {
+    "message": "保持清洁"
+  },
+  "blockedTitle": {
+    "message": "网站因可能的 ClickFix 被阻止"
+  },
+  "blockedReasonDefault": {
+    "message": "原因：检测到 ClickFix 模式"
+  },
+  "blockedReasonWithDetail": {
+    "message": "原因：$1",
+    "placeholders": {
+      "detail": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonReported": {
+    "message": "原因：ClickFix 报告"
+  },
+  "blockedStay": {
+    "message": "留在网站"
+  },
+  "blockedBack": {
+    "message": "返回"
+  },
+  "blockedReport": {
+    "message": "举报网站"
+  },
+  "blockedAllowOnce": {
+    "message": "允许一次"
+  },
+  "blockedAllowSession": {
+    "message": "允许本次会话"
+  },
+  "blockedAllowAlways": {
+    "message": "始终允许"
+  },
+  "blockedReported": {
+    "message": "已举报"
+  },
+  "blockedFamilySafeNotice": {
+    "message": "FamilySafe 已启用。为保护此设备，该网站保持被阻止。"
+  },
+  "blockedHost": {
+    "message": "网站：$1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonsTitle": {
+    "message": "检测项"
+  },
+  "blockedContextTitle": {
+    "message": "检测到的上下文"
+  },
+  "alertMismatch": {
+    "message": "选择内容与剪贴板不一致。"
+  },
+  "alertCommand": {
+    "message": "检测到可疑命令模式。"
+  },
+  "alertClipboardCommand": {
+    "message": "剪贴板中检测到可疑命令。"
+  },
+  "alertWinR": {
+    "message": "页面建议使用 Win+R/运行。"
+  },
+  "alertWinX": {
+    "message": "页面建议使用 Win+X 打开终端。"
+  },
+  "alertBrowserError": {
+    "message": "页面显示伪造的浏览器错误。"
+  },
+  "alertFixAction": {
+    "message": "页面要求快速修复或复制命令。"
+  },
+  "alertCaptcha": {
+    "message": "检测到可能的虚假验证码。"
+  },
+  "alertConsole": {
+    "message": "页面要求粘贴到 DevTools 控制台。"
+  },
+  "alertShell": {
+    "message": "页面要求在 CMD/PowerShell/运行中粘贴命令。"
+  },
+  "alertPasteSequence": {
+    "message": "页面引导使用 Ctrl+V/Enter 粘贴。"
+  },
+  "alertFileExplorer": {
+    "message": "页面要求在文件资源管理器中粘贴路径。"
+  },
+  "alertCopyTrigger": {
+    "message": "页面尝试将命令复制到剪贴板。"
+  },
+  "alertEvasion": {
+    "message": "检测到混淆或编码的命令内容。"
+  },
+  "alertSnippet": {
+    "message": "检测片段：“$1”",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertClipboardBlocked": {
+    "message": "剪贴板已阻止：“$1”",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertConfidenceScore": {
+    "message": "置信度：$1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockAllClipboardBlocked": {
+    "message": "已阻止 JavaScript 写入剪贴板。"
+  },
+  "manualReportReason": {
+    "message": "用户手动举报"
+  },
+  "blocklistReason": {
+    "message": "被列表阻止"
+  },
+  "popupTitle": {
+    "message": "ClickFix Mitigator"
+  },
+  "popupDetectionActive": {
+    "message": "检测已启用"
+  },
+  "popupDetectionActiveHint": {
+    "message": "监测复制/粘贴诱导和命令模式。"
+  },
+  "popupAllowlistActive": {
+    "message": "白名单已启用"
+  },
+  "popupBlockAllHint": {
+    "message": "阻止网页写入剪贴板。"
+  },
+  "popupFamilySafeTitle": {
+    "message": "FamilySafe 模式"
+  },
+  "popupFamilySafeHint": {
+    "message": "无允许选项，直接阻止访问。"
+  },
+  "popupWhitelistTitle": {
+    "message": "白名单"
+  },
+  "popupWhitelistPlaceholder": {
+    "message": "example.com"
+  },
+  "popupAdd": {
+    "message": "添加"
+  },
+  "popupWhitelistEmpty": {
+    "message": "白名单中没有域名。"
+  },
+  "popupRecentAlerts": {
+    "message": "最近警报"
+  },
+  "popupClearHistory": {
+    "message": "清除历史"
+  },
+  "popupClipboardTitle": {
+    "message": "剪贴板备份"
+  },
+  "popupClipboardEmpty": {
+    "message": "没有剪贴板备份。"
+  },
+  "popupClipboardClear": {
+    "message": "清除备份"
+  },
+  "popupClipboardCopy": {
+    "message": "复制"
+  },
+  "popupClipboardCopied": {
+    "message": "已复制"
+  },
+  "popupReportTitle": {
+    "message": "举报网站"
+  },
+  "popupReportHint": {
+    "message": "发送手动举报以阻止特定域名。"
+  },
+  "popupReportPlaceholder": {
+    "message": "https://example-site.com"
+  },
+  "popupReportButton": {
+    "message": "举报"
+  },
+  "popupReportStatusMissing": {
+    "message": "请输入 URL 或使用当前标签页。"
+  },
+  "popupReportStatusSent": {
+    "message": "已发送举报：$1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupReportStatusInvalid": {
+    "message": "无效的 URL。"
+  },
+  "popupReportStatusNoTab": {
+    "message": "无法检测到活动标签页。"
+  },
+  "popupOptionsLink": {
+    "message": "高级选项"
+  },
+  "optionsTitle": {
+    "message": "高级选项"
+  },
+  "optionsSubtitle": {
+    "message": "配置检测行为并查看警报历史。"
+  },
+  "optionsStateTitle": {
+    "message": "状态"
+  },
+  "optionsBlockAllClipboard": {
+    "message": "阻止所有 JavaScript 剪贴板写入"
+  },
+  "optionsFamilySafe": {
+    "message": "FamilySafe 模式（不允许绕过）"
+  },
+  "optionsClipboardBackup": {
+    "message": "保留剪贴板备份"
+  },
+  "optionsSendCountry": {
+    "message": "在报告中共享国家/地区"
+  },
+  "optionsWhitelistTitle": {
+    "message": "白名单"
+  },
+  "optionsWhitelistAdd": {
+    "message": "添加域名"
+  },
+  "optionsBlocklistTitle": {
+    "message": "附加阻止列表"
+  },
+  "optionsBlocklistHint": {
+    "message": "添加 ClickFix 列表 URL（每个列表一个）以与主列表合并。"
+  },
+  "optionsBlocklistPlaceholder": {
+    "message": "https://example.com/clickfixlist"
+  },
+  "optionsBlocklistAdd": {
+    "message": "添加列表"
+  },
+  "optionsBlocklistEmpty": {
+    "message": "没有附加列表。"
+  },
+  "optionsAllowlistTitle": {
+    "message": "附加允许列表"
+  },
+  "optionsAllowlistHint": {
+    "message": "添加允许列表 URL（每个列表一个）以与主列表合并。"
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://example.com/clickfixallowlist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "添加列表"
+  },
+  "optionsAllowlistEmpty": {
+    "message": "没有附加允许列表。"
+  },
+  "optionsHistoryTitle": {
+    "message": "完整历史"
+  },
+  "historyClipboardOnly": {
+    "message": "仅剪贴板"
+  },
+  "optionsHistoryEmpty": {
+    "message": "没有最近警报。"
+  },
+  "optionsClearHistory": {
+    "message": "清除历史"
+  },
+  "optionsRemove": {
+    "message": "移除"
+  },
+  "languageTitle": {
+    "message": "语言"
+  },
+  "languageEnglish": {
+    "message": "英语"
+  },
+  "languageSpanish": {
+    "message": "西班牙语"
+  },
+  "languageGerman": {
+    "message": "德语"
+  },
+  "languageFrench": {
+    "message": "法语"
+  },
+  "languageDutch": {
+    "message": "荷兰语"
+  },
+  "languagePortuguese": {
+    "message": "葡萄牙语"
+  },
+  "languageRussian": {
+    "message": "俄语"
+  },
+  "languageChinese": {
+    "message": "中文"
+  },
+  "languageJapanese": {
+    "message": "日语"
+  },
+  "languageKorean": {
+    "message": "韩语"
+  },
+  "languageHebrew": {
+    "message": "希伯来语"
+  },
+  "languageArabic": {
+    "message": "阿拉伯语"
+  },
+"languageHindi": {
+  "message": "???"
+},
+"languageCatalan": {
+  "message": "??????"
+},
+  "themeTitle": {
+    "message": "主题"
+  },
+  "themeSystem": {
+    "message": "系统"
+  },
+  "themeLight": {
+    "message": "浅色"
+  },
+  "themeDark": {
+    "message": "深色"
+  },
+  "linksTitle": {
+    "message": "链接"
+  },
+  "linksGithub": {
+    "message": "GitHub"
+  },
+  "linksChromeWebStore": {
+    "message": "Chrome 网上应用店"
+  },
+  "popupMuteNotificationsTitle": {
+    "message": "静音通知"
+  },
+  "popupMuteNotificationsHint": {
+    "message": "隐藏系统通知和检测横幅。"
+  },
+  "optionsMuteNotifications": {
+    "message": "静音检测通知"
+  }
+}

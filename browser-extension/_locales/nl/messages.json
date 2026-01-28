@@ -14,6 +14,10 @@
   "closeButton": {
     "message": "Sluiten"
   },
+  "blockAllClipboardUnavailable": {
+    "message": "De modus Alles blokkeren kan op deze pagina niet worden ingeschakeld."
+  },
+
   "notificationRestoreClipboard": {
     "message": "Klembord herstellen"
   },
@@ -153,6 +157,10 @@
   "popupDetectionActive": {
     "message": "Detectie actief"
   },
+  "popupAllowlistActive": {
+    "message": "Allowlist actief"
+  },
+
   "popupWhitelistTitle": {
     "message": "Allowlist"
   },
@@ -305,6 +313,33 @@
   "languageDutch": {
     "message": "Nederlands"
   },
+  "languagePortuguese": {
+    "message": "Portugees"
+  },
+  "languageRussian": {
+    "message": "Russisch"
+  },
+  "languageChinese": {
+    "message": "Chinees"
+  },
+  "languageJapanese": {
+    "message": "Japans"
+  },
+  "languageKorean": {
+    "message": "Koreaans"
+  },
+  "languageHebrew": {
+    "message": "Hebreeuws"
+  },
+  "languageArabic": {
+    "message": "Arabisch"
+  },
+"languageHindi": {
+  "message": "Hindi"
+},
+"languageCatalan": {
+  "message": "Catalaans"
+},
   "popupDetectionActiveHint": {
     "message": "Bewaakt copy/paste-lokmiddelen en opdrachtpatronen."
   },
