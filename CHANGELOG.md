@@ -40,8 +40,14 @@
 ### Web dashboard (PHP)
 - `Web/ClickFix/dashboard.php`: Live refresh now keeps the active tab stable and avoids swapping hidden tab content; version bump to `0.7.15`.
 
+### Windows agent
+- `windows-agent/agent.py`: Rebuilt hotkey monitoring to cover Win+R, Win+E, and address-bar sequences with paste/execute variants; added local telemetry logging and SQLite report/stats output.
+- `windows-agent/config.json`: Added hotkey configuration, allowlists, and local telemetry settings.
+- `windows-agent/data/clickfix.sql`: Added local SQLite schema for the agent dashboard.
+- `windows-agent/README.md`: Updated usage, hotkeys, and local dashboard guidance.
+
 ### Docs
-- `README.md`: Added official extension links, expanded feature coverage, and listed all supported UI languages.
+- `README.md`: Added official extension links, expanded feature coverage (including Windows agent sequences), and listed all supported UI languages.
 - `browser-extension/README.md`: Documented defaults, stats dashboard, fullscreen safety, and full language list.
 - `PrivacyPolicy.md`: Updated dates to match current privacy policy revision.
 - `ClickFixMitigaror_ChromeWebStore.md`: Expanded language list for the Chrome Web Store listing checklist.

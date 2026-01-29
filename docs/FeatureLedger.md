@@ -47,6 +47,8 @@ This ledger inventories features across the repository history, including active
 | FE-AG-002 | Win+R sequence detection | Detects Run dialog sequences (Win+R → paste → execute). | Active | `ec7a4cd`; `windows-agent/README.md` | Hook reliability varies. | Stable in HEAD. |
 | FE-AG-003 | Toast + tray restore | Toast notifications and tray icon to restore blocked clipboard. | Active | `9ed9c61`, `7fd47f4`; `windows-agent/agent.py` | Windows-specific libs. | Stable in HEAD. |
 | FE-AG-004 | Configurable rules | Regex rules, exclusions, sensitivity in `config.json`. | Active | `ec7a4cd`; `windows-agent/config.json` | Needs tuning to avoid false positives. | Stable in HEAD. |
+| FE-AG-005 | Explorer/address bar sequences | Detects Win+E and address bar sequences (Alt+L/Alt+D/Ctrl+L) with paste/execute variants. | Active | `windows-agent/agent.py` | Global hotkeys may require admin permissions. | Stable in HEAD. |
+| FE-AG-006 | Local agent telemetry | Writes alerts and stats to local SQLite + JSON log for `windows-agent/dashboard.php`. | Active | `windows-agent/agent.py`, `windows-agent/data/clickfix.sql` | Requires writable `windows-agent/data/`. | Stable in HEAD. |
 
 ### Demo & Documentation
 | ID | Feature | Description | Status | Evidence | Dependencies / Risks | Compatibility Notes |

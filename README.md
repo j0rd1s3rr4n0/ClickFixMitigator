@@ -67,6 +67,7 @@ ClickFix campaigns weaponize trust and urgency. They lure users into executing c
 - Optional clipboard blocking for high‑confidence detections.
 - Fullscreen safety: blocks fullscreen attempts on detected pages and shows an extension‑branded exit prompt.
 - Nested iframe context scanning to improve opaque‑frame reporting.
+- Windows agent monitors clipboard plus Win+R/Win+E/address‑bar sequences with paste/execute variants.
 
 ### Operational workflows
 - Admin/analyst roles and verification.
@@ -161,6 +162,7 @@ pip install -r requirements.txt
 python agent.py
 ```
 
+The agent also writes local telemetry to SQLite for the optional agent dashboard.
 More details: `windows-agent/README.md`
 
 ### 3) Backend + dashboard
@@ -292,6 +294,7 @@ ClickFix Mitigator es una implementación de referencia completa y defensiva par
 - Analítica con resúmenes por país y gráficos por hora/día.
 - Bloqueo de pantalla completa en páginas con detecciones y aviso claro de salida.
 - Dashboard local en el popup con estadísticas y gráfico de detecciones.
+- Agente de Windows con detección de secuencias Win+R / Win+E / barra de dirección y variantes de pegar/ejecutar.
 
 ## Enlaces oficiales
 

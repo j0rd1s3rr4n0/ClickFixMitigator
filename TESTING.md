@@ -53,6 +53,9 @@ This checklist covers end-to-end verification for the extension, Windows agent, 
 - [ ] Copy/paste suspicious command lines and confirm agent logs/report.
 - [ ] Confirm benign clipboard events do not trigger false positives.
 - [ ] Verify the agent can recover after a clipboard permission denial.
+- [ ] Press Win + R, paste a suspicious command, press Enter → expect prompt/block.
+- [ ] Press Win + E, focus address bar (Alt + L) and paste a suspicious command, press Enter → expect prompt/block.
+- [ ] Test paste variants (Shift + Insert, Ctrl + Shift + V) and execute variant (Ctrl + Shift + Enter).
 
 ## Backend + dashboard (optional)
 

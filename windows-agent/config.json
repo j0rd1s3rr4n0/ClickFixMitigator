@@ -28,11 +28,32 @@
     "exclusions": [
       "(?i)\\bexample\\.com\\b",
       "(?i)\\btrusted-script\\.ps1\\b"
-    ]
+    ],
+    "process_allowlist": [],
+    "window_allowlist": []
   },
   "sensitivity": {
     "clipboard_poll_interval_s": 0.5,
     "run_sequence_timeout_s": 8,
-    "blocked_clipboard_placeholder": "[Clipboard bloqueado]"
+    "blocked_clipboard_placeholder": "[Clipboard bloqueado]",
+    "allow_timeout_s": 15,
+    "min_clipboard_length": 8,
+    "max_clipboard_preview": 240
+  },
+  "hotkeys": {
+    "run_dialog": ["windows+r", "win+r"],
+    "explorer": ["windows+e", "win+e"],
+    "address_bar": ["alt+l", "alt+d", "ctrl+l"],
+    "paste": ["ctrl+v", "shift+insert", "ctrl+shift+v"],
+    "execute": ["enter", "ctrl+shift+enter"],
+    "restore": ["ctrl+shift+u"]
+  },
+  "telemetry": {
+    "enable_local_db": true,
+    "db_path": "data/clickfix.sqlite",
+    "log_json": true,
+    "log_path": "agent.log",
+    "alertsites_path": "alertsites",
+    "stats_flush_interval_s": 30
   }
 }
