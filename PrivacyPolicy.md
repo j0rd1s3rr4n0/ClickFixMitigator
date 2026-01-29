@@ -1,7 +1,7 @@
 # Política de Privacidad - ClickFix Mitigator
 
-**Última actualización:** 2025-01-01
-Revision interna: 2026-01-27 (sin cambios de politica).
+**Última actualización:** 2026-01-29
+Revision interna: 2026-01-29 (sin cambios de política).
 
 ## 1. Responsable del tratamiento
 ClickFix Mitigator es una extensión de navegador cuyo objetivo es detectar patrones de ClickFix y alertar sobre posibles riesgos asociados al portapapeles.

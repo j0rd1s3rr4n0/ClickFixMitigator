@@ -1,6 +1,6 @@
 # Testing Checklist
 
-Last updated: 2026-01-27
+Last updated: 2026-01-29
 
 This checklist covers end-to-end verification for the extension, Windows agent, and backend dashboard.
 
@@ -11,6 +11,8 @@ This checklist covers end-to-end verification for the extension, Windows agent, 
 - [ ] Confirm permissions include clipboard + notifications.
 - [ ] Enable **Allow access to file URLs** to validate `file://` pages.
 - [ ] Open a regular web page and confirm the extension icon is visible.
+- [ ] Open the popup and confirm the language selector includes all supported locales; default is English.
+- [ ] Confirm **Detection active** and **Block all clipboard by JavaScript** are enabled by default.
 
 ### ClickFix detection flows
 - [ ] Open a demo page from `demo/` (e.g. `demo/attacker-sample.html`, `demo/attacker-winlogo.html`, `demo/demo-cloudflare.html`).
@@ -23,17 +25,23 @@ This checklist covers end-to-end verification for the extension, Windows agent, 
   - Title, reason, detections, context appear.
   - Buttons respond (report/allow once/allow session/allow always/back).
   - Block page fully covers the viewport.
+- [ ] Trigger a detection and attempt fullscreen on the page; confirm fullscreen is blocked and the extension exit prompt appears.
 
 ### Clipboard mismatch flows
 - [ ] Copy text on a page → change clipboard externally → copy again → confirm mismatch alert.
 - [ ] Confirm clipboard read/write behavior on sites that **allow** clipboard APIs.
 - [ ] Confirm no console errors on sites that **block** clipboard APIs via Permissions-Policy.
-- [ ] Confirm notifications appear (and include the packaged icon) when a mismatch is detected.
+- [ ] Confirm notifications appear (and include the embedded ClickFix icon) when a mismatch is detected.
 
 ### Whitelist / allowlist
 - [ ] Add a domain to whitelist in popup/options.
 - [ ] Confirm the blocked page does **not** appear for whitelisted sites.
 - [ ] Remove a domain from whitelist and re-check that the block triggers again.
+- [ ] Verify recent alerts list excludes domains already in allowlist or blocklist.
+
+### Popup dashboard
+- [ ] Verify stats cards show totals for alerts, blocked sites, allowlist, and blocklist.
+- [ ] Confirm the detections chart loads and does not refresh-jump while navigating tabs.
 
 ## Windows agent (optional)
 

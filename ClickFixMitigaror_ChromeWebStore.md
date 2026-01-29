@@ -1,10 +1,26 @@
-Actualizado: 2026-01-27
+Actualizado: 2026-01-29
 
 Ficha de Play Store
 Idioma de edición actual
 Idioma
 inglés – en (predeterminado)
 español - es
+
+Idiomas publicados (UI)
+- inglés (en, predeterminado)
+- español (es)
+- catalán (ca)
+- alemán (de)
+- francés (fr)
+- neerlandés (nl)
+- portugués (pt)
+- ruso (ru)
+- chino (zh)
+- japonés (ja)
+- coreano (ko)
+- hindi (hi)
+- árabe (ar, RTL)
+- hebreo (he, RTL)
 
 Detalles del producto
 inglés – en

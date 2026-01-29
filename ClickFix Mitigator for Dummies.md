@@ -1,6 +1,6 @@
 # ClickFix Mitigator for Dummies
 
-Revision: 2026-01-27
+Revision: 2026-01-29
 
 Guía práctica para reconocer, detectar y prevenir ataques de ClickFix. La extensión y el agente son **apoyos**, no sustituyen el criterio humano ni las buenas prácticas.
 
@@ -30,6 +30,7 @@ La extensión detecta:
 - Discrepancias entre lo que seleccionas y lo que realmente queda en el portapapeles.
 - Patrones comunes de ClickFix (por ejemplo, instrucciones que inducen a “Win + R”).
 - Comandos sospechosos copiados/pegados desde páginas web.
+- Intentos de pantalla completa cuando ya hay detecciones (muestra un aviso para salir con Esc/F11).
 
 **Úsala como señal de advertencia**, no como garantía. Si aparece una alerta, detente y revisa.
 

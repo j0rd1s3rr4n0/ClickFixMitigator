@@ -1,6 +1,6 @@
 # Feature Ledger — ClickFix Mitigator
 
-Last reviewed: 2026-01-27
+Last reviewed: 2026-01-29
 
 This ledger inventories features across the repository history, including active, replaced, and removed capabilities. Evidence references commit hashes and/or current file locations.
 
@@ -21,6 +21,9 @@ This ledger inventories features across the repository history, including active
 | FE-EXT-006 | Report queue + dedupe | Queues reports and flushes on interval with dedupe window. | Active | `b2bed4a`; `browser-extension/background.js` | Depends on backend availability. | Stable in HEAD. |
 | FE-EXT-007 | Localization | Multi-language UI and message loading. | Active | `2330df7`, `2fdca66`; `browser-extension/_locales/` | Requires complete message coverage. | Stable in HEAD. |
 | FE-EXT-008 | Iframe context scan | Walks nested iframes (same-origin) to improve opaque iframe context reporting. | Active | `browser-extension/content-script.js` | Cross-origin frames remain opaque. | Stable in HEAD. |
+| FE-EXT-009 | Fullscreen safety | Blocks fullscreen attempts on pages with detections and shows a branded exit prompt. | Active | `browser-extension/content-script.js` | May interfere with legitimate fullscreen use on flagged pages. | Stable in HEAD. |
+| FE-EXT-010 | Popup stats dashboard | Shows local stats and chart for alerts, blocked, allowlist, and blocklist. | Active | `browser-extension/ui/popup.js` | Stats are local to the browser profile. | Stable in HEAD. |
+| FE-EXT-011 | Localized alert rendering | Stores reason keys and renders alert history in the selected language with multi-line formatting. | Active | `browser-extension/background.js`, `browser-extension/ui/popup.js` | Requires locale bundles to load before rendering. | Stable in HEAD. |
 
 ### Botanalyzer (Selenium)
 | ID | Feature | Description | Status | Evidence | Dependencies / Risks | Compatibility Notes |

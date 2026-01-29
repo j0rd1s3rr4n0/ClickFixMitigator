@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased - 2026-01-28
+## Unreleased - 2026-01-29
 
 ### Browser extension (i18n)
 - `browser-extension/_locales/ar/messages.json`: Added full Arabic UI translation.
@@ -39,6 +39,15 @@
 
 ### Web dashboard (PHP)
 - `Web/ClickFix/dashboard.php`: Live refresh now keeps the active tab stable and avoids swapping hidden tab content; version bump to `0.7.15`.
+
+### Docs
+- `README.md`: Added official extension links, expanded feature coverage, and listed all supported UI languages.
+- `browser-extension/README.md`: Documented defaults, stats dashboard, fullscreen safety, and full language list.
+- `PrivacyPolicy.md`: Updated dates to match current privacy policy revision.
+- `ClickFixMitigaror_ChromeWebStore.md`: Expanded language list for the Chrome Web Store listing checklist.
+- `TESTING.md`: Added checks for default settings, stats dashboard, alert filtering, fullscreen blocking, and embedded icons.
+- `docs/FeatureLedger.md`: Logged new extension features (fullscreen safety, stats dashboard, localized alerts).
+- `ClickFix Mitigator for Dummies.md`: Noted fullscreen safety behavior and refreshed revision date.
 
 ## Unreleased - 2026-01-27
 

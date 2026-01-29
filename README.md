@@ -65,17 +65,21 @@ ClickFix campaigns weaponize trust and urgency. They lure users into executing c
 - Clipboard/selection mismatch detection.
 - Page context signals (e.g., fake CAPTCHA, Win+R guidance, “fix action” prompts).
 - Optional clipboard blocking for high‑confidence detections.
+- Fullscreen safety: blocks fullscreen attempts on detected pages and shows an extension‑branded exit prompt.
+- Nested iframe context scanning to improve opaque‑frame reporting.
 
 ### Operational workflows
 - Admin/analyst roles and verification.
 - Accept/reject detections and appeals.
 - Manage allowlist/blocklist with audit logs.
 - Redaction of credential‑like content for non‑admin viewers.
+- Popup dashboard with alert history, manual report reason, and local stats.
 
 ### Telemetry & analytics
 - Structured JSON logs and report ingestion.
 - Country‑level activity summaries.
 - Daily/hourly charts and signal distribution.
+- Local popup charts for detections, blocked sites, allowlist, and blocklist.
 
 ---
 
@@ -89,6 +93,13 @@ ClickFix campaigns weaponize trust and urgency. They lure users into executing c
 | Botanalyzer (Selenium) | `botanalyzer/` | Automates URL visits and interaction in controlled environments. |
 | Demos / PoCs | `demo/` | Example pages to reproduce ClickFix patterns safely. |
 | Documentation | `docs/` | Feature ledger, notes, and legacy reintegration plan. |
+
+---
+
+## Official links
+
+- GitHub repository: `https://github.com/j0rd1s3rr4n0/ClickFixMitigator`
+- Chrome Web Store: `https://chromewebstore.google.com/detail/clickfix-mitigator/nmldafmgfcfopjoigbmmlmcnininifaa`
 
 ---
 
@@ -137,6 +148,7 @@ docs/                 # Feature ledger and research notes
 3. Click **Load unpacked** and select `browser-extension/`.
 4. Open a page in `demo/` to simulate ClickFix behavior.
 
+By default the extension loads in **English** with **Detection active** and **Block all clipboard by JavaScript** enabled.
 More details: `browser-extension/README.md`
 
 ### 2) Windows agent (optional)
@@ -185,6 +197,7 @@ Botanalyzer reads `urls.txt`, visits each URL, and moves processed entries to `d
 ### Extension
 - Manifest permissions live in `browser-extension/manifest.json`.
 - Detection patterns and UI behaviors are in `browser-extension/background.js` and content scripts.
+- Supported languages: English, Spanish, Catalan, German, French, Dutch, Portuguese, Russian, Chinese, Japanese, Korean, Hindi, Arabic, and Hebrew (RTL for Arabic/Hebrew).
 
 ### Agent
 - Rules and heuristics are in `windows-agent/config.json`.
@@ -277,6 +290,17 @@ ClickFix Mitigator es una implementación de referencia completa y defensiva par
 - Flujos operativos para aceptar/rechazar detecciones y apelaciones.
 - Redacción de credenciales para usuarios no administradores.
 - Analítica con resúmenes por país y gráficos por hora/día.
+- Bloqueo de pantalla completa en páginas con detecciones y aviso claro de salida.
+- Dashboard local en el popup con estadísticas y gráfico de detecciones.
+
+## Enlaces oficiales
+
+- GitHub: `https://github.com/j0rd1s3rr4n0/ClickFixMitigator`
+- Chrome Web Store: `https://chromewebstore.google.com/detail/clickfix-mitigator/nmldafmgfcfopjoigbmmlmcnininifaa`
+
+## Idiomas disponibles
+
+Inglés, español, catalán, alemán, francés, neerlandés, portugués, ruso, chino, japonés, coreano, hindi, árabe y hebreo (RTL).
 
 ## Inicio rápido (resumen)
 
