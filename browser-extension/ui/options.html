@@ -73,6 +73,48 @@
       </div>
     </section>
 
+    <section class="stats">
+      <h2 data-i18n="statsTitle">Estad?sticas</h2>
+      <p class="hint" data-i18n="statsSubtitle">Resumen de detecciones y bloqueos.</p>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="statsTotalAlerts">Alertas totales</div>
+          <div class="stat-value" id="stats-total-alerts">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="statsTotalBlocked">Bloqueos totales</div>
+          <div class="stat-value" id="stats-total-blocked">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="statsBlocklistCount">Sitios en blacklist</div>
+          <div class="stat-value" id="stats-blocklist-count">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" data-i18n="statsAllowlistCount">Sitios en whitelist</div>
+          <div class="stat-value" id="stats-allowlist-count">0</div>
+        </div>
+      </div>
+      <div class="stats-grid stats-grid-wide">
+        <div class="stat-card stat-ring-card">
+          <div class="stat-label" data-i18n="statsBlockedRate">Porcentaje bloqueado</div>
+          <div class="stat-ring-wrap">
+            <div class="stats-ring" id="stats-block-rate-ring">
+              <div class="stat-ring-value" id="stats-block-rate-value">0%</div>
+            </div>
+            <div class="stat-meta" data-i18n="statsBlockedRateHint">Porcentaje de alertas que terminaron bloqueadas.</div>
+          </div>
+        </div>
+        <div class="stat-card stat-chart-card">
+          <div class="stat-label" data-i18n="statsDetectionsChart">Gr?fico de detecciones</div>
+          <div class="stats-bars" id="stats-detections-chart"></div>
+          <div class="stats-chart-labels">
+            <span data-i18n="statsLast7Days">?ltimos 7 d?as</span>
+            <span id="stats-detections-total">0</span>
+          </div>
+        </div>
+      </div>
+</section>
+
     <section>
       <h2 data-i18n="optionsWhitelistTitle">Lista blanca</h2>
       <div class="row">

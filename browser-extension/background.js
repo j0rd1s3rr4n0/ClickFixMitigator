@@ -27,6 +27,7 @@ const REPORT_FLUSH_MINUTES = 5;
 const REPORT_DEDUPE_WINDOW_MS = 15 * 60 * 1000;
 const REPORT_QUEUE_LIMIT = 300;
 const CLIPBOARD_BACKUP_LIMIT = 50;
+const CLICKFIX_ICON_DATA_URL = "data:image/png;base64,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";
 
 const COMMAND_REGEX =
   /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|bash|sh|zsh|curl|wget|rundll32|regsvr32|msbuild|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic|explorer(\.exe)?|reg\s+add|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d)\b/i;
@@ -389,6 +390,16 @@ function buildAlertReasons(details) {
   return parts;
 }
 
+function formatAlertMessage(parts) {
+  if (!Array.isArray(parts) || parts.length === 0) {
+    return "";
+  }
+  if (parts.length === 1) {
+    return parts[0];
+  }
+  return parts.map((part) => `• ${part}`).join("\n");
+}
+
 function tEsMessage(key, substitutions) {
   return t(key, substitutions);
 }
@@ -480,7 +491,7 @@ function buildAlertReasonEntries(details) {
 }
 
 function buildAlertMessage(details) {
-  return buildAlertReasons(details).join(" ");
+  return formatAlertMessage(buildAlertReasons(details));
 }
 
 function buildAlertSnippets(details) {
@@ -537,8 +548,8 @@ async function triggerAlert(details) {
   const reasonsEs = buildAlertReasonsEs(detailsWithScore);
   const reasonEntries = buildAlertReasonEntries(detailsWithScore);
   const snippets = buildAlertSnippets(detailsWithScore);
-  const message = reasons.join(" ");
-  const messageEs = reasonsEs.join(" ");
+  const message = formatAlertMessage(reasons);
+  const messageEs = formatAlertMessage(reasonsEs);
   const hostname = extractHostname(details.url);
   const timestamp = new Date(details.timestamp).toISOString();
   const reportHostname = details.reportHostname === false ? "" : hostname;
@@ -554,7 +565,8 @@ async function triggerAlert(details) {
     url: reportUrl,
     hostname: reportHostname || (details.reportHostname === false ? t("historyClipboardOnly") : hostname),
     timestamp,
-    reportHostname: details.reportHostname !== false
+    reportHostname: details.reportHostname !== false,
+    reasonEntries
   });
   enqueueReport({
     type: "alert",
@@ -585,7 +597,7 @@ async function triggerAlert(details) {
     blocked: shouldBlockPage && !allowlisted
   });
 
-  const iconUrl = chrome.runtime.getURL("icons/icon-128.png");
+  const iconUrl = CLICKFIX_ICON_DATA_URL;
 
   const notificationId = muteNotifications
     ? null
@@ -1032,11 +1044,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "manualReport") {
     (async () => {
       await ensureLocaleReady();
+      const rawReason = typeof message.reason === "string" ? message.reason.trim() : "";
+      const cleanReason = rawReason.replace(/\s+/g, " ").slice(0, 160);
+      const reasonLabel = t("manualReportReason");
+      const reasonText = cleanReason ? `${reasonLabel}: ${cleanReason}` : reasonLabel;
       enqueueReport({
         url: message.url,
         hostname: message.hostname || extractHostname(message.url),
         timestamp: message.timestamp ?? Date.now(),
-        reason: t("manualReportReason"),
+        reason: reasonText,
+        message: reasonText,
         blocked: true,
         manualReport: true,
         detectedContent: "",

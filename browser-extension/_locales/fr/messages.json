@@ -15,9 +15,8 @@
     "message": "Fermer"
   },
   "blockAllClipboardUnavailable": {
-    "message": "Le mode Tout bloquer ne peut pas ?tre activ? sur cette page."
+    "message": "Le mode Tout bloquer ne peut pas être activé sur cette page."
   },
-
   "notificationRestoreClipboard": {
     "message": "Restaurer le presse-papiers"
   },
@@ -160,7 +159,6 @@
   "popupAllowlistActive": {
     "message": "Liste d'autorisation active"
   },
-
   "popupWhitelistTitle": {
     "message": "Liste d'autorisation"
   },
@@ -195,10 +193,10 @@
     "message": "Copié"
   },
   "popupReportTitle": {
-    "message": "Signaler le site"
+    "message": "Signaler un site malveillant ou suspect"
   },
   "popupReportHint": {
-    "message": "Envoyer un signalement manuel pour bloquer un domaine spécifique."
+    "message": "Envoyez un signalement manuel pour bloquer un domaine suspect ou malveillant."
   },
   "popupReportPlaceholder": {
     "message": "https://exemple-site.fr"
@@ -334,12 +332,12 @@
   "languageArabic": {
     "message": "Arabe"
   },
-"languageHindi": {
-  "message": "Hindi"
-},
-"languageCatalan": {
-  "message": "Catalan"
-},
+  "languageHindi": {
+    "message": "Hindi"
+  },
+  "languageCatalan": {
+    "message": "Catalan"
+  },
   "popupDetectionActiveHint": {
     "message": "Surveille les leurres de copie/colle et les motifs de commandes."
   },
@@ -359,10 +357,10 @@
     "message": "FamilySafe est active. Ce site reste bloque pour proteger l'appareil."
   },
   "themeTitle": {
-    "message": "Th?me"
+    "message": "Thème"
   },
   "themeSystem": {
-    "message": "Syst?me"
+    "message": "Système"
   },
   "themeLight": {
     "message": "Clair"
@@ -383,9 +381,51 @@
     "message": "Couper les notifications"
   },
   "popupMuteNotificationsHint": {
-    "message": "D?sactive les alertes syst?me et banni?res de d?tection."
+    "message": "Désactive les alertes système et bannières de détection."
   },
   "optionsMuteNotifications": {
-    "message": "Couper les notifications de d?tection"
+    "message": "Couper les notifications de détection"
+  },
+  "statsTitle": {
+    "message": "Statistiques"
+  },
+  "statsSubtitle": {
+    "message": "Aperçu des détections et blocages."
+  },
+  "statsTotalAlerts": {
+    "message": "Alertes totales"
+  },
+  "statsTotalBlocked": {
+    "message": "Blocages totaux"
+  },
+  "statsBlocklistCount": {
+    "message": "Sites dans la liste noire"
+  },
+  "statsAllowlistCount": {
+    "message": "Sites dans la liste blanche"
+  },
+  "statsBlockedRate": {
+    "message": "Taux de blocage"
+  },
+  "statsBlockedRateHint": {
+    "message": "Part des alertes qui ont été bloquées."
+  },
+  "statsDetectionsChart": {
+    "message": "Graphique des détections"
+  },
+  "statsLast7Days": {
+    "message": "Derniers 7 jours"
+  },
+  "popupReportReasonLabel": {
+    "message": "Motif (facultatif)"
+  },
+  "popupReportReasonPlaceholder": {
+    "message": "Motif bref (ex. faux captcha)"
+  },
+  "fullscreenExitPrompt": {
+    "message": "Plein écran détecté. Appuyez sur Échap ou F11 pour quitter le plein écran."
+  },
+  "fullscreenBlockedDetection": {
+    "message": "Le plein écran a été bloqué car des détections ont été trouvées. Appuyez sur Échap ou F11 pour quitter le plein écran."
   }
 }

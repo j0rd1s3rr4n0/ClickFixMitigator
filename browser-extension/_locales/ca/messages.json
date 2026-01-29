@@ -208,10 +208,10 @@
     "message": "Copiat"
   },
   "popupReportTitle": {
-    "message": "Informar del lloc"
+    "message": "Informar de lloc maliciós o sospitós"
   },
   "popupReportHint": {
-    "message": "Envia un informe manual per bloquejar un domini específic."
+    "message": "Envia un informe manual per bloquejar un domini sospitós o maliciós."
   },
   "popupReportPlaceholder": {
     "message": "https://exemple-lloc.com"
@@ -353,9 +353,9 @@
   "languageArabic": {
     "message": "Àrab"
   },
-"languageHindi": {
-  "message": "Hindi"
-},
+  "languageHindi": {
+    "message": "Hindi"
+  },
   "themeTitle": {
     "message": "Tema"
   },
@@ -385,5 +385,47 @@
   },
   "optionsMuteNotifications": {
     "message": "Silenciar notificacions de detecció"
+  },
+  "statsTitle": {
+    "message": "Estadístiques"
+  },
+  "statsSubtitle": {
+    "message": "Resum de deteccions i bloquejos."
+  },
+  "statsTotalAlerts": {
+    "message": "Alertes totals"
+  },
+  "statsTotalBlocked": {
+    "message": "Bloquejos totals"
+  },
+  "statsBlocklistCount": {
+    "message": "Llocs a la blacklist"
+  },
+  "statsAllowlistCount": {
+    "message": "Llocs a la whitelist"
+  },
+  "statsBlockedRate": {
+    "message": "Percentatge bloquejat"
+  },
+  "statsBlockedRateHint": {
+    "message": "Percentatge d'alertes que han acabat bloquejades."
+  },
+  "statsDetectionsChart": {
+    "message": "Gràfic de deteccions"
+  },
+  "statsLast7Days": {
+    "message": "Últims 7 dies"
+  },
+  "popupReportReasonLabel": {
+    "message": "Motiu (opcional)"
+  },
+  "popupReportReasonPlaceholder": {
+    "message": "Motiu breu (p. ex., captcha fals)"
+  },
+  "fullscreenExitPrompt": {
+    "message": "Pantalla completa detectada. Prem Esc o F11 per sortir de pantalla completa."
+  },
+  "fullscreenBlockedDetection": {
+    "message": "S'ha bloquejat la pantalla completa perquè s'han detectat riscos. Prem Esc o F11 per sortir de pantalla completa."
   }
 }

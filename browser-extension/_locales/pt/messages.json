@@ -208,10 +208,10 @@
     "message": "Copiado"
   },
   "popupReportTitle": {
-    "message": "Reportar site"
+    "message": "Reportar site malicioso ou suspeito"
   },
   "popupReportHint": {
-    "message": "Envie um relato manual para bloquear um domínio específico."
+    "message": "Envie um relatório manual para bloquear um domínio suspeito ou malicioso."
   },
   "popupReportPlaceholder": {
     "message": "https://site-exemplo.com"
@@ -350,12 +350,12 @@
   "languageArabic": {
     "message": "Árabe"
   },
-"languageHindi": {
-  "message": "Hindi"
-},
-"languageCatalan": {
-  "message": "Catal?o"
-},
+  "languageHindi": {
+    "message": "Hindi"
+  },
+  "languageCatalan": {
+    "message": "Catalão"
+  },
   "themeTitle": {
     "message": "Tema"
   },
@@ -385,5 +385,47 @@
   },
   "optionsMuteNotifications": {
     "message": "Silenciar notificações de detecção"
+  },
+  "statsTitle": {
+    "message": "Estatísticas"
+  },
+  "statsSubtitle": {
+    "message": "Visão geral de detecções e bloqueios."
+  },
+  "statsTotalAlerts": {
+    "message": "Alertas totais"
+  },
+  "statsTotalBlocked": {
+    "message": "Bloqueios totais"
+  },
+  "statsBlocklistCount": {
+    "message": "Sites na blocklist"
+  },
+  "statsAllowlistCount": {
+    "message": "Sites na allowlist"
+  },
+  "statsBlockedRate": {
+    "message": "Taxa de bloqueio"
+  },
+  "statsBlockedRateHint": {
+    "message": "Proporção de alertas que terminaram bloqueados."
+  },
+  "statsDetectionsChart": {
+    "message": "Gráfico de detecções"
+  },
+  "statsLast7Days": {
+    "message": "Últimos 7 dias"
+  },
+  "popupReportReasonLabel": {
+    "message": "Motivo (opcional)"
+  },
+  "popupReportReasonPlaceholder": {
+    "message": "Motivo curto (ex.: captcha falso)"
+  },
+  "fullscreenExitPrompt": {
+    "message": "Tela cheia detectada. Pressione Esc ou F11 para sair do modo tela cheia."
+  },
+  "fullscreenBlockedDetection": {
+    "message": "A tela cheia foi bloqueada porque foram encontradas detecções. Pressione Esc ou F11 para sair do modo tela cheia."
   }
 }

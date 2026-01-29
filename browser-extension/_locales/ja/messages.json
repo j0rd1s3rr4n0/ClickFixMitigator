@@ -208,10 +208,10 @@
     "message": "コピーしました"
   },
   "popupReportTitle": {
-    "message": "サイトを報告"
+    "message": "マルウェアまたは疑わしいサイトを報告"
   },
   "popupReportHint": {
-    "message": "特定のドメインをブロックするための手動報告を送信します。"
+    "message": "疑わしい／マルウェアのドメインをブロックするための手動報告を送信します。"
   },
   "popupReportPlaceholder": {
     "message": "https://example-site.com"
@@ -350,12 +350,12 @@
   "languageArabic": {
     "message": "アラビア語"
   },
-"languageHindi": {
-  "message": "??????"
-},
-"languageCatalan": {
-  "message": "???????"
-},
+  "languageHindi": {
+    "message": "ヒンディー語"
+  },
+  "languageCatalan": {
+    "message": "カタロニア語"
+  },
   "themeTitle": {
     "message": "テーマ"
   },
@@ -385,5 +385,47 @@
   },
   "optionsMuteNotifications": {
     "message": "検出通知をミュート"
+  },
+  "statsTitle": {
+    "message": "統計"
+  },
+  "statsSubtitle": {
+    "message": "検出とブロックの概要。"
+  },
+  "statsTotalAlerts": {
+    "message": "総アラート"
+  },
+  "statsTotalBlocked": {
+    "message": "総ブロック"
+  },
+  "statsBlocklistCount": {
+    "message": "ブロックリストのサイト数"
+  },
+  "statsAllowlistCount": {
+    "message": "許可リストのサイト数"
+  },
+  "statsBlockedRate": {
+    "message": "ブロック率"
+  },
+  "statsBlockedRateHint": {
+    "message": "ブロックに至ったアラートの割合。"
+  },
+  "statsDetectionsChart": {
+    "message": "検出チャート"
+  },
+  "statsLast7Days": {
+    "message": "過去7日"
+  },
+  "popupReportReasonLabel": {
+    "message": "理由（任意）"
+  },
+  "popupReportReasonPlaceholder": {
+    "message": "短い理由（例：偽のCAPTCHA）"
+  },
+  "fullscreenExitPrompt": {
+    "message": "全画面表示を検出しました。Esc または F11 を押して終了してください。"
+  },
+  "fullscreenBlockedDetection": {
+    "message": "検出があったため全画面表示をブロックしました。Esc または F11 を押して終了してください。"
   }
 }

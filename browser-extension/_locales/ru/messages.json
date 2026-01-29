@@ -208,10 +208,10 @@
     "message": "Скопировано"
   },
   "popupReportTitle": {
-    "message": "Сообщить о сайте"
+    "message": "Сообщить о вредоносном или подозрительном сайте"
   },
   "popupReportHint": {
-    "message": "Отправьте ручной отчёт, чтобы заблокировать конкретный домен."
+    "message": "Отправьте ручной отчёт, чтобы заблокировать подозрительный или вредоносный домен."
   },
   "popupReportPlaceholder": {
     "message": "https://example-site.com"
@@ -350,12 +350,12 @@
   "languageArabic": {
     "message": "Арабский"
   },
-"languageHindi": {
-  "message": "?????"
-},
-"languageCatalan": {
-  "message": "???????????"
-},
+  "languageHindi": {
+    "message": "Хинди"
+  },
+  "languageCatalan": {
+    "message": "Каталонский"
+  },
   "themeTitle": {
     "message": "Тема"
   },
@@ -385,5 +385,47 @@
   },
   "optionsMuteNotifications": {
     "message": "Отключить уведомления обнаружения"
+  },
+  "statsTitle": {
+    "message": "Статистика"
+  },
+  "statsSubtitle": {
+    "message": "Обзор обнаружений и блокировок."
+  },
+  "statsTotalAlerts": {
+    "message": "Всего предупреждений"
+  },
+  "statsTotalBlocked": {
+    "message": "Всего блокировок"
+  },
+  "statsBlocklistCount": {
+    "message": "Сайты в списке блокировки"
+  },
+  "statsAllowlistCount": {
+    "message": "Сайты в списке разрешённых"
+  },
+  "statsBlockedRate": {
+    "message": "Доля блокировок"
+  },
+  "statsBlockedRateHint": {
+    "message": "Доля предупреждений, завершившихся блокировкой."
+  },
+  "statsDetectionsChart": {
+    "message": "График обнаружений"
+  },
+  "statsLast7Days": {
+    "message": "Последние 7 дней"
+  },
+  "popupReportReasonLabel": {
+    "message": "Причина (необязательно)"
+  },
+  "popupReportReasonPlaceholder": {
+    "message": "Краткая причина (например, поддельная CAPTCHA)"
+  },
+  "fullscreenExitPrompt": {
+    "message": "Обнаружен полноэкранный режим. Нажмите Esc или F11, чтобы выйти из полноэкранного режима."
+  },
+  "fullscreenBlockedDetection": {
+    "message": "Полноэкранный режим заблокирован из-за обнаруженных признаков. Нажмите Esc или F11, чтобы выйти из полноэкранного режима."
   }
 }

@@ -1,10 +1,10 @@
-<!doctype html>
-<html lang="es">
+﻿<!doctype html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Privacy Policy - ClickFix Mitigator</title>
-  <meta name="description" content="ClickFix Mitigator privacy policy (multi-language)." />
+  <meta name="description" content="ClickFix Mitigator privacy policy in multiple languages." />
   <style>
     :root{
       --bg:#0b0f14; --card:#111827; --text:#e5e7eb; --muted:#9ca3af;
@@ -89,6 +89,12 @@
     footer{margin-top:18px; color:var(--muted); font-size:14px; text-align:center}
     .muted{color:var(--muted)}
     [hidden]{display:none !important}
+    html[dir="rtl"] body{direction:rtl}
+    html[dir="rtl"] header{text-align:right}
+    html[dir="rtl"] nav{justify-content:flex-start}
+    html[dir="rtl"] ul{margin:0 18px 12px 0}
+    html[dir="rtl"] .note{border-left:0; border-right:4px solid rgba(96,165,250,.65)}
+    html[dir="rtl"] .lang{margin-left:auto}
   </style>
 </head>
 
@@ -96,314 +102,866 @@
   <div class="wrap">
     <header>
       <div>
-        <h1 data-i18n="title">Política de Privacidad</h1>
+        <h1 data-i18n="title">Privacy Policy</h1>
         <p class="sub">
           <strong>ClickFix Mitigator</strong>
-          · <span data-i18n="updated_label">Última actualización:</span>
-          <time id="updated" datetime="2025-01-01">1 de enero de 2025</time>
+          · <span data-i18n="updated_label">Last updated:</span>
+          <time id="updated" datetime="2026-01-28" data-i18n="updated_date">January 28, 2026</time>
         </p>
       </div>
 
       <div class="lang" role="group" aria-label="Language selector">
-        <span class="muted" data-i18n="lang">Idioma</span>
+        <span class="muted" data-i18n="lang">Language</span>
         <select id="langSelect" aria-label="Select language">
+          <option value="en">English</option>
           <option value="es">Español</option>
           <option value="ca">Català</option>
-          <option value="en">English</option>
+          <option value="de">Deutsch</option>
+          <option value="fr">Français</option>
+          <option value="nl">Nederlands</option>
+          <option value="pt">Português</option>
+          <option value="ru">Русский</option>
+          <option value="zh">中文</option>
+          <option value="ja">日本語</option>
+          <option value="ko">한국어</option>
+          <option value="he">עברית</option>
+          <option value="ar">العربية</option>
+          <option value="hi">हिन्दी</option>
         </select>
       </div>
     </header>
 
     <main>
-      <nav aria-label="Índice">
-        <a href="#responsable" data-i18n="nav_1">1. Responsable</a>
-        <a href="#datos" data-i18n="nav_2">2. Datos</a>
-        <a href="#finalidad" data-i18n="nav_3">3. Finalidad</a>
-        <a href="#base-legal" data-i18n="nav_4">4. Base legal</a>
-        <a href="#comparticion" data-i18n="nav_5">5. Compartición</a>
-        <a href="#retencion" data-i18n="nav_6">6. Retención</a>
-        <a href="#seguridad" data-i18n="nav_7">7. Seguridad</a>
-        <a href="#derechos" data-i18n="nav_8">8. Derechos</a>
-        <a href="#cambios" data-i18n="nav_9">9. Cambios</a>
-        <a href="#contacto" data-i18n="nav_10">10. Contacto</a>
+      <nav aria-label="Index">
+        <a href="#responsable" data-i18n="nav_1">1. Controller</a>
+        <a href="#datos" data-i18n="nav_2">2. Data collected</a>
+        <a href="#finalidad" data-i18n="nav_3">3. Purpose</a>
+        <a href="#base-legal" data-i18n="nav_4">4. Legal basis</a>
+        <a href="#comparticion" data-i18n="nav_5">5. Data sharing</a>
+        <a href="#retencion" data-i18n="nav_6">6. Retention</a>
+        <a href="#seguridad" data-i18n="nav_7">7. Security</a>
+        <a href="#derechos" data-i18n="nav_8">8. User rights</a>
+        <a href="#cambios" data-i18n="nav_9">9. Changes</a>
+        <a href="#contacto" data-i18n="nav_10">10. Contact</a>
       </nav>
 
       <section id="responsable">
-        <h2 data-i18n="h_1">1. Responsable del tratamiento</h2>
+        <h2 data-i18n="h_1">1. Data controller</h2>
         <p data-i18n="p_1">
-          ClickFix Mitigator es una extensión de navegador diseñada para detectar patrones de ataque tipo ClickFix y alertar al usuario sobre posibles riesgos relacionados con el uso del portapapeles.
+          ClickFix Mitigator is a browser extension designed to detect ClickFix attack patterns and alert users about
+          risks related to clipboard usage.
         </p>
       </section>
 
       <section id="datos">
-        <h2 data-i18n="h_2">2. Datos que se recopilan</h2>
+        <h2 data-i18n="h_2">2. Data collected</h2>
         <p data-i18n="p_2">
-          La extensión puede procesar y/o enviar los siguientes datos exclusivamente con fines de seguridad:
+          The extension may process and/or send the following data solely for security purposes:
         </p>
         <ul>
-          <li data-i18n="li_2_1"><strong>Eventos de detección:</strong> URL, hostname, fecha y hora (timestamp), señales detectadas, mensaje de alerta y fragmentos relevantes del contenido analizado.</li>
-          <li data-i18n="li_2_2"><strong>Estadísticas de uso:</strong> número de alertas generadas, número de bloqueos y estado de activación de la extensión.</li>
-          <li data-i18n="li_2_3"><strong>Listas locales:</strong> allowlist y blocklist almacenadas localmente en el navegador del usuario.</li>
-          <li data-i18n="li_2_4"><strong>URL previa:</strong> página de referencia (referrer) desde la que se accedió a un posible flujo ClickFix, si está disponible.</li>
+          <li data-i18n="li_2_1" data-i18n-html="true"><strong>Detection events:</strong> URL, hostname, date and time (timestamp), detected signals, alert message, and relevant snippets of analyzed content.</li>
+          <li data-i18n="li_2_2" data-i18n-html="true"><strong>Usage statistics:</strong> number of alerts generated, number of blocks, and extension activation status.</li>
+          <li data-i18n="li_2_3" data-i18n-html="true"><strong>Local lists:</strong> allowlist and blocklist stored locally in the user's browser.</li>
+          <li data-i18n="li_2_4" data-i18n-html="true"><strong>Referrer URL:</strong> reference page (referrer) from which a possible ClickFix flow was accessed, if available.</li>
         </ul>
         <p class="note" data-i18n="note_2">
-          No se recopilan datos personales como nombre, correo electrónico o cualquier información que permita identificar directamente al usuario.
+          No personal data such as name, email address, or information that directly identifies the user is collected.
         </p>
       </section>
 
       <section id="finalidad">
-        <h2 data-i18n="h_3">3. Finalidad del tratamiento</h2>
-        <p data-i18n="p_3">Los datos se utilizan únicamente para:</p>
+        <h2 data-i18n="h_3">3. Purpose of processing</h2>
+        <p data-i18n="p_3">Data is used only to:</p>
         <ul>
-          <li data-i18n="li_3_1">Detectar y bloquear patrones de ataque ClickFix.</li>
-          <li data-i18n="li_3_2">Generar alertas de seguridad en tiempo real.</li>
-          <li data-i18n="li_3_3">Mejorar la eficacia del sistema mediante estadísticas agregadas.</li>
-          <li data-i18n="li_3_4">Mantener y optimizar listas de allowlist y blocklist.</li>
-          <li data-i18n="li_3_5">Analizar el origen de redirecciones sospechosas para mejorar la respuesta ante incidentes.</li>
+          <li data-i18n="li_3_1">Detect and block ClickFix attack patterns.</li>
+          <li data-i18n="li_3_2">Generate security alerts in real time.</li>
+          <li data-i18n="li_3_3">Improve effectiveness through aggregated statistics.</li>
+          <li data-i18n="li_3_4">Maintain and optimize allowlist and blocklist lists.</li>
+          <li data-i18n="li_3_5">Analyze the origin of suspicious redirects to improve incident response.</li>
         </ul>
       </section>
 
       <section id="base-legal">
-        <h2 data-i18n="h_4">4. Base legal</h2>
+        <h2 data-i18n="h_4">4. Legal basis</h2>
         <p data-i18n="p_4">
-          El tratamiento se realiza sobre la base del interés legítimo en la seguridad y protección del usuario frente a amenazas informáticas.
+          Processing is based on legitimate interest in user security and protection against threats.
         </p>
       </section>
 
       <section id="comparticion">
-        <h2 data-i18n="h_5">5. Compartición de datos</h2>
+        <h2 data-i18n="h_5">5. Data sharing</h2>
         <ul>
-          <li data-i18n="li_5_1">Los datos pueden enviarse al servidor de ClickFix Mitigator para el procesamiento de alertas y estadísticas.</li>
-          <li data-i18n="li_5_2"><strong>No se venden, alquilan ni ceden datos a terceros</strong>, salvo cuando sea estrictamente necesario para operar el servicio.</li>
+          <li data-i18n="li_5_1">Data may be sent to the ClickFix Mitigator server for processing alerts and statistics.</li>
+          <li data-i18n="li_5_2" data-i18n-html="true"><strong>Data is not sold, rented, or shared with third parties</strong>, unless strictly necessary to operate the service.</li>
         </ul>
       </section>
 
       <section id="retencion">
-        <h2 data-i18n="h_6">6. Retención</h2>
+        <h2 data-i18n="h_6">6. Retention</h2>
         <p data-i18n="p_6">
-          Los datos se conservan únicamente durante el tiempo necesario para cumplir las finalidades indicadas y para garantizar la integridad de los registros de seguridad.
+          Data is retained only for as long as necessary to fulfill the purposes described and to ensure integrity of security records.
         </p>
       </section>
 
       <section id="seguridad">
-        <h2 data-i18n="h_7">7. Seguridad</h2>
+        <h2 data-i18n="h_7">7. Security</h2>
         <p data-i18n="p_7">
-          Se aplican medidas técnicas y organizativas razonables para proteger los datos transmitidos y almacenados frente a accesos no autorizados, pérdida o alteración.
+          Reasonable technical and organizational measures are applied to protect transmitted and stored data against unauthorized access, loss, or alteration.
         </p>
       </section>
 
       <section id="derechos">
-        <h2 data-i18n="h_8">8. Derechos del usuario</h2>
+        <h2 data-i18n="h_8">8. User rights</h2>
         <p data-i18n="p_8">
-          El usuario puede solicitar información o ejercer sus derechos de acceso, rectificación o eliminación mediante los canales de contacto indicados en el sitio oficial.
+          Users can request information or exercise their rights of access, rectification, or deletion through the contact channels listed on the official site.
         </p>
       </section>
 
       <section id="cambios">
-        <h2 data-i18n="h_9">9. Cambios en la política</h2>
+        <h2 data-i18n="h_9">9. Policy changes</h2>
         <p data-i18n="p_9">
-          Esta política puede actualizarse periódicamente. Las modificaciones se publicarán en este documento.
+          This policy may be updated periodically. Updates will be published in this document.
         </p>
       </section>
 
       <section id="contacto">
-        <h2 data-i18n="h_10">10. Contacto</h2>
-        <p>
-          <strong data-i18n="contact_label">Sitio oficial:</strong>
-          <a href="https://jordiserrano.me" rel="noopener noreferrer">https://jordiserrano.me</a>
+        <h2 data-i18n="h_10">10. Contact</h2>
+        <p data-i18n="p_10" data-i18n-html="true">
+          Official site: <a href="https://jordiserrano.me" rel="noopener noreferrer" target="_blank">jordiserrano.me</a>
         </p>
       </section>
     </main>
 
-    <footer>
-      <p>© <span id="y"></span> ClickFix Mitigator · <span data-i18n="footer">Hecho para protegerte del “copiar/pegar” traicionero.</span></p>
-    </footer>
+    <footer data-i18n="footer">ClickFix Mitigator · Privacy Policy</footer>
   </div>
 
   <script>
-    // --- Utilities ---
-    const $ = (sel) => document.querySelector(sel);
-    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
-
-    // Persist language
-    const STORAGE_KEY = "cfm_lang";
-    const supported = ["es","ca","en"];
-
-    // Pretty date per locale (same underlying datetime)
-    const updatedISO = "2025-01-01";
-    const updatedEl = $("#updated");
-    updatedEl.setAttribute("datetime", updatedISO);
-
-    function formatUpdated(locale){
-      const dt = new Date(updatedISO + "T00:00:00Z");
-      try{
-        return new Intl.DateTimeFormat(locale, { year:"numeric", month:"long", day:"numeric" }).format(dt);
-      }catch{
-        return updatedEl.textContent;
-      }
-    }
-
-    const i18n = {
-      es: {
-        title: "Política de Privacidad",
-        updated_label: "Última actualización:",
-        lang: "Idioma",
-        nav_1:"1. Responsable", nav_2:"2. Datos", nav_3:"3. Finalidad", nav_4:"4. Base legal",
-        nav_5:"5. Compartición", nav_6:"6. Retención", nav_7:"7. Seguridad", nav_8:"8. Derechos",
-        nav_9:"9. Cambios", nav_10:"10. Contacto",
-        h_1:"1. Responsable del tratamiento",
-        p_1:"ClickFix Mitigator es una extensión de navegador diseñada para detectar patrones de ataque tipo ClickFix y alertar al usuario sobre posibles riesgos relacionados con el uso del portapapeles.",
-        h_2:"2. Datos que se recopilan",
-        p_2:"La extensión puede procesar y/o enviar los siguientes datos exclusivamente con fines de seguridad:",
-        li_2_1:"<strong>Eventos de detección:</strong> URL, hostname, fecha y hora (timestamp), señales detectadas, mensaje de alerta y fragmentos relevantes del contenido analizado.",
-        li_2_2:"<strong>Estadísticas de uso:</strong> número de alertas generadas, número de bloqueos y estado de activación de la extensión.",
-        li_2_3:"<strong>Listas locales:</strong> allowlist y blocklist almacenadas localmente en el navegador del usuario.",
-        li_2_4:"<strong>URL previa:</strong> página de referencia (referrer) desde la que se accedió a un posible flujo ClickFix, si está disponible.",
-        note_2:"No se recopilan datos personales como nombre, correo electrónico o cualquier información que permita identificar directamente al usuario.",
-        h_3:"3. Finalidad del tratamiento",
-        p_3:"Los datos se utilizan únicamente para:",
-        li_3_1:"Detectar y bloquear patrones de ataque ClickFix.",
-        li_3_2:"Generar alertas de seguridad en tiempo real.",
-        li_3_3:"Mejorar la eficacia del sistema mediante estadísticas agregadas.",
-        li_3_4:"Mantener y optimizar listas de allowlist y blocklist.",
-        li_3_5:"Analizar el origen de redirecciones sospechosas para mejorar la respuesta ante incidentes.",
-        h_4:"4. Base legal",
-        p_4:"El tratamiento se realiza sobre la base del interés legítimo en la seguridad y protección del usuario frente a amenazas informáticas.",
-        h_5:"5. Compartición de datos",
-        li_5_1:"Los datos pueden enviarse al servidor de ClickFix Mitigator para el procesamiento de alertas y estadísticas.",
-        li_5_2:"<strong>No se venden, alquilan ni ceden datos a terceros</strong>, salvo cuando sea estrictamente necesario para operar el servicio.",
-        h_6:"6. Retención",
-        p_6:"Los datos se conservan únicamente durante el tiempo necesario para cumplir las finalidades indicadas y para garantizar la integridad de los registros de seguridad.",
-        h_7:"7. Seguridad",
-        p_7:"Se aplican medidas técnicas y organizativas razonables para proteger los datos transmitidos y almacenados frente a accesos no autorizados, pérdida o alteración.",
-        h_8:"8. Derechos del usuario",
-        p_8:"El usuario puede solicitar información o ejercer sus derechos de acceso, rectificación o eliminación mediante los canales de contacto indicados en el sitio oficial.",
-        h_9:"9. Cambios en la política",
-        p_9:"Esta política puede actualizarse periódicamente. Las modificaciones se publicarán en este documento.",
-        h_10:"10. Contacto",
-        contact_label:"Sitio oficial:",
-        footer:"Hecho para protegerte del “copiar/pegar” traicionero."
-      },
-
-      ca: {
-        title: "Política de Privacitat",
-        updated_label: "Última actualització:",
-        lang: "Idioma",
-        nav_1:"1. Responsable", nav_2:"2. Dades", nav_3:"3. Finalitat", nav_4:"4. Base legal",
-        nav_5:"5. Compartició", nav_6:"6. Conservació", nav_7:"7. Seguretat", nav_8:"8. Drets",
-        nav_9:"9. Canvis", nav_10:"10. Contacte",
-        h_1:"1. Responsable del tractament",
-        p_1:"ClickFix Mitigator és una extensió de navegador dissenyada per detectar patrons d’atac tipus ClickFix i alertar l’usuari sobre possibles riscos relacionats amb l’ús del porta-retalls.",
-        h_2:"2. Dades que es recopilen",
-        p_2:"L’extensió pot processar i/o enviar les dades següents exclusivament amb finalitats de seguretat:",
-        li_2_1:"<strong>Esdeveniments de detecció:</strong> URL, hostname, data i hora (timestamp), senyals detectats, missatge d’alerta i fragments rellevants del contingut analitzat.",
-        li_2_2:"<strong>Estadístiques d’ús:</strong> nombre d’alertes generades, nombre de bloquejos i estat d’activació de l’extensió.",
-        li_2_3:"<strong>Llistes locals:</strong> allowlist i blocklist emmagatzemades localment al navegador de l’usuari.",
-        li_2_4:"<strong>URL prèvia:</strong> pàgina de referència (referrer) des de la qual s’ha accedit a un possible flux ClickFix, si està disponible.",
-        note_2:"No es recopilen dades personals com el nom, el correu electrònic o qualsevol informació que permeti identificar directament l’usuari.",
-        h_3:"3. Finalitat del tractament",
-        p_3:"Les dades s’utilitzen únicament per a:",
-        li_3_1:"Detectar i bloquejar patrons d’atac ClickFix.",
-        li_3_2:"Generar alertes de seguretat en temps real.",
-        li_3_3:"Millorar l’eficàcia del sistema mitjançant estadístiques agregades.",
-        li_3_4:"Mantenir i optimitzar llistes d’allowlist i blocklist.",
-        li_3_5:"Analitzar l’origen de redireccions sospitoses per millorar la resposta a incidents.",
-        h_4:"4. Base legal",
-        p_4:"El tractament es basa en l’<strong>interès legítim</strong> de protegir la seguretat de l’usuari davant d’amenaces informàtiques.",
-        h_5:"5. Compartició de dades",
-        li_5_1:"Les dades poden enviar-se al servidor de ClickFix Mitigator per al processament d’alertes i estadístiques.",
-        li_5_2:"<strong>No es venen, lloguen ni cedeixen dades a tercers</strong>, excepte quan sigui estrictament necessari per operar el servei.",
-        h_6:"6. Conservació",
-        p_6:"Les dades es conserven únicament durant el temps necessari per complir les finalitats indicades i garantir la integritat dels registres de seguretat.",
-        h_7:"7. Seguretat",
-        p_7:"S’apliquen mesures tècniques i organitzatives raonables per protegir les dades transmeses i emmagatzemades davant d’accessos no autoritzats, pèrdua o alteració.",
-        h_8:"8. Drets de l’usuari",
-        p_8:"L’usuari pot sol·licitar informació o exercir els seus drets d’accés, rectificació o supressió mitjançant els canals de contacte indicats al lloc oficial.",
-        h_9:"9. Canvis en aquesta política",
-        p_9:"Aquesta política pot actualitzar-se periòdicament. Les modificacions es publicaran en aquest document.",
-        h_10:"10. Contacte",
-        contact_label:"Lloc oficial:",
-        footer:"Fet per protegir-te del “copiar/enganxar” traïdor."
-      },
-
+    const I18N = {
       en: {
         title: "Privacy Policy",
         updated_label: "Last updated:",
+        updated_date: "January 28, 2026",
         lang: "Language",
-        nav_1:"1. Controller", nav_2:"2. Data", nav_3:"3. Purpose", nav_4:"4. Legal basis",
-        nav_5:"5. Sharing", nav_6:"6. Retention", nav_7:"7. Security", nav_8:"8. User rights",
-        nav_9:"9. Changes", nav_10:"10. Contact",
-        h_1:"1. Data controller",
-        p_1:"ClickFix Mitigator is a browser extension designed to detect ClickFix-style attack patterns and warn users about potential clipboard-related risks.",
-        h_2:"2. Data collected",
-        p_2:"The extension may process and/or send the following data strictly for security purposes:",
-        li_2_1:"<strong>Detection events:</strong> URL, hostname, timestamp, detected signals, alert message, and relevant snippets of analyzed content.",
-        li_2_2:"<strong>Usage statistics:</strong> number of alerts, number of blocks, and extension enabled/disabled status.",
-        li_2_3:"<strong>Local lists:</strong> allowlist and blocklist stored locally in the user’s browser.",
-        li_2_4:"<strong>Previous URL:</strong> referrer page from which a suspected ClickFix flow was accessed, if available.",
-        note_2:"No personal data such as name, email address, or information that directly identifies the user is collected.",
-        h_3:"3. Purpose of processing",
-        p_3:"Data is used only to:",
-        li_3_1:"Detect and block ClickFix attack patterns.",
-        li_3_2:"Generate real-time security alerts.",
-        li_3_3:"Improve effectiveness through aggregated statistics.",
-        li_3_4:"Maintain and optimize allowlist and blocklist rules.",
-        li_3_5:"Analyze the source of suspicious redirects to improve incident response.",
-        h_4:"4. Legal basis",
-        p_4:"Processing is based on our <strong>legitimate interest</strong> in protecting users from security threats.",
-        h_5:"5. Data sharing",
-        li_5_1:"Data may be sent to ClickFix Mitigator servers to process alerts and statistics.",
-        li_5_2:"<strong>We do not sell, rent, or share data with third parties</strong> except when strictly necessary to operate the service.",
-        h_6:"6. Retention",
-        p_6:"Data is retained only for as long as necessary to fulfill the purposes described and to preserve the integrity of security logs.",
-        h_7:"7. Security",
-        p_7:"Reasonable technical and organizational measures are applied to protect transmitted and stored data against unauthorized access, loss, or alteration.",
-        h_8:"8. User rights",
-        p_8:"Users may request information or exercise their rights of access, rectification, or deletion through the contact channels listed on the official site.",
-        h_9:"9. Changes to this policy",
-        p_9:"This policy may be updated periodically. Changes will be published in this document.",
-        h_10:"10. Contact",
-        contact_label:"Official site:",
-        footer:"Built to protect you from the sneaky side of copy/paste."
+        nav_1: "1. Controller",
+        nav_2: "2. Data collected",
+        nav_3: "3. Purpose",
+        nav_4: "4. Legal basis",
+        nav_5: "5. Data sharing",
+        nav_6: "6. Retention",
+        nav_7: "7. Security",
+        nav_8: "8. User rights",
+        nav_9: "9. Changes",
+        nav_10: "10. Contact",
+        h_1: "1. Data controller",
+        p_1: "ClickFix Mitigator is a browser extension designed to detect ClickFix attack patterns and alert users about risks related to clipboard usage.",
+        h_2: "2. Data collected",
+        p_2: "The extension may process and/or send the following data solely for security purposes:",
+        li_2_1: "<strong>Detection events:</strong> URL, hostname, date and time (timestamp), detected signals, alert message, and relevant snippets of analyzed content.",
+        li_2_2: "<strong>Usage statistics:</strong> number of alerts generated, number of blocks, and extension activation status.",
+        li_2_3: "<strong>Local lists:</strong> allowlist and blocklist stored locally in the user's browser.",
+        li_2_4: "<strong>Referrer URL:</strong> reference page (referrer) from which a possible ClickFix flow was accessed, if available.",
+        note_2: "No personal data such as name, email address, or information that directly identifies the user is collected.",
+        h_3: "3. Purpose of processing",
+        p_3: "Data is used only to:",
+        li_3_1: "Detect and block ClickFix attack patterns.",
+        li_3_2: "Generate security alerts in real time.",
+        li_3_3: "Improve effectiveness through aggregated statistics.",
+        li_3_4: "Maintain and optimize allowlist and blocklist lists.",
+        li_3_5: "Analyze the origin of suspicious redirects to improve incident response.",
+        h_4: "4. Legal basis",
+        p_4: "Processing is based on legitimate interest in user security and protection against threats.",
+        h_5: "5. Data sharing",
+        li_5_1: "Data may be sent to the ClickFix Mitigator server for processing alerts and statistics.",
+        li_5_2: "<strong>Data is not sold, rented, or shared with third parties</strong>, unless strictly necessary to operate the service.",
+        h_6: "6. Retention",
+        p_6: "Data is retained only for as long as necessary to fulfill the purposes described and to ensure integrity of security records.",
+        h_7: "7. Security",
+        p_7: "Reasonable technical and organizational measures are applied to protect transmitted and stored data against unauthorized access, loss, or alteration.",
+        h_8: "8. User rights",
+        p_8: "Users can request information or exercise their rights of access, rectification, or deletion through the contact channels listed on the official site.",
+        h_9: "9. Policy changes",
+        p_9: "This policy may be updated periodically. Updates will be published in this document.",
+        h_10: "10. Contact",
+        p_10: "Official site: <a href=\"https://jordiserrano.me\" rel=\"noopener noreferrer\" target=\"_blank\">jordiserrano.me</a>",
+        footer: "ClickFix Mitigator · Privacy Policy"
+      },
+      es: {
+        title: "Política de Privacidad",
+        updated_label: "Última actualización:",
+        updated_date: "28 de enero de 2026",
+        lang: "Idioma",
+        nav_1: "1. Responsable",
+        nav_2: "2. Datos",
+        nav_3: "3. Finalidad",
+        nav_4: "4. Base legal",
+        nav_5: "5. Compartición",
+        nav_6: "6. Retención",
+        nav_7: "7. Seguridad",
+        nav_8: "8. Derechos",
+        nav_9: "9. Cambios",
+        nav_10: "10. Contacto",
+        h_1: "1. Responsable del tratamiento",
+        p_1: "ClickFix Mitigator es una extensión de navegador diseñada para detectar patrones de ataque tipo ClickFix y alertar al usuario sobre posibles riesgos relacionados con el uso del portapapeles.",
+        h_2: "2. Datos que se recopilan",
+        p_2: "La extensión puede procesar y/o enviar los siguientes datos exclusivamente con fines de seguridad:",
+        li_2_1: "<strong>Eventos de detección:</strong> URL, hostname, fecha y hora (timestamp), señales detectadas, mensaje de alerta y fragmentos relevantes del contenido analizado.",
+        li_2_2: "<strong>Estadísticas de uso:</strong> número de alertas generadas, número de bloqueos y estado de activación de la extensión.",
+        li_2_3: "<strong>Listas locales:</strong> allowlist y blocklist almacenadas localmente en el navegador del usuario.",
+        li_2_4: "<strong>URL previa:</strong> página de referencia (referrer) desde la que se accedió a un posible flujo ClickFix, si está disponible.",
+        note_2: "No se recopilan datos personales como nombre, correo electrónico o cualquier información que permita identificar directamente al usuario.",
+        h_3: "3. Finalidad del tratamiento",
+        p_3: "Los datos se utilizan únicamente para:",
+        li_3_1: "Detectar y bloquear patrones de ataque ClickFix.",
+        li_3_2: "Generar alertas de seguridad en tiempo real.",
+        li_3_3: "Mejorar la eficacia del sistema mediante estadísticas agregadas.",
+        li_3_4: "Mantener y optimizar listas de allowlist y blocklist.",
+        li_3_5: "Analizar el origen de redirecciones sospechosas para mejorar la respuesta ante incidentes.",
+        h_4: "4. Base legal",
+        p_4: "El tratamiento se realiza sobre la base del interés legítimo en la seguridad y protección del usuario frente a amenazas informáticas.",
+        h_5: "5. Compartición de datos",
+        li_5_1: "Los datos pueden enviarse al servidor de ClickFix Mitigator para el procesamiento de alertas y estadísticas.",
+        li_5_2: "<strong>No se venden, alquilan ni ceden datos a terceros</strong>, salvo cuando sea estrictamente necesario para operar el servicio.",
+        h_6: "6. Retención",
+        p_6: "Los datos se conservan únicamente durante el tiempo necesario para cumplir las finalidades indicadas y para garantizar la integridad de los registros de seguridad.",
+        h_7: "7. Seguridad",
+        p_7: "Se aplican medidas técnicas y organizativas razonables para proteger los datos transmitidos y almacenados frente a accesos no autorizados, pérdida o alteración.",
+        h_8: "8. Derechos del usuario",
+        p_8: "El usuario puede solicitar información o ejercer sus derechos de acceso, rectificación o eliminación mediante los canales de contacto indicados en el sitio oficial.",
+        h_9: "9. Cambios en la política",
+        p_9: "Esta política puede actualizarse periódicamente. Las modificaciones se publicarán en este documento.",
+        h_10: "10. Contacto",
+        p_10: "Sitio oficial: <a href=\"https://jordiserrano.me\" rel=\"noopener noreferrer\" target=\"_blank\">jordiserrano.me</a>",
+        footer: "ClickFix Mitigator · Política de Privacidad"
+      },
+      ca: {
+        title: "Política de Privadesa",
+        updated_label: "Última actualització:",
+        updated_date: "28 de gener de 2026",
+        lang: "Idioma",
+        nav_1: "1. Responsable",
+        nav_2: "2. Dades",
+        nav_3: "3. Finalitat",
+        nav_4: "4. Base legal",
+        nav_5: "5. Compartició",
+        nav_6: "6. Retenció",
+        nav_7: "7. Seguretat",
+        nav_8: "8. Drets",
+        nav_9: "9. Canvis",
+        nav_10: "10. Contacte",
+        h_1: "1. Responsable del tractament",
+        p_1: "ClickFix Mitigator és una extensió de navegador dissenyada per detectar patrons d'atac ClickFix i alertar l'usuari sobre possibles riscos relacionats amb l'ús del porta-retalls.",
+        h_2: "2. Dades que es recopilen",
+        p_2: "L'extensió pot processar i/o enviar les dades següents exclusivament amb finalitats de seguretat:",
+        li_2_1: "<strong>Esdeveniments de detecció:</strong> URL, hostname, data i hora (timestamp), senyals detectats, missatge d'alerta i fragments rellevants del contingut analitzat.",
+        li_2_2: "<strong>Estadístiques d'ús:</strong> nombre d'alertes generades, nombre de bloquejos i estat d'activació de l'extensió.",
+        li_2_3: "<strong>Llistes locals:</strong> allowlist i blocklist emmagatzemades localment al navegador de l'usuari.",
+        li_2_4: "<strong>URL prèvia:</strong> pàgina de referència (referrer) des de la qual es va accedir a un possible flux ClickFix, si està disponible.",
+        note_2: "No es recopilen dades personals com el nom, el correu electrònic o qualsevol informació que permeti identificar directament l'usuari.",
+        h_3: "3. Finalitat del tractament",
+        p_3: "Les dades s'utilitzen únicament per a:",
+        li_3_1: "Detectar i bloquejar patrons d'atac ClickFix.",
+        li_3_2: "Generar alertes de seguretat en temps real.",
+        li_3_3: "Millorar l'eficàcia del sistema mitjançant estadístiques agregades.",
+        li_3_4: "Mantenir i optimitzar les llistes allowlist i blocklist.",
+        li_3_5: "Analitzar l'origen de redireccions sospitoses per millorar la resposta davant incidents.",
+        h_4: "4. Base legal",
+        p_4: "El tractament es realitza sobre la base de l'interès legítim en la seguretat i la protecció de l'usuari davant d'amenaces informàtiques.",
+        h_5: "5. Compartició de dades",
+        li_5_1: "Les dades es poden enviar al servidor de ClickFix Mitigator per al processament d'alertes i estadístiques.",
+        li_5_2: "<strong>No es venen, lloguen ni cedeixen dades a tercers</strong>, excepte quan sigui estrictament necessari per operar el servei.",
+        h_6: "6. Retenció",
+        p_6: "Les dades es conserven únicament durant el temps necessari per complir les finalitats indicades i garantir la integritat dels registres de seguretat.",
+        h_7: "7. Seguretat",
+        p_7: "S'apliquen mesures tècniques i organitzatives raonables per protegir les dades transmeses i emmagatzemades davant accessos no autoritzats, pèrdua o alteració.",
+        h_8: "8. Drets de l'usuari",
+        p_8: "L'usuari pot sol·licitar informació o exercir els seus drets d'accés, rectificació o eliminació mitjançant els canals de contacte indicats al lloc oficial.",
+        h_9: "9. Canvis en la política",
+        p_9: "Aquesta política es pot actualitzar periòdicament. Les modificacions es publicaran en aquest document.",
+        h_10: "10. Contacte",
+        p_10: "Lloc oficial: <a href=\"https://jordiserrano.me\" rel=\"noopener noreferrer\" target=\"_blank\">jordiserrano.me</a>",
+        footer: "ClickFix Mitigator · Política de Privadesa"
+      },
+      de: {
+        title: "Datenschutzerklärung",
+        updated_label: "Zuletzt aktualisiert:",
+        updated_date: "28. Januar 2026",
+        lang: "Sprache",
+        nav_1: "1. Verantwortlicher",
+        nav_2: "2. Daten",
+        nav_3: "3. Zweck",
+        nav_4: "4. Rechtsgrundlage",
+        nav_5: "5. Datenweitergabe",
+        nav_6: "6. Aufbewahrung",
+        nav_7: "7. Sicherheit",
+        nav_8: "8. Rechte",
+        nav_9: "9. Änderungen",
+        nav_10: "10. Kontakt",
+        h_1: "1. Verantwortlicher für die Verarbeitung",
+        p_1: "ClickFix Mitigator ist eine Browser-Erweiterung, die ClickFix-Angriffsmuster erkennt und Nutzer vor möglichen Risiken im Zusammenhang mit der Zwischenablage warnt.",
+        h_2: "2. Erhobene Daten",
+        p_2: "Die Erweiterung kann ausschließlich zu Sicherheitszwecken folgende Daten verarbeiten und/oder senden:",
+        li_2_1: "<strong>Erkennungsereignisse:</strong> URL, Hostname, Datum und Uhrzeit (Zeitstempel), erkannte Signale, Warnmeldung und relevante Ausschnitte des analysierten Inhalts.",
+        li_2_2: "<strong>Nutzungsstatistiken:</strong> Anzahl der erzeugten Warnungen, Anzahl der Blockierungen und Aktivierungsstatus der Erweiterung.",
+        li_2_3: "<strong>Lokale Listen:</strong> Allowlist und Blocklist, lokal im Browser des Nutzers gespeichert.",
+        li_2_4: "<strong>Verweis-URL:</strong> Referenzseite (Referrer), von der aus ein möglicher ClickFix-Ablauf aufgerufen wurde, sofern verfügbar.",
+        note_2: "Es werden keine personenbezogenen Daten wie Name, E-Mail-Adresse oder Informationen erfasst, die den Nutzer direkt identifizieren.",
+        h_3: "3. Zweck der Verarbeitung",
+        p_3: "Die Daten werden ausschließlich verwendet, um:",
+        li_3_1: "ClickFix-Angriffsmuster zu erkennen und zu blockieren.",
+        li_3_2: "Sicherheitswarnungen in Echtzeit zu erzeugen.",
+        li_3_3: "Die Wirksamkeit des Systems durch aggregierte Statistiken zu verbessern.",
+        li_3_4: "Allowlist- und Blocklist-Listen zu pflegen und zu optimieren.",
+        li_3_5: "Den Ursprung verdächtiger Weiterleitungen zu analysieren, um die Reaktion auf Vorfälle zu verbessern.",
+        h_4: "4. Rechtsgrundlage",
+        p_4: "Die Verarbeitung erfolgt auf Grundlage des berechtigten Interesses an der Sicherheit und dem Schutz der Nutzer vor Bedrohungen.",
+        h_5: "5. Datenweitergabe",
+        li_5_1: "Daten können zur Verarbeitung von Warnungen und Statistiken an den ClickFix Mitigator-Server gesendet werden.",
+        li_5_2: "<strong>Daten werden nicht verkauft, vermietet oder an Dritte weitergegeben</strong>, außer wenn dies zur Bereitstellung des Dienstes strikt erforderlich ist.",
+        h_6: "6. Aufbewahrung",
+        p_6: "Daten werden nur so lange aufbewahrt, wie es zur Erfüllung der genannten Zwecke und zur Sicherung der Integrität der Sicherheitsprotokolle erforderlich ist.",
+        h_7: "7. Sicherheit",
+        p_7: "Es werden angemessene technische und organisatorische Maßnahmen angewendet, um übertragene und gespeicherte Daten vor unbefugtem Zugriff, Verlust oder Veränderung zu schützen.",
+        h_8: "8. Rechte der Nutzer",
+        p_8: "Nutzer können Informationen anfordern oder ihre Rechte auf Auskunft, Berichtigung oder Löschung über die im offiziellen Auftritt angegebenen Kontaktwege ausüben.",
+        h_9: "9. Änderungen der Richtlinie",
+        p_9: "Diese Richtlinie kann regelmäßig aktualisiert werden. Änderungen werden in diesem Dokument veröffentlicht.",
+        h_10: "10. Kontakt",
+        p_10: "Offizielle Seite: <a href=\"https://jordiserrano.me\" rel=\"noopener noreferrer\" target=\"_blank\">jordiserrano.me</a>",
+        footer: "ClickFix Mitigator · Datenschutzerklärung"
+      },
+      fr: {
+        title: "Politique de confidentialité",
+        updated_label: "Dernière mise à jour :",
+        updated_date: "28 janvier 2026",
+        lang: "Langue",
+        nav_1: "1. Responsable",
+        nav_2: "2. Données",
+        nav_3: "3. Finalité",
+        nav_4: "4. Base légale",
+        nav_5: "5. Partage",
+        nav_6: "6. Conservation",
+        nav_7: "7. Sécurité",
+        nav_8: "8. Droits",
+        nav_9: "9. Modifications",
+        nav_10: "10. Contact",
+        h_1: "1. Responsable du traitement",
+        p_1: "ClickFix Mitigator est une extension de navigateur conçue pour détecter les schémas d'attaque ClickFix et alerter l'utilisateur sur les risques liés au presse-papiers.",
+        h_2: "2. Données collectées",
+        p_2: "L'extension peut traiter et/ou envoyer les données suivantes exclusivement à des fins de sécurité :",
+        li_2_1: "<strong>Événements de détection :</strong> URL, nom d'hôte, date et heure (horodatage), signaux détectés, message d'alerte et extraits pertinents du contenu analysé.",
+        li_2_2: "<strong>Statistiques d'utilisation :</strong> nombre d'alertes générées, nombre de blocages et état d'activation de l'extension.",
+        li_2_3: "<strong>Listes locales :</strong> allowlist et blocklist stockées localement dans le navigateur de l'utilisateur.",
+        li_2_4: "<strong>URL de référence :</strong> page de référence (referrer) depuis laquelle un flux ClickFix possible a été consulté, si disponible.",
+        note_2: "Aucune donnée personnelle telle que le nom, l'e-mail ou toute information permettant d'identifier directement l'utilisateur n'est collectée.",
+        h_3: "3. Finalité du traitement",
+        p_3: "Les données sont utilisées uniquement pour :",
+        li_3_1: "Détecter et bloquer les schémas d'attaque ClickFix.",
+        li_3_2: "Générer des alertes de sécurité en temps réel.",
+        li_3_3: "Améliorer l'efficacité du système via des statistiques agrégées.",
+        li_3_4: "Maintenir et optimiser les listes allowlist et blocklist.",
+        li_3_5: "Analyser l'origine des redirections suspectes afin d'améliorer la réponse aux incidents.",
+        h_4: "4. Base légale",
+        p_4: "Le traitement repose sur l'intérêt légitime lié à la sécurité et à la protection de l'utilisateur contre les menaces.",
+        h_5: "5. Partage des données",
+        li_5_1: "Les données peuvent être envoyées au serveur ClickFix Mitigator pour le traitement des alertes et des statistiques.",
+        li_5_2: "<strong>Aucune donnée n'est vendue, louée ou cédée à des tiers</strong>, sauf si cela est strictement nécessaire au fonctionnement du service.",
+        h_6: "6. Conservation",
+        p_6: "Les données sont conservées uniquement le temps nécessaire pour atteindre les finalités indiquées et garantir l'intégrité des journaux de sécurité.",
+        h_7: "7. Sécurité",
+        p_7: "Des mesures techniques et organisationnelles raisonnables sont appliquées pour protéger les données transmises et stockées contre tout accès non autorisé, perte ou altération.",
+        h_8: "8. Droits des utilisateurs",
+        p_8: "L'utilisateur peut demander des informations ou exercer ses droits d'accès, de rectification ou de suppression via les canaux de contact indiqués sur le site officiel.",
+        h_9: "9. Modifications de la politique",
+        p_9: "Cette politique peut être mise à jour périodiquement. Les modifications seront publiées dans ce document.",
+        h_10: "10. Contact",
+        p_10: "Site officiel : <a href=\"https://jordiserrano.me\" rel=\"noopener noreferrer\" target=\"_blank\">jordiserrano.me</a>",
+        footer: "ClickFix Mitigator · Politique de confidentialité"
+      },
+      nl: {
+        title: "Privacybeleid",
+        updated_label: "Laatst bijgewerkt:",
+        updated_date: "28 januari 2026",
+        lang: "Taal",
+        nav_1: "1. Verantwoordelijke",
+        nav_2: "2. Gegevens",
+        nav_3: "3. Doel",
+        nav_4: "4. Rechtsgrond",
+        nav_5: "5. Delen",
+        nav_6: "6. Bewaring",
+        nav_7: "7. Beveiliging",
+        nav_8: "8. Rechten",
+        nav_9: "9. Wijzigingen",
+        nav_10: "10. Contact",
+        h_1: "1. Verantwoordelijke voor de verwerking",
+        p_1: "ClickFix Mitigator is een browserextensie die ClickFix-aanvalspatronen detecteert en gebruikers waarschuwt voor mogelijke risico's rond het klembord.",
+        h_2: "2. Verzamelde gegevens",
+        p_2: "De extensie kan uitsluitend voor beveiligingsdoeleinden de volgende gegevens verwerken en/of verzenden:",
+        li_2_1: "<strong>Detectiegebeurtenissen:</strong> URL, hostnaam, datum en tijd (tijdstempel), gedetecteerde signalen, waarschuwingstekst en relevante fragmenten van de geanalyseerde inhoud.",
+        li_2_2: "<strong>Gebruiksstatistieken:</strong> aantal gegenereerde waarschuwingen, aantal blokkeringen en activatiestatus van de extensie.",
+        li_2_3: "<strong>Lokale lijsten:</strong> allowlist en blocklist lokaal opgeslagen in de browser van de gebruiker.",
+        li_2_4: "<strong>Verwijs-URL:</strong> referentiepagina (referrer) van waaruit een mogelijke ClickFix-stroom is geopend, indien beschikbaar.",
+        note_2: "Er worden geen persoonlijke gegevens verzameld zoals naam, e-mailadres of informatie waarmee de gebruiker direct kan worden geïdentificeerd.",
+        h_3: "3. Doel van de verwerking",
+        p_3: "De gegevens worden alleen gebruikt om:",
+        li_3_1: "ClickFix-aanvalspatronen te detecteren en te blokkeren.",
+        li_3_2: "Realtime beveiligingswaarschuwingen te genereren.",
+        li_3_3: "De effectiviteit van het systeem te verbeteren via geaggregeerde statistieken.",
+        li_3_4: "Allowlist- en blocklist-lijsten te onderhouden en te optimaliseren.",
+        li_3_5: "De oorsprong van verdachte omleidingen te analyseren om de incidentrespons te verbeteren.",
+        h_4: "4. Rechtsgrond",
+        p_4: "De verwerking is gebaseerd op het gerechtvaardigd belang bij de beveiliging en bescherming van gebruikers tegen bedreigingen.",
+        h_5: "5. Delen van gegevens",
+        li_5_1: "Gegevens kunnen naar de ClickFix Mitigator-server worden gestuurd voor het verwerken van waarschuwingen en statistieken.",
+        li_5_2: "<strong>Gegevens worden niet verkocht, verhuurd of gedeeld met derden</strong>, tenzij dit strikt noodzakelijk is om de dienst te leveren.",
+        h_6: "6. Bewaring",
+        p_6: "Gegevens worden alleen bewaard zolang als nodig is om de beschreven doelen te bereiken en de integriteit van beveiligingslogs te waarborgen.",
+        h_7: "7. Beveiliging",
+        p_7: "Er worden redelijke technische en organisatorische maatregelen toegepast om verzonden en opgeslagen gegevens te beschermen tegen ongeautoriseerde toegang, verlies of wijziging.",
+        h_8: "8. Rechten van gebruikers",
+        p_8: "Gebruikers kunnen informatie aanvragen of hun rechten op inzage, rectificatie of verwijdering uitoefenen via de contactkanalen op de officiële site.",
+        h_9: "9. Wijzigingen in het beleid",
+        p_9: "Dit beleid kan periodiek worden bijgewerkt. Wijzigingen worden in dit document gepubliceerd.",
+        h_10: "10. Contact",
+        p_10: "Officiële site: <a href=\"https://jordiserrano.me\" rel=\"noopener noreferrer\" target=\"_blank\">jordiserrano.me</a>",
+        footer: "ClickFix Mitigator · Privacybeleid"
+      },
+      pt: {
+        title: "Política de Privacidade",
+        updated_label: "Última atualização:",
+        updated_date: "28 de janeiro de 2026",
+        lang: "Idioma",
+        nav_1: "1. Responsável",
+        nav_2: "2. Dados",
+        nav_3: "3. Finalidade",
+        nav_4: "4. Base legal",
+        nav_5: "5. Compartilhamento",
+        nav_6: "6. Retenção",
+        nav_7: "7. Segurança",
+        nav_8: "8. Direitos",
+        nav_9: "9. Alterações",
+        nav_10: "10. Contato",
+        h_1: "1. Responsável pelo tratamento",
+        p_1: "ClickFix Mitigator é uma extensão de navegador projetada para detectar padrões de ataque ClickFix e alertar o usuário sobre possíveis riscos relacionados ao uso da área de transferência.",
+        h_2: "2. Dados coletados",
+        p_2: "A extensão pode processar e/ou enviar os seguintes dados exclusivamente para fins de segurança:",
+        li_2_1: "<strong>Eventos de detecção:</strong> URL, hostname, data e hora (timestamp), sinais detectados, mensagem de alerta e trechos relevantes do conteúdo analisado.",
+        li_2_2: "<strong>Estatísticas de uso:</strong> número de alertas gerados, número de bloqueios e status de ativação da extensão.",
+        li_2_3: "<strong>Listas locais:</strong> allowlist e blocklist armazenadas localmente no navegador do usuário.",
+        li_2_4: "<strong>URL de referência:</strong> página de referência (referrer) a partir da qual um possível fluxo ClickFix foi acessado, se disponível.",
+        note_2: "Não são coletados dados pessoais como nome, e-mail ou qualquer informação que permita identificar diretamente o usuário.",
+        h_3: "3. Finalidade do tratamento",
+        p_3: "Os dados são usados apenas para:",
+        li_3_1: "Detectar e bloquear padrões de ataque ClickFix.",
+        li_3_2: "Gerar alertas de segurança em tempo real.",
+        li_3_3: "Melhorar a eficácia do sistema por meio de estatísticas agregadas.",
+        li_3_4: "Manter e otimizar as listas allowlist e blocklist.",
+        li_3_5: "Analisar a origem de redirecionamentos suspeitos para melhorar a resposta a incidentes.",
+        h_4: "4. Base legal",
+        p_4: "O tratamento é realizado com base no interesse legítimo na segurança e proteção do usuário contra ameaças.",
+        h_5: "5. Compartilhamento de dados",
+        li_5_1: "Os dados podem ser enviados ao servidor do ClickFix Mitigator para o processamento de alertas e estatísticas.",
+        li_5_2: "<strong>Os dados não são vendidos, alugados ou compartilhados com terceiros</strong>, salvo quando estritamente necessário para operar o serviço.",
+        h_6: "6. Retenção",
+        p_6: "Os dados são mantidos apenas pelo tempo necessário para cumprir as finalidades indicadas e garantir a integridade dos registros de segurança.",
+        h_7: "7. Segurança",
+        p_7: "São aplicadas medidas técnicas e organizacionais razoáveis para proteger os dados transmitidos e armazenados contra acesso não autorizado, perda ou alteração.",
+        h_8: "8. Direitos do usuário",
+        p_8: "O usuário pode solicitar informações ou exercer seus direitos de acesso, retificação ou exclusão por meio dos canais de contato indicados no site oficial.",
+        h_9: "9. Alterações na política",
+        p_9: "Esta política pode ser atualizada periodicamente. As alterações serão publicadas neste documento.",
+        h_10: "10. Contato",
+        p_10: "Site oficial: <a href=\"https://jordiserrano.me\" rel=\"noopener noreferrer\" target=\"_blank\">jordiserrano.me</a>",
+        footer: "ClickFix Mitigator · Política de Privacidade"
+      },
+      ru: {
+        title: "Политика конфиденциальности",
+        updated_label: "Последнее обновление:",
+        updated_date: "28 января 2026",
+        lang: "Язык",
+        nav_1: "1. Ответственный",
+        nav_2: "2. Данные",
+        nav_3: "3. Цели",
+        nav_4: "4. Правовое основание",
+        nav_5: "5. Передача",
+        nav_6: "6. Хранение",
+        nav_7: "7. Безопасность",
+        nav_8: "8. Права",
+        nav_9: "9. Изменения",
+        nav_10: "10. Контакты",
+        h_1: "1. Ответственный за обработку",
+        p_1: "ClickFix Mitigator — это расширение браузера для выявления шаблонов атак ClickFix и предупреждения пользователя о рисках, связанных с буфером обмена.",
+        h_2: "2. Собираемые данные",
+        p_2: "Расширение может обрабатывать и/или отправлять следующие данные исключительно в целях безопасности:",
+        li_2_1: "<strong>События обнаружения:</strong> URL, hostname, дата и время (timestamp), обнаруженные сигналы, сообщение предупреждения и релевантные фрагменты анализируемого контента.",
+        li_2_2: "<strong>Статистика использования:</strong> количество сгенерированных предупреждений, количество блокировок и статус активации расширения.",
+        li_2_3: "<strong>Локальные списки:</strong> allowlist и blocklist, хранящиеся локально в браузере пользователя.",
+        li_2_4: "<strong>URL-источник:</strong> страница-источник (referrer), с которой был открыт возможный поток ClickFix, если доступно.",
+        note_2: "Персональные данные, такие как имя, электронная почта или иная информация, позволяющая напрямую идентифицировать пользователя, не собираются.",
+        h_3: "3. Цели обработки",
+        p_3: "Данные используются только для:",
+        li_3_1: "Выявления и блокировки шаблонов атак ClickFix.",
+        li_3_2: "Создания предупреждений безопасности в реальном времени.",
+        li_3_3: "Повышения эффективности системы с помощью агрегированной статистики.",
+        li_3_4: "Поддержания и оптимизации списков allowlist и blocklist.",
+        li_3_5: "Анализа происхождения подозрительных перенаправлений для улучшения реагирования на инциденты.",
+        h_4: "4. Правовое основание",
+        p_4: "Обработка осуществляется на основании законного интереса в обеспечении безопасности и защиты пользователя от угроз.",
+        h_5: "5. Передача данных",
+        li_5_1: "Данные могут отправляться на сервер ClickFix Mitigator для обработки предупреждений и статистики.",
+        li_5_2: "<strong>Данные не продаются, не сдаются в аренду и не передаются третьим лицам</strong>, кроме случаев, когда это строго необходимо для работы сервиса.",
+        h_6: "6. Хранение",
+        p_6: "Данные хранятся только столько, сколько необходимо для достижения указанных целей и обеспечения целостности журналов безопасности.",
+        h_7: "7. Безопасность",
+        p_7: "Применяются разумные технические и организационные меры для защиты передаваемых и хранимых данных от несанкционированного доступа, потери или изменения.",
+        h_8: "8. Права пользователей",
+        p_8: "Пользователь может запросить информацию или реализовать свои права на доступ, исправление или удаление через контактные каналы, указанные на официальном сайте.",
+        h_9: "9. Изменения политики",
+        p_9: "Эта политика может периодически обновляться. Изменения будут опубликованы в этом документе.",
+        h_10: "10. Контакты",
+        p_10: "Официальный сайт: <a href=\"https://jordiserrano.me\" rel=\"noopener noreferrer\" target=\"_blank\">jordiserrano.me</a>",
+        footer: "ClickFix Mitigator · Политика конфиденциальности"
+      },
+      zh: {
+        title: "隐私政策",
+        updated_label: "最后更新：",
+        updated_date: "2026年1月28日",
+        lang: "语言",
+        nav_1: "1. 责任主体",
+        nav_2: "2. 收集的数据",
+        nav_3: "3. 处理目的",
+        nav_4: "4. 法律依据",
+        nav_5: "5. 数据共享",
+        nav_6: "6. 保留期限",
+        nav_7: "7. 安全",
+        nav_8: "8. 用户权利",
+        nav_9: "9. 变更",
+        nav_10: "10. 联系方式",
+        h_1: "1. 处理责任方",
+        p_1: "ClickFix Mitigator 是一款浏览器扩展，用于检测 ClickFix 攻击模式并提醒用户与剪贴板使用相关的潜在风险。",
+        h_2: "2. 收集的数据",
+        p_2: "扩展仅出于安全目的处理和/或发送以下数据：",
+        li_2_1: "<strong>检测事件：</strong>URL、主机名、日期和时间（时间戳）、检测信号、警报信息以及分析内容的相关片段。",
+        li_2_2: "<strong>使用统计：</strong>生成的警报数量、阻止次数以及扩展的启用状态。",
+        li_2_3: "<strong>本地列表：</strong>存储在用户浏览器中的 allowlist 与 blocklist。",
+        li_2_4: "<strong>来源 URL：</strong>可能的 ClickFix 流程所来自的引用页面（referrer），如可用。",
+        note_2: "不收集姓名、电子邮件或任何可直接识别用户的个人信息。",
+        h_3: "3. 处理目的",
+        p_3: "这些数据仅用于：",
+        li_3_1: "检测并阻止 ClickFix 攻击模式。",
+        li_3_2: "实时生成安全警报。",
+        li_3_3: "通过汇总统计改进系统效果。",
+        li_3_4: "维护并优化 allowlist 与 blocklist 列表。",
+        li_3_5: "分析可疑重定向的来源以改进事件响应。",
+        h_4: "4. 法律依据",
+        p_4: "处理基于对用户安全与防护的合法利益。",
+        h_5: "5. 数据共享",
+        li_5_1: "数据可能会发送到 ClickFix Mitigator 服务器用于处理警报与统计。",
+        li_5_2: "<strong>不出售、出租或向第三方披露数据</strong>，除非为提供服务所必需。",
+        h_6: "6. 保留期限",
+        p_6: "数据仅在达到所述目的并确保安全记录完整性所需的期间内保留。",
+        h_7: "7. 安全",
+        p_7: "采取合理的技术与组织措施，保护传输与存储数据免受未授权访问、丢失或篡改。",
+        h_8: "8. 用户权利",
+        p_8: "用户可通过官方站点提供的联系方式请求信息或行使访问、更正或删除权利。",
+        h_9: "9. 政策变更",
+        p_9: "本政策可能定期更新。变更将发布在本文件中。",
+        h_10: "10. 联系方式",
+        p_10: "官方网站：<a href=\"https://jordiserrano.me\" rel=\"noopener noreferrer\" target=\"_blank\">jordiserrano.me</a>",
+        footer: "ClickFix Mitigator · 隐私政策"
+      },
+      ja: {
+        title: "プライバシーポリシー",
+        updated_label: "最終更新：",
+        updated_date: "2026年1月28日",
+        lang: "言語",
+        nav_1: "1. 管理者",
+        nav_2: "2. 収集データ",
+        nav_3: "3. 目的",
+        nav_4: "4. 法的根拠",
+        nav_5: "5. 共有",
+        nav_6: "6. 保管期間",
+        nav_7: "7. セキュリティ",
+        nav_8: "8. 利用者の権利",
+        nav_9: "9. 変更",
+        nav_10: "10. 連絡先",
+        h_1: "1. 取扱いの責任者",
+        p_1: "ClickFix Mitigator は、ClickFix 攻撃パターンを検出し、クリップボード利用に伴うリスクをユーザーに警告するブラウザ拡張機能です。",
+        h_2: "2. 収集するデータ",
+        p_2: "拡張機能は安全目的に限り、以下のデータを処理し、または送信する場合があります。",
+        li_2_1: "<strong>検出イベント：</strong>URL、ホスト名、日時（タイムスタンプ）、検出シグナル、警告メッセージ、分析した内容の関連部分。",
+        li_2_2: "<strong>利用統計：</strong>生成された警告数、ブロック数、拡張機能の有効状態。",
+        li_2_3: "<strong>ローカルリスト：</strong>ユーザーのブラウザに保存される allowlist と blocklist。",
+        li_2_4: "<strong>参照 URL：</strong>可能な ClickFix フローに到達した参照ページ（referrer）（利用可能な場合）。",
+        note_2: "氏名、メールアドレスなど、ユーザーを直接特定できる個人情報は収集しません。",
+        h_3: "3. 利用目的",
+        p_3: "データは以下の目的にのみ使用します：",
+        li_3_1: "ClickFix 攻撃パターンの検出とブロック。",
+        li_3_2: "リアルタイムのセキュリティ警告の生成。",
+        li_3_3: "集計統計によるシステム有効性の向上。",
+        li_3_4: "allowlist と blocklist の維持・最適化。",
+        li_3_5: "不審なリダイレクトの起点を分析し、インシデント対応を改善。",
+        h_4: "4. 法的根拠",
+        p_4: "処理は、ユーザーの安全と脅威からの保護に関する正当な利益に基づきます。",
+        h_5: "5. データ共有",
+        li_5_1: "警告と統計の処理のため、データが ClickFix Mitigator サーバーに送信される場合があります。",
+        li_5_2: "<strong>サービス提供に必要な場合を除き、データを販売・貸与・第三者に提供しません</strong>。",
+        h_6: "6. 保管期間",
+        p_6: "データは、記載された目的の達成とセキュリティ記録の完全性を確保するために必要な期間のみ保持されます。",
+        h_7: "7. セキュリティ",
+        p_7: "送信・保存されるデータを不正アクセス、紛失、改ざんから保護するため、合理的な技術的・組織的対策を講じます。",
+        h_8: "8. 利用者の権利",
+        p_8: "利用者は、公式サイトの連絡先を通じて、情報の請求やアクセス、訂正、削除の権利を行使できます。",
+        h_9: "9. ポリシーの変更",
+        p_9: "本ポリシーは定期的に更新される場合があります。変更は本書に掲載します。",
+        h_10: "10. 連絡先",
+        p_10: "公式サイト：<a href=\"https://jordiserrano.me\" rel=\"noopener noreferrer\" target=\"_blank\">jordiserrano.me</a>",
+        footer: "ClickFix Mitigator · プライバシーポリシー"
+      },
+      ko: {
+        title: "개인정보 처리방침",
+        updated_label: "최종 업데이트:",
+        updated_date: "2026년 1월 28일",
+        lang: "언어",
+        nav_1: "1. 책임자",
+        nav_2: "2. 수집 데이터",
+        nav_3: "3. 목적",
+        nav_4: "4. 법적 근거",
+        nav_5: "5. 공유",
+        nav_6: "6. 보관",
+        nav_7: "7. 보안",
+        nav_8: "8. 사용자 권리",
+        nav_9: "9. 변경",
+        nav_10: "10. 연락처",
+        h_1: "1. 처리 책임자",
+        p_1: "ClickFix Mitigator는 ClickFix 공격 패턴을 탐지하고 클립보드 사용과 관련된 위험을 사용자에게 알리기 위한 브라우저 확장입니다.",
+        h_2: "2. 수집하는 데이터",
+        p_2: "확장은 보안 목적에 한해 다음 데이터를 처리 및/또는 전송할 수 있습니다:",
+        li_2_1: "<strong>탐지 이벤트:</strong> URL, 호스트 이름, 날짜 및 시간(타임스탬프), 탐지 신호, 경고 메시지, 분석된 콘텐츠의 관련 부분.",
+        li_2_2: "<strong>사용 통계:</strong> 생성된 경고 수, 차단 수, 확장 활성화 상태.",
+        li_2_3: "<strong>로컬 목록:</strong> 사용자 브라우저에 로컬로 저장되는 allowlist 및 blocklist.",
+        li_2_4: "<strong>이전 URL:</strong> 가능한 ClickFix 흐름에 접근한 참조 페이지(referrer)가 있는 경우.",
+        note_2: "이름, 이메일 등 사용자를 직접 식별할 수 있는 개인 정보는 수집하지 않습니다.",
+        h_3: "3. 처리 목적",
+        p_3: "데이터는 다음 목적에만 사용됩니다:",
+        li_3_1: "ClickFix 공격 패턴을 탐지하고 차단.",
+        li_3_2: "실시간 보안 경고 생성.",
+        li_3_3: "집계 통계를 통한 시스템 효율성 향상.",
+        li_3_4: "allowlist 및 blocklist 목록 유지 및 최적화.",
+        li_3_5: "의심스러운 리디렉션의 출처를 분석해 사고 대응을 개선.",
+        h_4: "4. 법적 근거",
+        p_4: "처리는 사용자 보안과 위협으로부터의 보호를 위한 정당한 이익을 기반으로 합니다.",
+        h_5: "5. 데이터 공유",
+        li_5_1: "경고 및 통계 처리를 위해 데이터가 ClickFix Mitigator 서버로 전송될 수 있습니다.",
+        li_5_2: "<strong>서비스 운영에 반드시 필요한 경우를 제외하고 데이터는 판매, 임대 또는 제3자에게 공유되지 않습니다</strong>.",
+        h_6: "6. 보관",
+        p_6: "데이터는 명시된 목적을 달성하고 보안 로그의 무결성을 보장하는 데 필요한 기간 동안만 보관됩니다.",
+        h_7: "7. 보안",
+        p_7: "전송 및 저장된 데이터를 무단 접근, 손실 또는 변조로부터 보호하기 위한 합리적인 기술적·조직적 조치를 적용합니다.",
+        h_8: "8. 사용자 권리",
+        p_8: "사용자는 공식 사이트에 안내된 연락 채널을 통해 정보 요청 또는 접근, 정정, 삭제 권리를 행사할 수 있습니다.",
+        h_9: "9. 정책 변경",
+        p_9: "본 정책은 정기적으로 업데이트될 수 있습니다. 변경 사항은 이 문서에 게시됩니다.",
+        h_10: "10. 연락처",
+        p_10: "공식 사이트: <a href=\"https://jordiserrano.me\" rel=\"noopener noreferrer\" target=\"_blank\">jordiserrano.me</a>",
+        footer: "ClickFix Mitigator · 개인정보 처리방침"
+      },
+      he: {
+        title: "מדיניות פרטיות",
+        updated_label: "עודכן לאחרונה:",
+        updated_date: "28 בינואר 2026",
+        lang: "שפה",
+        nav_1: "1. הגורם האחראי",
+        nav_2: "2. נתונים",
+        nav_3: "3. מטרה",
+        nav_4: "4. בסיס משפטי",
+        nav_5: "5. שיתוף נתונים",
+        nav_6: "6. שמירה",
+        nav_7: "7. אבטחה",
+        nav_8: "8. זכויות משתמש",
+        nav_9: "9. שינויים",
+        nav_10: "10. יצירת קשר",
+        h_1: "1. הגורם האחראי לעיבוד",
+        p_1: "ClickFix Mitigator היא הרחבת דפדפן שנועדה לזהות דפוסי מתקפת ClickFix ולהתריע למשתמש על סיכונים אפשריים הקשורים לשימוש בלוח.",
+        h_2: "2. נתונים שנאספים",
+        p_2: "ההרחבה עשויה לעבד ו/או לשלוח את הנתונים הבאים אך ורק למטרות אבטחה:",
+        li_2_1: "<strong>אירועי זיהוי:</strong> כתובת URL, שם מארח, תאריך ושעה (timestamp), אותות שזוהו, הודעת התראה וקטעים רלוונטיים מהתוכן שנותח.",
+        li_2_2: "<strong>סטטיסטיקות שימוש:</strong> מספר ההתראות שנוצרו, מספר החסימות ומצב ההפעלה של ההרחבה.",
+        li_2_3: "<strong>רשימות מקומיות:</strong> allowlist ו blocklist המאוחסנות מקומית בדפדפן המשתמש.",
+        li_2_4: "<strong>כתובת URL קודמת:</strong> דף הפניה (referrer) שממנו ניגשו לזרימת ClickFix אפשרית, אם קיים.",
+        note_2: "לא נאספים נתונים אישיים כגון שם, כתובת אימייל או כל מידע שמאפשר לזהות את המשתמש באופן ישיר.",
+        h_3: "3. מטרת העיבוד",
+        p_3: "הנתונים משמשים רק ל:",
+        li_3_1: "זיהוי וחסימת דפוסי מתקפת ClickFix.",
+        li_3_2: "יצירת התראות אבטחה בזמן אמת.",
+        li_3_3: "שיפור יעילות המערכת באמצעות סטטיסטיקות מצטברות.",
+        li_3_4: "תחזוקה ואופטימיזציה של רשימות allowlist ו blocklist.",
+        li_3_5: "ניתוח מקור של הפניות חשודות לשיפור תגובה לאירועים.",
+        h_4: "4. בסיס משפטי",
+        p_4: "העיבוד מבוסס על אינטרס לגיטימי בביטחון ובהגנה על המשתמש מפני איומים.",
+        h_5: "5. שיתוף נתונים",
+        li_5_1: "ניתן לשלוח נתונים לשרת ClickFix Mitigator לצורך עיבוד התראות וסטטיסטיקות.",
+        li_5_2: "<strong>אין מכירה, השכרה או העברה של נתונים לצדדים שלישיים</strong>, למעט במקרים שנדרשים באופן מחמיר להפעלת השירות.",
+        h_6: "6. שמירה",
+        p_6: "הנתונים נשמרים רק למשך הזמן הנדרש כדי לממש את המטרות שצוינו ולשמור על שלמות רישומי האבטחה.",
+        h_7: "7. אבטחה",
+        p_7: "מיושמות פעולות טכניות וארגוניות סבירות להגנה על הנתונים המועברים והמאוחסנים מפני גישה לא מורשית, אובדן או שינוי.",
+        h_8: "8. זכויות משתמש",
+        p_8: "המשתמש יכול לבקש מידע או לממש את זכויות הגישה, התיקון או המחיקה באמצעות ערוצי הקשר המופיעים באתר הרשמי.",
+        h_9: "9. שינויים במדיניות",
+        p_9: "מדיניות זו עשויה להתעדכן מעת לעת. השינויים יפורסמו במסמך זה.",
+        h_10: "10. יצירת קשר",
+        p_10: "האתר הרשמי: <a href=\"https://jordiserrano.me\" rel=\"noopener noreferrer\" target=\"_blank\">jordiserrano.me</a>",
+        footer: "ClickFix Mitigator · מדיניות פרטיות"
+      },
+      ar: {
+        title: "سياسة الخصوصية",
+        updated_label: "آخر تحديث:",
+        updated_date: "28 يناير 2026",
+        lang: "اللغة",
+        nav_1: "1. المسؤول",
+        nav_2: "2. البيانات",
+        nav_3: "3. الغرض",
+        nav_4: "4. الأساس القانوني",
+        nav_5: "5. مشاركة البيانات",
+        nav_6: "6. الاحتفاظ",
+        nav_7: "7. الأمان",
+        nav_8: "8. حقوق المستخدم",
+        nav_9: "9. التغييرات",
+        nav_10: "10. الاتصال",
+        h_1: "1. المسؤول عن المعالجة",
+        p_1: "ClickFix Mitigator هو امتداد متصفح مصمم لاكتشاف أنماط هجوم ClickFix وتنبيه المستخدم إلى المخاطر المحتملة المتعلقة باستخدام الحافظة.",
+        h_2: "2. البيانات التي يتم جمعها",
+        p_2: "قد يعالج الامتداد و/أو يرسل البيانات التالية حصراً لأغراض أمنية:",
+        li_2_1: "<strong>أحداث الكشف:</strong> عنوان URL، اسم المضيف، التاريخ والوقت (الطابع الزمني)، الإشارات المكتشفة، رسالة التنبيه ومقاطع ذات صلة من المحتوى المحلل.",
+        li_2_2: "<strong>إحصاءات الاستخدام:</strong> عدد التنبيهات التي تم إنشاؤها، عدد عمليات الحظر وحالة تفعيل الامتداد.",
+        li_2_3: "<strong>القوائم المحلية:</strong> allowlist و blocklist المخزنة محلياً في متصفح المستخدم.",
+        li_2_4: "<strong>عنوان URL السابق:</strong> صفحة الإحالة (referrer) التي تم الوصول منها إلى تدفق ClickFix محتمل، إذا كانت متاحة.",
+        note_2: "لا يتم جمع بيانات شخصية مثل الاسم أو البريد الإلكتروني أو أي معلومات تحدد هوية المستخدم مباشرة.",
+        h_3: "3. الغرض من المعالجة",
+        p_3: "تُستخدم البيانات فقط من أجل:",
+        li_3_1: "اكتشاف وحظر أنماط هجوم ClickFix.",
+        li_3_2: "إنشاء تنبيهات أمنية في الوقت الحقيقي.",
+        li_3_3: "تحسين فعالية النظام من خلال إحصاءات مجمعة.",
+        li_3_4: "صيانة وتحسين قوائم allowlist و blocklist.",
+        li_3_5: "تحليل مصدر عمليات إعادة التوجيه المشبوهة لتحسين الاستجابة للحوادث.",
+        h_4: "4. الأساس القانوني",
+        p_4: "تستند المعالجة إلى المصلحة المشروعة في أمن المستخدم وحمايته من التهديدات.",
+        h_5: "5. مشاركة البيانات",
+        li_5_1: "قد يتم إرسال البيانات إلى خادم ClickFix Mitigator لمعالجة التنبيهات والإحصاءات.",
+        li_5_2: "<strong>لا يتم بيع البيانات أو تأجيرها أو مشاركتها مع أطراف ثالثة</strong> إلا إذا كان ذلك ضرورياً بشكل صارم لتشغيل الخدمة.",
+        h_6: "6. الاحتفاظ",
+        p_6: "يتم الاحتفاظ بالبيانات فقط للمدة اللازمة لتحقيق الأغراض المذكورة وضمان سلامة سجلات الأمان.",
+        h_7: "7. الأمان",
+        p_7: "يتم تطبيق إجراءات تقنية وتنظيمية معقولة لحماية البيانات المنقولة والمخزنة من الوصول غير المصرح به أو الفقدان أو التعديل.",
+        h_8: "8. حقوق المستخدم",
+        p_8: "يمكن للمستخدم طلب معلومات أو ممارسة حقوق الوصول أو التصحيح أو الحذف عبر قنوات الاتصال المذكورة في الموقع الرسمي.",
+        h_9: "9. التغييرات في السياسة",
+        p_9: "قد يتم تحديث هذه السياسة بشكل دوري. سيتم نشر التغييرات في هذا المستند.",
+        h_10: "10. الاتصال",
+        p_10: "الموقع الرسمي: <a href=\"https://jordiserrano.me\" rel=\"noopener noreferrer\" target=\"_blank\">jordiserrano.me</a>",
+        footer: "ClickFix Mitigator · سياسة الخصوصية"
+      },
+      hi: {
+        title: "गोपनीयता नीति",
+        updated_label: "अंतिम अपडेट:",
+        updated_date: "28 जनवरी 2026",
+        lang: "भाषा",
+        nav_1: "1. उत्तरदायी",
+        nav_2: "2. डेटा",
+        nav_3: "3. उद्देश्य",
+        nav_4: "4. कानूनी आधार",
+        nav_5: "5. साझा करना",
+        nav_6: "6. संरक्षण अवधि",
+        nav_7: "7. सुरक्षा",
+        nav_8: "8. उपयोगकर्ता अधिकार",
+        nav_9: "9. बदलाव",
+        nav_10: "10. संपर्क",
+        h_1: "1. प्रोसेसिंग के लिए जिम्मेदार",
+        p_1: "ClickFix Mitigator एक ब्राउज़र एक्सटेंशन है जो ClickFix हमलों के पैटर्न का पता लगाने और क्लिपबोर्ड उपयोग से जुड़े संभावित जोखिमों के बारे में उपयोगकर्ता को चेतावनी देने के लिए बनाया गया है।",
+        h_2: "2. एकत्र किए गए डेटा",
+        p_2: "एक्सटेंशन केवल सुरक्षा उद्देश्यों के लिए निम्नलिखित डेटा को प्रोसेस और/या भेज सकता है:",
+        li_2_1: "<strong>डिटेक्शन इवेंट:</strong> URL, hostname, तारीख और समय (टाइमस्टैम्प), पहचाने गए संकेत, अलर्ट संदेश और विश्लेषित सामग्री के संबंधित अंश।",
+        li_2_2: "<strong>उपयोग आँकड़े:</strong> उत्पन्न अलर्ट की संख्या, ब्लॉकों की संख्या और एक्सटेंशन सक्रियण स्थिति।",
+        li_2_3: "<strong>लोकल सूचियाँ:</strong> उपयोगकर्ता के ब्राउज़र में स्थानीय रूप से संग्रहीत allowlist और blocklist.",
+        li_2_4: "<strong>पूर्व URL:</strong> संदर्भ पृष्ठ (referrer) जहाँ से संभावित ClickFix प्रवाह एक्सेस किया गया, यदि उपलब्ध हो।",
+        note_2: "नाम, ई-मेल या उपयोगकर्ता को सीधे पहचानने वाली कोई भी व्यक्तिगत जानकारी एकत्र नहीं की जाती।",
+        h_3: "3. प्रोसेसिंग का उद्देश्य",
+        p_3: "डेटा केवल निम्नलिखित के लिए उपयोग किया जाता है:",
+        li_3_1: "ClickFix हमलों के पैटर्न का पता लगाना और उन्हें ब्लॉक करना।",
+        li_3_2: "रीयल-टाइम सुरक्षा अलर्ट उत्पन्न करना।",
+        li_3_3: "समेकित आँकड़ों के माध्यम से सिस्टम की प्रभावशीलता में सुधार करना।",
+        li_3_4: "allowlist और blocklist सूचियों का रखरखाव और अनुकूलन।",
+        li_3_5: "संदिग्ध रीडायरेक्ट के स्रोत का विश्लेषण कर घटना प्रतिक्रिया में सुधार।",
+        h_4: "4. कानूनी आधार",
+        p_4: "प्रोसेसिंग उपयोगकर्ता सुरक्षा और खतरों से संरक्षण में वैध हित पर आधारित है।",
+        h_5: "5. डेटा साझा करना",
+        li_5_1: "अलर्ट और आँकड़ों को प्रोसेस करने के लिए डेटा ClickFix Mitigator सर्वर को भेजा जा सकता है।",
+        li_5_2: "<strong>डेटा बेचा, किराए पर दिया या तृतीय पक्षों के साथ साझा नहीं किया जाता</strong>, जब तक सेवा चलाने के लिए सख्त रूप से आवश्यक न हो।",
+        h_6: "6. संरक्षण अवधि",
+        p_6: "डेटा केवल उतनी अवधि के लिए रखा जाता है जितना आवश्यक उद्देश्यों को पूरा करने और सुरक्षा रिकॉर्ड की अखंडता सुनिश्चित करने के लिए जरूरी हो।",
+        h_7: "7. सुरक्षा",
+        p_7: "प्रेषित और संग्रहीत डेटा को अनधिकृत पहुँच, हानि या परिवर्तन से बचाने के लिए उचित तकनीकी और संगठनात्मक उपाय लागू किए जाते हैं।",
+        h_8: "8. उपयोगकर्ता अधिकार",
+        p_8: "उपयोगकर्ता आधिकारिक साइट पर दिए गए संपर्क माध्यमों के जरिए जानकारी मांग सकते हैं या अपने पहुँच, संशोधन या हटाने के अधिकारों का उपयोग कर सकते हैं।",
+        h_9: "9. नीति में बदलाव",
+        p_9: "यह नीति समय-समय पर अपडेट हो सकती है। परिवर्तन इस दस्तावेज़ में प्रकाशित किए जाएंगे।",
+        h_10: "10. संपर्क",
+        p_10: "आधिकारिक साइट: <a href=\"https://jordiserrano.me\" rel=\"noopener noreferrer\" target=\"_blank\">jordiserrano.me</a>",
+        footer: "ClickFix Mitigator · गोपनीयता नीति"
       }
     };
 
-    function applyLang(lang){
-      const dict = i18n[lang] || i18n.es;
+    const RTL_LANGS = new Set(["ar", "he"]);
+    const DEFAULT_LANG = "en";
 
-      // translate simple text nodes & HTML nodes
-      $$("[data-i18n]").forEach(el => {
-        const key = el.getAttribute("data-i18n");
-        const val = dict[key];
-        if (val == null) return;
-
-        // If translation contains tags (<strong>...), use innerHTML; else textContent
-        if (/[<>]/.test(val)) el.innerHTML = val;
-        else el.textContent = val;
-      });
-
-      // Update lang attr, title, and formatted date
-      document.documentElement.lang = lang;
-      document.title = `${dict.title} - ClickFix Mitigator`;
-      updatedEl.textContent = formatUpdated(lang);
-
-      // Save
-      localStorage.setItem(STORAGE_KEY, lang);
+    function resolveLang(candidate) {
+      if (!candidate) return null;
+      const norm = candidate.toLowerCase();
+      return I18N[norm] ? norm : null;
     }
 
-    // Footer year
-    document.getElementById("y").textContent = new Date().getFullYear();
+    function setLanguage(lang) {
+      const active = resolveLang(lang) || DEFAULT_LANG;
+      const strings = I18N[active];
 
-    // Init language (saved -> browser -> default es)
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const browserLang = (navigator.language || "es").slice(0,2).toLowerCase();
-    const initial = supported.includes(saved) ? saved : (supported.includes(browserLang) ? browserLang : "es");
+      document.documentElement.lang = active;
+      document.documentElement.dir = RTL_LANGS.has(active) ? "rtl" : "ltr";
 
-    const langSelect = $("#langSelect");
-    langSelect.value = initial;
-    applyLang(initial);
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        const key = el.getAttribute("data-i18n");
+        const value = strings[key];
+        if (!value) return;
+        if (el.dataset.i18nHtml === "true") {
+          el.innerHTML = value;
+        } else {
+          el.textContent = value;
+        }
+      });
 
-    langSelect.addEventListener("change", (e) => applyLang(e.target.value));
+      const langSelect = document.getElementById("langSelect");
+      if (langSelect) {
+        langSelect.value = active;
+      }
+      localStorage.setItem("cf_lang", active);
+    }
+
+    function initLanguage() {
+      const params = new URLSearchParams(window.location.search);
+      const paramLang = resolveLang(params.get("lang"));
+      const storedLang = resolveLang(localStorage.getItem("cf_lang"));
+      const browserLang = resolveLang((navigator.language || "").split("-")[0]);
+      const initial = paramLang || storedLang || browserLang || DEFAULT_LANG;
+      setLanguage(initial);
+
+      const langSelect = document.getElementById("langSelect");
+      if (langSelect) {
+        langSelect.addEventListener("change", (event) => {
+          setLanguage(event.target.value);
+        });
+      }
+    }
+
+    initLanguage();
   </script>
 </body>
 </html>

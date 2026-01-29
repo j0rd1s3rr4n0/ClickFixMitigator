@@ -208,10 +208,10 @@
     "message": "कॉपी हो गया"
   },
   "popupReportTitle": {
-    "message": "साइट रिपोर्ट करें"
+    "message": "मैलवेयर या संदिग्ध साइट रिपोर्ट करें"
   },
   "popupReportHint": {
-    "message": "किसी विशेष डोमेन को ब्लॉक करने के लिए मैनुअल रिपोर्ट भेजें।"
+    "message": "संदिग्ध या मैलवेयर डोमेन को ब्लॉक करने के लिए मैनुअल रिपोर्ट भेजें।"
   },
   "popupReportPlaceholder": {
     "message": "https://example-site.com"
@@ -385,5 +385,47 @@
   },
   "optionsMuteNotifications": {
     "message": "डिटेक्शन नोटिफिकेशन म्यूट करें"
+  },
+  "statsTitle": {
+    "message": "आँकड़े"
+  },
+  "statsSubtitle": {
+    "message": "डिटेक्शन और ब्लॉक का अवलोकन।"
+  },
+  "statsTotalAlerts": {
+    "message": "कुल अलर्ट"
+  },
+  "statsTotalBlocked": {
+    "message": "कुल ब्लॉक"
+  },
+  "statsBlocklistCount": {
+    "message": "ब्लॉकलिस्ट में साइटें"
+  },
+  "statsAllowlistCount": {
+    "message": "अलाउलिस्ट में साइटें"
+  },
+  "statsBlockedRate": {
+    "message": "ब्लॉक दर"
+  },
+  "statsBlockedRateHint": {
+    "message": "वे अलर्ट जो अंततः ब्लॉक हुए उनकी हिस्सेदारी।"
+  },
+  "statsDetectionsChart": {
+    "message": "डिटेक्शन चार्ट"
+  },
+  "statsLast7Days": {
+    "message": "पिछले 7 दिन"
+  },
+  "popupReportReasonLabel": {
+    "message": "कारण (वैकल्पिक)"
+  },
+  "popupReportReasonPlaceholder": {
+    "message": "संक्षिप्त कारण (जैसे, नकली कैप्चा)"
+  },
+  "fullscreenExitPrompt": {
+    "message": "????? ??????? ??? ?? ??? ???? ???? ?????? ?? ??? Esc ?? F11 ??????"
+  },
+  "fullscreenBlockedDetection": {
+    "message": "पहचान के कारण पूर्ण स्क्रीन मोड अवरुद्ध किया गया। बाहर निकलने के लिए Esc या F11 दबाएँ।"
   }
 }

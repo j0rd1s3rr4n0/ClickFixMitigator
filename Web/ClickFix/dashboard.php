@@ -2283,6 +2283,33 @@ $topCountries = array_slice($topCountries, 0, 4, true);
 $blocklistItems = loadListFile($blocklistFile);
 $allowlistItems = loadListFile($allowlistFile);
 $alertSites = loadListFile($alertsitesFile);
+$blocklistLookup = [];
+foreach ($blocklistItems as $item) {
+    if (is_string($item) && $item !== '') {
+        $blocklistLookup[] = strtolower($item);
+    }
+}
+$allowlistLookup = [];
+foreach ($allowlistItems as $item) {
+    if (is_string($item) && $item !== '') {
+        $allowlistLookup[] = strtolower($item);
+    }
+}
+$matchesList = function (string $domain, array $list): bool {
+    foreach ($list as $entry) {
+        if ($domain === $entry || str_ends_with($domain, '.' . $entry)) {
+            return true;
+        }
+    }
+    return false;
+};
+$alertSites = array_values(array_filter($alertSites, function ($domain) use ($blocklistLookup, $allowlistLookup, $matchesList) {
+    if (!is_string($domain) || $domain === '') {
+        return false;
+    }
+    $normalized = strtolower($domain);
+    return !$matchesList($normalized, $blocklistLookup) && !$matchesList($normalized, $allowlistLookup);
+}));
 $stats['alert_sites'] = $alertSites;
 $alertlistItems = $alertSites;
 $appeals = [];
@@ -2392,7 +2419,7 @@ $chartLabels = [
     'signals' => t($translations, $currentLanguage, 'signal_types')
 ];
 
-$dashboardVersion = '0.7.12';
+$dashboardVersion = '0.7.15';
 
   $chartPayload = [
     'daily' => [
@@ -5441,6 +5468,14 @@ $dashboardVersion = '0.7.12';
         const refreshIntervalMs = 15000;
         let liveTimer = null;
         let inFlight = false;
+        const getActiveWorkspaceTab = () => {
+          const activeButton = document.querySelector("#workspace-tabs .workspace-tab.is-active");
+          return (
+            activeButton?.dataset?.workspaceTab ||
+            sessionStorage.getItem("cf_workspace_tab") ||
+            ""
+          );
+        };
 
         const syncLiveSections = (doc) => {
           const currentSections = liveSections();
@@ -5455,6 +5490,7 @@ $dashboardVersion = '0.7.12';
           const seen = new Map();
           const replacements = [];
           const active = document.activeElement;
+          const activeTab = getActiveWorkspaceTab();
           currentSections.forEach((section) => {
             const key = section.dataset.liveSection || "";
             const index = seen.get(key) || 0;
@@ -5466,6 +5502,12 @@ $dashboardVersion = '0.7.12';
             }
             if (active && section.contains(active)) {
               return;
+            }
+            if (section.dataset.workspaceSection) {
+              if (activeTab && section.dataset.workspaceSection !== activeTab) {
+                return;
+              }
+              replacement.hidden = section.hidden;
             }
             section.replaceWith(replacement);
             replacements.push(replacement);

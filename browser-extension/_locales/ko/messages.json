@@ -208,10 +208,10 @@
     "message": "복사됨"
   },
   "popupReportTitle": {
-    "message": "사이트 신고"
+    "message": "악성코드 또는 의심 사이트 신고"
   },
   "popupReportHint": {
-    "message": "특정 도메인을 차단하기 위한 수동 신고를 보냅니다."
+    "message": "의심스럽거나 악성 도메인을 차단하기 위해 수동 신고를 보내세요."
   },
   "popupReportPlaceholder": {
     "message": "https://example-site.com"
@@ -350,12 +350,12 @@
   "languageArabic": {
     "message": "아랍어"
   },
-"languageHindi": {
-  "message": "???"
-},
-"languageCatalan": {
-  "message": "?????"
-},
+  "languageHindi": {
+    "message": "힌디어"
+  },
+  "languageCatalan": {
+    "message": "카탈루냐어"
+  },
   "themeTitle": {
     "message": "테마"
   },
@@ -385,5 +385,47 @@
   },
   "optionsMuteNotifications": {
     "message": "감지 알림 끄기"
+  },
+  "statsTitle": {
+    "message": "통계"
+  },
+  "statsSubtitle": {
+    "message": "탐지 및 차단 개요."
+  },
+  "statsTotalAlerts": {
+    "message": "총 알림"
+  },
+  "statsTotalBlocked": {
+    "message": "총 차단"
+  },
+  "statsBlocklistCount": {
+    "message": "차단 목록의 사이트"
+  },
+  "statsAllowlistCount": {
+    "message": "허용 목록의 사이트"
+  },
+  "statsBlockedRate": {
+    "message": "차단 비율"
+  },
+  "statsBlockedRateHint": {
+    "message": "차단으로 이어진 알림의 비율."
+  },
+  "statsDetectionsChart": {
+    "message": "탐지 차트"
+  },
+  "statsLast7Days": {
+    "message": "최근 7일"
+  },
+  "popupReportReasonLabel": {
+    "message": "사유(선택)"
+  },
+  "popupReportReasonPlaceholder": {
+    "message": "간단한 사유(예: 가짜 CAPTCHA)"
+  },
+  "fullscreenExitPrompt": {
+    "message": "전체 화면이 감지되었습니다. Esc 또는 F11을 눌러 전체 화면을 종료하세요."
+  },
+  "fullscreenBlockedDetection": {
+    "message": "탐지가 있어 전체 화면이 차단되었습니다. Esc 또는 F11을 눌러 전체 화면을 종료하세요."
   }
 }

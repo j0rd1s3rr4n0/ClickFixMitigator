@@ -17,7 +17,6 @@
   "blockAllClipboardUnavailable": {
     "message": "Der Blockieren-Alle-Modus kann auf dieser Seite nicht aktiviert werden."
   },
-
   "notificationRestoreClipboard": {
     "message": "Zwischenablage wiederherstellen"
   },
@@ -160,7 +159,6 @@
   "popupAllowlistActive": {
     "message": "Allowlist aktiv"
   },
-
   "popupWhitelistTitle": {
     "message": "Allowlist"
   },
@@ -195,10 +193,10 @@
     "message": "Kopiert"
   },
   "popupReportTitle": {
-    "message": "Seite melden"
+    "message": "Schädliche oder verdächtige Seite melden"
   },
   "popupReportHint": {
-    "message": "Sende eine manuelle Meldung, um eine Domain zu blockieren."
+    "message": "Sende eine manuelle Meldung, um eine verdächtige oder schädliche Domain zu blockieren."
   },
   "popupReportPlaceholder": {
     "message": "https://beispiel-seite.de"
@@ -334,12 +332,12 @@
   "languageArabic": {
     "message": "Arabisch"
   },
-"languageHindi": {
-  "message": "Hindi"
-},
-"languageCatalan": {
-  "message": "Katalanisch"
-},
+  "languageHindi": {
+    "message": "Hindi"
+  },
+  "languageCatalan": {
+    "message": "Katalanisch"
+  },
   "popupDetectionActiveHint": {
     "message": "Ueberwacht Copy/Paste-Lures und Befehlsmuster."
   },
@@ -383,9 +381,51 @@
     "message": "Benachrichtigungen stummschalten"
   },
   "popupMuteNotificationsHint": {
-    "message": "Unterdr?ckt Systemwarnungen und Erkennungsbanner."
+    "message": "Unterdrückt Systemwarnungen und Erkennungsbanner."
   },
   "optionsMuteNotifications": {
     "message": "Erkennungsbenachrichtigungen stummschalten"
+  },
+  "statsTitle": {
+    "message": "Statistiken"
+  },
+  "statsSubtitle": {
+    "message": "Überblick über Erkennungen und Blockierungen."
+  },
+  "statsTotalAlerts": {
+    "message": "Gesamtwarnungen"
+  },
+  "statsTotalBlocked": {
+    "message": "Gesamtblockierungen"
+  },
+  "statsBlocklistCount": {
+    "message": "Websites in der Blockliste"
+  },
+  "statsAllowlistCount": {
+    "message": "Websites in der Allowlist"
+  },
+  "statsBlockedRate": {
+    "message": "Blockierungsrate"
+  },
+  "statsBlockedRateHint": {
+    "message": "Anteil der Warnungen, die blockiert wurden."
+  },
+  "statsDetectionsChart": {
+    "message": "Erkennungsdiagramm"
+  },
+  "statsLast7Days": {
+    "message": "Letzte 7 Tage"
+  },
+  "popupReportReasonLabel": {
+    "message": "Grund (optional)"
+  },
+  "popupReportReasonPlaceholder": {
+    "message": "Kurzer Grund (z. B. gefälschtes Captcha)"
+  },
+  "fullscreenExitPrompt": {
+    "message": "Vollbild erkannt. Drücke Esc oder F11, um den Vollbildmodus zu verlassen."
+  },
+  "fullscreenBlockedDetection": {
+    "message": "Vollbild wurde blockiert, da Erkennungen vorliegen. Drücke Esc oder F11, um den Vollbildmodus zu verlassen."
   }
 }

@@ -208,10 +208,10 @@
     "message": "הועתק"
   },
   "popupReportTitle": {
-    "message": "דווח על אתר"
+    "message": "דווח על אתר זדוני או חשוד"
   },
   "popupReportHint": {
-    "message": "שלח דיווח ידני כדי לחסום דומיין ספציפי."
+    "message": "שלח דיווח ידני כדי לחסום דומיין חשוד או זדוני."
   },
   "popupReportPlaceholder": {
     "message": "https://example-site.com"
@@ -350,12 +350,12 @@
   "languageArabic": {
     "message": "ערבית"
   },
-"languageHindi": {
-  "message": "?????"
-},
-"languageCatalan": {
-  "message": "???????"
-},
+  "languageHindi": {
+    "message": "הינדי"
+  },
+  "languageCatalan": {
+    "message": "קטלאנית"
+  },
   "themeTitle": {
     "message": "ערכת נושא"
   },
@@ -385,5 +385,47 @@
   },
   "optionsMuteNotifications": {
     "message": "השתק התראות זיהוי"
+  },
+  "statsTitle": {
+    "message": "סטטיסטיקות"
+  },
+  "statsSubtitle": {
+    "message": "סקירה כללית של התראות וחסימות."
+  },
+  "statsTotalAlerts": {
+    "message": "סה\"כ התראות"
+  },
+  "statsTotalBlocked": {
+    "message": "סה\"כ חסימות"
+  },
+  "statsBlocklistCount": {
+    "message": "אתרים ברשימת חסימה"
+  },
+  "statsAllowlistCount": {
+    "message": "אתרים ברשימת ההרשאה"
+  },
+  "statsBlockedRate": {
+    "message": "שיעור חסימה"
+  },
+  "statsBlockedRateHint": {
+    "message": "חלק ההתראות שהסתיימו בחסימה."
+  },
+  "statsDetectionsChart": {
+    "message": "תרשים זיהויים"
+  },
+  "statsLast7Days": {
+    "message": "7 הימים האחרונים"
+  },
+  "popupReportReasonLabel": {
+    "message": "סיבה (אופציונלי)"
+  },
+  "popupReportReasonPlaceholder": {
+    "message": "סיבה קצרה (לדוגמה: CAPTCHA מזויף)"
+  },
+  "fullscreenExitPrompt": {
+    "message": "זוהה מצב מסך מלא. לחץ על Esc או F11 כדי לצאת ממסך מלא."
+  },
+  "fullscreenBlockedDetection": {
+    "message": "המסך המלא נחסם עקב זיהויים. לחץ על Esc או F11 כדי לצאת ממסך מלא."
   }
 }

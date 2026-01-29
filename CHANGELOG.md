@@ -14,8 +14,31 @@
 - `browser-extension/_locales/es/messages.json`: Fixed Spanish diacritics in mute notification copy.
 - `browser-extension/_locales/hi/messages.json`: Added full Hindi UI translation and language selector entry.
 - `browser-extension/ui/popup.html` + `browser-extension/ui/options.html`: Fixed Catalán label rendering.
+- `browser-extension/ui/options.html` + `browser-extension/ui/options.js` + `browser-extension/ui/style.css`: Added stats cards and detections chart for alerts, blocked, allowlist, and blocklist.
+- `browser-extension/_locales/*/messages.json`: Added stats strings plus report-reason copy for all locales.
 - `browser-extension/background.js`: Restored service worker and re-applied locale defaults + reason payloads after antivirus quarantine.
-- `browser-extension/manifest.json`: Exposed locale message bundles as web-accessible resources for content-script locale loading; version bump to `0.3.14`.
+- `browser-extension/ui/popup.html` + `browser-extension/ui/popup.js` + `browser-extension/ui/style.css`: Reordered popup layout and added stats dashboard + report reason.
+- `Web/ClickFix/clickfix-report.php`: Hardened report input sanitization for XSS/SQLi safety on manual reasons.
+- `browser-extension/manifest.json`: Exposed locale message bundles as web-accessible resources for content-script locale loading; version bump to `0.3.16`.
+- `browser-extension/manifest.json`: Version bump to `0.3.17`.
+- `browser-extension/_locales/*/messages.json`: Fixed corrupted diacritics and non-Latin glyphs (question-mark replacements) in translated UI strings.
+- `browser-extension/ui/popup.js` + `browser-extension/ui/options.js` + `browser-extension/background.js`: Store alert reason keys and render alert history with the currently selected language so notifications and history stay localized.
+- `browser-extension/manifest.json`: Version bump to `0.3.18`.
+- `browser-extension/manifest.json`: Version bump to `0.3.19`.
+- `browser-extension/background.js` + `browser-extension/content-script.js` + `browser-extension/ui/popup.js` + `browser-extension/ui/options.js` + `browser-extension/ui/style.css`: Alerts now render as multi-line bullet lists for readability in notifications, banners, and history.
+- `browser-extension/manifest.json`: Version bump to `0.3.20`.
+- `browser-extension/content-script.js` + `browser-extension/_locales/*/messages.json`: Added a fullscreen safety notice that tells users to press Esc/F11, clearly branded as ClickFix Mitigator.
+- `browser-extension/content-script.js` + `browser-extension/_locales/*/messages.json`: Block fullscreen attempts on pages with detections and show a branded exit notice.
+- `browser-extension/manifest.json`: Version bump to `0.3.21`.
+- `browser-extension/manifest.json`: Version bump to `0.3.22`.
+- `browser-extension/content-script.js` + `browser-extension/background.js` + `browser-extension/ui/popup.html`: ClickFix logos now load from embedded base64 data URLs so banners and notifications render reliably.
+- `browser-extension/manifest.json`: Version bump to `0.3.23`.
+
+### Web policy
+- `Web/ClickFix/PrivacyPolicy.html`: Rebuilt the privacy policy with full translations for all supported extension languages, updated the last-updated date, and added RTL handling for Arabic/Hebrew.
+
+### Web dashboard (PHP)
+- `Web/ClickFix/dashboard.php`: Live refresh now keeps the active tab stable and avoids swapping hidden tab content; version bump to `0.7.15`.
 
 ## Unreleased - 2026-01-27
 

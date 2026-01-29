@@ -208,10 +208,10 @@
     "message": "تم النسخ"
   },
   "popupReportTitle": {
-    "message": "الإبلاغ عن موقع"
+    "message": "الإبلاغ عن موقع ضار أو مشبوه"
   },
   "popupReportHint": {
-    "message": "أرسل بلاغاً يدوياً لحظر نطاق محدد."
+    "message": "أرسل بلاغًا يدويًا لحظر نطاق مشبوه أو ضار."
   },
   "popupReportPlaceholder": {
     "message": "https://example-site.com"
@@ -350,12 +350,12 @@
   "languageArabic": {
     "message": "العربية"
   },
-"languageHindi": {
-  "message": "???????"
-},
-"languageCatalan": {
-  "message": "??????????"
-},
+  "languageHindi": {
+    "message": "الهندية"
+  },
+  "languageCatalan": {
+    "message": "الكتالونية"
+  },
   "themeTitle": {
     "message": "السمة"
   },
@@ -385,5 +385,47 @@
   },
   "optionsMuteNotifications": {
     "message": "كتم إشعارات الكشف"
+  },
+  "statsTitle": {
+    "message": "إحصاءات"
+  },
+  "statsSubtitle": {
+    "message": "نظرة عامة على التنبيهات والحظر."
+  },
+  "statsTotalAlerts": {
+    "message": "إجمالي التنبيهات"
+  },
+  "statsTotalBlocked": {
+    "message": "إجمالي الحظر"
+  },
+  "statsBlocklistCount": {
+    "message": "مواقع في قائمة الحظر"
+  },
+  "statsAllowlistCount": {
+    "message": "مواقع في قائمة السماح"
+  },
+  "statsBlockedRate": {
+    "message": "معدل الحظر"
+  },
+  "statsBlockedRateHint": {
+    "message": "نسبة التنبيهات التي انتهت بالحظر."
+  },
+  "statsDetectionsChart": {
+    "message": "مخطط الاكتشافات"
+  },
+  "statsLast7Days": {
+    "message": "آخر 7 أيام"
+  },
+  "popupReportReasonLabel": {
+    "message": "سبب (اختياري)"
+  },
+  "popupReportReasonPlaceholder": {
+    "message": "سبب قصير (مثال: كابتشا مزيفة)"
+  },
+  "fullscreenExitPrompt": {
+    "message": "تم اكتشاف وضع ملء الشاشة. اضغط Esc أو F11 للخروج من وضع ملء الشاشة."
+  },
+  "fullscreenBlockedDetection": {
+    "message": "تم حظر وضع ملء الشاشة بسبب اكتشافات. اضغط Esc أو F11 للخروج من وضع ملء الشاشة."
   }
 }

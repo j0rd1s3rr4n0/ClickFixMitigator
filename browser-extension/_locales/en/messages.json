@@ -208,10 +208,10 @@
     "message": "Copied"
   },
   "popupReportTitle": {
-    "message": "Report site"
+    "message": "Report malware or suspicious site"
   },
   "popupReportHint": {
-    "message": "Send a manual report to block a specific domain."
+    "message": "Send a manual report to block a suspicious or malware domain."
   },
   "popupReportPlaceholder": {
     "message": "https://example-site.com"
@@ -350,12 +350,12 @@
   "languageArabic": {
     "message": "Arabic"
   },
-"languageHindi": {
-  "message": "Hindi"
-},
-"languageCatalan": {
-  "message": "Catalan"
-},
+  "languageHindi": {
+    "message": "Hindi"
+  },
+  "languageCatalan": {
+    "message": "Catalan"
+  },
   "themeTitle": {
     "message": "Theme"
   },
@@ -385,5 +385,47 @@
   },
   "optionsMuteNotifications": {
     "message": "Mute detection notifications"
+  },
+  "statsTitle": {
+    "message": "Statistics"
+  },
+  "statsSubtitle": {
+    "message": "Overview of detections and blocks."
+  },
+  "statsTotalAlerts": {
+    "message": "Total alerts"
+  },
+  "statsTotalBlocked": {
+    "message": "Total blocked"
+  },
+  "statsBlocklistCount": {
+    "message": "Sites in blocklist"
+  },
+  "statsAllowlistCount": {
+    "message": "Sites in allowlist"
+  },
+  "statsBlockedRate": {
+    "message": "Blocked rate"
+  },
+  "statsBlockedRateHint": {
+    "message": "Share of alerts that ended in a block."
+  },
+  "statsDetectionsChart": {
+    "message": "Detections chart"
+  },
+  "statsLast7Days": {
+    "message": "Last 7 days"
+  },
+  "popupReportReasonLabel": {
+    "message": "Reason (optional)"
+  },
+  "popupReportReasonPlaceholder": {
+    "message": "Short reason (e.g., fake captcha)"
+  },
+  "fullscreenExitPrompt": {
+    "message": "Fullscreen detected. Press Esc or F11 to exit fullscreen."
+  },
+  "fullscreenBlockedDetection": {
+    "message": "Fullscreen blocked because detections were found. Press Esc or F11 to exit fullscreen."
   }
 }

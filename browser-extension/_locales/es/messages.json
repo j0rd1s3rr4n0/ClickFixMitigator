@@ -196,10 +196,10 @@
     "message": "Copiado"
   },
   "popupReportTitle": {
-    "message": "Reportar sitio"
+    "message": "Reportar sitio malicioso o sospechoso"
   },
   "popupReportHint": {
-    "message": "Envía un reporte manual para bloquear un dominio específico."
+    "message": "Envía un reporte manual para bloquear un dominio sospechoso o malicioso."
   },
   "popupReportPlaceholder": {
     "message": "https://sitio-ejemplo.com"
@@ -335,12 +335,12 @@
   "languageArabic": {
     "message": "Árabe"
   },
-"languageHindi": {
-  "message": "Hindi"
-},
-"languageCatalan": {
-  "message": "Catal?n"
-},
+  "languageHindi": {
+    "message": "Hindi"
+  },
+  "languageCatalan": {
+    "message": "Catalán"
+  },
   "popupDetectionActiveHint": {
     "message": "Monitorea lures de copiado/pegado y patrones de comandos."
   },
@@ -385,5 +385,47 @@
   },
   "optionsMuteNotifications": {
     "message": "Silenciar notificaciones de detección"
+  },
+  "statsTitle": {
+    "message": "Estadísticas"
+  },
+  "statsSubtitle": {
+    "message": "Resumen de detecciones y bloqueos."
+  },
+  "statsTotalAlerts": {
+    "message": "Alertas totales"
+  },
+  "statsTotalBlocked": {
+    "message": "Bloqueos totales"
+  },
+  "statsBlocklistCount": {
+    "message": "Sitios en blacklist"
+  },
+  "statsAllowlistCount": {
+    "message": "Sitios en whitelist"
+  },
+  "statsBlockedRate": {
+    "message": "Porcentaje bloqueado"
+  },
+  "statsBlockedRateHint": {
+    "message": "Porcentaje de alertas que terminaron bloqueadas."
+  },
+  "statsDetectionsChart": {
+    "message": "Gráfico de detecciones"
+  },
+  "statsLast7Days": {
+    "message": "Últimos 7 días"
+  },
+  "popupReportReasonLabel": {
+    "message": "Motivo (opcional)"
+  },
+  "popupReportReasonPlaceholder": {
+    "message": "Motivo breve (ej. captcha falso)"
+  },
+  "fullscreenExitPrompt": {
+    "message": "Pantalla completa detectada. Pulsa Esc o F11 para salir de pantalla completa."
+  },
+  "fullscreenBlockedDetection": {
+    "message": "Se bloqueó la pantalla completa porque se detectaron riesgos. Pulsa Esc o F11 para salir de pantalla completa."
   }
 }

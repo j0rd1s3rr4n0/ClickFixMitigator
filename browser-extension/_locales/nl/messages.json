@@ -17,7 +17,6 @@
   "blockAllClipboardUnavailable": {
     "message": "De modus Alles blokkeren kan op deze pagina niet worden ingeschakeld."
   },
-
   "notificationRestoreClipboard": {
     "message": "Klembord herstellen"
   },
@@ -160,7 +159,6 @@
   "popupAllowlistActive": {
     "message": "Allowlist actief"
   },
-
   "popupWhitelistTitle": {
     "message": "Allowlist"
   },
@@ -195,10 +193,10 @@
     "message": "Gekopieerd"
   },
   "popupReportTitle": {
-    "message": "Site melden"
+    "message": "Kwaadaardige of verdachte site melden"
   },
   "popupReportHint": {
-    "message": "Stuur een handmatige melding om een specifiek domein te blokkeren."
+    "message": "Stuur een handmatige melding om een verdachte of kwaadaardige domein te blokkeren."
   },
   "popupReportPlaceholder": {
     "message": "https://voorbeeld-site.nl"
@@ -334,12 +332,12 @@
   "languageArabic": {
     "message": "Arabisch"
   },
-"languageHindi": {
-  "message": "Hindi"
-},
-"languageCatalan": {
-  "message": "Catalaans"
-},
+  "languageHindi": {
+    "message": "Hindi"
+  },
+  "languageCatalan": {
+    "message": "Catalaans"
+  },
   "popupDetectionActiveHint": {
     "message": "Bewaakt copy/paste-lokmiddelen en opdrachtpatronen."
   },
@@ -387,5 +385,47 @@
   },
   "optionsMuteNotifications": {
     "message": "Detectiemeldingen dempen"
+  },
+  "statsTitle": {
+    "message": "Statistieken"
+  },
+  "statsSubtitle": {
+    "message": "Overzicht van detecties en blokkeringen."
+  },
+  "statsTotalAlerts": {
+    "message": "Totaal waarschuwingen"
+  },
+  "statsTotalBlocked": {
+    "message": "Totaal geblokkeerd"
+  },
+  "statsBlocklistCount": {
+    "message": "Sites in blocklist"
+  },
+  "statsAllowlistCount": {
+    "message": "Sites in allowlist"
+  },
+  "statsBlockedRate": {
+    "message": "Blokkeringspercentage"
+  },
+  "statsBlockedRateHint": {
+    "message": "Aandeel waarschuwingen dat werd geblokkeerd."
+  },
+  "statsDetectionsChart": {
+    "message": "Detectiegrafiek"
+  },
+  "statsLast7Days": {
+    "message": "Laatste 7 dagen"
+  },
+  "popupReportReasonLabel": {
+    "message": "Reden (optioneel)"
+  },
+  "popupReportReasonPlaceholder": {
+    "message": "Korte reden (bijv. nep-captcha)"
+  },
+  "fullscreenExitPrompt": {
+    "message": "Volledig scherm gedetecteerd. Druk op Esc of F11 om volledig scherm te verlaten."
+  },
+  "fullscreenBlockedDetection": {
+    "message": "Volledig scherm is geblokkeerd omdat er detecties zijn gevonden. Druk op Esc of F11 om volledig scherm te verlaten."
   }
 }

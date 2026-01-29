@@ -208,10 +208,10 @@
     "message": "已复制"
   },
   "popupReportTitle": {
-    "message": "举报网站"
+    "message": "报告恶意或可疑站点"
   },
   "popupReportHint": {
-    "message": "发送手动举报以阻止特定域名。"
+    "message": "发送手动报告以阻止可疑或恶意域名。"
   },
   "popupReportPlaceholder": {
     "message": "https://example-site.com"
@@ -350,12 +350,12 @@
   "languageArabic": {
     "message": "阿拉伯语"
   },
-"languageHindi": {
-  "message": "???"
-},
-"languageCatalan": {
-  "message": "??????"
-},
+  "languageHindi": {
+    "message": "印地语"
+  },
+  "languageCatalan": {
+    "message": "加泰罗尼亚语"
+  },
   "themeTitle": {
     "message": "主题"
   },
@@ -385,5 +385,47 @@
   },
   "optionsMuteNotifications": {
     "message": "静音检测通知"
+  },
+  "statsTitle": {
+    "message": "统计"
+  },
+  "statsSubtitle": {
+    "message": "检测与拦截概览。"
+  },
+  "statsTotalAlerts": {
+    "message": "总警报"
+  },
+  "statsTotalBlocked": {
+    "message": "总拦截"
+  },
+  "statsBlocklistCount": {
+    "message": "黑名单网站数"
+  },
+  "statsAllowlistCount": {
+    "message": "白名单网站数"
+  },
+  "statsBlockedRate": {
+    "message": "拦截率"
+  },
+  "statsBlockedRateHint": {
+    "message": "最终被拦截的警报占比。"
+  },
+  "statsDetectionsChart": {
+    "message": "检测图表"
+  },
+  "statsLast7Days": {
+    "message": "最近7天"
+  },
+  "popupReportReasonLabel": {
+    "message": "原因（可选）"
+  },
+  "popupReportReasonPlaceholder": {
+    "message": "简短原因（例如：伪造 CAPTCHA）"
+  },
+  "fullscreenExitPrompt": {
+    "message": "检测到全屏。按 Esc 或 F11 退出全屏模式。"
+  },
+  "fullscreenBlockedDetection": {
+    "message": "因检测到风险，已阻止进入全屏。按 Esc 或 F11 退出全屏模式。"
   }
 }

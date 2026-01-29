@@ -341,6 +341,13 @@ $timestamp = substr($timestamp, 0, 100);
 $detectedContent = substr($detectedContent, 0, 4000);
 $fullContext = substr($fullContext, 0, 50000);
 
+$message = preg_replace('/[\x00-\x1F\x7F]/', ' ', (string) $message);
+$message = trim(strip_tags((string) $message));
+$message = substr($message, 0, 2000);
+$reason = preg_replace('/[\x00-\x1F\x7F]/', ' ', (string) $reason);
+$reason = trim(strip_tags((string) $reason));
+$reason = substr($reason, 0, 500);
+
 if ($url !== '' && preg_match('/\s/', $url)) {
     respondWithError(400, 'Invalid url', $debugFile, ['url' => $url]);
 }

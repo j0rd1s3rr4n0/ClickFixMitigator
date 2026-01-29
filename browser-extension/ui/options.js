@@ -31,6 +31,14 @@ const historyContainer = document.getElementById("history");
 const clearHistoryButton = document.getElementById("clear-history");
 const languageSelect = document.getElementById("language-select");
 const themeSelect = document.getElementById("theme-select");
+const statsTotalAlerts = document.getElementById("stats-total-alerts");
+const statsTotalBlocked = document.getElementById("stats-total-blocked");
+const statsBlocklistCount = document.getElementById("stats-blocklist-count");
+const statsAllowlistCount = document.getElementById("stats-allowlist-count");
+const statsBlockRateValue = document.getElementById("stats-block-rate-value");
+const statsBlockRateRing = document.getElementById("stats-block-rate-ring");
+const statsDetectionsChart = document.getElementById("stats-detections-chart");
+const statsDetectionsTotal = document.getElementById("stats-detections-total");
 
 const SUPPORTED_LOCALES = ["en", "es", "ca", "de", "fr", "nl", "he", "ru", "zh", "ko", "ja", "pt", "ar", "hi"];
 const DEFAULT_LOCALE = "en";
@@ -148,6 +156,9 @@ async function loadSettings() {
     muteDetectionNotifications: settings.muteDetectionNotifications ?? false,
     whitelist: settings.whitelist ?? [],
     history: settings.history ?? [],
+    alertCount: settings.alertCount ?? 0,
+    blockCount: settings.blockCount ?? 0,
+    blocklist: settings.blocklist ?? [],
     blocklistSources: settings.blocklistSources ?? [],
     allowlistSources: settings.allowlistSources ?? [],
     saveClipboardBackup: settings.saveClipboardBackup ?? true,
@@ -191,12 +202,50 @@ function renderHistory(history) {
 
   historyContainer.classList.remove("empty");
   history.forEach((entry) => {
+    const message = buildLocalizedAlertMessage(entry);
     const card = document.createElement("div");
     card.classList.add("history-item");
     const time = new Date(entry.timestamp).toLocaleString();
-    card.innerHTML = `<strong>${entry.hostname}</strong><div>${entry.message}</div><small>${time}</small>`;
+    const title = document.createElement("strong");
+    title.textContent = entry.hostname;
+    const body = document.createElement("div");
+    body.classList.add("history-message");
+    body.textContent = message;
+    const meta = document.createElement("small");
+    meta.textContent = time;
+    card.appendChild(title);
+    card.appendChild(body);
+    card.appendChild(meta);
     historyContainer.appendChild(card);
   });
+}
+
+function buildLocalizedAlertMessage(entry) {
+  const reasonEntries = Array.isArray(entry?.reasonEntries) ? entry.reasonEntries : [];
+  if (reasonEntries.length) {
+    const parts = reasonEntries
+      .map((reason) => {
+        if (!reason || !reason.key) {
+          return null;
+        }
+        return reason.value === undefined ? t(reason.key) : t(reason.key, reason.value);
+      })
+      .filter(Boolean);
+    if (parts.length) {
+      return formatAlertMessage(parts);
+    }
+  }
+  return entry?.message || "";
+}
+
+function formatAlertMessage(parts) {
+  if (!Array.isArray(parts) || parts.length === 0) {
+    return "";
+  }
+  if (parts.length === 1) {
+    return parts[0];
+  }
+  return parts.map((part) => `• ${part}`).join("\n");
 }
 
 function renderBlocklistSources(sources) {
@@ -249,6 +298,90 @@ function renderAllowlistSources(sources) {
     item.appendChild(removeButton);
     allowlistList.appendChild(item);
   });
+}
+
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString();
+}
+
+function buildDailyCounts(history, days = 7) {
+  const counts = Array.from({ length: days }, () => 0);
+  if (!Array.isArray(history)) {
+    return counts;
+  }
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  history.forEach((entry) => {
+    const timestamp = entry?.timestamp;
+    if (!timestamp) {
+      return;
+    }
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) {
+      return;
+    }
+    const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const diffDays = Math.floor((today - dayStart) / 86400000);
+    if (diffDays >= 0 && diffDays < days) {
+      counts[days - 1 - diffDays] += 1;
+    }
+  });
+  return counts;
+}
+
+function renderDetectionsChart(counts) {
+  if (!statsDetectionsChart) {
+    return;
+  }
+  statsDetectionsChart.innerHTML = "";
+  const max = Math.max(1, ...counts);
+  counts.forEach((count) => {
+    const bar = document.createElement("div");
+    bar.className = "stats-bar";
+    bar.style.height = `${Math.round((count / max) * 100)}%`;
+    if (count === 0) {
+      bar.dataset.empty = "true";
+    }
+    bar.title = formatNumber(count);
+    statsDetectionsChart.appendChild(bar);
+  });
+}
+
+function renderStats(settings) {
+  if (!statsTotalAlerts) {
+    return;
+  }
+  const alertCount = Number(settings.alertCount || 0);
+  const blockCount = Number(settings.blockCount || 0);
+  const blocklistCount = Array.isArray(settings.blocklist) ? settings.blocklist.length : 0;
+  const allowlistCount = Array.isArray(settings.whitelist) ? settings.whitelist.length : 0;
+
+  statsTotalAlerts.textContent = formatNumber(alertCount);
+  if (statsTotalBlocked) {
+    statsTotalBlocked.textContent = formatNumber(blockCount);
+  }
+  if (statsBlocklistCount) {
+    statsBlocklistCount.textContent = formatNumber(blocklistCount);
+  }
+  if (statsAllowlistCount) {
+    statsAllowlistCount.textContent = formatNumber(allowlistCount);
+  }
+
+  const rate = alertCount ? Math.min(1, Math.max(0, blockCount / alertCount)) : 0;
+  const percent = Math.round(rate * 100);
+  if (statsBlockRateValue) {
+    statsBlockRateValue.textContent = `${percent}%`;
+  }
+  if (statsBlockRateRing) {
+    statsBlockRateRing.style.setProperty("--rate", `${percent}%`);
+  }
+
+  const counts = buildDailyCounts(settings.history || [], 7);
+  renderDetectionsChart(counts);
+  if (statsDetectionsTotal) {
+    const total = counts.reduce((sum, value) => sum + value, 0);
+    statsDetectionsTotal.textContent = formatNumber(total);
+  }
 }
 
 async function addBlocklistSource(source) {
@@ -360,4 +493,20 @@ toggleSendCountry.addEventListener("change", async () => {
   renderBlocklistSources(settings.blocklistSources);
   renderAllowlistSources(settings.allowlistSources);
   renderHistory(settings.history);
+  renderStats(settings);
 })();
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local") {
+    return;
+  }
+  const shouldUpdateStats =
+    changes.history ||
+    changes.alertCount ||
+    changes.blockCount ||
+    changes.blocklist ||
+    changes.whitelist;
+  if (shouldUpdateStats) {
+    loadSettings().then(renderStats);
+  }
+});
