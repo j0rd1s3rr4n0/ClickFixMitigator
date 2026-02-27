@@ -37,3 +37,10 @@ If `--extension` is omitted and `../browser-extension` exists, Botanalyzer loads
 python explorar_to_urls.py --dry-run
 python explorar_to_urls.py --input explorar.json --output urls.txt
 ```
+
+## Carson importer (unified JSON)
+Fetches paginated results and builds a unified JSON list (compatible with `explorar_to_urls.py`).
+```bash
+python carson_unified_importer.py --q . --limit 100 --output explorar.json
+python carson_unified_importer.py --q . --limit 100 --output carson_unified.json --include-raw
+```

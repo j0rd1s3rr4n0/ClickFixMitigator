@@ -1,3 +1,24 @@
-2026/01/28-09:31:57.055 22bc Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\Session Storage/MANIFEST-000001
-2026/01/28-09:31:57.056 22bc Recovering log #25
-2026/01/28-09:31:57.058 22bc Reusing old log C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\Session Storage/000025.log 
+2026/02/26-18:18:01.410 5bc Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\Session Storage/MANIFEST-000001
+2026/02/26-18:18:01.411 5bc Recovering log #209
+2026/02/26-18:18:01.412 5bc Reusing old log C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\Session Storage/000209.log 
+2026/02/26-20:16:01.353 7b04 Level-0 table #213: started
+2026/02/26-20:16:01.356 7b04 Level-0 table #213: 29697 bytes OK
+2026/02/26-20:16:01.358 7b04 Delete type=0 #209
+2026/02/26-21:13:53.826 7b04 Level-0 table #215: started
+2026/02/26-21:13:53.829 7b04 Level-0 table #215: 25026 bytes OK
+2026/02/26-21:13:53.830 7b04 Delete type=0 #212
+2026/02/26-21:13:53.830 7b04 Compacting 4@0 + 1@1 files
+2026/02/26-21:13:53.846 7b04 Generated table #216@0: 30231 keys, 751462 bytes
+2026/02/26-21:13:53.846 7b04 Compacted 4@0 + 1@1 files => 751462 bytes
+2026/02/26-21:13:53.846 7b04 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/02/26-21:13:53.847 7b04 Delete type=2 #204
+2026/02/26-21:13:53.847 7b04 Delete type=2 #207
+2026/02/26-21:13:53.847 7b04 Delete type=2 #210
+2026/02/26-21:13:53.847 7b04 Delete type=2 #213
+2026/02/26-21:13:53.847 7b04 Delete type=2 #215
+2026/02/27-01:35:13.133 5bc Level-0 table #218: started
+2026/02/27-01:35:13.137 5bc Level-0 table #218: 23004 bytes OK
+2026/02/27-01:35:13.138 5bc Delete type=0 #214
+2026/02/27-01:44:02.834 7b04 Level-0 table #220: started
+2026/02/27-01:44:02.838 7b04 Level-0 table #220: 17588 bytes OK
+2026/02/27-01:44:02.839 7b04 Delete type=0 #217

