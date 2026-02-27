@@ -27,10 +27,6 @@ CREATE TABLE IF NOT EXISTS stats (
     alert_count INTEGER,
     block_count INTEGER,
     manual_sites_json TEXT,
-    user_agent TEXT,
-    install_type TEXT,
-    install_source TEXT,
-    install_channel TEXT,
     country TEXT
 );
 

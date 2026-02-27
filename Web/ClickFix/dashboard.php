@@ -30,6 +30,7 @@ if (!in_array($currentLanguage, $supportedLanguages, true)) {
 $translations = [
     'es' => [
         'app_title' => 'ClickFix Command Center',
+        'skip_to_content' => 'Saltar al contenido',
         'last_update' => 'Última actualización',
         'extension_status_unknown' => 'Estado extensión: sin datos',
         'extension_status_activity' => 'Actividad detectada',
@@ -39,6 +40,57 @@ $translations = [
         'session_none' => 'Sin sesión activa',
         'dashboard_title' => 'Visión 360° de ClickFix',
         'dashboard_subtitle' => 'Monitorea alertas, actividad por país y el estado de listas en una sola vista accionable.',
+        'public_hero_kicker' => 'Analítica pública',
+        'public_hero_title' => 'Pulso público de ClickFix',
+        'public_hero_subtitle' => 'Datos agregados de actividad de la extensión. No incluye URLs ni IPs.',
+        'public_view' => 'Vista pública',
+        'public_access_title' => 'Acceso de administrador',
+        'public_access_subtitle' => 'Inicia sesión para habilitar gestión y logs privados.',
+        'public_analytics_title' => 'Panel público',
+        'public_analytics_subtitle' => 'Gráficos agregados en tiempo real (últimas 24h).',
+        'total_domains' => 'Dominios totales',
+        'last_30_days' => 'Últimos 30 días',
+        'nav_overview' => 'Resumen',
+        'nav_metrics' => 'Métricas',
+        'nav_analytics' => 'Analítica',
+        'nav_access' => 'Acceso',
+        'nav_lists' => 'Listas',
+        'nav_intel' => 'Inteligencia',
+        'nav_logs' => 'Logs',
+        'nav_home' => 'Inicio',
+        'nav_search' => 'Buscar',
+        'nav_about' => 'Acerca de',
+        'new_domains_title' => 'Nuevos dominios',
+        'new_domains_subtitle' => 'Detecciones recientes del radar pÃºblico.',
+        'search_title' => 'Busqueda',
+        'search_subtitle' => 'Explora dominios, comandos y actividad reciente.',
+        'search_placeholder' => 'Busca dominio, comando o contenido...',
+        'search_button' => 'Buscar',
+        'search_export' => 'Exportar',
+        'search_filter_label' => 'Campo',
+        'search_filter_any' => 'Cualquiera',
+        'search_filter_domain' => 'Dominio',
+        'search_filter_command' => 'Comando',
+        'search_advanced' => 'Filtros avanzados',
+        'search_clear' => 'Limpiar filtros',
+        'search_col_action' => 'Acciones',
+        'search_col_domain' => 'Dominio',
+        'search_col_date' => 'Fecha',
+        'search_col_command' => 'Command line',
+        'search_action_view' => 'Ver',
+        'recent_scan_title' => 'Ultimo escaneo',
+        'recent_scan_subtitle' => 'Vista previa antes y despues de la interaccion.',
+        'before_label' => 'Antes',
+        'after_label' => 'Despues',
+        'no_snapshots' => 'Sin capturas disponibles.',
+        'about_title' => 'Sobre ClickFix',
+        'about_body' => 'ClickFix Mitigator monitorea patrones de comando, secuestro de portapapeles y flujos de ingenieria social.',
+        'about_collection_title' => 'Identificacion y coleccion',
+        'about_collection_body' => 'Los dominios se detectan por telemetria y reports. Las muestras se priorizan por riesgo y señales activas.',
+        'about_public_title' => 'Acceso publico',
+        'about_public_body' => 'Las metricas se publican sin exponer URLs ni datos sensibles.',
+        'sponsor_label' => 'Patrocinado',
+        'sponsor_text' => 'Inteligencia comunitaria para rastrear dominios ClickFix.',
         'recent_alerts' => 'Alertas recientes',
         'manual_sites' => 'Sitios manuales',
         'coverage' => 'Cobertura',
@@ -57,6 +109,8 @@ $translations = [
         'confirmed_preventions' => 'Prevenciones confirmadas',
         'unique_hosts' => 'Dominios únicos',
         'unique_hosts_help' => 'Últimos reportes',
+        'unique_users' => 'Usuarios unicos',
+        'unique_users_help' => 'Ultimas 24h (UA)',
         'manual_domains' => 'Dominios cargados manualmente',
         'recent_events' => 'Últimos eventos visibles',
         'pending_review' => 'Pendientes de revisión',
@@ -94,8 +148,23 @@ $translations = [
         'tab_lists' => 'Listas',
         'tab_users' => 'Usuarios',
         'tab_access' => 'Acceso',
+        'tab_data' => 'Datos',
         'tab_alerts' => 'Alertas',
         'tab_intel' => 'Inteligencia',
+        'data_vault_title' => 'Centro de datos',
+        'data_vault_subtitle' => 'Acceso completo a todas las tablas almacenadas en la base de datos.',
+        'data_table_rows' => 'Filas',
+        'data_table_last' => 'Ãšltima actualizaciÃ³n',
+        'data_table_export' => 'Exportar CSV',
+        'data_table_sensitive' => 'Datos sensibles enmascarados.',
+        'data_table_empty' => 'Sin registros.',
+        'data_table_reports' => 'Reportes',
+        'data_table_stats' => 'EstadÃ­sticas',
+        'data_table_appeals' => 'Desistimientos',
+        'data_table_list_actions' => 'Acciones de listas',
+        'data_table_list_suggestions' => 'Sugerencias de listas',
+        'data_table_users' => 'Usuarios',
+        'data_table_system' => 'Sistema',
         'action_allow_desc' => 'Permite el dominio y evita bloqueos.',
         'action_block_desc' => 'Bloquea el dominio en todos los equipos.',
         'action_alert_desc' => 'Marca el dominio para seguimiento.',
@@ -128,6 +197,7 @@ $translations = [
         'alert_analytics' => 'Analítica de alertas',
         'alerts_baseline' => 'Baseline de alertas (7d)',
         'blocks_by_day' => 'Bloqueos por d?a',
+        'blocks_by_hour' => 'Bloqueos por hora',
         'block_rate_trend' => 'Tasa de bloqueo (tendencia)',
         'review_status_chart' => 'Estado de revisi?n',
         'top_hosts_chart' => 'Top dominios',
@@ -156,7 +226,18 @@ $translations = [
         'recent_logs' => 'Logs recientes',
         'latest_entries' => 'Últimas entradas',
         'no_logs' => 'Sin registros.',
+        'telemetry_logs' => 'Telemetria de la extension',
+        'telemetry_subtitle' => 'Ultimas estadisticas recibidas (type=stats).',
         'countries' => 'Países',
+        'os_breakdown' => 'Sistemas operativos',
+        'browser_breakdown' => 'Navegadores',
+        'install_channel_chart' => 'Canal de instalación',
+        'install_channel_webstore' => 'Chrome Web Store',
+        'install_channel_development' => 'Dev mode',
+        'install_channel_sideload' => 'GitHub .zip / local',
+        'install_channel_policy' => 'Por política',
+        'install_channel_normal' => 'Instalación normal',
+        'install_channel_other' => 'Otro',
         'no_data' => 'Sin datos.',
         'manual_sites_title' => 'Sitios manuales',
         'alerted_sites_title' => 'Sitios alertados',
@@ -229,6 +310,17 @@ $translations = [
         'log_col_detected' => 'Detectado',
         'log_col_blocked' => 'Bloqueado',
         'log_col_country' => 'País',
+        'log_col_enabled' => 'Extension',
+        'log_col_alert_count' => 'Alertas',
+        'log_col_block_count' => 'Bloqueos',
+        'log_col_manual_sites' => 'Manual sites',
+        'log_col_alert_sites' => 'Alert sites',
+        'log_col_install_channel' => 'Canal',
+        'log_col_install_source' => 'Fuente',
+        'log_col_install_type' => 'Tipo',
+        'log_col_user_agent' => 'User-Agent',
+        'log_value_enabled' => 'Activa',
+        'log_value_disabled' => 'Pausada',
         'log_col_raw' => 'Detalle',
         'confirm_clear' => '¿Eliminar detecciones no aceptadas?',
         'confirm_clear_accepted' => '¿Eliminar detecciones aceptadas?',
@@ -300,6 +392,7 @@ $translations = [
     ],
     'en' => [
         'app_title' => 'ClickFix Command Center',
+        'skip_to_content' => 'Skip to content',
         'last_update' => 'Last update',
         'extension_status_unknown' => 'Extension status: no data',
         'extension_status_activity' => 'Activity detected',
@@ -309,6 +402,57 @@ $translations = [
         'session_none' => 'No active session',
         'dashboard_title' => 'ClickFix 360° overview',
         'dashboard_subtitle' => 'Monitor alerts, country activity, and list status in a single actionable view.',
+        'public_hero_kicker' => 'Public analytics',
+        'public_hero_title' => 'Public ClickFix pulse',
+        'public_hero_subtitle' => 'Aggregated extension activity. No URLs or IPs included.',
+        'public_view' => 'Public view',
+        'public_access_title' => 'Administrator access',
+        'public_access_subtitle' => 'Sign in to enable management and private logs.',
+        'public_analytics_title' => 'Public dashboard',
+        'public_analytics_subtitle' => 'Live aggregated charts (last 24h).',
+        'total_domains' => 'Total domains',
+        'last_30_days' => 'Last 30 days',
+        'nav_overview' => 'Overview',
+        'nav_metrics' => 'Metrics',
+        'nav_analytics' => 'Analytics',
+        'nav_access' => 'Access',
+        'nav_lists' => 'Lists',
+        'nav_intel' => 'Intel',
+        'nav_logs' => 'Logs',
+        'nav_home' => 'Home',
+        'nav_search' => 'Search',
+        'nav_about' => 'About',
+        'new_domains_title' => 'New domains',
+        'new_domains_subtitle' => 'Latest detections from the public radar.',
+        'search_title' => 'Search',
+        'search_subtitle' => 'Explore domains, commands, and recent activity.',
+        'search_placeholder' => 'Search domain, command, or content...',
+        'search_button' => 'Search',
+        'search_export' => 'Export',
+        'search_filter_label' => 'Field',
+        'search_filter_any' => 'Any',
+        'search_filter_domain' => 'Domain',
+        'search_filter_command' => 'Command',
+        'search_advanced' => 'Advanced filters',
+        'search_clear' => 'Clear filters',
+        'search_col_action' => 'Actions',
+        'search_col_domain' => 'Domain',
+        'search_col_date' => 'Date',
+        'search_col_command' => 'Command line',
+        'search_action_view' => 'View',
+        'recent_scan_title' => 'Most recent scan',
+        'recent_scan_subtitle' => 'Preview before and after interaction.',
+        'before_label' => 'Before',
+        'after_label' => 'After',
+        'no_snapshots' => 'No snapshots available.',
+        'about_title' => 'About ClickFix',
+        'about_body' => 'ClickFix Mitigator monitors command patterns, clipboard hijacking, and social engineering flows.',
+        'about_collection_title' => 'Identification & collection',
+        'about_collection_body' => 'Domains are detected via telemetry and reports. Samples are prioritized by risk and active signals.',
+        'about_public_title' => 'Public access',
+        'about_public_body' => 'Metrics are published without exposing URLs or sensitive data.',
+        'sponsor_label' => 'Sponsored',
+        'sponsor_text' => 'Community intelligence for tracking ClickFix domains.',
         'recent_alerts' => 'Recent alerts',
         'manual_sites' => 'Manual sites',
         'coverage' => 'Coverage',
@@ -327,6 +471,8 @@ $translations = [
         'confirmed_preventions' => 'Confirmed preventions',
         'unique_hosts' => 'Unique domains',
         'unique_hosts_help' => 'Latest reports',
+        'unique_users' => 'Unique users',
+        'unique_users_help' => 'Last 24h (UA)',
         'manual_domains' => 'Manually loaded domains',
         'recent_events' => 'Latest visible events',
         'pending_review' => 'Pending review',
@@ -364,8 +510,23 @@ $translations = [
         'tab_lists' => 'Lists',
         'tab_users' => 'Users',
         'tab_access' => 'Access',
+        'tab_data' => 'Data',
         'tab_alerts' => 'Alerts',
         'tab_intel' => 'Intel',
+        'data_vault_title' => 'Data vault',
+        'data_vault_subtitle' => 'Full access to every table stored in the database.',
+        'data_table_rows' => 'Rows',
+        'data_table_last' => 'Last update',
+        'data_table_export' => 'Export CSV',
+        'data_table_sensitive' => 'Sensitive values are masked.',
+        'data_table_empty' => 'No records yet.',
+        'data_table_reports' => 'Reports',
+        'data_table_stats' => 'Stats',
+        'data_table_appeals' => 'Appeals',
+        'data_table_list_actions' => 'List actions',
+        'data_table_list_suggestions' => 'List suggestions',
+        'data_table_users' => 'Users',
+        'data_table_system' => 'System',
         'action_allow_desc' => 'Allow the domain and skip blocks.',
         'action_block_desc' => 'Block the domain across all devices.',
         'action_alert_desc' => 'Flag the domain for follow up.',
@@ -398,6 +559,7 @@ $translations = [
         'alert_analytics' => 'Alert analytics',
         'alerts_baseline' => 'Alerts baseline (7d)',
         'blocks_by_day' => 'Blocks by day',
+        'blocks_by_hour' => 'Blocks by hour',
         'block_rate_trend' => 'Block rate trend',
         'review_status_chart' => 'Review status',
         'top_hosts_chart' => 'Top hosts',
@@ -426,7 +588,18 @@ $translations = [
         'recent_logs' => 'Recent logs',
         'latest_entries' => 'Latest entries',
         'no_logs' => 'No logs.',
+        'telemetry_logs' => 'Extension telemetry',
+        'telemetry_subtitle' => 'Latest stats payloads (type=stats).',
         'countries' => 'Countries',
+        'os_breakdown' => 'Operating systems',
+        'browser_breakdown' => 'Browsers',
+        'install_channel_chart' => 'Install channel',
+        'install_channel_webstore' => 'Chrome Web Store',
+        'install_channel_development' => 'Dev mode',
+        'install_channel_sideload' => 'GitHub .zip / local',
+        'install_channel_policy' => 'Policy',
+        'install_channel_normal' => 'Normal install',
+        'install_channel_other' => 'Other',
         'no_data' => 'No data.',
         'manual_sites_title' => 'Manual sites',
         'alerted_sites_title' => 'Alerted sites',
@@ -499,6 +672,17 @@ $translations = [
         'log_col_detected' => 'Detected',
         'log_col_blocked' => 'Blocked',
         'log_col_country' => 'Country',
+        'log_col_enabled' => 'Extension',
+        'log_col_alert_count' => 'Alerts',
+        'log_col_block_count' => 'Blocks',
+        'log_col_manual_sites' => 'Manual sites',
+        'log_col_alert_sites' => 'Alert sites',
+        'log_col_install_channel' => 'Channel',
+        'log_col_install_source' => 'Source',
+        'log_col_install_type' => 'Type',
+        'log_col_user_agent' => 'User-Agent',
+        'log_value_enabled' => 'Enabled',
+        'log_value_disabled' => 'Disabled',
         'log_col_raw' => 'Detail',
         'confirm_clear' => 'Remove unaccepted detections?',
         'confirm_clear_accepted' => 'Remove accepted detections?',
@@ -584,8 +768,12 @@ function safeSubstr(string $value, int $start, int $length): string
     return substr($value, $start, $length);
 }
 
-function redactCredentials(string $value, bool $isAdmin): string
+function redactCredentials(?string $value, bool $isAdmin): string
 {
+    if ($value === null) {
+        return '';
+    }
+    $value = (string) $value;
     if ($isAdmin || $value === '') {
         return $value;
     }
@@ -607,7 +795,10 @@ function redactCredentials(string $value, bool $isAdmin): string
         '/(\b(?:dni|nie|nif|passport|pasaporte|cedula|c[eé]dula|documento|identidad|id)\b)\s*[:=]\s*([A-Z0-9\-]{5,})/i' => '$1=REDACTED'
     ];
     foreach ($patterns as $pattern => $replacement) {
-        $value = preg_replace($pattern, $replacement, $value);
+        $result = @preg_replace($pattern, $replacement, $value);
+        if (is_string($result)) {
+            $value = $result;
+        }
     }
     return $value;
 }
@@ -918,6 +1109,10 @@ CREATE TABLE IF NOT EXISTS stats (
     alert_count INTEGER,
     block_count INTEGER,
     manual_sites_json TEXT,
+    user_agent TEXT,
+    install_type TEXT,
+    install_source TEXT,
+    install_channel TEXT,
     country TEXT
 );
 
@@ -966,8 +1161,12 @@ $stats = [
     'alerts_24h' => 0,
     'blocks_24h' => 0,
     'unique_hosts' => 0,
+    'unique_users' => 0,
     'manual_sites' => [],
     'countries' => [],
+    'os_stats' => [],
+    'browser_stats' => [],
+    'install_stats' => [],
     'last_update' => null,
     'extension_enabled' => null,
     'recent_count' => 0,
@@ -1029,6 +1228,119 @@ function loadListFile(string $path): array
         $items[] = $line;
     }
     return array_values(array_unique($items));
+}
+
+function hasTableColumn(PDO $pdo, string $table, string $column): bool
+{
+    try {
+        $columns = $pdo->query('PRAGMA table_info(' . $table . ')')->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $exception) {
+        return false;
+    }
+    foreach ($columns as $entry) {
+        if (strcasecmp((string) ($entry['name'] ?? ''), $column) === 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function parseUserAgentSummary(string $userAgent): array
+{
+    $ua = strtolower($userAgent);
+    $os = 'Other';
+    if (strpos($ua, 'windows nt') !== false) {
+        $os = 'Windows';
+    } elseif (strpos($ua, 'android') !== false) {
+        $os = 'Android';
+    } elseif (strpos($ua, 'iphone') !== false || strpos($ua, 'ipad') !== false || strpos($ua, 'ipod') !== false) {
+        $os = 'iOS';
+    } elseif (strpos($ua, 'mac os x') !== false) {
+        $os = 'macOS';
+    } elseif (strpos($ua, 'cros') !== false) {
+        $os = 'ChromeOS';
+    } elseif (strpos($ua, 'linux') !== false || strpos($ua, 'x11') !== false) {
+        $os = 'Linux';
+    }
+
+    $browser = 'Other';
+    if (strpos($ua, 'edg/') !== false || strpos($ua, 'edgios') !== false || strpos($ua, 'edga') !== false) {
+        $browser = 'Edge';
+    } elseif (strpos($ua, 'opr/') !== false || strpos($ua, 'opera') !== false) {
+        $browser = 'Opera';
+    } elseif (strpos($ua, 'vivaldi') !== false) {
+        $browser = 'Vivaldi';
+    } elseif (strpos($ua, 'brave') !== false) {
+        $browser = 'Brave';
+    } elseif (strpos($ua, 'samsungbrowser') !== false) {
+        $browser = 'Samsung Internet';
+    } elseif (strpos($ua, 'ucbrowser') !== false) {
+        $browser = 'UC Browser';
+    } elseif (strpos($ua, 'firefox') !== false || strpos($ua, 'fxios') !== false) {
+        $browser = 'Firefox';
+    } elseif (strpos($ua, 'crios') !== false || strpos($ua, 'chrome/') !== false) {
+        $browser = 'Chrome';
+    } elseif (strpos($ua, 'safari') !== false) {
+        $browser = 'Safari';
+    } elseif (strpos($ua, 'msie') !== false || strpos($ua, 'trident') !== false) {
+        $browser = 'IE';
+    }
+
+    return ['os' => $os, 'browser' => $browser];
+}
+
+function normalizeCountMap(array $counts, int $limit = 8): array
+{
+    arsort($counts);
+    if ($limit > 0) {
+        return array_slice($counts, 0, $limit, true);
+    }
+    return $counts;
+}
+
+function normalizeInstallChannelValue(string $channel, string $type = '', string $source = ''): string
+{
+    $channel = strtolower(trim($channel));
+    $type = strtolower(trim($type));
+    $source = strtolower(trim($source));
+    if ($channel !== '') {
+        return $channel;
+    }
+    if (str_contains($source, 'webstore') || str_contains($source, 'chrome_webstore')) {
+        return 'chrome_webstore';
+    }
+    if ($type === 'development') {
+        return 'development';
+    }
+    if ($type === 'sideload' || $source === 'local') {
+        return 'sideload';
+    }
+    if ($type === 'normal' && $source === 'policy') {
+        return 'policy';
+    }
+    if ($type === 'normal') {
+        return 'normal';
+    }
+    return 'other';
+}
+
+function labelInstallChannel(string $channel, array $translations, string $language): string
+{
+    $normalized = normalizeInstallChannelValue($channel);
+    $map = [
+        'chrome_webstore' => 'install_channel_webstore',
+        'webstore' => 'install_channel_webstore',
+        'development' => 'install_channel_development',
+        'dev' => 'install_channel_development',
+        'sideload' => 'install_channel_sideload',
+        'local' => 'install_channel_sideload',
+        'zip' => 'install_channel_sideload',
+        'policy' => 'install_channel_policy',
+        'normal' => 'install_channel_normal',
+        'other' => 'install_channel_other'
+    ];
+    $key = $map[$normalized] ?? 'install_channel_other';
+    return t($translations, $language, $key);
 }
 
 function loadLogEntries(string $path, int $limit = 50): array
@@ -1093,6 +1405,15 @@ function loadStructuredLogEntries(string $path, int $limit = 50): array
         if (!is_array($decoded)) {
             continue;
         }
+        $type = strtolower((string) ($decoded['type'] ?? ''));
+        if ($type !== '' && $type !== 'alert') {
+            continue;
+        }
+        $messageRaw = trim((string) ($decoded['message'] ?? ''));
+        $detectedRaw = trim((string) ($decoded['detected_content'] ?? ''));
+        if ($messageRaw === '' && $detectedRaw === '' && trim((string) ($decoded['hostname'] ?? '')) === '') {
+            continue;
+        }
         $timestampRaw = $decoded['timestamp'] ?? null;
         $timestamp = '';
         if (is_numeric($timestampRaw)) {
@@ -1113,6 +1434,75 @@ function loadStructuredLogEntries(string $path, int $limit = 50): array
     return array_reverse($entries);
 }
 
+function loadStatsLogEntries(string $path, int $limit = 50): array
+{
+    if (!is_readable($path)) {
+        return [];
+    }
+    $lines = file($path, FILE_IGNORE_NEW_LINES) ?: [];
+    if ($limit > 0) {
+        $lines = array_slice($lines, -$limit);
+    }
+    $entries = [];
+    foreach ($lines as $line) {
+        $decoded = json_decode($line, true);
+        if (!is_array($decoded)) {
+            continue;
+        }
+        $type = strtolower((string) ($decoded['type'] ?? ''));
+        if ($type !== 'stats') {
+            continue;
+        }
+        $stats = is_array($decoded['stats'] ?? null) ? $decoded['stats'] : [];
+        $timestampRaw = $decoded['timestamp'] ?? null;
+        $timestamp = '';
+        if (is_numeric($timestampRaw)) {
+            $timestamp = gmdate('Y-m-d H:i:s', (int) ((int) $timestampRaw / 1000));
+        } elseif (!empty($decoded['received_at'])) {
+            $timestamp = (string) $decoded['received_at'];
+        }
+        $manualSites = $stats['manual_sites'] ?? [];
+        if (!is_array($manualSites)) {
+            $manualSites = [];
+        }
+        $alertSites = $stats['alert_sites'] ?? [];
+        if (!is_array($alertSites)) {
+            $alertSites = [];
+        }
+        $entries[] = [
+            'received_at' => $timestamp !== '' ? $timestamp : (string) ($decoded['received_at'] ?? ''),
+            'enabled' => !empty($stats['enabled']),
+            'alert_count' => (int) ($stats['alert_count'] ?? 0),
+            'block_count' => (int) ($stats['block_count'] ?? 0),
+            'manual_sites_count' => count($manualSites),
+            'alert_sites_count' => count($alertSites),
+            'install_channel' => (string) ($stats['install_channel'] ?? ''),
+            'install_source' => (string) ($stats['install_source'] ?? ''),
+            'install_type' => (string) ($stats['install_type'] ?? ''),
+            'user_agent' => (string) ($decoded['user_agent'] ?? ''),
+            'country' => (string) ($decoded['country'] ?? '')
+        ];
+    }
+    return array_reverse($entries);
+}
+
+function resolveInstallChannelLabel(string $channel, array $translations, string $language): string
+{
+    $channel = strtolower(trim($channel));
+    if ($channel === '') {
+        return '';
+    }
+    $map = [
+        'webstore' => 'install_channel_webstore',
+        'development' => 'install_channel_development',
+        'sideload' => 'install_channel_sideload',
+        'policy' => 'install_channel_policy',
+        'normal' => 'install_channel_normal'
+    ];
+    $key = $map[$channel] ?? 'install_channel_other';
+    return t($translations, $language, $key);
+}
+
 function formatLogValue(mixed $value): string
 {
     if (is_array($value)) {
@@ -1125,6 +1515,38 @@ function formatLogValue(mixed $value): string
         return '';
     }
     return (string) $value;
+}
+
+function formatDataCellHtml(mixed $value, string $table, string $column, bool $isAdmin): string
+{
+    $raw = formatLogValue($value);
+    if ($column === 'password_hash') {
+        if ($raw === '') {
+            return '<span class="muted">—</span>';
+        }
+        $masked = safeSubstr($raw, 0, 6);
+        $tail = safeSubstr($raw, max(0, (function_exists('mb_strlen') ? mb_strlen($raw) : strlen($raw)) - 4), 4);
+        return '<code class="cell-code">' . htmlspecialchars($masked . '…' . $tail, ENT_QUOTES, 'UTF-8') . '</code>';
+    }
+
+    if ($raw === '') {
+        return '<span class="muted">—</span>';
+    }
+
+    $raw = redactCredentials($raw, $isAdmin);
+    $length = function_exists('mb_strlen') ? mb_strlen($raw) : strlen($raw);
+    $safe = htmlspecialchars($raw, ENT_QUOTES, 'UTF-8');
+
+    if ($length > 220) {
+        $preview = safeSubstr($raw, 0, 220) . '…';
+        $safePreview = htmlspecialchars($preview, ENT_QUOTES, 'UTF-8');
+        return '<details class="cell-expand" data-allow-toggle="true"><summary><code class="cell-code">'
+            . $safePreview . '</code></summary><pre>' . $safe . '</pre></details>';
+    }
+    if ($length > 80 || $column === 'signals_json' || $column === 'full_context' || $column === 'detected_content' || $column === 'message') {
+        return '<code class="cell-code">' . $safe . '</code>';
+    }
+    return $safe;
 }
 
 function loadLogTableEntries(string $path, int $limit = 50): array
@@ -1291,11 +1713,123 @@ function ensureDefaultAdmin(PDO $pdo, array &$flashNotices, array $translations,
     $flashNotices[] = t($translations, $language, 'flash_default_admin') . $password;
 }
 
-function ensureDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFallback): void
+function parseSchemaTables(string $schemaSql): array
 {
-    if (file_exists($dbPath)) {
+    $tables = [];
+    if ($schemaSql === '') {
+        return $tables;
+    }
+    $pattern = '/CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+([a-zA-Z0-9_]+)\\s*\\((.*?)\\)\\s*;/si';
+    if (!preg_match_all($pattern, $schemaSql, $matches, PREG_SET_ORDER)) {
+        return $tables;
+    }
+    foreach ($matches as $match) {
+        $tableName = (string) $match[1];
+        $body = (string) $match[2];
+        $segments = [];
+        $current = '';
+        $depth = 0;
+        $length = strlen($body);
+        for ($i = 0; $i < $length; $i++) {
+            $char = $body[$i];
+            if ($char === '(') {
+                $depth++;
+            } elseif ($char === ')') {
+                $depth = max(0, $depth - 1);
+            } elseif ($char === ',' && $depth === 0) {
+                $segments[] = $current;
+                $current = '';
+                continue;
+            }
+            $current .= $char;
+        }
+        if (trim($current) !== '') {
+            $segments[] = $current;
+        }
+
+        $columns = [];
+        foreach ($segments as $segment) {
+            $line = trim($segment);
+            if ($line === '') {
+                continue;
+            }
+            $upper = strtoupper($line);
+            if (str_starts_with($upper, 'PRIMARY KEY')
+                || str_starts_with($upper, 'UNIQUE')
+                || str_starts_with($upper, 'FOREIGN KEY')
+                || str_starts_with($upper, 'CONSTRAINT')
+                || str_starts_with($upper, 'CHECK')) {
+                continue;
+            }
+            $parts = preg_split('/\\s+/', $line, 2);
+            if (!$parts || $parts[0] === '') {
+                continue;
+            }
+            $columnName = trim($parts[0], "`\"'");
+            if ($columnName === '') {
+                continue;
+            }
+            $columns[$columnName] = $line;
+        }
+        if (!empty($columns)) {
+            $tables[$tableName] = $columns;
+        }
+    }
+    return $tables;
+}
+
+function normalizeColumnForAlter(string $definition): string
+{
+    $definition = trim($definition);
+    if ($definition === '') {
+        return '';
+    }
+    $upper = strtoupper($definition);
+    if (str_contains($upper, 'PRIMARY KEY') || str_contains($upper, 'AUTOINCREMENT')) {
+        return '';
+    }
+    $definition = preg_replace('/\\bUNIQUE\\b/i', '', $definition) ?? $definition;
+    $definition = preg_replace('/\\s+/', ' ', trim($definition)) ?? $definition;
+    if (str_contains($upper, 'NOT NULL') && !str_contains($upper, 'DEFAULT')) {
+        $defaultValue = "DEFAULT ''";
+        if (preg_match('/\\b(INT|INTEGER|REAL|FLOAT|DOUBLE|NUMERIC)\\b/i', $definition)) {
+            $defaultValue = 'DEFAULT 0';
+        }
+        $definition .= ' ' . $defaultValue;
+    }
+    return trim($definition);
+}
+
+function syncSchema(PDO $pdo, string $schemaSql): void
+{
+    if ($schemaSql === '') {
         return;
     }
+    $pdo->exec($schemaSql);
+    $tables = parseSchemaTables($schemaSql);
+    foreach ($tables as $tableName => $columns) {
+        $info = $pdo->query('PRAGMA table_info(' . $tableName . ')')->fetchAll(PDO::FETCH_ASSOC);
+        $existing = [];
+        foreach ($info as $column) {
+            if (!empty($column['name'])) {
+                $existing[(string) $column['name']] = true;
+            }
+        }
+        foreach ($columns as $columnName => $definition) {
+            if (isset($existing[$columnName])) {
+                continue;
+            }
+            $alterDefinition = normalizeColumnForAlter($definition);
+            if ($alterDefinition === '') {
+                continue;
+            }
+            $pdo->exec('ALTER TABLE ' . $tableName . ' ADD COLUMN ' . $alterDefinition);
+        }
+    }
+}
+
+function ensureDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFallback): void
+{
     $dataDir = dirname($dbPath);
     if (!is_dir($dataDir)) {
         @mkdir($dataDir, 0775, true);
@@ -1310,7 +1844,7 @@ function ensureDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFa
         if (!is_string($schemaSql) || $schemaSql === '') {
             $schemaSql = $schemaSqlFallback;
         }
-        $pdo->exec($schemaSql);
+        syncSchema($pdo, (string) $schemaSql);
         ensureAdminTables($pdo);
     } catch (Throwable $exception) {
         return;
@@ -1399,6 +1933,7 @@ $isAjaxRequest = ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'fetch';
 
 $reportLogEntries = loadLogEntries(__DIR__ . '/clickfix-report.log', 60);
 $reportLogStructured = loadStructuredLogEntries(__DIR__ . '/clickfix-report.log', 40);
+$statsLogEntries = loadStatsLogEntries(__DIR__ . '/clickfix-report.log', 60);
 $debugLogTable = loadLogTableEntries(__DIR__ . '/clickfix-debug.log', 60);
 $reportLogCountries = loadLogCountries(__DIR__ . '/clickfix-report.log', 200);
 
@@ -1442,6 +1977,21 @@ $isAnalyst = $currentUser && ($currentUser['role'] ?? '') === 'analyst';
 $isVerified = $currentUser && (int) ($currentUser['verified'] ?? 0) === 1;
 $canViewLogs = $isAdmin;
 $canViewDashboard = $isAdmin || $isAnalyst;
+$publicAnalyticsEnabled = true;
+$allowedPages = ['home', 'search', 'about', 'access', 'data', 'dashboard'];
+$page = (string) ($_GET['page'] ?? '');
+if (!in_array($page, $allowedPages, true)) {
+    $page = '';
+}
+$forcePublicView = $publicAnalyticsEnabled && isset($_GET['public']);
+$isPublicView = $forcePublicView || ($publicAnalyticsEnabled && !$canViewDashboard);
+$publicPage = $page !== '' ? $page : 'home';
+$showPublicHome = $isPublicView && ($page === '' || $page === 'home');
+$showPublicSearch = $isPublicView && ($page === '' || $page === 'search');
+$showPublicAbout = $isPublicView && ($page === '' || $page === 'about');
+$showPublicAccess = $isPublicView && ($page === '' || $page === 'access');
+$showAdminDashboard = $canViewDashboard && ($page === '' || $page === 'dashboard');
+$showAdminData = $canViewDashboard && ($page === '' || $page === 'data');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $csrfToken = (string) ($_POST['csrf_token'] ?? '');
@@ -1524,6 +2074,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $isVerified = (int) ($currentUser['verified'] ?? 0) === 1;
                 $canViewLogs = $isAdmin;
                 $canViewDashboard = $isAdmin || $isAnalyst;
+                $isPublicView = $forcePublicView || ($publicAnalyticsEnabled && !$canViewDashboard);
                 $flashNotices[] = t($translations, $currentLanguage, 'flash_login_success');
                 $_SESSION['login_attempts'] = ['count' => 0, 'last' => $now];
                 if ($isAdmin) {
@@ -1540,6 +2091,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'logout') {
             unset($_SESSION['user_id']);
             $currentUser = null;
+            $isAdmin = false;
+            $isAnalyst = false;
+            $isVerified = false;
+            $canViewLogs = false;
+            $canViewDashboard = false;
+            $isPublicView = $forcePublicView || ($publicAnalyticsEnabled && !$canViewDashboard);
             $flashNotices[] = t($translations, $currentLanguage, 'flash_logout');
         } elseif ($action === 'appeal' && $pdo instanceof PDO) {
             $domain = normalizeDomain((string) ($_POST['domain'] ?? ''));
@@ -2137,6 +2694,58 @@ if (is_readable($dbPath)) {
                 $stats['last_update'] = (string) $entry['received_at'];
             }
         }
+
+        if (hasTableColumn($pdo, 'stats', 'user_agent')) {
+            $cutoff = gmdate('c', time() - 86400);
+            $hasInstallType = hasTableColumn($pdo, 'stats', 'install_type');
+            $hasInstallSource = hasTableColumn($pdo, 'stats', 'install_source');
+            $hasInstallChannel = hasTableColumn($pdo, 'stats', 'install_channel');
+            $selectFields = ['user_agent'];
+            if ($hasInstallType) {
+                $selectFields[] = 'install_type';
+            }
+            if ($hasInstallSource) {
+                $selectFields[] = 'install_source';
+            }
+            if ($hasInstallChannel) {
+                $selectFields[] = 'install_channel';
+            }
+            $rows = [];
+            try {
+                $uaStatement = $pdo->prepare(
+                    'SELECT ' . implode(', ', $selectFields) . ' FROM stats WHERE received_at >= :cutoff AND user_agent IS NOT NULL AND user_agent != "" ORDER BY received_at DESC'
+                );
+                $uaStatement->execute([':cutoff' => $cutoff]);
+                $rows = $uaStatement->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            } catch (Throwable $exception) {
+                $rows = [];
+            }
+            $osCounts = [];
+            $browserCounts = [];
+            $installCounts = [];
+            $uniqueAgents = [];
+            foreach ($rows as $row) {
+                $agent = trim((string) ($row['user_agent'] ?? ''));
+                if ($agent === '' || isset($uniqueAgents[$agent])) {
+                    continue;
+                }
+                $uniqueAgents[$agent] = true;
+                $parsed = parseUserAgentSummary($agent);
+                $osCounts[$parsed['os']] = ($osCounts[$parsed['os']] ?? 0) + 1;
+                $browserCounts[$parsed['browser']] = ($browserCounts[$parsed['browser']] ?? 0) + 1;
+
+                $channel = normalizeInstallChannelValue(
+                    (string) ($row['install_channel'] ?? ''),
+                    (string) ($row['install_type'] ?? ''),
+                    (string) ($row['install_source'] ?? '')
+                );
+                $installCounts[$channel] = ($installCounts[$channel] ?? 0) + 1;
+            }
+            $stats['unique_users'] = count($uniqueAgents);
+            $stats['os_stats'] = normalizeCountMap($osCounts);
+            $stats['browser_stats'] = normalizeCountMap($browserCounts);
+            $stats['install_stats'] = normalizeCountMap($installCounts);
+        }
         try {
             $reportRows = $pdo->query(
             'SELECT id, received_at, url, hostname, message, detected_content, full_context, signals_json, blocked, accepted, accepted_at, review_status, reviewed_at, country
@@ -2280,6 +2889,47 @@ $topCountries = $stats['countries'];
 arsort($topCountries);
 $topCountries = array_slice($topCountries, 0, 4, true);
 
+$publicTotalDomains = (int) $stats['unique_hosts'];
+$publicLast30Days = 0;
+$cutoff30 = time() - (30 * 86400);
+foreach ($chartData['daily'] as $date => $count) {
+    $timestamp = strtotime((string) $date);
+    if ($timestamp !== false && $timestamp >= $cutoff30) {
+        $publicLast30Days += (int) $count;
+    }
+}
+
+$recentDomains = [];
+foreach ($reportLogStructured as $entry) {
+    $domain = normalizeDomain((string) ($entry['hostname'] ?? ''));
+    $url = (string) ($entry['url'] ?? '');
+    if ($domain === '' && $url !== '') {
+        $parsedUrl = parse_url($url);
+        if (is_array($parsedUrl) && !empty($parsedUrl['host'])) {
+            $domain = normalizeDomain((string) $parsedUrl['host']);
+        }
+    }
+    if ($domain === '') {
+        continue;
+    }
+    $command = trim((string) ($entry['detected_content'] ?? ''));
+    if ($command === '') {
+        $command = trim((string) ($entry['message'] ?? ''));
+    }
+    $command = redactCredentials($command, $isAdmin);
+    $command = safeSubstr($command, 0, 220);
+    $recentDomains[] = [
+        'domain' => $domain,
+        'date' => (string) ($entry['received_at'] ?? ''),
+        'command' => $command,
+        'url' => $url
+    ];
+    if (count($recentDomains) >= 25) {
+        break;
+    }
+}
+$recentDomainsHome = array_slice($recentDomains, 0, 8);
+
 $blocklistItems = loadListFile($blocklistFile);
 $allowlistItems = loadListFile($allowlistFile);
 $alertSites = loadListFile($alertsitesFile);
@@ -2315,6 +2965,10 @@ $alertlistItems = $alertSites;
 $appeals = [];
 $listSuggestions = [];
 $userRows = [];
+$dataExplorer = [
+    'tables' => [],
+    'summary' => []
+];
 if ($pdo instanceof PDO) {
     try {
         $appeals = $pdo->query(
@@ -2345,6 +2999,78 @@ if ($pdo instanceof PDO) {
         )->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $exception) {
         $userRows = [];
+    }
+
+    if ($isAdmin) {
+        $tableConfigs = [
+            'reports' => [
+                'label' => t($translations, $currentLanguage, 'data_table_reports'),
+                'order' => 'received_at DESC'
+            ],
+            'stats' => [
+                'label' => t($translations, $currentLanguage, 'data_table_stats'),
+                'order' => 'received_at DESC'
+            ],
+            'appeals' => [
+                'label' => t($translations, $currentLanguage, 'data_table_appeals'),
+                'order' => 'created_at DESC'
+            ],
+            'list_actions' => [
+                'label' => t($translations, $currentLanguage, 'data_table_list_actions'),
+                'order' => 'created_at DESC'
+            ],
+            'list_suggestions' => [
+                'label' => t($translations, $currentLanguage, 'data_table_list_suggestions'),
+                'order' => 'created_at DESC'
+            ],
+            'users' => [
+                'label' => t($translations, $currentLanguage, 'data_table_users'),
+                'order' => 'created_at DESC'
+            ],
+            'sqlite_sequence' => [
+                'label' => t($translations, $currentLanguage, 'data_table_system'),
+                'order' => 'name ASC'
+            ]
+        ];
+        foreach ($tableConfigs as $tableName => $config) {
+            try {
+                $columnsMeta = $pdo->query('PRAGMA table_info(' . $tableName . ')')->fetchAll(PDO::FETCH_ASSOC);
+                $columns = array_map(static fn ($col) => (string) ($col['name'] ?? ''), $columnsMeta);
+                $orderClause = $config['order'] ? ' ORDER BY ' . $config['order'] : '';
+                $rows = $pdo->query('SELECT * FROM ' . $tableName . $orderClause)->fetchAll(PDO::FETCH_ASSOC);
+                $count = (int) ($pdo->query('SELECT COUNT(*) FROM ' . $tableName)->fetchColumn() ?: 0);
+                $timestampColumn = '';
+                foreach (['received_at', 'created_at', 'reviewed_at', 'accepted_at'] as $candidate) {
+                    if (in_array($candidate, $columns, true)) {
+                        $timestampColumn = $candidate;
+                        break;
+                    }
+                }
+                $lastUpdated = '';
+                if ($timestampColumn !== '') {
+                    $lastUpdated = (string) ($pdo->query('SELECT MAX(' . $timestampColumn . ') FROM ' . $tableName)->fetchColumn() ?: '');
+                }
+                $dataExplorer['tables'][] = [
+                    'name' => $tableName,
+                    'label' => $config['label'],
+                    'columns' => $columns,
+                    'rows' => $rows,
+                    'count' => $count,
+                    'last_updated' => $lastUpdated,
+                    'sensitive' => in_array('password_hash', $columns, true)
+                ];
+            } catch (Throwable $exception) {
+                $dataExplorer['tables'][] = [
+                    'name' => $tableName,
+                    'label' => $config['label'],
+                    'columns' => [],
+                    'rows' => [],
+                    'count' => 0,
+                    'last_updated' => '',
+                    'sensitive' => false
+                ];
+            }
+        }
     }
 }
 
@@ -2409,6 +3135,18 @@ foreach ($chartData['signals'] as $signal => $count) {
     $signalChartValues[] = $count;
 }
 
+$installChannelLabels = [];
+$installChannelValues = [];
+foreach ($stats['install_stats'] as $channel => $count) {
+    $installChannelLabels[] = labelInstallChannel($channel, $translations, $currentLanguage);
+    $installChannelValues[] = $count;
+}
+
+$osChartLabels = array_keys($stats['os_stats']);
+$osChartValues = array_values($stats['os_stats']);
+$browserChartLabels = array_keys($stats['browser_stats']);
+$browserChartValues = array_values($stats['browser_stats']);
+
 $chartLabels = [
     'alerts' => t($translations, $currentLanguage, 'total_alerts'),
     'blocks' => t($translations, $currentLanguage, 'total_blocks'),
@@ -2416,12 +3154,15 @@ $chartLabels = [
     'block_rate' => t($translations, $currentLanguage, 'block_rate'),
     'reviews' => t($translations, $currentLanguage, 'review_status'),
     'top_hosts' => t($translations, $currentLanguage, 'top_hosts_chart'),
-    'signals' => t($translations, $currentLanguage, 'signal_types')
+    'signals' => t($translations, $currentLanguage, 'signal_types'),
+    'install_channels' => t($translations, $currentLanguage, 'install_channel_chart'),
+    'os' => t($translations, $currentLanguage, 'os_breakdown'),
+    'browsers' => t($translations, $currentLanguage, 'browser_breakdown')
 ];
 
-$dashboardVersion = '0.7.15';
+$dashboardVersion = '0.8.0';
 
-  $chartPayload = [
+$chartPayload = [
     'daily' => [
         'labels' => $dailyLabels,
         'values' => $dailyValues
@@ -2462,8 +3203,71 @@ $dashboardVersion = '0.7.15';
         'labels' => $signalChartLabels,
         'values' => $signalChartValues
     ],
+    'installChannels' => [
+        'labels' => $installChannelLabels,
+        'values' => $installChannelValues
+    ],
+    'os' => [
+        'labels' => $osChartLabels,
+        'values' => $osChartValues
+    ],
+    'browsers' => [
+        'labels' => $browserChartLabels,
+        'values' => $browserChartValues
+    ],
     'labels' => $chartLabels
 ];
+
+$chartPayloadPublic = $chartPayload;
+$chartPayloadPublic['topHosts'] = ['labels' => [], 'values' => []];
+
+$baseLiveStats = [
+    'last_update' => (string) ($stats['last_update'] ?? 'N/D'),
+    'total_alerts' => (int) $stats['total_alerts'],
+    'total_blocks' => (int) $stats['total_blocks'],
+    'unique_users' => (int) $stats['unique_users'],
+    'unique_hosts' => (int) $stats['unique_hosts'],
+    'alerts_24h' => (int) $stats['alerts_24h'],
+    'blocks_24h' => (int) $stats['blocks_24h'],
+    'countries_count' => (int) count($stats['countries']),
+    'total_domains' => (int) $publicTotalDomains,
+    'last_30_days' => (int) $publicLast30Days,
+    'block_rate' => round($blockRate, 1)
+];
+
+$liveStatsPublic = $baseLiveStats;
+$liveStatsPrivate = $baseLiveStats + [
+    'manual_sites_count' => (int) count($stats['manual_sites']),
+    'recent_count' => (int) $stats['recent_count'],
+    'alert_sites_count' => (int) count($stats['alert_sites'])
+];
+
+$livePayloadPublic = [
+    'access' => 'public',
+    'stats' => $liveStatsPublic,
+    'charts' => $chartPayloadPublic,
+    'recent_domains' => $recentDomains
+];
+$livePayloadPrivate = [
+    'access' => 'private',
+    'stats' => $liveStatsPrivate,
+    'charts' => $chartPayload,
+    'recent_domains' => $recentDomains
+];
+
+if (isset($_GET['format']) && $_GET['format'] === 'live') {
+    header('Content-Type: application/json; charset=utf-8');
+    $forcePublic = $publicAnalyticsEnabled && isset($_GET['public']);
+    $payload = ($forcePublic || $isPublicView) ? $livePayloadPublic : $livePayloadPrivate;
+    echo json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '') === 'json') {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($chartPayloadPublic, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    exit;
+}
 ?>
 <!doctype html>
 <html lang="es">
@@ -2481,68 +3285,68 @@ $dashboardVersion = '0.7.15';
       })();
     </script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
       :root {
         color-scheme: light;
-        --bg: #f4f8ff;
-        --bg-accent-1: rgba(59, 130, 246, 0.12);
-        --bg-accent-2: rgba(14, 165, 233, 0.12);
-        --orb-primary: rgba(37, 99, 235, 0.25);
-        --orb-accent: rgba(14, 165, 233, 0.22);
+        --bg: #f7f3ee;
+        --bg-accent-1: rgba(14, 116, 144, 0.16);
+        --bg-accent-2: rgba(245, 158, 11, 0.16);
+        --orb-primary: rgba(14, 116, 144, 0.35);
+        --orb-accent: rgba(245, 158, 11, 0.25);
         --surface: #ffffff;
-        --surface-strong: #f1f5ff;
-        --surface-alt: #eef2ff;
-        --surface-soft: #f8faff;
-        --surface-muted: #eef3ff;
-        --surface-glass: rgba(255, 255, 255, 0.95);
-        --border: #d7e3f8;
-        --outline: #c3d4f2;
-        --text: #1e293b;
-        --muted: #64748b;
-        --primary: #2563eb;
-        --primary-soft: rgba(37, 99, 235, 0.16);
-        --accent: #0ea5e9;
-        --success: #2f9e44;
-        --danger: #c92a2a;
-        --warning: #f59f00;
-        --shadow: 0 22px 45px -28px rgba(30, 64, 175, 0.25);
-        --glow: 0 0 24px rgba(37, 99, 235, 0.25);
-        --hero-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(239, 246, 255, 0.95));
-        --hero-action-gradient: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(255, 255, 255, 0.9));
-        --hero-action-border: rgba(37, 99, 235, 0.2);
-        --stat-gradient: linear-gradient(140deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.9));
-        --stat-orb: rgba(37, 99, 235, 0.25);
+        --surface-strong: #f4efe8;
+        --surface-alt: #f8f1e9;
+        --surface-soft: #fffbf5;
+        --surface-muted: #f1e9df;
+        --surface-glass: rgba(255, 255, 255, 0.92);
+        --border: #e4dbcf;
+        --outline: #d5c7b6;
+        --text: #1f2933;
+        --muted: #6c6a64;
+        --primary: #0f766e;
+        --primary-soft: rgba(15, 118, 110, 0.18);
+        --accent: #f59e0b;
+        --success: #15803d;
+        --danger: #b91c1c;
+        --warning: #f59e0b;
+        --shadow: 0 28px 60px -42px rgba(15, 118, 110, 0.35);
+        --glow: 0 0 32px rgba(245, 158, 11, 0.22);
+        --hero-gradient: linear-gradient(140deg, rgba(255, 255, 255, 0.98), rgba(247, 243, 238, 0.92));
+        --hero-action-gradient: linear-gradient(135deg, rgba(15, 118, 110, 0.14), rgba(255, 255, 255, 0.92));
+        --hero-action-border: rgba(15, 118, 110, 0.25);
+        --stat-gradient: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(244, 239, 232, 0.9));
+        --stat-orb: rgba(15, 118, 110, 0.22);
       }
       :root[data-theme="dark"] {
         color-scheme: dark;
-        --bg: #0b1220;
-        --bg-accent-1: rgba(37, 99, 235, 0.2);
-        --bg-accent-2: rgba(14, 165, 233, 0.16);
-        --orb-primary: rgba(96, 165, 250, 0.35);
-        --orb-accent: rgba(56, 189, 248, 0.3);
-        --surface: #0f172a;
-        --surface-strong: #142038;
-        --surface-alt: #0b1324;
-        --surface-soft: #111c33;
-        --surface-muted: #16213a;
-        --surface-glass: rgba(10, 16, 30, 0.92);
-        --border: #223252;
-        --outline: #2b3c60;
+        --bg: #0d1117;
+        --bg-accent-1: rgba(20, 184, 166, 0.2);
+        --bg-accent-2: rgba(245, 158, 11, 0.2);
+        --orb-primary: rgba(45, 212, 191, 0.3);
+        --orb-accent: rgba(251, 191, 36, 0.28);
+        --surface: #111827;
+        --surface-strong: #162033;
+        --surface-alt: #0f172a;
+        --surface-soft: #111d34;
+        --surface-muted: #1a2438;
+        --surface-glass: rgba(15, 23, 42, 0.9);
+        --border: #22304a;
+        --outline: #2c3b57;
         --text: #e2e8f0;
         --muted: #94a3b8;
-        --primary: #60a5fa;
-        --primary-soft: rgba(96, 165, 250, 0.2);
-        --accent: #38bdf8;
-        --success: #51cf66;
-        --danger: #ff6b6b;
-        --warning: #ffd166;
-        --shadow: 0 22px 45px -28px rgba(2, 6, 23, 0.75);
-        --glow: 0 0 24px rgba(96, 165, 250, 0.35);
-        --hero-gradient: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(12, 20, 36, 0.96));
-        --hero-action-gradient: linear-gradient(135deg, rgba(96, 165, 250, 0.18), rgba(15, 23, 42, 0.85));
-        --hero-action-border: rgba(96, 165, 250, 0.35);
-        --stat-gradient: linear-gradient(140deg, rgba(15, 23, 42, 0.94), rgba(10, 16, 30, 0.96));
-        --stat-orb: rgba(96, 165, 250, 0.25);
+        --primary: #5eead4;
+        --primary-soft: rgba(94, 234, 212, 0.2);
+        --accent: #fbbf24;
+        --success: #4ade80;
+        --danger: #f87171;
+        --warning: #fbbf24;
+        --shadow: 0 30px 60px -40px rgba(2, 6, 23, 0.85);
+        --glow: 0 0 30px rgba(94, 234, 212, 0.3);
+        --hero-gradient: linear-gradient(145deg, rgba(17, 24, 39, 0.95), rgba(12, 18, 32, 0.98));
+        --hero-action-gradient: linear-gradient(135deg, rgba(94, 234, 212, 0.16), rgba(15, 23, 42, 0.86));
+        --hero-action-border: rgba(94, 234, 212, 0.32);
+        --stat-gradient: linear-gradient(145deg, rgba(17, 24, 39, 0.94), rgba(12, 18, 32, 0.98));
+        --stat-orb: rgba(94, 234, 212, 0.25);
       }
       :root[data-theme="light"] {
         color-scheme: light;
@@ -2550,47 +3354,157 @@ $dashboardVersion = '0.7.15';
       @media (prefers-color-scheme: dark) {
         :root:not([data-theme]) {
           color-scheme: dark;
-          --bg: #0b1220;
-          --bg-accent-1: rgba(37, 99, 235, 0.2);
-          --bg-accent-2: rgba(14, 165, 233, 0.16);
-          --orb-primary: rgba(96, 165, 250, 0.35);
-          --orb-accent: rgba(56, 189, 248, 0.3);
-          --surface: #0f172a;
-          --surface-strong: #142038;
-          --surface-alt: #0b1324;
-          --surface-soft: #111c33;
-          --surface-muted: #16213a;
-          --surface-glass: rgba(10, 16, 30, 0.92);
-          --border: #223252;
-          --outline: #2b3c60;
+          --bg: #0d1117;
+          --bg-accent-1: rgba(20, 184, 166, 0.2);
+          --bg-accent-2: rgba(245, 158, 11, 0.2);
+          --orb-primary: rgba(45, 212, 191, 0.3);
+          --orb-accent: rgba(251, 191, 36, 0.28);
+          --surface: #111827;
+          --surface-strong: #162033;
+          --surface-alt: #0f172a;
+          --surface-soft: #111d34;
+          --surface-muted: #1a2438;
+          --surface-glass: rgba(15, 23, 42, 0.9);
+          --border: #22304a;
+          --outline: #2c3b57;
           --text: #e2e8f0;
           --muted: #94a3b8;
-          --primary: #60a5fa;
-          --primary-soft: rgba(96, 165, 250, 0.2);
-          --accent: #38bdf8;
-          --success: #51cf66;
-          --danger: #ff6b6b;
-          --warning: #ffd166;
-          --shadow: 0 22px 45px -28px rgba(2, 6, 23, 0.75);
-          --glow: 0 0 24px rgba(96, 165, 250, 0.35);
-          --hero-gradient: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(12, 20, 36, 0.96));
-          --hero-action-gradient: linear-gradient(135deg, rgba(96, 165, 250, 0.18), rgba(15, 23, 42, 0.85));
-          --hero-action-border: rgba(96, 165, 250, 0.35);
-          --stat-gradient: linear-gradient(140deg, rgba(15, 23, 42, 0.94), rgba(10, 16, 30, 0.96));
-          --stat-orb: rgba(96, 165, 250, 0.25);
+          --primary: #5eead4;
+          --primary-soft: rgba(94, 234, 212, 0.2);
+          --accent: #fbbf24;
+          --success: #4ade80;
+          --danger: #f87171;
+          --warning: #fbbf24;
+          --shadow: 0 30px 60px -40px rgba(2, 6, 23, 0.85);
+          --glow: 0 0 30px rgba(94, 234, 212, 0.3);
+          --hero-gradient: linear-gradient(145deg, rgba(17, 24, 39, 0.95), rgba(12, 18, 32, 0.98));
+          --hero-action-gradient: linear-gradient(135deg, rgba(94, 234, 212, 0.16), rgba(15, 23, 42, 0.86));
+          --hero-action-border: rgba(94, 234, 212, 0.32);
+          --stat-gradient: linear-gradient(145deg, rgba(17, 24, 39, 0.94), rgba(12, 18, 32, 0.98));
+          --stat-orb: rgba(94, 234, 212, 0.25);
         }
       }
       * {
         box-sizing: border-box;
       }
+      :focus-visible {
+        outline: 2px solid var(--primary);
+        outline-offset: 3px;
+      }
+      .skip-link {
+        position: absolute;
+        left: 16px;
+        top: -48px;
+        padding: 10px 16px;
+        border-radius: 999px;
+        background: var(--primary);
+        color: #04110c;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 11px;
+        z-index: 999;
+        transition: top 0.2s ease;
+      }
+      .skip-link:focus {
+        top: 16px;
+      }
       body {
-        font-family: "Source Sans 3", "Segoe UI", sans-serif;
+        font-family: "Manrope", "Segoe UI", sans-serif;
         margin: 0;
-        background: radial-gradient(circle at top left, var(--bg-accent-1), transparent 50%),
-          radial-gradient(circle at 20% 30%, var(--bg-accent-2), transparent 55%),
+        background: radial-gradient(circle at top left, var(--bg-accent-1), transparent 55%),
+          radial-gradient(circle at 20% 30%, var(--bg-accent-2), transparent 60%),
+          linear-gradient(120deg, rgba(255, 255, 255, 0.4), transparent 55%),
           var(--bg);
         color: var(--text);
         min-height: 100vh;
+        overflow-x: hidden;
+      }
+      body[data-dashboard-access="public"] {
+        color-scheme: dark;
+        --bg: #0b0f14;
+        --bg-accent-1: rgba(34, 197, 94, 0.18);
+        --bg-accent-2: rgba(20, 184, 166, 0.16);
+        --orb-primary: rgba(34, 197, 94, 0.28);
+        --orb-accent: rgba(20, 184, 166, 0.25);
+        --surface: #0f141b;
+        --surface-strong: #0e1724;
+        --surface-alt: #0b1118;
+        --surface-soft: #111b27;
+        --surface-muted: #111a25;
+        --surface-glass: rgba(8, 12, 18, 0.92);
+        --border: #1c2838;
+        --outline: #223346;
+        --text: #d8f3e8;
+        --muted: #8aa0a4;
+        --primary: #20f2a5;
+        --primary-soft: rgba(32, 242, 165, 0.18);
+        --accent: #22c55e;
+        --shadow: 0 30px 70px -40px rgba(0, 0, 0, 0.75);
+        --glow: 0 0 40px rgba(32, 242, 165, 0.18);
+        --hero-gradient: linear-gradient(145deg, rgba(10, 15, 22, 0.96), rgba(11, 18, 28, 0.98));
+        --hero-action-gradient: linear-gradient(135deg, rgba(32, 242, 165, 0.12), rgba(10, 16, 24, 0.88));
+        --hero-action-border: rgba(32, 242, 165, 0.28);
+        --stat-gradient: linear-gradient(145deg, rgba(10, 15, 22, 0.96), rgba(11, 18, 28, 0.98));
+        --stat-orb: rgba(32, 242, 165, 0.18);
+      }
+      body[data-dashboard-access="public"] .top-bar {
+        position: sticky;
+        top: 12px;
+        z-index: 20;
+        border-radius: 999px;
+        padding: 14px 18px;
+        background: rgba(7, 12, 18, 0.92);
+        border: 1px solid rgba(32, 242, 165, 0.2);
+      }
+      body[data-dashboard-access="public"] .brand h1 {
+        font-size: 26px;
+        letter-spacing: 0.02em;
+      }
+      body[data-dashboard-access="public"] .badge,
+      body[data-dashboard-access="public"] .version-pill {
+        background: rgba(16, 185, 129, 0.18);
+        color: #b6f7dc;
+        border: 1px solid rgba(16, 185, 129, 0.35);
+      }
+      body[data-dashboard-access="public"] .sponsor-bar {
+        background: rgba(16, 185, 129, 0.12);
+        border-color: rgba(16, 185, 129, 0.3);
+      }
+      body[data-dashboard-access="public"] .table-wrap {
+        background: rgba(10, 16, 24, 0.6);
+      }
+      body[data-dashboard-access="public"] th {
+        background: rgba(16, 185, 129, 0.12);
+        color: #b6f7dc;
+      }
+      body[data-dashboard-access="public"] .public-hero {
+        border-color: rgba(32, 242, 165, 0.35);
+        box-shadow: 0 40px 90px -60px rgba(32, 242, 165, 0.6);
+      }
+      body[data-dashboard-access="public"] .public-hero::before {
+        background: radial-gradient(circle, rgba(32, 242, 165, 0.25), transparent 70%);
+      }
+      body[data-dashboard-access="public"] .public-hero::after {
+        background: radial-gradient(circle, rgba(14, 165, 233, 0.2), transparent 70%);
+      }
+      body[data-dashboard-access="public"] .public-access {
+        border-color: rgba(32, 242, 165, 0.35);
+        background: linear-gradient(140deg, rgba(6, 12, 18, 0.96), rgba(12, 20, 28, 0.92));
+      }
+      body[data-dashboard-access="public"] .button-primary {
+        background: var(--primary);
+        color: #03130d;
+        border-color: transparent;
+        box-shadow: 0 0 20px rgba(32, 242, 165, 0.35);
+      }
+      body[data-dashboard-access="public"] .button-secondary {
+        border-color: rgba(32, 242, 165, 0.35);
+        color: var(--text);
+      }
+      body[data-dashboard-access="public"] .button-ghost {
+        border-color: rgba(32, 242, 165, 0.25);
+        color: var(--text);
       }
       body::before,
       body::after {
@@ -2608,6 +3522,7 @@ $dashboardVersion = '0.7.15';
         height: 280px;
         border-radius: 50%;
         background: radial-gradient(circle, var(--orb-primary), transparent 70%);
+        animation: floatOrb 22s ease-in-out infinite;
       }
       body::after {
         bottom: -140px;
@@ -2616,13 +3531,24 @@ $dashboardVersion = '0.7.15';
         height: 320px;
         border-radius: 50%;
         background: radial-gradient(circle, var(--orb-accent), transparent 70%);
+        animation: floatOrb 26s ease-in-out infinite reverse;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
       }
       h1,
       h2,
       h3,
       summary {
-        font-family: "Space Grotesk", "Segoe UI", sans-serif;
-        letter-spacing: -0.01em;
+        font-family: "Sora", "Segoe UI", sans-serif;
+        letter-spacing: -0.02em;
       }
       a {
         color: var(--primary);
@@ -2631,14 +3557,29 @@ $dashboardVersion = '0.7.15';
       a:hover {
         text-decoration: underline;
       }
+      code {
+        font-family: "JetBrains Mono", "Consolas", monospace;
+        font-size: 12px;
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 2px 6px;
+        color: var(--text);
+      }
       .page {
-        max-width: none;
+        max-width: min(1680px, 96vw);
         width: 100%;
-        margin: 0;
-        padding: 28px 32px 60px;
+        margin: 0 auto;
+        padding: clamp(20px, 3vw, 40px) clamp(18px, 3vw, 48px) 80px;
         min-height: 100vh;
-        max-height: 100vh;
-        overflow: auto;
+      }
+      .main-content {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      section {
+        scroll-margin-top: 120px;
       }
       .top-bar {
         display: flex;
@@ -2646,12 +3587,251 @@ $dashboardVersion = '0.7.15';
         align-items: flex-start;
         justify-content: space-between;
         gap: 16px;
-        padding: 18px 20px;
-        border-radius: 22px;
+        padding: 20px 24px;
+        border-radius: 26px;
         background: var(--surface-glass);
+        border: 1px solid var(--outline);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(14px);
+        margin-bottom: 20px;
+      }
+      .section-nav {
+        position: sticky;
+        top: 16px;
+        z-index: 15;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 12px 16px;
+        border-radius: 18px;
+        background: var(--surface-glass);
+        border: 1px solid var(--outline);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(14px);
+        margin-bottom: 24px;
+      }
+      @media (min-width: 1200px) {
+        .section-nav,
+        .top-bar {
+          padding-left: 24px;
+          padding-right: 24px;
+        }
+      }
+      .public-nav {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 8px;
+        border-radius: 999px;
+        background: var(--surface-soft);
         border: 1px solid var(--border);
         box-shadow: var(--shadow);
-        margin-bottom: 20px;
+      }
+      .public-nav a {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        color: var(--text);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-weight: 600;
+      }
+      .public-nav a:hover {
+        text-decoration: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 1px var(--primary-soft);
+      }
+      .public-nav a.is-active {
+        border-color: var(--primary);
+        background: var(--surface-muted);
+        box-shadow: 0 0 0 1px var(--primary-soft);
+      }
+      .public-nav a.nav-cta {
+        background: var(--primary);
+        color: #03130d;
+        border-color: transparent;
+        box-shadow: 0 0 18px rgba(32, 242, 165, 0.35);
+      }
+      .sponsor-bar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: rgba(14, 116, 144, 0.18);
+        border: 1px solid rgba(14, 116, 144, 0.35);
+        color: var(--text);
+        font-size: 12px;
+        margin: 10px 0 18px;
+      }
+      .sponsor-bar .badge {
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: var(--primary-soft);
+        border: 1px solid var(--border);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+      }
+      .section-nav a {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--surface-soft);
+        color: var(--text);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      .section-nav a:hover {
+        text-decoration: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 1px var(--primary-soft);
+      }
+      .public-totals {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+      .search-section .search-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        margin: 10px 0 16px;
+      }
+      .search-section .search-bar input {
+        flex: 1;
+        min-width: 220px;
+      }
+      .search-filters {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 12px;
+        background: var(--surface-soft);
+        margin-bottom: 12px;
+      }
+      .search-filters summary {
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .search-filters .filter-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        margin-top: 12px;
+      }
+      .search-filters label {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .scan-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+      }
+      .scan-card {
+        border: 1px solid var(--outline);
+        border-radius: 16px;
+        padding: 14px;
+        background: var(--surface-soft);
+      }
+      .scan-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+      .scan-placeholder {
+        height: 180px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--surface-muted), var(--surface));
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .data-summary .stat-card {
+        min-height: 110px;
+      }
+      .data-table-stack {
+        display: grid;
+        gap: 16px;
+      }
+      .data-table-card {
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 16px;
+        background: var(--surface-soft);
+      }
+      .data-table-card > summary {
+        list-style: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        cursor: pointer;
+      }
+      .data-table-card > summary::-webkit-details-marker {
+        display: none;
+      }
+      .data-table-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .cell-code {
+        display: inline-block;
+        max-width: 360px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: top;
+      }
+      .cell-expand summary {
+        cursor: pointer;
+        list-style: none;
+      }
+      .cell-expand summary::-webkit-details-marker {
+        display: none;
+      }
+      .cell-expand pre {
+        margin: 8px 0 0;
+        padding: 10px;
+        border-radius: 10px;
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 12px;
+      }
+      .new-domains .table-wrap {
+        max-height: 260px;
+      }
+      .new-domains code {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .about-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+        margin-top: 16px;
       }
       .meta-row {
         display: flex;
@@ -2672,11 +3852,11 @@ $dashboardVersion = '0.7.15';
       }
       .brand h1 {
         margin: 0;
-        font-size: 30px;
+        font-size: 32px;
       }
       .muted {
         color: var(--muted);
-        font-size: 14px;
+        font-size: 13px;
       }
       .status-pill {
         display: inline-flex;
@@ -2746,12 +3926,14 @@ $dashboardVersion = '0.7.15';
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       }
       .card {
-        background: var(--surface);
+        background: linear-gradient(160deg, var(--surface), var(--surface-soft));
         border: 1px solid var(--border);
-        border-radius: 20px;
-        padding: 18px;
+        border-radius: 24px;
+        padding: 20px;
         box-shadow: var(--shadow);
         max-width: 100%;
+        position: relative;
+        overflow: hidden;
         animation: fadeUp 0.6s ease both;
       }
       .card:nth-child(2n) {
@@ -2861,14 +4043,30 @@ $dashboardVersion = '0.7.15';
         grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
         align-items: stretch;
         background: var(--hero-gradient);
+        border: 1px solid var(--outline);
+      }
+      .hero-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--hero-action-border);
+        background: var(--surface-muted);
+        color: var(--primary);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        width: fit-content;
       }
       .hero-summary h2 {
         margin: 0 0 6px;
-        font-size: 24px;
+        font-size: 28px;
       }
       .hero-summary p {
         margin: 0;
         color: var(--muted);
+        font-size: 15px;
       }
       .hero-metrics {
         display: grid;
@@ -2897,12 +4095,62 @@ $dashboardVersion = '0.7.15';
         display: grid;
         gap: 12px;
       }
+      .hero-cta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 16px;
+      }
       .hero-action {
         padding: 14px;
         border-radius: 14px;
         background: var(--hero-action-gradient);
         border: 1px solid var(--hero-action-border);
         box-shadow: var(--glow);
+      }
+      .public-hero {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(245, 158, 11, 0.35);
+        box-shadow: 0 40px 90px -60px rgba(245, 158, 11, 0.7);
+        padding: 26px;
+      }
+      .public-hero::before {
+        content: "";
+        position: absolute;
+        inset: -40% -10% auto auto;
+        width: 320px;
+        height: 320px;
+        background: radial-gradient(circle, rgba(245, 158, 11, 0.25), transparent 70%);
+        opacity: 0.8;
+      }
+      .public-hero::after {
+        content: "";
+        position: absolute;
+        inset: auto auto -50% -10%;
+        width: 360px;
+        height: 360px;
+        background: radial-gradient(circle, rgba(15, 118, 110, 0.2), transparent 70%);
+        opacity: 0.7;
+      }
+      .public-hero .hero-actions {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      }
+      .public-hero .hero-action {
+        backdrop-filter: blur(14px);
+      }
+      .public-analytics {
+        border: 1px solid var(--outline);
+        background: linear-gradient(180deg, var(--surface), var(--surface-muted));
+        box-shadow: 0 30px 60px -50px rgba(15, 118, 110, 0.35);
+      }
+      .public-access {
+        border: 1px dashed rgba(245, 158, 11, 0.45);
+        background: linear-gradient(140deg, rgba(255, 255, 255, 0.96), rgba(248, 242, 232, 0.92));
+        box-shadow: 0 26px 60px -50px rgba(245, 158, 11, 0.5);
+      }
+      .public-access .form-actions {
+        justify-content: flex-start;
       }
       .stat-card {
         display: flex;
@@ -2952,6 +4200,24 @@ $dashboardVersion = '0.7.15';
         justify-content: space-between;
         gap: 12px;
         margin-bottom: 12px;
+        position: relative;
+        padding-left: 12px;
+      }
+      .section-title::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 6px;
+        width: 6px;
+        height: 24px;
+        border-radius: 999px;
+        background: var(--accent);
+        box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+      }
+      .section-title h2,
+      .section-title h3 {
+        margin: 0;
+        font-size: 20px;
       }
       .chart-grid {
         display: grid;
@@ -2959,16 +4225,19 @@ $dashboardVersion = '0.7.15';
         gap: 16px;
       }
       .chart-card {
-        background: var(--surface-soft);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 12px;
-        max-height: 170pt;
+        background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+        border: 1px solid var(--outline);
+        border-radius: 18px;
+        padding: 14px;
+        max-height: 180pt;
+        box-shadow: 0 18px 36px -28px rgba(15, 23, 42, 0.25);
       }
       .chart-card h3 {
         margin: 0 0 10px;
-        font-size: 15px;
-        color: var(--text);
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
       }
       .table-wrap {
         width: 100%;
@@ -2977,6 +4246,17 @@ $dashboardVersion = '0.7.15';
         border-radius: 14px;
         border: 1px solid var(--border);
         background: var(--surface-soft);
+      }
+      @media (min-width: 1200px) {
+        .grid {
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
+        .chart-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .table-wrap {
+          max-height: 380px;
+        }
       }
       table {
         width: 100%;
@@ -2996,6 +4276,10 @@ $dashboardVersion = '0.7.15';
         text-transform: uppercase;
         letter-spacing: 0.06em;
         font-size: 11px;
+      }
+      tbody tr:hover,
+      tbody tr:focus-within {
+        background: var(--surface-alt);
       }
       .badge {
         display: inline-flex;
@@ -3157,6 +4441,7 @@ $dashboardVersion = '0.7.15';
         background: var(--surface-soft);
         color: var(--text);
         font-family: inherit;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
       }
       .form-grid input,
       .form-grid textarea,
@@ -3168,6 +4453,25 @@ $dashboardVersion = '0.7.15';
         background: var(--surface-soft);
         color: var(--text);
         font-family: inherit;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      }
+      .form-grid input::placeholder,
+      .form-grid textarea::placeholder {
+        color: var(--muted);
+      }
+      .form-grid input:focus,
+      .form-grid textarea:focus,
+      .form-grid select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-soft);
+        background: var(--surface);
+      }
+      .form-grid input:disabled,
+      .form-grid textarea:disabled,
+      .form-grid select:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
       }
       .form-grid textarea {
         min-height: 90px;
@@ -3208,6 +4512,15 @@ $dashboardVersion = '0.7.15';
         border-radius: 12px;
         padding: 8px 12px;
         font-weight: 600;
+      }
+      button:disabled,
+      .button-primary:disabled,
+      .button-secondary:disabled,
+      .button-ghost:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
       }
       .alert-box {
         padding: 10px 12px;
@@ -3290,35 +4603,37 @@ $dashboardVersion = '0.7.15';
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
-        padding: 12px;
-        border-radius: 20px;
-        background: var(--surface-glass);
-        border: 1px solid var(--border);
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: linear-gradient(120deg, var(--surface-glass), var(--surface-soft));
+        border: 1px solid var(--outline);
         box-shadow: var(--shadow);
       }
       .workspace-tab {
         appearance: none;
-        border: 1px solid var(--border);
-        background: var(--surface-soft);
-        padding: 10px 16px;
+        border: 1px solid transparent;
+        background: transparent;
+        padding: 10px 18px;
         border-radius: 999px;
         font-size: 12px;
         font-weight: 700;
         cursor: pointer;
-        color: var(--text);
+        color: var(--muted);
         text-transform: uppercase;
         letter-spacing: 0.08em;
         transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
       }
       .workspace-tab:hover {
-        border-color: rgba(37, 99, 235, 0.45);
-        box-shadow: 0 10px 20px -18px rgba(37, 99, 235, 0.45);
+        border-color: var(--primary);
+        box-shadow: 0 12px 24px -20px rgba(15, 118, 110, 0.45);
         transform: translateY(-1px);
+        color: var(--primary);
       }
       .workspace-tab.is-active {
-        background: var(--primary-soft);
-        border-color: rgba(37, 99, 235, 0.55);
-        color: var(--primary);
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+        box-shadow: var(--glow);
       }
       .workspace-section + .workspace-section {
         margin-top: 28px;
@@ -3379,14 +4694,25 @@ $dashboardVersion = '0.7.15';
       .access-hero {
         display: grid;
         gap: 18px;
-        grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
       }
       .access-message {
         padding: 22px;
         border-radius: 24px;
-        background: var(--hero-gradient);
+        background: linear-gradient(140deg, rgba(255, 255, 255, 0.95), rgba(243, 238, 230, 0.92));
         border: 1px solid var(--border);
-        box-shadow: var(--shadow);
+        box-shadow: 0 30px 60px -45px rgba(15, 118, 110, 0.35);
+        position: relative;
+        overflow: hidden;
+      }
+      .access-message::after {
+        content: "";
+        position: absolute;
+        inset: -40% -20% auto auto;
+        width: 220px;
+        height: 220px;
+        background: radial-gradient(circle, rgba(15, 118, 110, 0.2), transparent 70%);
+        opacity: 0.8;
       }
       .access-kicker {
         display: inline-flex;
@@ -3403,10 +4729,10 @@ $dashboardVersion = '0.7.15';
       }
       .access-note {
         margin-top: 14px;
-        padding: 10px 12px;
-        border-radius: 12px;
-        background: rgba(37, 99, 235, 0.1);
-        border: 1px solid rgba(37, 99, 235, 0.2);
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(245, 158, 11, 0.12);
+        border: 1px solid rgba(245, 158, 11, 0.25);
       }
       .access-grid {
         display: grid;
@@ -3414,6 +4740,30 @@ $dashboardVersion = '0.7.15';
       }
       .access-card {
         background: var(--surface-soft);
+        border: 1px solid var(--outline);
+        box-shadow: var(--shadow);
+      }
+      .access-card .section-title h3 {
+        font-size: 18px;
+      }
+      #access-section details,
+      .access-card details {
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 12px;
+        background: var(--surface-soft);
+      }
+      #access-section details + details,
+      .access-card details + details {
+        margin-top: 12px;
+      }
+      #access-section summary.section-title,
+      .access-card summary.section-title {
+        cursor: pointer;
+      }
+      #access-section details[open],
+      .access-card details[open] {
+        box-shadow: var(--shadow);
       }
       @keyframes fadeUp {
         from {
@@ -3423,6 +4773,15 @@ $dashboardVersion = '0.7.15';
         to {
           opacity: 1;
           transform: translateY(0);
+        }
+      }
+      @keyframes floatOrb {
+        0%,
+        100% {
+          transform: translate(0, 0) scale(1);
+        }
+        50% {
+          transform: translate(18px, -14px) scale(1.05);
         }
       }
       @media (max-width: 980px) {
@@ -3467,7 +4826,8 @@ $dashboardVersion = '0.7.15';
       }
     </style>
   </head>
-  <body>
+  <body data-dashboard-access="<?= $isPublicView ? 'public' : 'private'; ?>">
+    <a class="skip-link" href="#main-content"><?= htmlspecialchars(t($translations, $currentLanguage, 'skip_to_content'), ENT_QUOTES, 'UTF-8'); ?></a>
     <div class="page">
       <div class="toast-container" aria-live="polite" aria-atomic="true"></div>
       <div class="top-bar" data-live-section="top-bar">
@@ -3480,14 +4840,32 @@ $dashboardVersion = '0.7.15';
             </span>
           </div>
           <div class="muted">
-            <?php if ($canViewDashboard): ?>
+            <?php if ($canViewDashboard || $isPublicView): ?>
               <?= htmlspecialchars(t($translations, $currentLanguage, 'last_update'), ENT_QUOTES, 'UTF-8'); ?>:
-              <?= htmlspecialchars((string) ($stats['last_update'] ?? 'N/D'), ENT_QUOTES, 'UTF-8'); ?>
+              <span data-live-metric="last_update">
+                <?= htmlspecialchars((string) ($stats['last_update'] ?? 'N/D'), ENT_QUOTES, 'UTF-8'); ?>
+              </span>
             <?php else: ?>
               <?= htmlspecialchars(t($translations, $currentLanguage, 'access_restricted_note'), ENT_QUOTES, 'UTF-8'); ?>
             <?php endif; ?>
           </div>
         </div>
+        <?php if ($isPublicView): ?>
+          <nav class="public-nav" aria-label="Primary">
+            <a href="home.php" class="<?= $publicPage === 'home' ? 'is-active' : ''; ?>">
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'nav_home'), ENT_QUOTES, 'UTF-8'); ?>
+            </a>
+            <a href="search.php" class="<?= $publicPage === 'search' ? 'is-active' : ''; ?>">
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'nav_search'), ENT_QUOTES, 'UTF-8'); ?>
+            </a>
+            <a href="about.php" class="<?= $publicPage === 'about' ? 'is-active' : ''; ?>">
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'nav_about'), ENT_QUOTES, 'UTF-8'); ?>
+            </a>
+            <a class="nav-cta <?= $publicPage === 'access' ? 'is-active' : ''; ?>" href="access.php">
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'nav_access'), ENT_QUOTES, 'UTF-8'); ?>
+            </a>
+          </nav>
+        <?php endif; ?>
         <div class="meta-row">
           <?php if ($isAdmin): ?>
             <?php
@@ -3507,7 +4885,9 @@ $dashboardVersion = '0.7.15';
               <?= htmlspecialchars($statusLabel, ENT_QUOTES, 'UTF-8'); ?>
             </span>
           <?php endif; ?>
-          <?php if ($currentUser): ?>
+          <?php if ($isPublicView): ?>
+            <span class="badge"><?= htmlspecialchars(t($translations, $currentLanguage, 'public_view'), ENT_QUOTES, 'UTF-8'); ?></span>
+          <?php elseif ($currentUser): ?>
             <span class="badge">
               <?= htmlspecialchars(t($translations, $currentLanguage, 'session_active'), ENT_QUOTES, 'UTF-8'); ?>:
               <?= htmlspecialchars((string) $currentUser['username'], ENT_QUOTES, 'UTF-8'); ?>
@@ -3545,6 +4925,30 @@ $dashboardVersion = '0.7.15';
         </div>
       </div>
 
+      <?php if ($isPublicView): ?>
+        <div class="sponsor-bar" data-live-section="sponsor-bar">
+          <span class="badge"><?= htmlspecialchars(t($translations, $currentLanguage, 'sponsor_label'), ENT_QUOTES, 'UTF-8'); ?></span>
+          <span><?= htmlspecialchars(t($translations, $currentLanguage, 'sponsor_text'), ENT_QUOTES, 'UTF-8'); ?></span>
+        </div>
+      <?php endif; ?>
+
+      <?php if (!$isPublicView): ?>
+      <nav class="section-nav" aria-label="Sections">
+        <a href="<?= $isAdmin ? '#overview' : '#alert-analytics-section'; ?>"><?= htmlspecialchars(t($translations, $currentLanguage, 'nav_overview'), ENT_QUOTES, 'UTF-8'); ?></a>
+        <?php if ($isAdmin): ?>
+          <a href="#stats-overview"><?= htmlspecialchars(t($translations, $currentLanguage, 'nav_metrics'), ENT_QUOTES, 'UTF-8'); ?></a>
+        <?php endif; ?>
+        <a href="#alert-analytics-section"><?= htmlspecialchars(t($translations, $currentLanguage, 'nav_analytics'), ENT_QUOTES, 'UTF-8'); ?></a>
+        <a href="#public-lists-section"><?= htmlspecialchars(t($translations, $currentLanguage, 'nav_lists'), ENT_QUOTES, 'UTF-8'); ?></a>
+        <a href="#intel-section"><?= htmlspecialchars(t($translations, $currentLanguage, 'nav_intel'), ENT_QUOTES, 'UTF-8'); ?></a>
+        <a href="#access-section"><?= htmlspecialchars(t($translations, $currentLanguage, 'nav_access'), ENT_QUOTES, 'UTF-8'); ?></a>
+        <?php if ($isAdmin): ?>
+          <a href="#logs-section"><?= htmlspecialchars(t($translations, $currentLanguage, 'nav_logs'), ENT_QUOTES, 'UTF-8'); ?></a>
+        <?php endif; ?>
+      </nav>
+      <?php endif; ?>
+
+      <main id="main-content" class="main-content">
       <?php foreach ($flashErrors as $error): ?>
         <div class="alert-box error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
       <?php endforeach; ?>
@@ -3552,9 +4956,346 @@ $dashboardVersion = '0.7.15';
         <div class="alert-box notice"><?= htmlspecialchars($notice, ENT_QUOTES, 'UTF-8'); ?></div>
       <?php endforeach; ?>
 
+      <?php if ($isPublicView): ?>
+      <?php if ($showPublicHome): ?>
+      <section class="card hero public-hero" id="public-hero" data-live-section="public-hero">
+        <div class="hero-summary">
+          <span class="hero-kicker"><?= htmlspecialchars(t($translations, $currentLanguage, 'public_hero_kicker'), ENT_QUOTES, 'UTF-8'); ?></span>
+          <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'public_hero_title'), ENT_QUOTES, 'UTF-8'); ?></h2>
+          <p><?= htmlspecialchars(t($translations, $currentLanguage, 'public_hero_subtitle'), ENT_QUOTES, 'UTF-8'); ?></p>
+          <div class="chip-list" style="margin-top: 12px;">
+            <span class="chip">
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'total_alerts'), ENT_QUOTES, 'UTF-8'); ?>:
+              <strong data-live-metric="total_alerts"><?= (int) $stats['total_alerts']; ?></strong>
+            </span>
+            <span class="chip">
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'total_blocks'), ENT_QUOTES, 'UTF-8'); ?>:
+              <strong data-live-metric="total_blocks"><?= (int) $stats['total_blocks']; ?></strong>
+            </span>
+            <span class="chip">
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'unique_users'), ENT_QUOTES, 'UTF-8'); ?>:
+              <strong data-live-metric="unique_users"><?= (int) $stats['unique_users']; ?></strong>
+            </span>
+            <span class="chip">
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'unique_hosts'), ENT_QUOTES, 'UTF-8'); ?>:
+              <strong data-live-metric="unique_hosts"><?= (int) $stats['unique_hosts']; ?></strong>
+            </span>
+          </div>
+          <div class="hero-cta">
+            <a class="button-primary" href="#search">
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'search_button'), ENT_QUOTES, 'UTF-8'); ?>
+            </a>
+            <a class="button-ghost" href="#about">
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'nav_about'), ENT_QUOTES, 'UTF-8'); ?>
+            </a>
+          </div>
+        </div>
+        <div class="hero-actions">
+          <div class="hero-action">
+            <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'block_rate'), ENT_QUOTES, 'UTF-8'); ?></div>
+            <div class="stat-value" data-live-metric="block_rate" data-live-format="percent"><?= number_format($blockRate, 1); ?>%</div>
+            <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'block_rate_help'), ENT_QUOTES, 'UTF-8'); ?></div>
+          </div>
+          <div class="hero-action">
+            <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'coverage'), ENT_QUOTES, 'UTF-8'); ?></div>
+            <div class="stat-value" data-live-metric="countries_count"><?= (int) count($stats['countries']); ?></div>
+            <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'countries_label'), ENT_QUOTES, 'UTF-8'); ?></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid public-totals" id="public-totals" data-live-section="public-totals">
+        <div class="stat-card">
+          <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'total_domains'), ENT_QUOTES, 'UTF-8'); ?></span>
+          <div class="stat-value" data-live-metric="total_domains"><?= (int) $publicTotalDomains; ?></div>
+          <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'unique_hosts'), ENT_QUOTES, 'UTF-8'); ?></span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'last_30_days'), ENT_QUOTES, 'UTF-8'); ?></span>
+          <div class="stat-value" data-live-metric="last_30_days"><?= (int) $publicLast30Days; ?></div>
+          <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'public_analytics_subtitle'), ENT_QUOTES, 'UTF-8'); ?></span>
+        </div>
+      </section>
+
+      <section class="card public-metrics" id="public-metrics" data-live-section="public-metrics">
+        <div class="section-title">
+          <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'nav_metrics'), ENT_QUOTES, 'UTF-8'); ?></h2>
+          <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'last_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
+        </div>
+        <div class="grid">
+          <div class="stat-card">
+            <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'alerts_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
+            <div class="stat-value" data-live-metric="alerts_24h"><?= (int) $stats['alerts_24h']; ?></div>
+            <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'last_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'blocks_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
+            <div class="stat-value" data-live-metric="blocks_24h"><?= (int) $stats['blocks_24h']; ?></div>
+            <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'last_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'unique_users'), ENT_QUOTES, 'UTF-8'); ?></span>
+            <div class="stat-value" data-live-metric="unique_users"><?= (int) $stats['unique_users']; ?></div>
+            <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'unique_users_help'), ENT_QUOTES, 'UTF-8'); ?></span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'unique_hosts'), ENT_QUOTES, 'UTF-8'); ?></span>
+            <div class="stat-value" data-live-metric="unique_hosts"><?= (int) $stats['unique_hosts']; ?></div>
+            <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'unique_hosts_help'), ENT_QUOTES, 'UTF-8'); ?></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card new-domains" id="new-domains" data-live-section="public-domains">
+        <div class="section-title">
+          <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'new_domains_title'), ENT_QUOTES, 'UTF-8'); ?></h2>
+          <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'new_domains_subtitle'), ENT_QUOTES, 'UTF-8'); ?></span>
+        </div>
+        <div class="table-wrap" data-filter-mode="manual">
+          <table data-domains-table data-domains-limit="8"
+                 data-view-label="<?= htmlspecialchars(t($translations, $currentLanguage, 'search_action_view'), ENT_QUOTES, 'UTF-8'); ?>"
+                 data-no-results="<?= htmlspecialchars(t($translations, $currentLanguage, 'no_detections'), ENT_QUOTES, 'UTF-8'); ?>">
+            <thead>
+              <tr>
+                <th><?= htmlspecialchars(t($translations, $currentLanguage, 'search_col_action'), ENT_QUOTES, 'UTF-8'); ?></th>
+                <th><?= htmlspecialchars(t($translations, $currentLanguage, 'search_col_domain'), ENT_QUOTES, 'UTF-8'); ?></th>
+                <th><?= htmlspecialchars(t($translations, $currentLanguage, 'search_col_date'), ENT_QUOTES, 'UTF-8'); ?></th>
+                <th><?= htmlspecialchars(t($translations, $currentLanguage, 'search_col_command'), ENT_QUOTES, 'UTF-8'); ?></th>
+              </tr>
+            </thead>
+            <tbody data-domains-body>
+              <?php if (empty($recentDomainsHome)): ?>
+                <tr>
+                  <td colspan="4" class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_detections'), ENT_QUOTES, 'UTF-8'); ?></td>
+                </tr>
+              <?php else: ?>
+                <?php foreach ($recentDomainsHome as $row): ?>
+                  <?php
+                    $viewUrl = trim((string) ($row['url'] ?? ''));
+                    if ($viewUrl === '' && $row['domain'] !== '') {
+                        $viewUrl = 'https://' . $row['domain'];
+                    }
+                  ?>
+                  <tr>
+                    <td>
+                      <?php if ($viewUrl !== ''): ?>
+                        <a class="button-ghost" href="<?= htmlspecialchars($viewUrl, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener">
+                          <?= htmlspecialchars(t($translations, $currentLanguage, 'search_action_view'), ENT_QUOTES, 'UTF-8'); ?>
+                        </a>
+                      <?php endif; ?>
+                    </td>
+                    <td><?= htmlspecialchars((string) $row['domain'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?= htmlspecialchars((string) $row['date'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><code><?= htmlspecialchars((string) $row['command'], ENT_QUOTES, 'UTF-8'); ?></code></td>
+                  </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card public-analytics" id="public-analytics" data-live-section="public-analytics">
+        <div class="section-title">
+          <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'public_analytics_title'), ENT_QUOTES, 'UTF-8'); ?></h2>
+          <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'public_analytics_subtitle'), ENT_QUOTES, 'UTF-8'); ?></span>
+        </div>
+        <div class="chart-grid">
+          <div class="chart-card">
+            <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'alerts_by_day'), ENT_QUOTES, 'UTF-8'); ?></h3>
+            <canvas id="chart-alerts-day" height="140"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'blocks_by_day'), ENT_QUOTES, 'UTF-8'); ?></h3>
+            <canvas id="chart-blocks-day" height="140"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'block_rate_trend'), ENT_QUOTES, 'UTF-8'); ?></h3>
+            <canvas id="chart-block-rate" height="140"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'alerts_by_hour'), ENT_QUOTES, 'UTF-8'); ?></h3>
+            <canvas id="chart-alerts-hour" height="140"></canvas>
+          </div>
+              <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'blocks_by_hour'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-blocks-hour" height="140"></canvas>
+              </div>
+          <div class="chart-card">
+            <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'country_distribution'), ENT_QUOTES, 'UTF-8'); ?></h3>
+            <canvas id="chart-alerts-country" height="140"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'signal_types'), ENT_QUOTES, 'UTF-8'); ?></h3>
+            <canvas id="chart-alerts-signals" height="140"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'os_breakdown'), ENT_QUOTES, 'UTF-8'); ?></h3>
+            <canvas id="chart-os" height="140"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'browser_breakdown'), ENT_QUOTES, 'UTF-8'); ?></h3>
+            <canvas id="chart-browsers" height="140"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'install_channel_chart'), ENT_QUOTES, 'UTF-8'); ?></h3>
+            <canvas id="chart-install-channels" height="140"></canvas>
+          </div>
+        </div>
+      </section>
+      <?php endif; ?>
+
+      <?php if ($showPublicSearch): ?>
+      <section class="card search-section" id="search" data-live-section="public-search" data-search-panel="true">
+        <div class="section-title">
+          <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'search_title'), ENT_QUOTES, 'UTF-8'); ?></h2>
+          <div class="meta-row">
+            <button class="button-secondary" type="button" data-search-export>
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'search_export'), ENT_QUOTES, 'UTF-8'); ?>
+            </button>
+          </div>
+        </div>
+        <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'search_subtitle'), ENT_QUOTES, 'UTF-8'); ?></div>
+        <div class="search-bar">
+          <input type="search" data-search-input placeholder="<?= htmlspecialchars(t($translations, $currentLanguage, 'search_placeholder'), ENT_QUOTES, 'UTF-8'); ?>" />
+          <button class="button-primary" type="button" data-search-button>
+            <?= htmlspecialchars(t($translations, $currentLanguage, 'search_button'), ENT_QUOTES, 'UTF-8'); ?>
+          </button>
+        </div>
+        <details class="search-filters" open>
+          <summary><?= htmlspecialchars(t($translations, $currentLanguage, 'search_advanced'), ENT_QUOTES, 'UTF-8'); ?></summary>
+          <div class="filter-grid">
+            <label>
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'search_filter_label'), ENT_QUOTES, 'UTF-8'); ?>
+              <select data-search-field>
+                <option value="any"><?= htmlspecialchars(t($translations, $currentLanguage, 'search_filter_any'), ENT_QUOTES, 'UTF-8'); ?></option>
+                <option value="domain"><?= htmlspecialchars(t($translations, $currentLanguage, 'search_filter_domain'), ENT_QUOTES, 'UTF-8'); ?></option>
+                <option value="command"><?= htmlspecialchars(t($translations, $currentLanguage, 'search_filter_command'), ENT_QUOTES, 'UTF-8'); ?></option>
+              </select>
+            </label>
+            <button class="button-ghost" type="button" data-search-clear>
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'search_clear'), ENT_QUOTES, 'UTF-8'); ?>
+            </button>
+          </div>
+        </details>
+        <div class="table-wrap" data-filter-mode="manual">
+          <table data-search-table data-domains-table data-filter="manual"
+                 data-view-label="<?= htmlspecialchars(t($translations, $currentLanguage, 'search_action_view'), ENT_QUOTES, 'UTF-8'); ?>"
+                 data-no-results="<?= htmlspecialchars(t($translations, $currentLanguage, 'no_detections'), ENT_QUOTES, 'UTF-8'); ?>">
+            <thead>
+              <tr>
+                <th><?= htmlspecialchars(t($translations, $currentLanguage, 'search_col_action'), ENT_QUOTES, 'UTF-8'); ?></th>
+                <th><?= htmlspecialchars(t($translations, $currentLanguage, 'search_col_domain'), ENT_QUOTES, 'UTF-8'); ?></th>
+                <th><?= htmlspecialchars(t($translations, $currentLanguage, 'search_col_date'), ENT_QUOTES, 'UTF-8'); ?></th>
+                <th><?= htmlspecialchars(t($translations, $currentLanguage, 'search_col_command'), ENT_QUOTES, 'UTF-8'); ?></th>
+              </tr>
+            </thead>
+            <tbody data-search-body data-domains-body>
+              <?php if (empty($recentDomains)): ?>
+                <tr>
+                  <td colspan="4" class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_detections'), ENT_QUOTES, 'UTF-8'); ?></td>
+                </tr>
+              <?php else: ?>
+                <?php foreach ($recentDomains as $row): ?>
+                  <?php
+                    $viewUrl = trim((string) ($row['url'] ?? ''));
+                    if ($viewUrl === '' && $row['domain'] !== '') {
+                        $viewUrl = 'https://' . $row['domain'];
+                    }
+                  ?>
+                  <tr data-search-row>
+                    <td>
+                      <?php if ($viewUrl !== ''): ?>
+                        <a class="button-ghost" href="<?= htmlspecialchars($viewUrl, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener">
+                          <?= htmlspecialchars(t($translations, $currentLanguage, 'search_action_view'), ENT_QUOTES, 'UTF-8'); ?>
+                        </a>
+                      <?php endif; ?>
+                    </td>
+                    <td><?= htmlspecialchars((string) $row['domain'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?= htmlspecialchars((string) $row['date'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><code><?= htmlspecialchars((string) $row['command'], ENT_QUOTES, 'UTF-8'); ?></code></td>
+                  </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card scan-section" id="recent-scan" data-live-section="public-scan">
+        <div class="section-title">
+          <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'recent_scan_title'), ENT_QUOTES, 'UTF-8'); ?></h2>
+          <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'recent_scan_subtitle'), ENT_QUOTES, 'UTF-8'); ?></span>
+        </div>
+        <div class="scan-grid">
+          <div class="scan-card">
+            <div class="scan-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'before_label'), ENT_QUOTES, 'UTF-8'); ?></div>
+            <div class="scan-placeholder"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_snapshots'), ENT_QUOTES, 'UTF-8'); ?></div>
+          </div>
+          <div class="scan-card">
+            <div class="scan-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'after_label'), ENT_QUOTES, 'UTF-8'); ?></div>
+            <div class="scan-placeholder"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_snapshots'), ENT_QUOTES, 'UTF-8'); ?></div>
+          </div>
+        </div>
+      </section>
+      <?php endif; ?>
+
+      <?php if ($showPublicAbout): ?>
+      <section class="card about-section" id="about" data-live-section="public-about">
+        <div class="section-title">
+          <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'about_title'), ENT_QUOTES, 'UTF-8'); ?></h2>
+        </div>
+        <p class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'about_body'), ENT_QUOTES, 'UTF-8'); ?></p>
+        <div class="about-grid">
+          <div class="card" style="padding: 16px;">
+            <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'about_collection_title'), ENT_QUOTES, 'UTF-8'); ?></h3>
+            <p class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'about_collection_body'), ENT_QUOTES, 'UTF-8'); ?></p>
+          </div>
+          <div class="card" style="padding: 16px;">
+            <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'about_public_title'), ENT_QUOTES, 'UTF-8'); ?></h3>
+            <p class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'about_public_body'), ENT_QUOTES, 'UTF-8'); ?></p>
+          </div>
+        </div>
+      </section>
+      <?php endif; ?>
+
+      <?php if ($showPublicAccess): ?>
+      <section class="card public-access" id="public-access" data-live-section="public-access">
+        <div class="section-title">
+          <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'public_access_title'), ENT_QUOTES, 'UTF-8'); ?></h2>
+          <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'public_access_subtitle'), ENT_QUOTES, 'UTF-8'); ?></span>
+        </div>
+        <?php if (!$currentUser): ?>
+          <form method="post" class="form-grid" style="margin-top: 12px;">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string) ($_SESSION['csrf_token'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" />
+            <input type="hidden" name="action" value="login" />
+            <label>
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'username'), ENT_QUOTES, 'UTF-8'); ?>
+              <input type="text" name="username" required autocomplete="username" autocapitalize="none" spellcheck="false" />
+            </label>
+            <label>
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'password'), ENT_QUOTES, 'UTF-8'); ?>
+              <input type="password" name="password" required autocomplete="current-password" />
+            </label>
+            <div class="form-actions">
+              <button class="button-primary" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'login'), ENT_QUOTES, 'UTF-8'); ?></button>
+            </div>
+          </form>
+        <?php else: ?>
+          <div class="highlight" style="margin-top: 12px;">
+            <span class="badge">
+              <?= htmlspecialchars(t($translations, $currentLanguage, 'session_active'), ENT_QUOTES, 'UTF-8'); ?>:
+              <?= htmlspecialchars((string) $currentUser['username'], ENT_QUOTES, 'UTF-8'); ?>
+            </span>
+          </div>
+        <?php endif; ?>
+      </section>
+      <?php endif; ?>
+      <?php endif; ?>
+
       <?php if ($canViewDashboard): ?>
       <?php if ($isAdmin): ?>
-      <section class="card hero" data-accordion-title="<?= htmlspecialchars(t($translations, $currentLanguage, 'dashboard_title'), ENT_QUOTES, 'UTF-8'); ?>" data-live-section="hero">
+      <section class="card hero" id="overview" data-accordion-title="<?= htmlspecialchars(t($translations, $currentLanguage, 'dashboard_title'), ENT_QUOTES, 'UTF-8'); ?>" data-live-section="hero">
         <div class="hero-summary">
           <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'dashboard_title'), ENT_QUOTES, 'UTF-8'); ?></h2>
           <p><?= htmlspecialchars(t($translations, $currentLanguage, 'dashboard_subtitle'), ENT_QUOTES, 'UTF-8'); ?></p>
@@ -3581,6 +5322,10 @@ $dashboardVersion = '0.7.15';
             <div class="mini-stat">
               <span><?= htmlspecialchars(t($translations, $currentLanguage, 'unique_hosts'), ENT_QUOTES, 'UTF-8'); ?></span>
               <strong><?= (int) $stats['unique_hosts']; ?></strong>
+            </div>
+            <div class="mini-stat">
+              <span><?= htmlspecialchars(t($translations, $currentLanguage, 'unique_users'), ENT_QUOTES, 'UTF-8'); ?></span>
+              <strong><?= (int) $stats['unique_users']; ?></strong>
             </div>
           </div>
         </div>
@@ -3611,52 +5356,57 @@ $dashboardVersion = '0.7.15';
       <?php endif; ?>
 
       <?php if ($isAdmin): ?>
-      <section class="grid" data-live-section="stats">
+      <section class="grid" id="stats-overview" data-live-section="stats">
         <div class="stat-card">
           <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'total_alerts'), ENT_QUOTES, 'UTF-8'); ?></span>
-          <div class="stat-value"><?= (int) $stats['total_alerts']; ?></div>
+          <div class="stat-value" data-live-metric="total_alerts"><?= (int) $stats['total_alerts']; ?></div>
           <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'extension_history'), ENT_QUOTES, 'UTF-8'); ?></span>
         </div>
         <div class="stat-card">
           <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'total_blocks'), ENT_QUOTES, 'UTF-8'); ?></span>
-          <div class="stat-value"><?= (int) $stats['total_blocks']; ?></div>
+          <div class="stat-value" data-live-metric="total_blocks"><?= (int) $stats['total_blocks']; ?></div>
           <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'confirmed_preventions'), ENT_QUOTES, 'UTF-8'); ?></span>
         </div>
         <div class="stat-card">
           <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'alerts_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
-          <div class="stat-value"><?= (int) $stats['alerts_24h']; ?></div>
+          <div class="stat-value" data-live-metric="alerts_24h"><?= (int) $stats['alerts_24h']; ?></div>
           <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'last_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
         </div>
         <div class="stat-card">
           <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'blocks_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
-          <div class="stat-value"><?= (int) $stats['blocks_24h']; ?></div>
+          <div class="stat-value" data-live-metric="blocks_24h"><?= (int) $stats['blocks_24h']; ?></div>
           <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'last_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
         </div>
         <div class="stat-card">
           <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'unique_hosts'), ENT_QUOTES, 'UTF-8'); ?></span>
-          <div class="stat-value"><?= (int) $stats['unique_hosts']; ?></div>
+          <div class="stat-value" data-live-metric="unique_hosts"><?= (int) $stats['unique_hosts']; ?></div>
           <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'unique_hosts_help'), ENT_QUOTES, 'UTF-8'); ?></span>
         </div>
         <div class="stat-card">
+          <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'unique_users'), ENT_QUOTES, 'UTF-8'); ?></span>
+          <div class="stat-value" data-live-metric="unique_users"><?= (int) $stats['unique_users']; ?></div>
+          <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'unique_users_help'), ENT_QUOTES, 'UTF-8'); ?></span>
+        </div>
+        <div class="stat-card">
           <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'manual_sites'), ENT_QUOTES, 'UTF-8'); ?></span>
-          <div class="stat-value"><?= (int) count($stats['manual_sites']); ?></div>
+          <div class="stat-value" data-live-metric="manual_sites_count"><?= (int) count($stats['manual_sites']); ?></div>
           <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'manual_domains'), ENT_QUOTES, 'UTF-8'); ?></span>
         </div>
         <div class="stat-card">
           <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'recent_alerts'), ENT_QUOTES, 'UTF-8'); ?></span>
-          <div class="stat-value"><?= (int) $stats['recent_count']; ?></div>
+          <div class="stat-value" data-live-metric="recent_count"><?= (int) $stats['recent_count']; ?></div>
           <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'recent_events'), ENT_QUOTES, 'UTF-8'); ?></span>
         </div>
         <?php if ($isAdmin): ?>
           <div class="stat-card">
             <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'alerted_sites'), ENT_QUOTES, 'UTF-8'); ?></span>
-            <div class="stat-value"><?= (int) count($stats['alert_sites']); ?></div>
+            <div class="stat-value" data-live-metric="alert_sites_count"><?= (int) count($stats['alert_sites']); ?></div>
             <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'pending_review'), ENT_QUOTES, 'UTF-8'); ?></span>
           </div>
         <?php endif; ?>
         <div class="stat-card">
           <span class="stat-label"><?= htmlspecialchars(t($translations, $currentLanguage, 'block_rate'), ENT_QUOTES, 'UTF-8'); ?></span>
-          <div class="stat-value"><?= number_format($blockRate, 1); ?>%</div>
+          <div class="stat-value" data-live-metric="block_rate" data-live-format="percent"><?= number_format($blockRate, 1); ?>%</div>
           <span class="stat-footnote"><?= htmlspecialchars(t($translations, $currentLanguage, 'containment_efficiency'), ENT_QUOTES, 'UTF-8'); ?></span>
         </div>
       </section>
@@ -3675,6 +5425,9 @@ $dashboardVersion = '0.7.15';
         <?php if ($isAdmin): ?>
           <button type="button" class="workspace-tab" data-workspace-tab="users">
             <?= htmlspecialchars(t($translations, $currentLanguage, 'tab_users'), ENT_QUOTES, 'UTF-8'); ?>
+          </button>
+          <button type="button" class="workspace-tab" data-workspace-tab="data">
+            <?= htmlspecialchars(t($translations, $currentLanguage, 'tab_data'), ENT_QUOTES, 'UTF-8'); ?>
           </button>
         <?php endif; ?>
         <button type="button" class="workspace-tab" data-workspace-tab="access">
@@ -3711,8 +5464,20 @@ $dashboardVersion = '0.7.15';
                 <canvas id="chart-alerts-hour" height="140"></canvas>
               </div>
               <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'blocks_by_hour'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-blocks-hour" height="140"></canvas>
+              </div>
+              <div class="chart-card">
                 <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'country_distribution'), ENT_QUOTES, 'UTF-8'); ?></h3>
                 <canvas id="chart-alerts-country" height="140"></canvas>
+              </div>
+              <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'os_breakdown'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-os" height="140"></canvas>
+              </div>
+              <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'browser_breakdown'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-browsers" height="140"></canvas>
               </div>
               <div class="chart-card">
                 <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'signal_types'), ENT_QUOTES, 'UTF-8'); ?></h3>
@@ -3725,6 +5490,10 @@ $dashboardVersion = '0.7.15';
               <div class="chart-card">
                 <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'top_hosts_chart'), ENT_QUOTES, 'UTF-8'); ?></h3>
                 <canvas id="chart-top-hosts" height="140"></canvas>
+              </div>
+              <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'install_channel_chart'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-install-channels" height="140"></canvas>
               </div>
             </div>
           </section>
@@ -3989,8 +5758,20 @@ $dashboardVersion = '0.7.15';
                 <canvas id="chart-alerts-hour" height="140"></canvas>
               </div>
               <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'blocks_by_hour'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-blocks-hour" height="140"></canvas>
+              </div>
+              <div class="chart-card">
                 <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'country_distribution'), ENT_QUOTES, 'UTF-8'); ?></h3>
                 <canvas id="chart-alerts-country" height="140"></canvas>
+              </div>
+              <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'os_breakdown'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-os" height="140"></canvas>
+              </div>
+              <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'browser_breakdown'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-browsers" height="140"></canvas>
               </div>
               <div class="chart-card">
                 <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'signal_types'), ENT_QUOTES, 'UTF-8'); ?></h3>
@@ -4003,6 +5784,10 @@ $dashboardVersion = '0.7.15';
               <div class="chart-card">
                 <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'top_hosts_chart'), ENT_QUOTES, 'UTF-8'); ?></h3>
                 <canvas id="chart-top-hosts" height="140"></canvas>
+              </div>
+              <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'install_channel_chart'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-install-channels" height="140"></canvas>
               </div>
             </div>
           </section>
@@ -4264,8 +6049,20 @@ $dashboardVersion = '0.7.15';
                 <canvas id="chart-alerts-hour" height="140"></canvas>
               </div>
               <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'blocks_by_hour'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-blocks-hour" height="140"></canvas>
+              </div>
+              <div class="chart-card">
                 <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'country_distribution'), ENT_QUOTES, 'UTF-8'); ?></h3>
                 <canvas id="chart-alerts-country" height="140"></canvas>
+              </div>
+              <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'os_breakdown'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-os" height="140"></canvas>
+              </div>
+              <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'browser_breakdown'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-browsers" height="140"></canvas>
               </div>
               <div class="chart-card">
                 <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'signal_types'), ENT_QUOTES, 'UTF-8'); ?></h3>
@@ -4278,6 +6075,10 @@ $dashboardVersion = '0.7.15';
               <div class="chart-card">
                 <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'top_hosts_chart'), ENT_QUOTES, 'UTF-8'); ?></h3>
                 <canvas id="chart-top-hosts" height="140"></canvas>
+              </div>
+              <div class="chart-card">
+                <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'install_channel_chart'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                <canvas id="chart-install-channels" height="140"></canvas>
               </div>
             </div>
           </section>
@@ -4802,6 +6603,36 @@ $dashboardVersion = '0.7.15';
                   </div>
                 <?php endif; ?>
               </section>
+              <section class="card" data-live-section="os-breakdown">
+                <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'os_breakdown'), ENT_QUOTES, 'UTF-8'); ?></h2>
+                <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'last_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
+                <?php if (empty($stats['os_stats'])): ?>
+                  <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_data'), ENT_QUOTES, 'UTF-8'); ?></div>
+                <?php else: ?>
+                  <div class="list-block">
+                    <ul>
+                      <?php foreach ($stats['os_stats'] as $os => $count): ?>
+                        <li><?= htmlspecialchars($os, ENT_QUOTES, 'UTF-8'); ?>: <?= (int) $count; ?></li>
+                      <?php endforeach; ?>
+                    </ul>
+                  </div>
+                <?php endif; ?>
+              </section>
+              <section class="card" data-live-section="browser-breakdown">
+                <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'browser_breakdown'), ENT_QUOTES, 'UTF-8'); ?></h2>
+                <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'last_24h'), ENT_QUOTES, 'UTF-8'); ?></span>
+                <?php if (empty($stats['browser_stats'])): ?>
+                  <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_data'), ENT_QUOTES, 'UTF-8'); ?></div>
+                <?php else: ?>
+                  <div class="list-block">
+                    <ul>
+                      <?php foreach ($stats['browser_stats'] as $browser => $count): ?>
+                        <li><?= htmlspecialchars($browser, ENT_QUOTES, 'UTF-8'); ?>: <?= (int) $count; ?></li>
+                      <?php endforeach; ?>
+                    </ul>
+                  </div>
+                <?php endif; ?>
+              </section>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
               <section class="card">
@@ -4847,7 +6678,7 @@ $dashboardVersion = '0.7.15';
             <?php endif; ?>
           </section>
 
-          <section class="card workspace-section" style="margin-top: 24px;" data-workspace-section="intel" data-live-section="intel">
+          <section class="card workspace-section" style="margin-top: 24px;" id="intel-section" data-workspace-section="intel" data-live-section="intel">
             <div class="section-title">
               <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'intel_section'), ENT_QUOTES, 'UTF-8'); ?></h2>
               <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'intel_subtitle'), ENT_QUOTES, 'UTF-8'); ?></span>
@@ -4951,11 +6782,11 @@ $dashboardVersion = '0.7.15';
                   <input type="hidden" name="action" value="login" />
                   <label>
                     <?= htmlspecialchars(t($translations, $currentLanguage, 'username'), ENT_QUOTES, 'UTF-8'); ?>
-                    <input type="text" name="username" required />
+                    <input type="text" name="username" required autocomplete="username" autocapitalize="none" spellcheck="false" />
                   </label>
                   <label>
                     <?= htmlspecialchars(t($translations, $currentLanguage, 'password'), ENT_QUOTES, 'UTF-8'); ?>
-                    <input type="password" name="password" required />
+                    <input type="password" name="password" required autocomplete="current-password" />
                   </label>
                   <div class="form-actions">
                     <button class="button-primary" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'login'), ENT_QUOTES, 'UTF-8'); ?></button>
@@ -4972,15 +6803,15 @@ $dashboardVersion = '0.7.15';
                   <input type="hidden" name="action" value="register" />
                   <label>
                     <?= htmlspecialchars(t($translations, $currentLanguage, 'username'), ENT_QUOTES, 'UTF-8'); ?>
-                    <input type="text" name="username" required />
+                    <input type="text" name="username" required autocomplete="username" autocapitalize="none" spellcheck="false" />
                   </label>
                   <label>
                     <?= htmlspecialchars(t($translations, $currentLanguage, 'password'), ENT_QUOTES, 'UTF-8'); ?>
-                    <input type="password" name="password" required />
+                    <input type="password" name="password" required autocomplete="new-password" />
                   </label>
                   <label>
                     <?= htmlspecialchars(t($translations, $currentLanguage, 'admin_code_optional'), ENT_QUOTES, 'UTF-8'); ?>
-                    <input type="text" name="admin_code" />
+                    <input type="text" name="admin_code" autocomplete="off" spellcheck="false" />
                   </label>
                   <div class="form-actions">
                     <button class="button-secondary" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'register'), ENT_QUOTES, 'UTF-8'); ?></button>
@@ -5001,11 +6832,11 @@ $dashboardVersion = '0.7.15';
                 <input type="hidden" name="action" value="user_create" />
                 <label>
                   <?= htmlspecialchars(t($translations, $currentLanguage, 'username'), ENT_QUOTES, 'UTF-8'); ?>
-                  <input type="text" name="username" required />
+                  <input type="text" name="username" required autocomplete="username" autocapitalize="none" spellcheck="false" />
                 </label>
                 <label>
                   <?= htmlspecialchars(t($translations, $currentLanguage, 'password'), ENT_QUOTES, 'UTF-8'); ?>
-                  <input type="password" name="password" required />
+                  <input type="password" name="password" required autocomplete="new-password" />
                 </label>
                 <label>
                   <?= htmlspecialchars(t($translations, $currentLanguage, 'role'), ENT_QUOTES, 'UTF-8'); ?>
@@ -5133,6 +6964,68 @@ $dashboardVersion = '0.7.15';
                 </div>
                 <div class="log-entry">
                   <div class="section-title">
+                    <h3><?= htmlspecialchars(t($translations, $currentLanguage, 'telemetry_logs'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                    <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'telemetry_subtitle'), ENT_QUOTES, 'UTF-8'); ?></span>
+                  </div>
+                  <?php if (empty($statsLogEntries)): ?>
+                    <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_logs'), ENT_QUOTES, 'UTF-8'); ?></div>
+                  <?php else: ?>
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_time'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_enabled'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_alert_count'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_block_count'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_manual_sites'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_alert_sites'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_install_channel'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_install_source'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_install_type'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_user_agent'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_country'), ENT_QUOTES, 'UTF-8'); ?></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <?php foreach ($statsLogEntries as $entry): ?>
+                            <?php
+                              $channelRaw = (string) $entry['install_channel'];
+                              $channelLabel = resolveInstallChannelLabel($channelRaw, $translations, $currentLanguage);
+                              $channelDisplay = $channelLabel !== '' ? $channelLabel : $channelRaw;
+                              $uaRaw = (string) $entry['user_agent'];
+                              $uaShort = $uaRaw !== '' ? safeSubstr($uaRaw, 0, 160) : '';
+                              if ($uaRaw !== '' && strlen($uaRaw) > 160) {
+                                  $uaShort .= '...';
+                              }
+                            ?>
+                            <tr>
+                              <td><?= htmlspecialchars($entry['received_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                              <td><?= htmlspecialchars($entry['enabled'] ? t($translations, $currentLanguage, 'log_value_enabled') : t($translations, $currentLanguage, 'log_value_disabled'), ENT_QUOTES, 'UTF-8'); ?></td>
+                              <td><?= (int) $entry['alert_count']; ?></td>
+                              <td><?= (int) $entry['block_count']; ?></td>
+                              <td><?= (int) $entry['manual_sites_count']; ?></td>
+                              <td><?= (int) $entry['alert_sites_count']; ?></td>
+                              <td>
+                                <?php if ($channelDisplay !== ''): ?>
+                                  <span title="<?= htmlspecialchars($channelRaw, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <?= htmlspecialchars($channelDisplay, ENT_QUOTES, 'UTF-8'); ?>
+                                  </span>
+                                <?php endif; ?>
+                              </td>
+                              <td><?= htmlspecialchars((string) $entry['install_source'], ENT_QUOTES, 'UTF-8'); ?></td>
+                              <td><?= htmlspecialchars((string) $entry['install_type'], ENT_QUOTES, 'UTF-8'); ?></td>
+                              <td title="<?= htmlspecialchars($uaRaw, ENT_QUOTES, 'UTF-8'); ?>"><?= htmlspecialchars($uaShort, ENT_QUOTES, 'UTF-8'); ?></td>
+                              <td><?= htmlspecialchars((string) $entry['country'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            </tr>
+                          <?php endforeach; ?>
+                        </tbody>
+                      </table>
+                    </div>
+                  <?php endif; ?>
+                </div>
+                <div class="log-entry">
+                  <div class="section-title">
                     <h3>clickfix-debug.log</h3>
                     <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'latest_entries'), ENT_QUOTES, 'UTF-8'); ?></span>
                   </div>
@@ -5164,6 +7057,88 @@ $dashboardVersion = '0.7.15';
                   <?php endif; ?>
                 </div>
               </div>
+            </section>
+          <?php endif; ?>
+
+          <?php if ($isAdmin): ?>
+            <section class="card workspace-section" style="margin-top: 24px;" id="data-section" data-workspace-section="data">
+              <div class="section-title">
+                <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'data_vault_title'), ENT_QUOTES, 'UTF-8'); ?></h2>
+                <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'data_vault_subtitle'), ENT_QUOTES, 'UTF-8'); ?></span>
+              </div>
+
+              <?php if (empty($dataExplorer['tables'])): ?>
+                <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'data_table_empty'), ENT_QUOTES, 'UTF-8'); ?></div>
+              <?php else: ?>
+                <div class="grid data-summary" style="margin-top: 12px;">
+                  <?php foreach ($dataExplorer['tables'] as $table): ?>
+                    <div class="stat-card">
+                      <span class="stat-label"><?= htmlspecialchars((string) ($table['label'] ?? $table['name']), ENT_QUOTES, 'UTF-8'); ?></span>
+                      <div class="stat-value"><?= (int) ($table['count'] ?? 0); ?></div>
+                      <span class="stat-footnote">
+                        <?= htmlspecialchars(t($translations, $currentLanguage, 'data_table_last'), ENT_QUOTES, 'UTF-8'); ?>:
+                        <?= htmlspecialchars((string) ($table['last_updated'] ?? '—'), ENT_QUOTES, 'UTF-8'); ?>
+                      </span>
+                    </div>
+                  <?php endforeach; ?>
+                </div>
+
+                <div class="data-table-stack" style="margin-top: 18px;">
+                  <?php foreach ($dataExplorer['tables'] as $index => $table): ?>
+                    <details class="data-table-card" data-allow-toggle="true" <?= $index === 0 ? 'open' : ''; ?>>
+                      <summary class="section-title">
+                        <h3><?= htmlspecialchars((string) ($table['label'] ?? $table['name']), ENT_QUOTES, 'UTF-8'); ?></h3>
+                        <span class="muted">
+                          <?= htmlspecialchars(t($translations, $currentLanguage, 'data_table_rows'), ENT_QUOTES, 'UTF-8'); ?>:
+                          <?= (int) ($table['count'] ?? 0); ?>
+                        </span>
+                      </summary>
+                      <?php if (!empty($table['sensitive'])): ?>
+                        <div class="muted" style="margin-bottom: 8px;">
+                          <?= htmlspecialchars(t($translations, $currentLanguage, 'data_table_sensitive'), ENT_QUOTES, 'UTF-8'); ?>
+                        </div>
+                      <?php endif; ?>
+                      <div class="data-table-actions">
+                        <button class="button-secondary" type="button"
+                                data-export-table="data-table-<?= htmlspecialchars((string) $table['name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                data-export-name="clickfix-<?= htmlspecialchars((string) $table['name'], ENT_QUOTES, 'UTF-8'); ?>.csv">
+                          <?= htmlspecialchars(t($translations, $currentLanguage, 'data_table_export'), ENT_QUOTES, 'UTF-8'); ?>
+                        </button>
+                      </div>
+                      <div class="table-wrap">
+                        <table id="data-table-<?= htmlspecialchars((string) $table['name'], ENT_QUOTES, 'UTF-8'); ?>">
+                          <thead>
+                            <tr>
+                              <?php foreach ($table['columns'] as $column): ?>
+                                <th><?= htmlspecialchars((string) $column, ENT_QUOTES, 'UTF-8'); ?></th>
+                              <?php endforeach; ?>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <?php if (empty($table['rows'])): ?>
+                              <tr>
+                                <td colspan="<?= max(1, count($table['columns'])); ?>" class="muted">
+                                  <?= htmlspecialchars(t($translations, $currentLanguage, 'data_table_empty'), ENT_QUOTES, 'UTF-8'); ?>
+                                </td>
+                              </tr>
+                            <?php else: ?>
+                              <?php foreach ($table['rows'] as $row): ?>
+                                <tr>
+                                  <?php foreach ($table['columns'] as $column): ?>
+                                    <td>
+                                      <?= formatDataCellHtml($row[$column] ?? null, (string) $table['name'], (string) $column, $isAdmin); ?>
+                                    </td>
+                                  <?php endforeach; ?>
+                                </tr>
+                              <?php endforeach; ?>
+                            <?php endif; ?>
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
             </section>
           <?php endif; ?>
         </div>
@@ -5264,7 +7239,7 @@ $dashboardVersion = '0.7.15';
         </aside>
 
       </div>
-      <?php else: ?>
+      <?php elseif (!$isPublicView): ?>
         <section class="access-hero">
           <div class="access-message">
             <span class="access-kicker"><?= htmlspecialchars(t($translations, $currentLanguage, 'admin_portal'), ENT_QUOTES, 'UTF-8'); ?></span>
@@ -5321,11 +7296,11 @@ $dashboardVersion = '0.7.15';
                   <input type="hidden" name="action" value="login" />
                   <label>
                     <?= htmlspecialchars(t($translations, $currentLanguage, 'username'), ENT_QUOTES, 'UTF-8'); ?>
-                    <input type="text" name="username" required />
+                    <input type="text" name="username" required autocomplete="username" autocapitalize="none" spellcheck="false" />
                   </label>
                   <label>
                     <?= htmlspecialchars(t($translations, $currentLanguage, 'password'), ENT_QUOTES, 'UTF-8'); ?>
-                    <input type="password" name="password" required />
+                    <input type="password" name="password" required autocomplete="current-password" />
                   </label>
                   <div class="form-actions">
                     <button class="button-primary" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'login'), ENT_QUOTES, 'UTF-8'); ?></button>
@@ -5342,15 +7317,15 @@ $dashboardVersion = '0.7.15';
                   <input type="hidden" name="action" value="register" />
                   <label>
                     <?= htmlspecialchars(t($translations, $currentLanguage, 'username'), ENT_QUOTES, 'UTF-8'); ?>
-                    <input type="text" name="username" required />
+                    <input type="text" name="username" required autocomplete="username" autocapitalize="none" spellcheck="false" />
                   </label>
                   <label>
                     <?= htmlspecialchars(t($translations, $currentLanguage, 'password'), ENT_QUOTES, 'UTF-8'); ?>
-                    <input type="password" name="password" required />
+                    <input type="password" name="password" required autocomplete="new-password" />
                   </label>
                   <label>
                     <?= htmlspecialchars(t($translations, $currentLanguage, 'admin_code_optional'), ENT_QUOTES, 'UTF-8'); ?>
-                    <input type="text" name="admin_code" />
+                    <input type="text" name="admin_code" autocomplete="off" spellcheck="false" />
                   </label>
                   <div class="form-actions">
                     <button class="button-secondary" type="submit"><?= htmlspecialchars(t($translations, $currentLanguage, 'register'), ENT_QUOTES, 'UTF-8'); ?></button>
@@ -5361,17 +7336,27 @@ $dashboardVersion = '0.7.15';
           </div>
         </section>
       <?php endif; ?>
+      </main>
     </div>
-    <?php if ($canViewDashboard): ?>
+    <?php if ($canViewDashboard || $publicAnalyticsEnabled): ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script type="application/json" id="chart-payload">
+    <script type="application/json" id="chart-payload-public">
+      <?= htmlspecialchars(json_encode($chartPayloadPublic, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_NOQUOTES, 'UTF-8'); ?>
+    </script>
+    <script type="application/json" id="chart-payload-private">
       <?= htmlspecialchars(json_encode($chartPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_NOQUOTES, 'UTF-8'); ?>
     </script>
     <script>
-      const chartPayloadElement = document.getElementById("chart-payload");
-      const chartPayload = chartPayloadElement
-        ? JSON.parse(chartPayloadElement.textContent || "{}")
+      const chartPayloadPublicNode = document.getElementById("chart-payload-public");
+      const chartPayloadPrivateNode = document.getElementById("chart-payload-private");
+      const chartPayloadPublic = chartPayloadPublicNode
+        ? JSON.parse(chartPayloadPublicNode.textContent || "{}")
+        : <?= json_encode($chartPayloadPublic, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+      const chartPayloadPrivate = chartPayloadPrivateNode
+        ? JSON.parse(chartPayloadPrivateNode.textContent || "{}")
         : <?= json_encode($chartPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+      const dashboardAccess = document.body?.dataset?.dashboardAccess || "public";
+      const chartPayload = dashboardAccess === "private" ? chartPayloadPrivate : chartPayloadPublic;
       const tableFilterLabels = {
         label: "<?= htmlspecialchars(t($translations, $currentLanguage, 'filter_table'), ENT_QUOTES, 'UTF-8'); ?>",
         placeholder: "<?= htmlspecialchars(t($translations, $currentLanguage, 'filter_placeholder'), ENT_QUOTES, 'UTF-8'); ?>",
@@ -5461,59 +7446,103 @@ $dashboardVersion = '0.7.15';
           return;
         }
         document.body.dataset.liveReady = "true";
-        const liveSections = () => Array.from(document.querySelectorAll("[data-live-section]"));
-        if (!liveSections().length) {
-          return;
-        }
         const refreshIntervalMs = 15000;
         let liveTimer = null;
         let inFlight = false;
-        const getActiveWorkspaceTab = () => {
-          const activeButton = document.querySelector("#workspace-tabs .workspace-tab.is-active");
-          return (
-            activeButton?.dataset?.workspaceTab ||
-            sessionStorage.getItem("cf_workspace_tab") ||
-            ""
-          );
+        const buildLiveUrl = () => {
+          const url = new URL(window.location.href);
+          url.searchParams.set("format", "live");
+          if (dashboardAccess === "public") {
+            url.searchParams.set("public", "1");
+          } else {
+            url.searchParams.delete("public");
+          }
+          return url.toString();
         };
 
-        const syncLiveSections = (doc) => {
-          const currentSections = liveSections();
-          const nextSections = Array.from(doc.querySelectorAll("[data-live-section]"));
-          const groupedNext = new Map();
-          nextSections.forEach((section) => {
-            const key = section.dataset.liveSection || "";
-            const bucket = groupedNext.get(key) || [];
-            bucket.push(section);
-            groupedNext.set(key, bucket);
-          });
-          const seen = new Map();
-          const replacements = [];
-          const active = document.activeElement;
-          const activeTab = getActiveWorkspaceTab();
-          currentSections.forEach((section) => {
-            const key = section.dataset.liveSection || "";
-            const index = seen.get(key) || 0;
-            seen.set(key, index + 1);
-            const bucket = groupedNext.get(key) || [];
-            const replacement = bucket[index];
-            if (!replacement) {
+        const applyMetrics = (stats) => {
+          if (!stats) {
+            return;
+          }
+          document.querySelectorAll("[data-live-metric]").forEach((node) => {
+            const key = node.dataset.liveMetric;
+            if (!key || !(key in stats)) {
               return;
             }
-            if (active && section.contains(active)) {
+            const value = stats[key];
+            if (value === null || value === undefined) {
               return;
             }
-            if (section.dataset.workspaceSection) {
-              if (activeTab && section.dataset.workspaceSection !== activeTab) {
+            if (node.dataset.liveFormat === "percent") {
+              const numeric = Number(value);
+              if (!Number.isNaN(numeric)) {
+                node.textContent = `${numeric.toFixed(1)}%`;
                 return;
               }
-              replacement.hidden = section.hidden;
             }
-            section.replaceWith(replacement);
-            replacements.push(replacement);
+            node.textContent = String(value);
           });
-          replacements.forEach((replacement) => {
-            initializeDashboard(replacement);
+        };
+
+        const applyRecentDomains = (domains) => {
+          if (!Array.isArray(domains)) {
+            return;
+          }
+          document.querySelectorAll("[data-domains-table]").forEach((table) => {
+            const body = table.querySelector("[data-domains-body]") || table.querySelector("tbody");
+            if (!body) {
+              return;
+            }
+            const panel = table.closest("[data-search-panel]");
+            const viewLabel = table.dataset.viewLabel || "View";
+            const emptyLabel = table.dataset.noResults || "No results.";
+            const limitRaw = Number.parseInt(table.dataset.domainsLimit || "", 10);
+            const sliceLimit = Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : null;
+            const rows = sliceLimit ? domains.slice(0, sliceLimit) : domains;
+            body.innerHTML = "";
+            if (!rows.length) {
+              const row = document.createElement("tr");
+              const cell = document.createElement("td");
+              cell.colSpan = 4;
+              cell.className = "muted";
+              cell.textContent = emptyLabel;
+              row.appendChild(cell);
+              body.appendChild(row);
+              return;
+            }
+            rows.forEach((item) => {
+              const row = document.createElement("tr");
+              row.dataset.searchRow = "true";
+              const actionCell = document.createElement("td");
+              const domainCell = document.createElement("td");
+              const dateCell = document.createElement("td");
+              const commandCell = document.createElement("td");
+              const url = (item?.url || "").trim();
+              const domain = String(item?.domain || "");
+              const viewUrl = url || (domain ? `https://${domain}` : "");
+              if (viewUrl) {
+                const link = document.createElement("a");
+                link.className = "button-ghost";
+                link.href = viewUrl;
+                link.target = "_blank";
+                link.rel = "noopener";
+                link.textContent = viewLabel;
+                actionCell.appendChild(link);
+              }
+              domainCell.textContent = domain;
+              dateCell.textContent = String(item?.date || "");
+              const code = document.createElement("code");
+              code.textContent = String(item?.command || "");
+              commandCell.appendChild(code);
+              row.appendChild(actionCell);
+              row.appendChild(domainCell);
+              row.appendChild(dateCell);
+              row.appendChild(commandCell);
+              body.appendChild(row);
+            });
+            if (panel && typeof panel._applyFilter === "function") {
+              panel._applyFilter();
+            }
           });
         };
 
@@ -5523,20 +7552,22 @@ $dashboardVersion = '0.7.15';
           }
           inFlight = true;
           try {
-            const response = await fetch(window.location.href, {
+            const response = await fetch(buildLiveUrl(), {
               headers: { "X-Requested-With": "fetch" }
             });
             if (!response.ok) {
               throw new Error("live refresh failed");
             }
-            const html = await response.text();
-            const doc = new DOMParser().parseFromString(html, "text/html");
-            syncLiveSections(doc);
-            if (typeof extractChartPayload === "function" && typeof renderCharts === "function") {
-              const updatedPayload = extractChartPayload(doc);
-              if (updatedPayload) {
-                renderCharts(updatedPayload);
-              }
+            const payload = await response.json();
+            if (payload?.charts && typeof renderCharts === "function") {
+              renderCharts(payload.charts);
+            }
+            if (payload?.stats) {
+              applyMetrics(payload.stats);
+            }
+            if (payload?.recent_domains) {
+              applyRecentDomains(payload.recent_domains);
+              setupSearchPanel(document);
             }
           } catch (error) {
             // Silent: avoid spamming toasts on background refresh failures.
@@ -5592,6 +7623,9 @@ $dashboardVersion = '0.7.15';
           if (node.dataset.flattenReady === "true") {
             return;
           }
+          if (node.dataset.allowToggle === "true") {
+            return;
+          }
           node.dataset.flattenReady = "true";
           node.open = true;
           node.classList.add("no-toggle");
@@ -5618,6 +7652,9 @@ $dashboardVersion = '0.7.15';
 
         tables.forEach((table) => {
           if (table.dataset.filterReady === "true") {
+            return;
+          }
+          if (table.dataset.filter === "manual" || table.closest?.("[data-filter-mode=\"manual\"]")) {
             return;
           }
           const tbody = table.querySelector("tbody");
@@ -6040,6 +8077,8 @@ $dashboardVersion = '0.7.15';
         dedupeAnalyticsSections(root);
         flattenDetails(root);
         setupTableFilters(root);
+        setupSearchPanel(root);
+        setupTableExports(root);
         setupAjaxForms(root);
         setupSelectableItems(root);
         setupBulkActions(root);
@@ -6155,12 +8194,43 @@ $dashboardVersion = '0.7.15';
           scales: { x: { ticks: { stepSize: 1 } } }
         });
 
+        upsertChart("chart-blocks-hour", "bar", {
+          labels: payload.hourlyBlocks.labels,
+          datasets: [{
+            label: payload.labels.blocks,
+            data: payload.hourlyBlocks.values,
+            backgroundColor: "#0f766e"
+          }]
+        }, {
+          scales: { x: { ticks: { stepSize: 1 } } }
+        });
+
         upsertChart("chart-alerts-country", "doughnut", {
           labels: payload.countries.labels,
           datasets: [{
             data: payload.countries.values,
             backgroundColor: ["#2563eb", "#38bdf8", "#1d4ed8", "#0ea5e9", "#60a5fa", "#93c5fd", "#1e40af"]
           }]
+        });
+
+        upsertChart("chart-os", "doughnut", {
+          labels: payload.os.labels,
+          datasets: [{
+            data: payload.os.values,
+            backgroundColor: ["#0f766e", "#14b8a6", "#2dd4bf", "#99f6e4", "#0ea5e9", "#1d4ed8", "#f59e0b"]
+          }]
+        }, {
+          plugins: { legend: { display: true, position: "bottom" } }
+        });
+
+        upsertChart("chart-browsers", "doughnut", {
+          labels: payload.browsers.labels,
+          datasets: [{
+            data: payload.browsers.values,
+            backgroundColor: ["#f97316", "#fb7185", "#60a5fa", "#22c55e", "#a855f7", "#f59e0b", "#0ea5e9"]
+          }]
+        }, {
+          plugins: { legend: { display: true, position: "bottom" } }
         });
 
         upsertChart("chart-alerts-signals", "bar", {
@@ -6191,6 +8261,131 @@ $dashboardVersion = '0.7.15';
           }]
         }, {
           indexAxis: "y"
+        });
+
+        upsertChart("chart-install-channels", "doughnut", {
+          labels: payload.installChannels.labels,
+          datasets: [{
+            data: payload.installChannels.values,
+            backgroundColor: ["#2563eb", "#38bdf8", "#1d4ed8", "#0ea5e9", "#60a5fa", "#93c5fd", "#1e40af"]
+          }]
+        }, {
+          plugins: { legend: { display: true, position: "bottom" } }
+        });
+      };
+
+      const setupSearchPanel = (root = document) => {
+        const panel = root.querySelector?.("[data-search-panel]");
+        if (!panel || panel.dataset.searchReady === "true") {
+          return;
+        }
+        panel.dataset.searchReady = "true";
+        const input = panel.querySelector("[data-search-input]");
+        const fieldSelect = panel.querySelector("[data-search-field]");
+        const button = panel.querySelector("[data-search-button]");
+        const clear = panel.querySelector("[data-search-clear]");
+        const exportButton = panel.querySelector("[data-search-export]");
+        const applyFilter = () => {
+          const term = (input?.value || "").trim().toLowerCase();
+          const scope = fieldSelect?.value || "any";
+          const rows = panel.querySelectorAll("[data-search-row]");
+          rows.forEach((row) => {
+            const cells = row.querySelectorAll("td");
+            const domain = (cells[1]?.textContent || "").toLowerCase();
+            const date = (cells[2]?.textContent || "").toLowerCase();
+            const command = (cells[3]?.textContent || "").toLowerCase();
+            const haystack = scope === "domain"
+              ? domain
+              : scope === "command"
+                ? command
+                : `${domain} ${date} ${command}`;
+            const match = term === "" || haystack.includes(term);
+            row.style.display = match ? "" : "none";
+          });
+        };
+        panel._applyFilter = applyFilter;
+        button?.addEventListener("click", applyFilter);
+        input?.addEventListener("input", () => {
+          if (input.value.trim() === "") {
+            applyFilter();
+          }
+        });
+        input?.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            applyFilter();
+          }
+        });
+        clear?.addEventListener("click", () => {
+          if (input) {
+            input.value = "";
+          }
+          if (fieldSelect) {
+            fieldSelect.value = "any";
+          }
+          applyFilter();
+        });
+        exportButton?.addEventListener("click", () => {
+          const table = panel.querySelector("[data-search-table]");
+          if (!table) {
+            return;
+          }
+          const headers = Array.from(table.querySelectorAll("thead th")).map((th) => `"${(th.textContent || "").trim().replace(/"/g, '""')}"`);
+          const rows = Array.from(table.querySelectorAll("tbody tr"))
+            .filter((row) => row.style.display !== "none")
+            .map((row) => {
+              const cols = Array.from(row.querySelectorAll("td")).map((cell) => {
+                const text = (cell.textContent || "").trim().replace(/"/g, '""');
+                return `"${text}"`;
+              });
+              return cols.join(",");
+            });
+          const csv = [headers.join(","), ...rows].join("\n");
+          const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = "clickfix-search.csv";
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+        });
+        applyFilter();
+      };
+
+      const setupTableExports = (root = document) => {
+        const buttons = root.querySelectorAll?.("[data-export-table]") || [];
+        buttons.forEach((button) => {
+          if (button.dataset.exportReady === "true") {
+            return;
+          }
+          button.dataset.exportReady = "true";
+          button.addEventListener("click", () => {
+            const tableId = button.dataset.exportTable;
+            const filename = button.dataset.exportName || "export.csv";
+            if (!tableId) {
+              return;
+            }
+            const table = document.getElementById(tableId);
+            if (!table) {
+              return;
+            }
+            const headers = Array.from(table.querySelectorAll("thead th")).map((th) => `"${(th.textContent || "").trim().replace(/"/g, '""')}"`);
+            const rows = Array.from(table.querySelectorAll("tbody tr")).map((row) => {
+              const cols = Array.from(row.querySelectorAll("td")).map((cell) => {
+                const text = (cell.textContent || "").trim().replace(/"/g, '""');
+                return `"${text}"`;
+              });
+              return cols.join(",");
+            });
+            const csv = [headers.join(","), ...rows].join("\n");
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+          });
         });
       };
 

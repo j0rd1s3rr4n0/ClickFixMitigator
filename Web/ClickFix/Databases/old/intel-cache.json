@@ -1,0 +1,65 @@
+{
+    "updated_at": "2026-02-26T13:51:24+00:00",
+    "entries": [
+        {
+            "id": "hudsonrock",
+            "label": "Hudson Rock",
+            "url": "https://www.hudsonrock.com/blog/5766",
+            "title": "",
+            "description": "",
+            "highlights": [],
+            "status": "ok",
+            "fetched_at": "2026-02-26T13:51:21+00:00"
+        },
+        {
+            "id": "clickfix-carson",
+            "label": "ClickFix Carson",
+            "url": "https://clickfix.carsonww.com/",
+            "title": "",
+            "description": "",
+            "highlights": [],
+            "status": "ok",
+            "fetched_at": "2026-02-26T13:51:21+00:00"
+        },
+        {
+            "id": "clickgrab-techniques",
+            "label": "ClickGrab Techniques",
+            "url": "https://mhaggis.github.io/ClickGrab/techniques.html",
+            "title": "",
+            "description": "",
+            "highlights": [],
+            "status": "ok",
+            "fetched_at": "2026-02-26T13:51:22+00:00"
+        },
+        {
+            "id": "clickfix-patterns",
+            "label": "ClickFix Patterns",
+            "url": "https://don-san-sec.github.io/clickfix-patterns/",
+            "title": "",
+            "description": "",
+            "highlights": [],
+            "status": "ok",
+            "fetched_at": "2026-02-26T13:51:22+00:00"
+        },
+        {
+            "id": "pasteeater",
+            "label": "PasteEater",
+            "url": "https://github.com/wmetcalf/PasteEater",
+            "title": "",
+            "description": "",
+            "highlights": [],
+            "status": "ok",
+            "fetched_at": "2026-02-26T13:51:23+00:00"
+        },
+        {
+            "id": "clickgrab",
+            "label": "ClickGrab",
+            "url": "https://github.com/cdup07/ClickGrab",
+            "title": "",
+            "description": "",
+            "highlights": [],
+            "status": "ok",
+            "fetched_at": "2026-02-26T13:51:24+00:00"
+        }
+    ]
+}

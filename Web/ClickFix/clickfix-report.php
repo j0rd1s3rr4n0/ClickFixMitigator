@@ -5,6 +5,9 @@ ini_set('display_errors', '0');
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 header('Cache-Control: no-store');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
 
 $dbPath = __DIR__ . '/data/clickfix.sqlite';
 $schemaPath = null;
@@ -51,6 +54,10 @@ CREATE TABLE IF NOT EXISTS stats (
     alert_count INTEGER,
     block_count INTEGER,
     manual_sites_json TEXT,
+    user_agent TEXT,
+    install_type TEXT,
+    install_source TEXT,
+    install_channel TEXT,
     country TEXT
 );
 
@@ -242,6 +249,49 @@ function ensureAdminSchema(PDO $pdo, string $debugFile): void
     }
 }
 
+function ensureStatsSchema(PDO $pdo, string $debugFile): void
+{
+    try {
+        $columns = $pdo->query('PRAGMA table_info(stats)')->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $exception) {
+        writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'statement' => 'PRAGMA stats']);
+        return;
+    }
+
+    $existing = [];
+    foreach ($columns as $column) {
+        $existing[(string) ($column['name'] ?? '')] = true;
+    }
+    if (!isset($existing['user_agent'])) {
+        try {
+            $pdo->exec('ALTER TABLE stats ADD COLUMN user_agent TEXT');
+        } catch (Throwable $exception) {
+            writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'statement' => 'ALTER stats']);
+        }
+    }
+    if (!isset($existing['install_type'])) {
+        try {
+            $pdo->exec('ALTER TABLE stats ADD COLUMN install_type TEXT');
+        } catch (Throwable $exception) {
+            writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'statement' => 'ALTER stats']);
+        }
+    }
+    if (!isset($existing['install_source'])) {
+        try {
+            $pdo->exec('ALTER TABLE stats ADD COLUMN install_source TEXT');
+        } catch (Throwable $exception) {
+            writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'statement' => 'ALTER stats']);
+        }
+    }
+    if (!isset($existing['install_channel'])) {
+        try {
+            $pdo->exec('ALTER TABLE stats ADD COLUMN install_channel TEXT');
+        } catch (Throwable $exception) {
+            writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'statement' => 'ALTER stats']);
+        }
+    }
+}
+
 function openDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFallback, string $debugFile): ?PDO
 {
     $dataDir = dirname($dbPath);
@@ -281,10 +331,16 @@ function openDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFall
 
     ensureReportsSchema($pdo, $debugFile);
     ensureAdminSchema($pdo, $debugFile);
+    ensureStatsSchema($pdo, $debugFile);
     return $pdo;
 }
 
 $debugFile = __DIR__ . '/clickfix-debug.log';
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respondWithError(405, 'Method not allowed', $debugFile, ['method' => $_SERVER['REQUEST_METHOD'] ?? '']);
@@ -411,14 +467,17 @@ if ($type === 'alert' && $url === '' && $hostname === '' && $message === '') {
 
 $normalizedStats = [];
 if ($type === 'stats') {
-    $normalizedStats = [
-        'enabled' => filter_var($statsData['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false,
-        'alert_count' => (int) ($statsData['alertCount'] ?? 0),
-        'block_count' => (int) ($statsData['blockCount'] ?? 0),
-        'manual_sites' => [],
-        'alert_sites' => [],
-        'country' => ''
-    ];
+$normalizedStats = [
+    'enabled' => filter_var($statsData['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false,
+    'alert_count' => (int) ($statsData['alertCount'] ?? 0),
+    'block_count' => (int) ($statsData['blockCount'] ?? 0),
+    'manual_sites' => [],
+    'alert_sites' => [],
+    'country' => '',
+    'install_type' => '',
+    'install_source' => '',
+    'install_channel' => ''
+];
     $manualSites = $statsData['manualSites'] ?? [];
     if (is_array($manualSites)) {
         foreach (array_slice($manualSites, 0, 200) as $site) {
@@ -440,6 +499,19 @@ if ($type === 'stats') {
     $countryInput = strtoupper(substr(trim((string) ($statsData['country'] ?? '')), 0, 2));
     if ($countryInput !== '' && preg_match('/^[A-Z]{2}$/', $countryInput)) {
         $normalizedStats['country'] = $countryInput;
+    }
+
+    $installType = strtolower(trim((string) ($statsData['installType'] ?? '')));
+    $installSource = strtolower(trim((string) ($statsData['installSource'] ?? '')));
+    $installChannel = strtolower(trim((string) ($statsData['installChannel'] ?? '')));
+    if ($installType !== '' && preg_match('/^[a-z0-9._-]+$/', $installType)) {
+        $normalizedStats['install_type'] = substr($installType, 0, 40);
+    }
+    if ($installSource !== '' && preg_match('/^[a-z0-9._-]+$/', $installSource)) {
+        $normalizedStats['install_source'] = substr($installSource, 0, 40);
+    }
+    if ($installChannel !== '' && preg_match('/^[a-z0-9._-]+$/', $installChannel)) {
+        $normalizedStats['install_channel'] = substr($installChannel, 0, 40);
     }
 }
 
@@ -482,8 +554,8 @@ if ($pdo instanceof PDO) {
     try {
         if ($type === 'stats') {
             $statement = $pdo->prepare(
-                'INSERT INTO stats (received_at, enabled, alert_count, block_count, manual_sites_json, country)
-                 VALUES (:received_at, :enabled, :alert_count, :block_count, :manual_sites_json, :country)'
+                'INSERT INTO stats (received_at, enabled, alert_count, block_count, manual_sites_json, user_agent, install_type, install_source, install_channel, country)
+                 VALUES (:received_at, :enabled, :alert_count, :block_count, :manual_sites_json, :user_agent, :install_type, :install_source, :install_channel, :country)'
             );
             $statement->execute([
                 ':received_at' => $entry['received_at'],
@@ -491,6 +563,10 @@ if ($pdo instanceof PDO) {
                 ':alert_count' => $normalizedStats['alert_count'],
                 ':block_count' => $normalizedStats['block_count'],
                 ':manual_sites_json' => json_encode($normalizedStats['manual_sites'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                ':user_agent' => $entry['user_agent'],
+                ':install_type' => $normalizedStats['install_type'],
+                ':install_source' => $normalizedStats['install_source'],
+                ':install_channel' => $normalizedStats['install_channel'],
                 ':country' => $entry['country']
             ]);
         } else {
