@@ -6,8 +6,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ClickFix Mitigator | Defense-first anti ClickFix</title>
-  <meta name="description" content="ClickFix Mitigator: extension defense-first para frenar ClickFix. Detecta, interrumpe y registra intentos de ingenieria social basados en ejecucion de comandos." />
+  <title data-i18n="title"></title>
+  <meta name="description" content="" data-i18n="description" />
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
@@ -432,6 +432,176 @@
       color: var(--muted);
     }
 
+    .preview-section {
+      display: grid;
+      gap: 22px;
+    }
+
+    .preview-header {
+      display: grid;
+      gap: 12px;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .preview-metrics {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
+
+    .metric-card {
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(24, 229, 255, 0.18);
+      background: rgba(7, 12, 18, 0.75);
+      display: grid;
+      gap: 8px;
+      min-height: 96px;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      font-family: 'Sora', sans-serif;
+    }
+
+    .metric-value {
+      font-family: 'Sora', sans-serif;
+      font-size: 26px;
+      color: var(--ink);
+    }
+
+    .metric-foot {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .preview-charts {
+      display: grid;
+      gap: 12px;
+    }
+
+    .chart-card {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(24, 229, 255, 0.18);
+      background: rgba(7, 12, 18, 0.78);
+      display: grid;
+      gap: 12px;
+      min-height: 160px;
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      font-family: 'Sora', sans-serif;
+    }
+
+    .chart-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: var(--ink);
+      letter-spacing: 0.04em;
+    }
+
+    .sparkline {
+      width: 100%;
+      height: 70px;
+      border-radius: 14px;
+      background: rgba(5, 8, 12, 0.7);
+      border: 1px solid rgba(24, 229, 255, 0.14);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .sparkline svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .preview-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .preview-list {
+      padding: 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(24, 229, 255, 0.18);
+      background: rgba(7, 12, 18, 0.78);
+      display: grid;
+      gap: 12px;
+      min-height: 180px;
+    }
+
+    .recent-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .recent-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(24, 229, 255, 0.16);
+      background: rgba(5, 8, 12, 0.7);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .recent-item strong {
+      color: var(--ink);
+      font-size: 13px;
+      font-family: 'Sora', sans-serif;
+    }
+
+    .preview-cta {
+      padding: 20px;
+      border-radius: 20px;
+      border: 1px solid rgba(89, 240, 141, 0.3);
+      background: linear-gradient(160deg, rgba(7, 12, 18, 0.9), rgba(10, 18, 24, 0.85));
+      display: grid;
+      gap: 14px;
+      box-shadow: 0 18px 40px rgba(5, 15, 24, 0.55);
+    }
+
+    .preview-cta h3 {
+      margin: 0;
+      font-family: 'Sora', sans-serif;
+      font-size: 22px;
+    }
+
+    .preview-cta p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .preview-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
     .footer {
       border-top: 1px solid var(--stroke);
       padding-top: 28px;
@@ -511,6 +681,10 @@
       .nav { flex-direction: column; align-items: flex-start; }
       .page { padding: 24px 6vw 64px; }
       .hero-grid { grid-template-columns: 1fr; }
+      .preview-grid,
+      .preview-row {
+        grid-template-columns: 1fr;
+      }
       .cta { width: 100%; }
       .button { width: 100%; justify-content: center; }
       .step { grid-template-columns: 1fr; }
@@ -523,7 +697,7 @@
     <header class="nav">
       <div class="brand">
         <div class="brand-mark">
-          <img src="favicon.ico" alt="ClickFix icon" />
+          <img src="favicon.ico" alt="" data-i18n-alt="brand_icon_alt" />
         </div>
         <div>
           <div class="pill">
@@ -542,26 +716,41 @@
             <span class="lang-inline" data-lang="ar">الدفاع اولا</span>
             <span class="lang-inline" data-lang="he">הגנה תחילה</span>
           </div>
-          <div style="font-family: 'Sora', sans-serif; font-size: 18px;">ClickFix Mitigator</div>
+          <div style="font-family: 'Sora', sans-serif; font-size: 18px;">
+            <span class="lang-inline" data-lang="es">ClickFix Mitigator</span>
+            <span class="lang-inline" data-lang="en">ClickFix Mitigator</span>
+            <span class="lang-inline" data-lang="pt">ClickFix Mitigator</span>
+            <span class="lang-inline" data-lang="fr">ClickFix Mitigator</span>
+            <span class="lang-inline" data-lang="de">ClickFix Mitigator</span>
+            <span class="lang-inline" data-lang="nl">ClickFix Mitigator</span>
+            <span class="lang-inline" data-lang="ca">ClickFix Mitigator</span>
+            <span class="lang-inline" data-lang="ru">ClickFix Mitigator</span>
+            <span class="lang-inline" data-lang="ja">ClickFix Mitigator</span>
+            <span class="lang-inline" data-lang="ko">ClickFix Mitigator</span>
+            <span class="lang-inline" data-lang="zh">ClickFix Mitigator</span>
+            <span class="lang-inline" data-lang="hi">ClickFix Mitigator</span>
+            <span class="lang-inline" data-lang="ar">ClickFix Mitigator</span>
+            <span class="lang-inline" data-lang="he">ClickFix Mitigator</span>
+          </div>
         </div>
       </div>
-      <div class="lang" aria-label="Language selector">
-        <span class="lang-label">Language</span>
-        <select id="lang-select" aria-label="Select language">
-          <option value="es">ES - Español</option>
-          <option value="en">EN - English</option>
-          <option value="pt">PT - Português</option>
-          <option value="fr">FR - Français</option>
-          <option value="de">DE - Deutsch</option>
-          <option value="nl">NL - Nederlands</option>
-          <option value="ca">CA - Català</option>
-          <option value="ru">RU - Русский</option>
-          <option value="ja">JA - 日本語</option>
-          <option value="ko">KO - 한국어</option>
-          <option value="zh">ZH - 中文</option>
-          <option value="hi">HI - हिंदी</option>
-          <option value="ar">AR - العربية</option>
-          <option value="he">HE - עברית</option>
+      <div class="lang" data-i18n-aria="language_selector">
+        <span class="lang-label" data-i18n="language_label"></span>
+        <select id="lang-select" data-i18n-aria="language_select">
+          <option value="es" data-lang-option="es"></option>
+          <option value="en" data-lang-option="en"></option>
+          <option value="pt" data-lang-option="pt"></option>
+          <option value="fr" data-lang-option="fr"></option>
+          <option value="de" data-lang-option="de"></option>
+          <option value="nl" data-lang-option="nl"></option>
+          <option value="ca" data-lang-option="ca"></option>
+          <option value="ru" data-lang-option="ru"></option>
+          <option value="ja" data-lang-option="ja"></option>
+          <option value="ko" data-lang-option="ko"></option>
+          <option value="zh" data-lang-option="zh"></option>
+          <option value="hi" data-lang-option="hi"></option>
+          <option value="ar" data-lang-option="ar"></option>
+          <option value="he" data-lang-option="he"></option>
         </select>
       </div>
     </header>
@@ -798,6 +987,323 @@
               <span>Capture evidence</span>
               <strong>03</strong>
             </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card preview-section reveal" id="dashboard-preview">
+      <div class="preview-header">
+        <div class="pill">
+          <span class="lang-inline" data-lang="es">Vista previa del dashboard</span>
+          <span class="lang-inline" data-lang="en">Dashboard preview</span>
+          <span class="lang-inline" data-lang="pt">Previa do dashboard</span>
+          <span class="lang-inline" data-lang="fr">Apercu du tableau</span>
+          <span class="lang-inline" data-lang="de">Dashboard-Vorschau</span>
+          <span class="lang-inline" data-lang="nl">Dashboard-voorproef</span>
+          <span class="lang-inline" data-lang="ca">Vista previa del dashboard</span>
+          <span class="lang-inline" data-lang="ru">Предпросмотр панели</span>
+          <span class="lang-inline" data-lang="ja">ダッシュボードのプレビュー</span>
+          <span class="lang-inline" data-lang="ko">대시보드 미리보기</span>
+          <span class="lang-inline" data-lang="zh">仪表板预览</span>
+          <span class="lang-inline" data-lang="hi">डैशबोर्ड प्रीव्यू</span>
+          <span class="lang-inline" data-lang="ar">معاينة لوحة التحكم</span>
+          <span class="lang-inline" data-lang="he">תצוגה מקדימה ללוח</span>
+        </div>
+        <h2 class="section-title lang-block" data-lang="es">Pulso público con claridad para analistas.</h2>
+        <h2 class="section-title lang-block" data-lang="en">Public pulse with analyst-grade clarity.</h2>
+        <h2 class="section-title lang-block" data-lang="pt">Pulso publico com clareza para analistas.</h2>
+        <h2 class="section-title lang-block" data-lang="fr">Pouls public avec clarte pour les analystes.</h2>
+        <h2 class="section-title lang-block" data-lang="de">Oeffentlicher Puls mit Klarheit fuer Analysten.</h2>
+        <h2 class="section-title lang-block" data-lang="nl">Publieke pulse met duidelijkheid voor analisten.</h2>
+        <h2 class="section-title lang-block" data-lang="ca">Pols public amb claredat per analistes.</h2>
+        <h2 class="section-title lang-block" data-lang="ru">Публичный пульс с ясностью для аналитиков.</h2>
+        <h2 class="section-title lang-block" data-lang="ja">アナリスト向けの明瞭な公開パルス。</h2>
+        <h2 class="section-title lang-block" data-lang="ko">분석가를 위한 명확한 공개 펄스.</h2>
+        <h2 class="section-title lang-block" data-lang="zh">面向分析师的清晰公共脉冲。</h2>
+        <h2 class="section-title lang-block" data-lang="hi">एनालिस्ट के लिए स्पष्ट पब्लिक पल्स।</h2>
+        <h2 class="section-title lang-block" data-lang="ar">نبض عام بوضوح للمحللين.</h2>
+        <h2 class="section-title lang-block" data-lang="he">דופק ציבורי עם בהירות לאנליסטים.</h2>
+        <p class="section-sub lang-block" data-lang="es">Snapshot agregado y seguro. Solicita acceso para intel completo, alertas y nuevos dominios maliciosos.</p>
+        <p class="section-sub lang-block" data-lang="en">Aggregated, safe snapshot. Request access for full intel, alerts, and new malicious domains.</p>
+        <p class="section-sub lang-block" data-lang="pt">Snapshot agregado e seguro. Solicite acesso para intel completa, alertas e novos dominios maliciosos.</p>
+        <p class="section-sub lang-block" data-lang="fr">Instantane agrege et securise. Demandez l acces pour l intel complete, les alertes et les nouveaux domaines malveillants.</p>
+        <p class="section-sub lang-block" data-lang="de">Aggregierter, sicherer Snapshot. Zugang anfragen fuer volle Intel, Alerts und neue boesartige Domains.</p>
+        <p class="section-sub lang-block" data-lang="nl">Geaggregeerde, veilige snapshot. Vraag toegang voor volledige intel, alerts en nieuwe kwaadaardige domeinen.</p>
+        <p class="section-sub lang-block" data-lang="ca">Snapshot agregat i segur. Demana acces per intel completa, alertes i nous dominis maliciosos.</p>
+        <p class="section-sub lang-block" data-lang="ru">Безопасный агрегированный снимок. Запросите доступ к полной разведке, алертам и новым доменам.</p>
+        <p class="section-sub lang-block" data-lang="ja">安全に集約されたスナップショット。完全なインテリジェンス、アラート、新規悪性ドメインにアクセス申請。</p>
+        <p class="section-sub lang-block" data-lang="ko">안전하게 집계된 스냅샷. 전체 인텔, 알림, 신규 악성 도메인 접근을 요청하세요.</p>
+        <p class="section-sub lang-block" data-lang="zh">安全聚合快照。申请访问完整情报、警报和新恶意域名。</p>
+        <p class="section-sub lang-block" data-lang="hi">सुरक्षित समेकित स्नैपशॉट। पूर्ण इंटेल, अलर्ट और नए दुर्भावनापूर्ण डोमेन के लिए एक्सेस मांगें।</p>
+        <p class="section-sub lang-block" data-lang="ar">لقطة مجمعة وآمنة. اطلب الوصول لاستخبارات كاملة وتنبيهات ونطاقات خبيثة جديدة.</p>
+        <p class="section-sub lang-block" data-lang="he">תמונה מצטברת ובטוחה. בקש גישה למודיעין מלא, התראות ודומיינים זדוניים חדשים.</p>
+      </div>
+
+      <div class="preview-grid">
+        <div class="preview-metrics">
+          <div class="metric-card">
+            <span class="metric-label lang-inline" data-lang="es">Alertas totales</span>
+            <span class="metric-label lang-inline" data-lang="en">Total alerts</span>
+            <span class="metric-label lang-inline" data-lang="pt">Alertas totais</span>
+            <span class="metric-label lang-inline" data-lang="fr">Alertes totales</span>
+            <span class="metric-label lang-inline" data-lang="de">Gesamtwarnungen</span>
+            <span class="metric-label lang-inline" data-lang="nl">Totaal alerts</span>
+            <span class="metric-label lang-inline" data-lang="ca">Alertes totals</span>
+            <span class="metric-label lang-inline" data-lang="ru">Всего алертов</span>
+            <span class="metric-label lang-inline" data-lang="ja">総アラート数</span>
+            <span class="metric-label lang-inline" data-lang="ko">총 경고</span>
+            <span class="metric-label lang-inline" data-lang="zh">警报总数</span>
+            <span class="metric-label lang-inline" data-lang="hi">कुल अलर्ट</span>
+            <span class="metric-label lang-inline" data-lang="ar">اجمالي التنبيهات</span>
+            <span class="metric-label lang-inline" data-lang="he">סך התראות</span>
+            <div class="metric-value" data-preview-metric="total_alerts">--</div>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label lang-inline" data-lang="es">Bloqueos totales</span>
+            <span class="metric-label lang-inline" data-lang="en">Total blocks</span>
+            <span class="metric-label lang-inline" data-lang="pt">Bloqueios totais</span>
+            <span class="metric-label lang-inline" data-lang="fr">Blocages totaux</span>
+            <span class="metric-label lang-inline" data-lang="de">Gesamtblockierungen</span>
+            <span class="metric-label lang-inline" data-lang="nl">Totaal blokkeringen</span>
+            <span class="metric-label lang-inline" data-lang="ca">Bloquejos totals</span>
+            <span class="metric-label lang-inline" data-lang="ru">Всего блокировок</span>
+            <span class="metric-label lang-inline" data-lang="ja">総ブロック数</span>
+            <span class="metric-label lang-inline" data-lang="ko">총 차단</span>
+            <span class="metric-label lang-inline" data-lang="zh">阻断总数</span>
+            <span class="metric-label lang-inline" data-lang="hi">कुल ब्लॉक</span>
+            <span class="metric-label lang-inline" data-lang="ar">اجمالي الحظر</span>
+            <span class="metric-label lang-inline" data-lang="he">סך חסימות</span>
+            <div class="metric-value" data-preview-metric="total_blocks">--</div>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label lang-inline" data-lang="es">Usuarios únicos</span>
+            <span class="metric-label lang-inline" data-lang="en">Unique users</span>
+            <span class="metric-label lang-inline" data-lang="pt">Usuarios unicos</span>
+            <span class="metric-label lang-inline" data-lang="fr">Utilisateurs uniques</span>
+            <span class="metric-label lang-inline" data-lang="de">Einzigartige Nutzer</span>
+            <span class="metric-label lang-inline" data-lang="nl">Unieke gebruikers</span>
+            <span class="metric-label lang-inline" data-lang="ca">Usuaris unics</span>
+            <span class="metric-label lang-inline" data-lang="ru">Уникальные пользователи</span>
+            <span class="metric-label lang-inline" data-lang="ja">ユニークユーザー</span>
+            <span class="metric-label lang-inline" data-lang="ko">고유 사용자</span>
+            <span class="metric-label lang-inline" data-lang="zh">唯一用户</span>
+            <span class="metric-label lang-inline" data-lang="hi">यूनिक यूजर</span>
+            <span class="metric-label lang-inline" data-lang="ar">مستخدمون فريدون</span>
+            <span class="metric-label lang-inline" data-lang="he">משתמשים ייחודיים</span>
+            <div class="metric-value" data-preview-metric="unique_users">--</div>
+            <div class="metric-foot">
+              <span class="lang-inline" data-lang="es">Ultimas 24h</span>
+              <span class="lang-inline" data-lang="en">Last 24h</span>
+              <span class="lang-inline" data-lang="pt">Ultimas 24h</span>
+              <span class="lang-inline" data-lang="fr">Dernieres 24h</span>
+              <span class="lang-inline" data-lang="de">Letzte 24h</span>
+              <span class="lang-inline" data-lang="nl">Laatste 24u</span>
+              <span class="lang-inline" data-lang="ca">Ultimes 24h</span>
+              <span class="lang-inline" data-lang="ru">Последние 24ч</span>
+              <span class="lang-inline" data-lang="ja">直近24時間</span>
+              <span class="lang-inline" data-lang="ko">최근 24시간</span>
+              <span class="lang-inline" data-lang="zh">最近24小时</span>
+              <span class="lang-inline" data-lang="hi">पिछले 24h</span>
+              <span class="lang-inline" data-lang="ar">آخر 24 ساعة</span>
+              <span class="lang-inline" data-lang="he">24 השעות האחרונות</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label lang-inline" data-lang="es">Dominios únicos</span>
+            <span class="metric-label lang-inline" data-lang="en">Unique domains</span>
+            <span class="metric-label lang-inline" data-lang="pt">Dominios unicos</span>
+            <span class="metric-label lang-inline" data-lang="fr">Domaines uniques</span>
+            <span class="metric-label lang-inline" data-lang="de">Einzigartige Domains</span>
+            <span class="metric-label lang-inline" data-lang="nl">Unieke domeinen</span>
+            <span class="metric-label lang-inline" data-lang="ca">Dominis unics</span>
+            <span class="metric-label lang-inline" data-lang="ru">Уникальные домены</span>
+            <span class="metric-label lang-inline" data-lang="ja">ユニークドメイン</span>
+            <span class="metric-label lang-inline" data-lang="ko">고유 도메인</span>
+            <span class="metric-label lang-inline" data-lang="zh">唯一域名</span>
+            <span class="metric-label lang-inline" data-lang="hi">यूनिक डोमेन</span>
+            <span class="metric-label lang-inline" data-lang="ar">نطاقات فريدة</span>
+            <span class="metric-label lang-inline" data-lang="he">דומיינים ייחודיים</span>
+            <div class="metric-value" data-preview-metric="unique_hosts">--</div>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label lang-inline" data-lang="es">Tasa de bloqueo</span>
+            <span class="metric-label lang-inline" data-lang="en">Block rate</span>
+            <span class="metric-label lang-inline" data-lang="pt">Taxa de bloqueio</span>
+            <span class="metric-label lang-inline" data-lang="fr">Taux de blocage</span>
+            <span class="metric-label lang-inline" data-lang="de">Blockrate</span>
+            <span class="metric-label lang-inline" data-lang="nl">Blokkeringsgraad</span>
+            <span class="metric-label lang-inline" data-lang="ca">Taxa de bloqueig</span>
+            <span class="metric-label lang-inline" data-lang="ru">Доля блокировок</span>
+            <span class="metric-label lang-inline" data-lang="ja">ブロック率</span>
+            <span class="metric-label lang-inline" data-lang="ko">차단 비율</span>
+            <span class="metric-label lang-inline" data-lang="zh">拦截率</span>
+            <span class="metric-label lang-inline" data-lang="hi">ब्लॉक रेट</span>
+            <span class="metric-label lang-inline" data-lang="ar">معدل الحظر</span>
+            <span class="metric-label lang-inline" data-lang="he">שיעור חסימה</span>
+            <div class="metric-value" data-preview-metric="block_rate">--</div>
+            <div class="metric-foot">
+              <span class="lang-inline" data-lang="es">Ultima actualizacion</span>
+              <span class="lang-inline" data-lang="en">Last update</span>
+              <span class="lang-inline" data-lang="pt">Ultima atualizacao</span>
+              <span class="lang-inline" data-lang="fr">Derniere mise a jour</span>
+              <span class="lang-inline" data-lang="de">Letztes Update</span>
+              <span class="lang-inline" data-lang="nl">Laatste update</span>
+              <span class="lang-inline" data-lang="ca">Ultima actualitzacio</span>
+              <span class="lang-inline" data-lang="ru">Последнее обновление</span>
+              <span class="lang-inline" data-lang="ja">最終更新</span>
+              <span class="lang-inline" data-lang="ko">마지막 업데이트</span>
+              <span class="lang-inline" data-lang="zh">最后更新</span>
+              <span class="lang-inline" data-lang="hi">आखिरी अपडेट</span>
+              <span class="lang-inline" data-lang="ar">آخر تحديث</span>
+              <span class="lang-inline" data-lang="he">עדכון אחרון</span>
+              <span data-preview-metric="last_update">--</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-charts">
+          <div class="chart-card">
+            <div class="chart-header">
+              <span class="lang-inline" data-lang="es">Alertas (7d)</span>
+              <span class="lang-inline" data-lang="en">Alerts (7d)</span>
+              <span class="lang-inline" data-lang="pt">Alertas (7d)</span>
+              <span class="lang-inline" data-lang="fr">Alertes (7j)</span>
+              <span class="lang-inline" data-lang="de">Warnungen (7t)</span>
+              <span class="lang-inline" data-lang="nl">Alerts (7d)</span>
+              <span class="lang-inline" data-lang="ca">Alertes (7d)</span>
+              <span class="lang-inline" data-lang="ru">Алерты (7д)</span>
+              <span class="lang-inline" data-lang="ja">アラート (7日)</span>
+              <span class="lang-inline" data-lang="ko">경고 (7일)</span>
+              <span class="lang-inline" data-lang="zh">警报 (7天)</span>
+              <span class="lang-inline" data-lang="hi">अलर्ट (7 दिन)</span>
+              <span class="lang-inline" data-lang="ar">تنبيهات (7 ايام)</span>
+              <span class="lang-inline" data-lang="he">התראות (7 ימים)</span>
+              <span class="chart-value" data-preview-chart-value="daily">--</span>
+            </div>
+            <div class="sparkline" data-preview-chart="daily"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-header">
+              <span class="lang-inline" data-lang="es">Bloqueos (7d)</span>
+              <span class="lang-inline" data-lang="en">Blocks (7d)</span>
+              <span class="lang-inline" data-lang="pt">Bloqueios (7d)</span>
+              <span class="lang-inline" data-lang="fr">Blocages (7j)</span>
+              <span class="lang-inline" data-lang="de">Blockierungen (7t)</span>
+              <span class="lang-inline" data-lang="nl">Blokkeringen (7d)</span>
+              <span class="lang-inline" data-lang="ca">Bloquejos (7d)</span>
+              <span class="lang-inline" data-lang="ru">Блокировки (7д)</span>
+              <span class="lang-inline" data-lang="ja">ブロック (7日)</span>
+              <span class="lang-inline" data-lang="ko">차단 (7일)</span>
+              <span class="lang-inline" data-lang="zh">阻断 (7天)</span>
+              <span class="lang-inline" data-lang="hi">ब्लॉक (7 दिन)</span>
+              <span class="lang-inline" data-lang="ar">حظر (7 ايام)</span>
+              <span class="lang-inline" data-lang="he">חסימות (7 ימים)</span>
+              <span class="chart-value" data-preview-chart-value="dailyBlocks">--</span>
+            </div>
+            <div class="sparkline" data-preview-chart="dailyBlocks"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="preview-row">
+        <div class="preview-list">
+          <div class="chart-header">
+            <span class="lang-inline" data-lang="es">Radar reciente</span>
+            <span class="lang-inline" data-lang="en">Recent radar</span>
+            <span class="lang-inline" data-lang="pt">Radar recente</span>
+            <span class="lang-inline" data-lang="fr">Radar recent</span>
+            <span class="lang-inline" data-lang="de">Aktuelles Radar</span>
+            <span class="lang-inline" data-lang="nl">Recente radar</span>
+            <span class="lang-inline" data-lang="ca">Radar recent</span>
+            <span class="lang-inline" data-lang="ru">Недавний радар</span>
+            <span class="lang-inline" data-lang="ja">最近のレーダー</span>
+            <span class="lang-inline" data-lang="ko">최근 레이더</span>
+            <span class="lang-inline" data-lang="zh">最近雷达</span>
+            <span class="lang-inline" data-lang="hi">हालिया रडार</span>
+            <span class="lang-inline" data-lang="ar">رادار حديث</span>
+            <span class="lang-inline" data-lang="he">רדאר אחרון</span>
+          </div>
+          <div class="recent-list" data-preview-recent></div>
+          <div class="metric-foot" data-preview-empty>
+            <span class="lang-inline" data-lang="es">Sin datos recientes.</span>
+            <span class="lang-inline" data-lang="en">No recent data.</span>
+            <span class="lang-inline" data-lang="pt">Sem dados recentes.</span>
+            <span class="lang-inline" data-lang="fr">Aucune donnee recente.</span>
+            <span class="lang-inline" data-lang="de">Keine aktuellen Daten.</span>
+            <span class="lang-inline" data-lang="nl">Geen recente data.</span>
+            <span class="lang-inline" data-lang="ca">Sense dades recents.</span>
+            <span class="lang-inline" data-lang="ru">Нет свежих данных.</span>
+            <span class="lang-inline" data-lang="ja">最近のデータはありません。</span>
+            <span class="lang-inline" data-lang="ko">최근 데이터 없음.</span>
+            <span class="lang-inline" data-lang="zh">暂无最近数据。</span>
+            <span class="lang-inline" data-lang="hi">हालिया डेटा नहीं.</span>
+            <span class="lang-inline" data-lang="ar">لا توجد بيانات حديثة.</span>
+            <span class="lang-inline" data-lang="he">אין נתונים אחרונים.</span>
+          </div>
+        </div>
+        <div class="preview-cta">
+          <h3 class="lang-block" data-lang="es">¿Eres analista o investigador?</h3>
+          <h3 class="lang-block" data-lang="en">Security analyst or researcher?</h3>
+          <h3 class="lang-block" data-lang="pt">Analista ou pesquisador?</h3>
+          <h3 class="lang-block" data-lang="fr">Analyste ou chercheur securite ?</h3>
+          <h3 class="lang-block" data-lang="de">Security Analyst oder Researcher?</h3>
+          <h3 class="lang-block" data-lang="nl">Security-analist of onderzoeker?</h3>
+          <h3 class="lang-block" data-lang="ca">Analista o investigador?</h3>
+          <h3 class="lang-block" data-lang="ru">Вы аналитик или исследователь?</h3>
+          <h3 class="lang-block" data-lang="ja">アナリストまたは研究者ですか？</h3>
+          <h3 class="lang-block" data-lang="ko">분석가 또는 연구자이신가요?</h3>
+          <h3 class="lang-block" data-lang="zh">你是分析师或研究员吗？</h3>
+          <h3 class="lang-block" data-lang="hi">क्या आप विश्लेषक या शोधकर्ता हैं?</h3>
+          <h3 class="lang-block" data-lang="ar">هل انت محلل او باحث؟</h3>
+          <h3 class="lang-block" data-lang="he">אנליסט או חוקר?</h3>
+          <p class="lang-block" data-lang="es">Recibe updates, señales y nuevos dominios maliciosos en tiempo real. Solicita acceso al panel completo.</p>
+          <p class="lang-block" data-lang="en">Get real-time updates, signals, and new malicious domains. Request access to the full console.</p>
+          <p class="lang-block" data-lang="pt">Receba updates, sinais e novos dominios maliciosos em tempo real. Solicite acesso ao painel completo.</p>
+          <p class="lang-block" data-lang="fr">Recevez des mises a jour, signaux et nouveaux domaines malveillants en temps reel. Demandez l acces au panneau complet.</p>
+          <p class="lang-block" data-lang="de">Erhalte Echtzeit-Updates, Signale und neue boesartige Domains. Zugang zur Konsole anfragen.</p>
+          <p class="lang-block" data-lang="nl">Ontvang realtime updates, signalen en nieuwe kwaadaardige domeinen. Vraag toegang aan tot de volledige console.</p>
+          <p class="lang-block" data-lang="ca">Rep actualitzacions, senyals i nous dominis maliciosos en temps real. Demana acces al panell complet.</p>
+          <p class="lang-block" data-lang="ru">Получайте обновления, сигналы и новые домены в реальном времени. Запросите доступ к полной консоли.</p>
+          <p class="lang-block" data-lang="ja">リアルタイム更新、シグナル、新規悪性ドメインを受け取る。フルコンソールのアクセスを申請。</p>
+          <p class="lang-block" data-lang="ko">실시간 업데이트, 신호, 신규 악성 도메인을 받아보세요. 전체 콘솔 접근을 요청하세요.</p>
+          <p class="lang-block" data-lang="zh">获取实时更新、信号和新恶意域名。申请访问完整控制台。</p>
+          <p class="lang-block" data-lang="hi">रीयल-टाइम अपडेट, सिग्नल और नए दुर्भावनापूर्ण डोमेन पाएं। पूरी कंसोल के लिए एक्सेस मांगें।</p>
+          <p class="lang-block" data-lang="ar">احصل على تحديثات واشارات ونطاقات خبيثة جديدة بالوقت الحقيقي. اطلب الوصول الى لوحة كاملة.</p>
+          <p class="lang-block" data-lang="he">קבל עדכונים בזמן אמת, אותות ודומיינים זדוניים חדשים. בקש גישה לקונסולה המלאה.</p>
+          <div class="preview-actions">
+            <a class="button primary" href="access.php">
+              <span class="lang-inline" data-lang="es">Solicitar acceso</span>
+              <span class="lang-inline" data-lang="en">Request access</span>
+              <span class="lang-inline" data-lang="pt">Solicitar acesso</span>
+              <span class="lang-inline" data-lang="fr">Demander l acces</span>
+              <span class="lang-inline" data-lang="de">Zugang anfragen</span>
+              <span class="lang-inline" data-lang="nl">Toegang aanvragen</span>
+              <span class="lang-inline" data-lang="ca">Demanar acces</span>
+              <span class="lang-inline" data-lang="ru">Запросить доступ</span>
+              <span class="lang-inline" data-lang="ja">アクセス申請</span>
+              <span class="lang-inline" data-lang="ko">접근 요청</span>
+              <span class="lang-inline" data-lang="zh">申请访问</span>
+              <span class="lang-inline" data-lang="hi">एक्सेस मांगें</span>
+              <span class="lang-inline" data-lang="ar">طلب الوصول</span>
+              <span class="lang-inline" data-lang="he">בקשת גישה</span>
+            </a>
+            <a class="button secondary" href="home.php">
+              <span class="lang-inline" data-lang="es">Ver panel publico</span>
+              <span class="lang-inline" data-lang="en">View public dashboard</span>
+              <span class="lang-inline" data-lang="pt">Ver painel publico</span>
+              <span class="lang-inline" data-lang="fr">Voir le panneau public</span>
+              <span class="lang-inline" data-lang="de">Oeffentliches Dashboard</span>
+              <span class="lang-inline" data-lang="nl">Publiek dashboard</span>
+              <span class="lang-inline" data-lang="ca">Veure panell public</span>
+              <span class="lang-inline" data-lang="ru">Публичная панель</span>
+              <span class="lang-inline" data-lang="ja">公開ダッシュボード</span>
+              <span class="lang-inline" data-lang="ko">공개 대시보드</span>
+              <span class="lang-inline" data-lang="zh">查看公开面板</span>
+              <span class="lang-inline" data-lang="hi">पब्लिक डैशबोर्ड</span>
+              <span class="lang-inline" data-lang="ar">عرض اللوحة العامة</span>
+              <span class="lang-inline" data-lang="he">לוח ציבורי</span>
+            </a>
           </div>
         </div>
       </div>
@@ -1414,20 +1920,20 @@
 
     <footer class="footer">
       <div>
-        <div class="lang-block" data-lang="es">ClickFix Mitigator | Defense-first anti ClickFix</div>
+        <div class="lang-block" data-lang="es">ClickFix Mitigator | Defensa contra ClickFix</div>
         <div class="lang-block" data-lang="en">ClickFix Mitigator | Defense-first anti ClickFix</div>
-        <div class="lang-block" data-lang="pt">ClickFix Mitigator | Defense-first anti ClickFix</div>
-        <div class="lang-block" data-lang="fr">ClickFix Mitigator | Defense-first anti ClickFix</div>
-        <div class="lang-block" data-lang="de">ClickFix Mitigator | Defense-first anti ClickFix</div>
-        <div class="lang-block" data-lang="nl">ClickFix Mitigator | Defense-first anti ClickFix</div>
-        <div class="lang-block" data-lang="ca">ClickFix Mitigator | Defense-first anti ClickFix</div>
-        <div class="lang-block" data-lang="ru">ClickFix Mitigator | Defense-first anti ClickFix</div>
-        <div class="lang-block" data-lang="ja">ClickFix Mitigator | Defense-first anti ClickFix</div>
-        <div class="lang-block" data-lang="ko">ClickFix Mitigator | Defense-first anti ClickFix</div>
-        <div class="lang-block" data-lang="zh">ClickFix Mitigator | Defense-first anti ClickFix</div>
-        <div class="lang-block" data-lang="hi">ClickFix Mitigator | Defense-first anti ClickFix</div>
-        <div class="lang-block" data-lang="ar">ClickFix Mitigator | Defense-first anti ClickFix</div>
-        <div class="lang-block" data-lang="he">ClickFix Mitigator | Defense-first anti ClickFix</div>
+        <div class="lang-block" data-lang="pt">ClickFix Mitigator | Defesa contra ClickFix</div>
+        <div class="lang-block" data-lang="fr">ClickFix Mitigator | Defense contre ClickFix</div>
+        <div class="lang-block" data-lang="de">ClickFix Mitigator | Abwehr gegen ClickFix</div>
+        <div class="lang-block" data-lang="nl">ClickFix Mitigator | Verdediging tegen ClickFix</div>
+        <div class="lang-block" data-lang="ca">ClickFix Mitigator | Defensa contra ClickFix</div>
+        <div class="lang-block" data-lang="ru">ClickFix Mitigator | Защита от ClickFix</div>
+        <div class="lang-block" data-lang="ja">ClickFix Mitigator | ClickFix対策</div>
+        <div class="lang-block" data-lang="ko">ClickFix Mitigator | ClickFix 방어</div>
+        <div class="lang-block" data-lang="zh">ClickFix Mitigator | ClickFix 防护</div>
+        <div class="lang-block" data-lang="hi">ClickFix Mitigator | ClickFix रक्षा</div>
+        <div class="lang-block" data-lang="ar">ClickFix Mitigator | دفاع ضد ClickFix</div>
+        <div class="lang-block" data-lang="he">ClickFix Mitigator | הגנה נגד ClickFix</div>
       </div>
       <div>
         <a href="ClickFix/PrivacyPolicy.html">
@@ -1453,9 +1959,170 @@
   <script>
     (function() {
       var supported = ['ar', 'ca', 'de', 'en', 'es', 'fr', 'he', 'hi', 'ja', 'ko', 'nl', 'pt', 'ru', 'zh'];
+      var languageOptionLabels = {
+        ar: 'AR - العربية',
+        ca: 'CA - Català',
+        de: 'DE - Deutsch',
+        en: 'EN - English',
+        es: 'ES - Español',
+        fr: 'FR - Français',
+        he: 'HE - עברית',
+        hi: 'HI - हिंदी',
+        ja: 'JA - 日本語',
+        ko: 'KO - 한국어',
+        nl: 'NL - Nederlands',
+        pt: 'PT - Português',
+        ru: 'RU - Русский',
+        zh: 'ZH - 中文'
+      };
+      var uiStrings = {
+        es: {
+          title: 'ClickFix Mitigator | Defensa contra ClickFix',
+          description: 'ClickFix Mitigator: extension defense-first para frenar ClickFix. Detecta, interrumpe y registra intentos de ingenieria social basados en ejecucion de comandos.',
+          language_label: 'Idioma',
+          language_selector: 'Selector de idioma',
+          language_select: 'Seleccionar idioma',
+          brand_icon_alt: 'Icono de ClickFix'
+        },
+        en: {
+          title: 'ClickFix Mitigator | Defense-first anti ClickFix',
+          description: 'ClickFix Mitigator: defense-first extension to stop ClickFix. Detects, disrupts, and logs social engineering command execution attempts.',
+          language_label: 'Language',
+          language_selector: 'Language selector',
+          language_select: 'Select language',
+          brand_icon_alt: 'ClickFix icon'
+        },
+        pt: {
+          title: 'ClickFix Mitigator | Defesa contra ClickFix',
+          description: 'ClickFix Mitigator: extensao defense-first para travar ClickFix. Detecta, interrompe e registra tentativas de engenharia social com comandos.',
+          language_label: 'Idioma',
+          language_selector: 'Seletor de idioma',
+          language_select: 'Selecionar idioma',
+          brand_icon_alt: 'Icone do ClickFix'
+        },
+        fr: {
+          title: 'ClickFix Mitigator | Defense contre ClickFix',
+          description: 'ClickFix Mitigator : extension defense-first pour stopper ClickFix. Detecte, bloque et journalise les tentatives de social engineering par commandes.',
+          language_label: 'Langue',
+          language_selector: 'Selecteur de langue',
+          language_select: 'Selectionner la langue',
+          brand_icon_alt: 'Icone ClickFix'
+        },
+        de: {
+          title: 'ClickFix Mitigator | Abwehr gegen ClickFix',
+          description: 'ClickFix Mitigator: Defense-first Erweiterung gegen ClickFix. Erkennt, stoppt und protokolliert Social-Engineering-Kommandos.',
+          language_label: 'Sprache',
+          language_selector: 'Sprachauswahl',
+          language_select: 'Sprache waehlen',
+          brand_icon_alt: 'ClickFix-Icon'
+        },
+        nl: {
+          title: 'ClickFix Mitigator | Verdediging tegen ClickFix',
+          description: 'ClickFix Mitigator: defense-first extensie om ClickFix te stoppen. Detecteert, onderbreekt en logt social engineering-commando s.',
+          language_label: 'Taal',
+          language_selector: 'Taalkeuze',
+          language_select: 'Taal selecteren',
+          brand_icon_alt: 'ClickFix pictogram'
+        },
+        ca: {
+          title: 'ClickFix Mitigator | Defensa contra ClickFix',
+          description: 'ClickFix Mitigator: extensio defense-first per frenar ClickFix. Detecta, interromp i registra intents d enginyeria social amb comandes.',
+          language_label: 'Idioma',
+          language_selector: 'Selector d idioma',
+          language_select: 'Seleccionar idioma',
+          brand_icon_alt: 'Icona de ClickFix'
+        },
+        ru: {
+          title: 'ClickFix Mitigator | Защита от ClickFix',
+          description: 'ClickFix Mitigator: defense-first расширение для остановки ClickFix. Обнаруживает, прерывает и фиксирует попытки социнженерии через команды.',
+          language_label: 'Язык',
+          language_selector: 'Выбор языка',
+          language_select: 'Выбрать язык',
+          brand_icon_alt: 'Иконка ClickFix'
+        },
+        ja: {
+          title: 'ClickFix Mitigator | ClickFix対策',
+          description: 'ClickFix Mitigator: ClickFixを止める防御優先の拡張。検知し、遮断し、コマンド型の詐欺を記録します。',
+          language_label: '言語',
+          language_selector: '言語セレクター',
+          language_select: '言語を選択',
+          brand_icon_alt: 'ClickFixアイコン'
+        },
+        ko: {
+          title: 'ClickFix Mitigator | ClickFix 방어',
+          description: 'ClickFix Mitigator: ClickFix를 차단하는 방어 우선 확장. 탐지, 차단, 기록을 수행합니다.',
+          language_label: '언어',
+          language_selector: '언어 선택기',
+          language_select: '언어 선택',
+          brand_icon_alt: 'ClickFix 아이콘'
+        },
+        zh: {
+          title: 'ClickFix Mitigator | ClickFix 防护',
+          description: 'ClickFix Mitigator：防御优先的扩展，用于拦截 ClickFix。检测、阻断并记录命令型社会工程尝试。',
+          language_label: '语言',
+          language_selector: '语言选择器',
+          language_select: '选择语言',
+          brand_icon_alt: 'ClickFix 图标'
+        },
+        hi: {
+          title: 'ClickFix Mitigator | ClickFix रक्षा',
+          description: 'ClickFix Mitigator: रक्षा-प्रधान एक्सटेंशन जो ClickFix रोकता है। पहचानता, बाधित करता और कमांड आधारित सोशल इंजीनियरिंग लॉग करता है।',
+          language_label: 'भाषा',
+          language_selector: 'भाषा चयन',
+          language_select: 'भाषा चुनें',
+          brand_icon_alt: 'ClickFix आइकन'
+        },
+        ar: {
+          title: 'ClickFix Mitigator | دفاع ضد ClickFix',
+          description: 'ClickFix Mitigator: امتداد دفاع اولا لايقاف ClickFix. يكتشف ويعطل ويسجل محاولات الهندسة الاجتماعية عبر الاوامر.',
+          language_label: 'اللغة',
+          language_selector: 'محدد اللغة',
+          language_select: 'اختر اللغة',
+          brand_icon_alt: 'ايقونة ClickFix'
+        },
+        he: {
+          title: 'ClickFix Mitigator | הגנה נגד ClickFix',
+          description: 'ClickFix Mitigator: תוסף הגנה תחילה לעצירת ClickFix. מזהה, חוסם ומתעד נסיונות הנדסה חברתית עם פקודות.',
+          language_label: 'שפה',
+          language_selector: 'בורר שפה',
+          language_select: 'בחר שפה',
+          brand_icon_alt: 'סמל ClickFix'
+        }
+      };
       var saved = localStorage.getItem('cfm_lang');
       var browser = (navigator.language || 'en').slice(0, 2).toLowerCase();
       var initial = saved && supported.includes(saved) ? saved : (supported.includes(browser) ? browser : 'en');
+
+      function applyUiStrings(lang) {
+        var dict = uiStrings[lang] || uiStrings.en;
+        document.title = dict.title;
+        var meta = document.querySelector('meta[name="description"]');
+        if (meta) {
+          meta.setAttribute('content', dict.description);
+        }
+        var label = document.querySelector('[data-i18n="language_label"]');
+        if (label) {
+          label.textContent = dict.language_label;
+        }
+        document.querySelectorAll('[data-i18n-aria]').forEach(function(node) {
+          var key = node.getAttribute('data-i18n-aria');
+          if (key && dict[key]) {
+            node.setAttribute('aria-label', dict[key]);
+          }
+        });
+        document.querySelectorAll('[data-i18n-alt]').forEach(function(node) {
+          var key = node.getAttribute('data-i18n-alt');
+          if (key && dict[key]) {
+            node.setAttribute('alt', dict[key]);
+          }
+        });
+        document.querySelectorAll('[data-lang-option]').forEach(function(option) {
+          var code = option.getAttribute('data-lang-option');
+          if (code && languageOptionLabels[code]) {
+            option.textContent = languageOptionLabels[code];
+          }
+        });
+      }
 
       function setLang(lang) {
         if (!supported.includes(lang)) return;
@@ -1479,6 +2146,7 @@
         document.documentElement.lang = lang;
         document.documentElement.dir = (lang === 'ar' || lang === 'he') ? 'rtl' : 'ltr';
         localStorage.setItem('cfm_lang', lang);
+        applyUiStrings(lang);
       }
 
       var select = document.getElementById('lang-select');
@@ -1490,6 +2158,144 @@
       }
 
       setLang(initial);
+
+      var previewPayload = null;
+
+      function formatNumber(value) {
+        var lang = document.documentElement.lang || 'en';
+        try {
+          return new Intl.NumberFormat(lang).format(value);
+        } catch (error) {
+          return String(value);
+        }
+      }
+
+      function formatPercent(value) {
+        var lang = document.documentElement.lang || 'en';
+        try {
+          return new Intl.NumberFormat(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value) + '%';
+        } catch (error) {
+          return String(value) + '%';
+        }
+      }
+
+      function formatDate(value) {
+        if (!value) return '--';
+        var date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        var lang = document.documentElement.lang || 'en';
+        try {
+          return date.toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' });
+        } catch (error) {
+          return date.toISOString();
+        }
+      }
+
+      function updatePreviewMetrics(stats) {
+        if (!stats) return;
+        var nodes = document.querySelectorAll('[data-preview-metric]');
+        nodes.forEach(function(node) {
+          var key = node.getAttribute('data-preview-metric');
+          if (!key || !(key in stats)) return;
+          var value = stats[key];
+          if (key === 'block_rate') {
+            node.textContent = formatPercent(value);
+          } else if (key === 'last_update') {
+            node.textContent = formatDate(value);
+          } else {
+            node.textContent = formatNumber(value);
+          }
+        });
+      }
+
+      function renderSparkline(container, series) {
+        if (!container || !series || !Array.isArray(series.values)) return;
+        var values = series.values.slice(-14);
+        if (!values.length) return;
+        var max = Math.max.apply(null, values);
+        var min = Math.min.apply(null, values);
+        var width = 260;
+        var height = 70;
+        var span = max - min || 1;
+        var points = values.map(function(value, index) {
+          var x = (index / (values.length - 1 || 1)) * (width - 12) + 6;
+          var y = height - 6 - ((value - min) / span) * (height - 16);
+          return x.toFixed(1) + ',' + y.toFixed(1);
+        }).join(' ');
+        var fillPoints = '6,' + (height - 6) + ' ' + points + ' ' + (width - 6) + ',' + (height - 6);
+        container.innerHTML = '<svg viewBox="0 0 ' + width + ' ' + height + '" preserveAspectRatio="none">' +
+          '<polyline points="' + points + '" fill="none" stroke="rgba(24,229,255,0.8)" stroke-width="2" />' +
+          '<polygon points="' + fillPoints + '" fill="rgba(24,229,255,0.12)" />' +
+          '</svg>';
+      }
+
+      function updateChartValue(key, series) {
+        var node = document.querySelector('[data-preview-chart-value="' + key + '"]');
+        if (!node || !series || !Array.isArray(series.values)) return;
+        var values = series.values.slice(-7);
+        var latest = values.length ? values[values.length - 1] : 0;
+        node.textContent = formatNumber(latest);
+      }
+
+      function updateCharts(charts) {
+        if (!charts) return;
+        ['daily', 'dailyBlocks'].forEach(function(key) {
+          var container = document.querySelector('[data-preview-chart="' + key + '"]');
+          if (!container || !charts[key]) return;
+          renderSparkline(container, charts[key]);
+          updateChartValue(key, charts[key]);
+        });
+      }
+
+      function updateRecent(domains) {
+        var list = document.querySelector('[data-preview-recent]');
+        var empty = document.querySelector('[data-preview-empty]');
+        if (!list) return;
+        list.innerHTML = '';
+        if (!Array.isArray(domains) || domains.length === 0) {
+          if (empty) empty.style.display = 'block';
+          return;
+        }
+        if (empty) empty.style.display = 'none';
+        domains.slice(0, 4).forEach(function(entry) {
+          var row = document.createElement('div');
+          row.className = 'recent-item';
+          var domain = (entry && entry.domain) ? entry.domain : 'Unknown';
+          var dateValue = entry && entry.date ? formatDate(entry.date) : '--';
+          row.innerHTML = '<strong>' + domain + '</strong><span>' + dateValue + '</span>';
+          list.appendChild(row);
+        });
+      }
+
+      function applyPreviewPayload(payload) {
+        if (!payload || typeof payload !== 'object') return;
+        previewPayload = payload;
+        updatePreviewMetrics(payload.stats || {});
+        updateCharts(payload.charts || {});
+        updateRecent(payload.recent_domains || []);
+      }
+
+      function refreshPreviewLocale() {
+        if (!previewPayload) return;
+        updatePreviewMetrics(previewPayload.stats || {});
+        updateRecent(previewPayload.recent_domains || []);
+      }
+
+      if (select) {
+        select.addEventListener('change', refreshPreviewLocale);
+      }
+
+      fetch('dashboard.php?public=1&format=live', { cache: 'no-store' })
+        .then(function(response) {
+          if (!response.ok) throw new Error('Preview fetch failed');
+          return response.json();
+        })
+        .then(function(payload) {
+          applyPreviewPayload(payload);
+        })
+        .catch(function() {
+          // Keep placeholders if preview data is unavailable.
+        });
     })();
   </script>
 </body>

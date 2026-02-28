@@ -17,7 +17,7 @@ session_start();
 
 $sessionStatus = (is_dir($sessionDir) && is_writable($sessionDir)) ? 'ok' : 'warning';
 
-$supportedLanguages = ['es', 'en'];
+$supportedLanguages = ['es', 'en', 'ca', 'de', 'fr', 'nl', 'he', 'ru', 'zh', 'ko', 'ja', 'pt', 'ar', 'hi'];
 $requestedLanguage = (string) ($_GET['lang'] ?? '');
 if ($requestedLanguage !== '' && in_array($requestedLanguage, $supportedLanguages, true)) {
     $_SESSION['lang'] = $requestedLanguage;
@@ -206,6 +206,19 @@ $translations = [
         'alerts_by_hour' => 'Alertas por hora',
         'country_distribution' => 'Distribución por país',
         'signal_types' => 'Tipos de señales',
+        'signal_mismatch' => 'Discrepancia',
+        'signal_command' => 'Comando',
+        'signal_winr' => 'Win + R',
+        'signal_winx' => 'Win + X',
+        'signal_browser_error' => 'Error navegador',
+        'signal_fix_action' => 'Acción de arreglo',
+        'signal_captcha' => 'Captcha',
+        'signal_console' => 'Consola',
+        'signal_shell' => 'Shell',
+        'signal_paste_sequence' => 'Secuencia pegado',
+        'signal_file_explorer' => 'Explorador',
+        'signal_copy_trigger' => 'Disparador copia',
+        'signal_evasion' => 'Evasión',
         'recent_detections' => 'Detecciones recientes',
         'no_detections' => 'Sin detecciones con contenido registrado.',
         'blocked' => 'Bloqueado',
@@ -272,6 +285,19 @@ $translations = [
         'logout' => 'Cerrar sesión',
         'manage_users' => 'Gestión de usuarios',
         'manage_users_hint' => 'Crear, verificar y asignar roles',
+        'user_profiles' => 'Perfiles de usuarios',
+        'user_profiles_hint' => 'Historial de alertas e IPs por usuario de la extensión.',
+        'user_profile_id' => 'ID de usuario',
+        'user_profile_first_seen' => 'Primera actividad',
+        'user_profile_last_seen' => 'Última actividad',
+        'user_profile_alerts_count' => 'Alertas',
+        'user_profile_ips_count' => 'IPs',
+        'user_profile_browser' => 'Navegador',
+        'user_profile_user_agent' => 'User agent',
+        'user_profile_country' => 'País',
+        'user_profile_recent_alerts' => 'Alertas recientes',
+        'user_profile_ip_history' => 'Historial de IPs',
+        'user_profile_no_data' => 'Sin datos de usuarios.',
         'create_user' => 'Crear usuario',
         'role' => 'Rol',
         'verified' => 'Verificado',
@@ -310,6 +336,43 @@ $translations = [
         'log_col_detected' => 'Detectado',
         'log_col_blocked' => 'Bloqueado',
         'log_col_country' => 'País',
+        'log_col_duplicates' => 'Repeticiones',
+        'last_seen' => 'Última vez',
+        'score_breakdown_title' => 'Puntuaci?n',
+        'score_breakdown_weights' => 'Pesos',
+        'score_breakdown_unavailable' => 'No hay datos suficientes para este componente.',
+        'score_breakdown_no_factors' => 'Sin factores que aporten.',
+        'scoreComponentSignals' => 'Se?ales',
+        'scoreComponentClipboard' => 'Portapapeles',
+        'scoreComponentContext' => 'Contexto',
+        'scoreSignalCommandMatch' => 'Patr?n de comando',
+        'scoreSignalShellHint' => 'Pistas de ejecuci?n shell',
+        'scoreSignalEvasionHint' => 'Ofuscaci?n / evasi?n',
+        'scoreSignalMismatch' => 'Desajuste portapapeles',
+        'scoreSignalClipboardWarning' => 'Advertencia de portapapeles',
+        'scoreSignalWinR' => 'Win + R',
+        'scoreSignalWinX' => 'Win + X',
+        'scoreSignalPasteSequence' => 'Secuencia de pegado',
+        'scoreSignalConsole' => 'Consola',
+        'scoreSignalFileExplorer' => 'Explorador de archivos',
+        'scoreSignalCopyTrigger' => 'Disparador de copia',
+        'scoreSignalBrowserError' => 'Error del navegador',
+        'scoreSignalFixAction' => 'Acci?n de arreglo',
+        'scoreSignalCaptcha' => 'Captcha',
+        'scoreClipboardCommand' => 'Palabras de comando',
+        'scoreClipboardExecutionHint' => 'Pistas de ejecuci?n',
+        'scoreClipboardUrl' => 'URL sospechosa',
+        'scoreClipboardBase64' => 'Carga Base64',
+        'scoreClipboardHighEntropy' => 'Alta entrop?a',
+        'scoreClipboardShellMeta' => 'Metacaracteres de shell',
+        'scoreClipboardLong' => 'Texto inusualmente largo',
+        'scoreClipboardLeadingWhitespace' => 'Espacios iniciales',
+        'scoreClipboardLooksLikeCommand' => 'Parece un comando',
+        'scoreContextAllowlisted' => 'Allowlist',
+        'scoreContextTrustedHost' => 'Host confiable',
+        'scoreContextCodeContext' => 'Contexto de c?digo',
+        'scoreContextIframe' => 'Contexto iframe',
+        'scoreContextOpaqueIframes' => 'Iframes opacos',
         'log_col_enabled' => 'Extension',
         'log_col_alert_count' => 'Alertas',
         'log_col_block_count' => 'Bloqueos',
@@ -568,6 +631,19 @@ $translations = [
         'alerts_by_hour' => 'Alerts per hour',
         'country_distribution' => 'Country distribution',
         'signal_types' => 'Signal types',
+        'signal_mismatch' => 'Mismatch',
+        'signal_command' => 'Command',
+        'signal_winr' => 'Win + R',
+        'signal_winx' => 'Win + X',
+        'signal_browser_error' => 'Browser error',
+        'signal_fix_action' => 'Fix action',
+        'signal_captcha' => 'Captcha',
+        'signal_console' => 'Console',
+        'signal_shell' => 'Shell',
+        'signal_paste_sequence' => 'Paste sequence',
+        'signal_file_explorer' => 'File explorer',
+        'signal_copy_trigger' => 'Copy trigger',
+        'signal_evasion' => 'Evasion',
         'recent_detections' => 'Recent detections',
         'no_detections' => 'No detections with recorded content.',
         'blocked' => 'Blocked',
@@ -634,11 +710,59 @@ $translations = [
         'logout' => 'Sign out',
         'manage_users' => 'User management',
         'manage_users_hint' => 'Create, verify, and assign roles',
+        'user_profiles' => 'User profiles',
+        'user_profiles_hint' => 'Alert history and IPs per extension user.',
+        'user_profile_id' => 'User ID',
+        'user_profile_first_seen' => 'First seen',
+        'user_profile_last_seen' => 'Last seen',
+        'user_profile_alerts_count' => 'Alerts',
+        'user_profile_ips_count' => 'IPs',
+        'user_profile_browser' => 'Browser',
+        'user_profile_user_agent' => 'User agent',
+        'user_profile_country' => 'Country',
+        'user_profile_recent_alerts' => 'Recent alerts',
+        'user_profile_ip_history' => 'IP history',
+        'user_profile_no_data' => 'No user data available.',
         'create_user' => 'Create user',
         'role' => 'Role',
         'verified' => 'Verified',
         'actions' => 'Actions',
         'save' => 'Save',
+        'score_breakdown_title' => 'Score',
+        'score_breakdown_weights' => 'Weights',
+        'score_breakdown_unavailable' => 'Not enough data for this component.',
+        'score_breakdown_no_factors' => 'No contributing factors detected.',
+        'scoreComponentSignals' => 'Signals',
+        'scoreComponentClipboard' => 'Clipboard content',
+        'scoreComponentContext' => 'Context',
+        'scoreSignalCommandMatch' => 'Command pattern',
+        'scoreSignalShellHint' => 'Shell execution hints',
+        'scoreSignalEvasionHint' => 'Obfuscation / evasion',
+        'scoreSignalMismatch' => 'Clipboard mismatch',
+        'scoreSignalClipboardWarning' => 'Clipboard warning',
+        'scoreSignalWinR' => 'Win + R prompt',
+        'scoreSignalWinX' => 'Win + X prompt',
+        'scoreSignalPasteSequence' => 'Paste sequence',
+        'scoreSignalConsole' => 'Console prompt',
+        'scoreSignalFileExplorer' => 'File Explorer prompt',
+        'scoreSignalCopyTrigger' => 'Copy trigger',
+        'scoreSignalBrowserError' => 'Browser error prompt',
+        'scoreSignalFixAction' => 'Fix action prompt',
+        'scoreSignalCaptcha' => 'CAPTCHA prompt',
+        'scoreClipboardCommand' => 'Command keywords',
+        'scoreClipboardExecutionHint' => 'Execution hints',
+        'scoreClipboardUrl' => 'Suspicious URL',
+        'scoreClipboardBase64' => 'Base64 payload',
+        'scoreClipboardHighEntropy' => 'High entropy',
+        'scoreClipboardShellMeta' => 'Shell metacharacters',
+        'scoreClipboardLong' => 'Unusually long text',
+        'scoreClipboardLeadingWhitespace' => 'Leading whitespace',
+        'scoreClipboardLooksLikeCommand' => 'Looks like a command',
+        'scoreContextAllowlisted' => 'Allowlisted destination',
+        'scoreContextTrustedHost' => 'Trusted host',
+        'scoreContextCodeContext' => 'Code editor context',
+        'scoreContextIframe' => 'Iframe context',
+        'scoreContextOpaqueIframes' => 'Opaque iframes',
         'delete' => 'Delete',
         'verify' => 'Verify',
         'unverify' => 'Remove verification',
@@ -672,6 +796,8 @@ $translations = [
         'log_col_detected' => 'Detected',
         'log_col_blocked' => 'Blocked',
         'log_col_country' => 'Country',
+        'log_col_duplicates' => 'Repeats',
+        'last_seen' => 'Last seen',
         'log_col_enabled' => 'Extension',
         'log_col_alert_count' => 'Alerts',
         'log_col_block_count' => 'Blocks',
@@ -756,7 +882,10 @@ $translations = [
 
 function t(array $translations, string $lang, string $key): string
 {
-    return $translations[$lang][$key] ?? $translations['es'][$key] ?? $key;
+    return $translations[$lang][$key]
+        ?? $translations['en'][$key]
+        ?? $translations['es'][$key]
+        ?? $key;
 }
 
 function safeSubstr(string $value, int $start, int $length): string
@@ -1097,6 +1226,11 @@ CREATE TABLE IF NOT EXISTS reports (
     review_status TEXT DEFAULT 'pending',
     reviewed_by INTEGER,
     reviewed_at TEXT,
+    client_id TEXT,
+    score_total INTEGER,
+    score_details_json TEXT,
+    duplicate_count INTEGER DEFAULT 1,
+    last_seen TEXT,
     user_agent TEXT,
     ip TEXT,
     country TEXT
@@ -1110,6 +1244,7 @@ CREATE TABLE IF NOT EXISTS stats (
     block_count INTEGER,
     manual_sites_json TEXT,
     user_agent TEXT,
+    client_id TEXT,
     install_type TEXT,
     install_source TEXT,
     install_channel TEXT,
@@ -1198,36 +1333,61 @@ $chartData = [
 ];
 
 $signalLabels = [
-    'mismatch' => 'Discrepancia',
-    'commandMatch' => 'Comando',
-    'winRHint' => 'Win + R',
-    'winXHint' => 'Win + X',
-    'browserErrorHint' => 'Error navegador',
-    'fixActionHint' => 'Acción de arreglo',
-    'captchaHint' => 'Captcha',
-    'consoleHint' => 'Consola',
-    'shellHint' => 'Shell',
-    'pasteSequenceHint' => 'Secuencia pegado',
-    'fileExplorerHint' => 'Explorador',
-    'copyTriggerHint' => 'Disparador copia',
-    'evasionHint' => 'Evasión'
+    'mismatch' => t($translations, $currentLanguage, 'signal_mismatch'),
+    'commandMatch' => t($translations, $currentLanguage, 'signal_command'),
+    'winRHint' => t($translations, $currentLanguage, 'signal_winr'),
+    'winXHint' => t($translations, $currentLanguage, 'signal_winx'),
+    'browserErrorHint' => t($translations, $currentLanguage, 'signal_browser_error'),
+    'fixActionHint' => t($translations, $currentLanguage, 'signal_fix_action'),
+    'captchaHint' => t($translations, $currentLanguage, 'signal_captcha'),
+    'consoleHint' => t($translations, $currentLanguage, 'signal_console'),
+    'shellHint' => t($translations, $currentLanguage, 'signal_shell'),
+    'pasteSequenceHint' => t($translations, $currentLanguage, 'signal_paste_sequence'),
+    'fileExplorerHint' => t($translations, $currentLanguage, 'signal_file_explorer'),
+    'copyTriggerHint' => t($translations, $currentLanguage, 'signal_copy_trigger'),
+    'evasionHint' => t($translations, $currentLanguage, 'signal_evasion')
 ];
 
-function loadListFile(string $path): array
+function loadListFile(string $path, bool $writeBack = true): array
 {
     if (!is_readable($path)) {
         return [];
     }
     $lines = file($path, FILE_IGNORE_NEW_LINES) ?: [];
     $items = [];
+    $seen = [];
+    $outputLines = [];
+    $changed = false;
+
     foreach ($lines as $line) {
-        $line = trim((string) $line);
-        if ($line === '' || str_starts_with($line, '#')) {
+        $rawLine = rtrim((string) $line, "\r\n");
+        $trimmed = trim($rawLine);
+        if ($trimmed === '' || str_starts_with($trimmed, '#')) {
+            $outputLines[] = $rawLine;
             continue;
         }
-        $items[] = $line;
+        $key = strtolower($trimmed);
+        if (isset($seen[$key])) {
+            $changed = true;
+            continue;
+        }
+        $seen[$key] = true;
+        $items[] = $trimmed;
+        $outputLines[] = $trimmed;
+        if ($trimmed !== $rawLine) {
+            $changed = true;
+        }
     }
-    return array_values(array_unique($items));
+
+    if ($writeBack && $changed && is_writable($path)) {
+        $content = implode(PHP_EOL, $outputLines);
+        if ($content !== '') {
+            $content .= PHP_EOL;
+        }
+        file_put_contents($path, $content, LOCK_EX);
+    }
+
+    return $items;
 }
 
 function hasTableColumn(PDO $pdo, string $table, string $column): bool
@@ -1428,10 +1588,72 @@ function loadStructuredLogEntries(string $path, int $limit = 50): array
             'message' => (string) ($decoded['message'] ?? ''),
             'detected_content' => (string) ($decoded['detected_content'] ?? ''),
             'blocked' => !empty($decoded['blocked']),
-            'country' => (string) ($decoded['country'] ?? '')
+            'country' => (string) ($decoded['country'] ?? ''),
+            'client_id' => (string) ($decoded['client_id'] ?? ''),
+            'ip' => (string) ($decoded['ip'] ?? '')
         ];
     }
     return array_reverse($entries);
+}
+
+function attachDuplicateCounts(PDO $pdo, array $entries): array
+{
+    if (empty($entries)) {
+        return $entries;
+    }
+    if (!hasTableColumn($pdo, 'reports', 'duplicate_count')) {
+        foreach ($entries as &$entry) {
+            $entry['duplicate_count'] = 1;
+            $entry['last_seen'] = '';
+        }
+        unset($entry);
+        return $entries;
+    }
+    $statement = $pdo->prepare(
+        'SELECT duplicate_count, last_seen
+         FROM reports
+         WHERE client_id = :client_id
+           AND hostname = :hostname
+           AND url = :url
+           AND message = :message
+           AND detected_content = :detected
+           AND blocked = :blocked
+           AND ip = :ip
+         ORDER BY received_at DESC
+         LIMIT 1'
+    );
+    foreach ($entries as &$entry) {
+        $clientId = trim((string) ($entry['client_id'] ?? ''));
+        $ip = trim((string) ($entry['ip'] ?? ''));
+        if ($clientId === '' && $ip === '') {
+            $entry['duplicate_count'] = 1;
+            $entry['last_seen'] = '';
+            continue;
+        }
+        try {
+            $statement->execute([
+                ':client_id' => $clientId,
+                ':hostname' => (string) ($entry['hostname'] ?? ''),
+                ':url' => (string) ($entry['url'] ?? ''),
+                ':message' => (string) ($entry['message'] ?? ''),
+                ':detected' => (string) ($entry['detected_content'] ?? ''),
+                ':blocked' => !empty($entry['blocked']) ? 1 : 0,
+                ':ip' => $ip
+            ]);
+            $row = $statement->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (Throwable $exception) {
+            $row = null;
+        }
+        if ($row) {
+            $entry['duplicate_count'] = (int) ($row['duplicate_count'] ?? 1);
+            $entry['last_seen'] = (string) ($row['last_seen'] ?? '');
+        } else {
+            $entry['duplicate_count'] = 1;
+            $entry['last_seen'] = '';
+        }
+    }
+    unset($entry);
+    return $entries;
 }
 
 function loadStatsLogEntries(string $path, int $limit = 50): array
@@ -1501,6 +1723,77 @@ function resolveInstallChannelLabel(string $channel, array $translations, string
     ];
     $key = $map[$channel] ?? 'install_channel_other';
     return t($translations, $language, $key);
+}
+
+function renderScoreBreakdown(array $entry, array $translations, string $language): string
+{
+    $scoreTotal = $entry['score_total'] ?? null;
+    if ($scoreTotal === null || $scoreTotal === '') {
+        return '';
+    }
+    $scoreTotal = (int) $scoreTotal;
+    $summaryLabel = htmlspecialchars(t($translations, $language, 'score_breakdown_title'), ENT_QUOTES, 'UTF-8');
+    $summary = $summaryLabel . ': ' . $scoreTotal . '/100';
+    $html = '<details class="score-breakdown"><summary>' . $summary . '</summary>';
+
+    $details = $entry['score_details'] ?? null;
+    if (!is_array($details) || empty($details['components']) || !is_array($details['components'])) {
+        $html .= '</details>';
+        return $html;
+    }
+
+    $weightParts = [];
+    foreach ($details['components'] as $component) {
+        if (!is_array($component)) {
+            continue;
+        }
+        if (array_key_exists('available', $component) && !$component['available']) {
+            continue;
+        }
+        $labelKey = (string) ($component['labelKey'] ?? $component['id'] ?? '');
+        $label = $labelKey !== '' ? t($translations, $language, $labelKey) : $labelKey;
+        $weight = isset($component['weight']) ? (float) $component['weight'] : 0.0;
+        $weightParts[] = htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . ' ' . (string) round($weight * 100) . '%';
+    }
+    if (!empty($weightParts)) {
+        $weightsLabel = htmlspecialchars(t($translations, $language, 'score_breakdown_weights'), ENT_QUOTES, 'UTF-8');
+        $html .= '<div class="score-breakdown-meta">' . $weightsLabel . ': ' . implode(' · ', $weightParts) . '</div>';
+    }
+
+    foreach ($details['components'] as $component) {
+        if (!is_array($component)) {
+            continue;
+        }
+        $labelKey = (string) ($component['labelKey'] ?? $component['id'] ?? '');
+        $label = $labelKey !== '' ? t($translations, $language, $labelKey) : $labelKey;
+        $score = isset($component['score']) ? (int) $component['score'] : 0;
+        $html .= '<div class="score-breakdown-section">';
+        $html .= '<div class="score-breakdown-title">' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . ' — ' . $score . '/100</div>';
+        $contributions = is_array($component['contributions'] ?? null) ? $component['contributions'] : [];
+        if (array_key_exists('available', $component) && !$component['available']) {
+            $html .= '<div class="score-breakdown-empty">' . htmlspecialchars(t($translations, $language, 'score_breakdown_unavailable'), ENT_QUOTES, 'UTF-8') . '</div>';
+        } elseif (empty($contributions)) {
+            $html .= '<div class="score-breakdown-empty">' . htmlspecialchars(t($translations, $language, 'score_breakdown_no_factors'), ENT_QUOTES, 'UTF-8') . '</div>';
+        } else {
+            $html .= '<ul class="score-breakdown-list">';
+            foreach ($contributions as $contribution) {
+                if (!is_array($contribution)) {
+                    continue;
+                }
+                $points = isset($contribution['points']) ? (int) $contribution['points'] : 0;
+                $polarity = $points < 0 ? 'neg' : 'pos';
+                $reasonKey = (string) ($contribution['key'] ?? '');
+                $reasonLabel = $reasonKey !== '' ? t($translations, $language, $reasonKey) : $reasonKey;
+                $prefix = $points >= 0 ? '+' : '';
+                $html .= '<li class="score-breakdown-item" data-polarity="' . $polarity . '">' . $prefix . $points . ' ' . htmlspecialchars($reasonLabel, ENT_QUOTES, 'UTF-8') . '</li>';
+            }
+            $html .= '</ul>';
+        }
+        $html .= '</div>';
+    }
+
+    $html .= '</details>';
+    return $html;
 }
 
 function formatLogValue(mixed $value): string
@@ -1962,6 +2255,10 @@ if (is_readable($dbPath)) {
     } catch (Throwable $exception) {
         $pdo = null;
     }
+}
+
+if ($pdo instanceof PDO && !empty($reportLogStructured)) {
+    $reportLogStructured = attachDuplicateCounts($pdo, $reportLogStructured);
 }
 
 if ($pdo instanceof PDO && isset($_SESSION['user_id'])) {
@@ -2700,7 +2997,11 @@ if (is_readable($dbPath)) {
             $hasInstallType = hasTableColumn($pdo, 'stats', 'install_type');
             $hasInstallSource = hasTableColumn($pdo, 'stats', 'install_source');
             $hasInstallChannel = hasTableColumn($pdo, 'stats', 'install_channel');
+            $hasClientId = hasTableColumn($pdo, 'stats', 'client_id');
             $selectFields = ['user_agent'];
+            if ($hasClientId) {
+                $selectFields[] = 'client_id';
+            }
             if ($hasInstallType) {
                 $selectFields[] = 'install_type';
             }
@@ -2723,13 +3024,15 @@ if (is_readable($dbPath)) {
             $osCounts = [];
             $browserCounts = [];
             $installCounts = [];
-            $uniqueAgents = [];
+            $uniqueUsers = [];
             foreach ($rows as $row) {
                 $agent = trim((string) ($row['user_agent'] ?? ''));
-                if ($agent === '' || isset($uniqueAgents[$agent])) {
+                $clientId = $hasClientId ? trim((string) ($row['client_id'] ?? '')) : '';
+                $userKey = $clientId !== '' ? $clientId : $agent;
+                if ($userKey === '' || isset($uniqueUsers[$userKey])) {
                     continue;
                 }
-                $uniqueAgents[$agent] = true;
+                $uniqueUsers[$userKey] = true;
                 $parsed = parseUserAgentSummary($agent);
                 $osCounts[$parsed['os']] = ($osCounts[$parsed['os']] ?? 0) + 1;
                 $browserCounts[$parsed['browser']] = ($browserCounts[$parsed['browser']] ?? 0) + 1;
@@ -2741,21 +3044,21 @@ if (is_readable($dbPath)) {
                 );
                 $installCounts[$channel] = ($installCounts[$channel] ?? 0) + 1;
             }
-            $stats['unique_users'] = count($uniqueAgents);
+            $stats['unique_users'] = count($uniqueUsers);
             $stats['os_stats'] = normalizeCountMap($osCounts);
             $stats['browser_stats'] = normalizeCountMap($browserCounts);
             $stats['install_stats'] = normalizeCountMap($installCounts);
         }
         try {
             $reportRows = $pdo->query(
-            'SELECT id, received_at, url, hostname, message, detected_content, full_context, signals_json, blocked, accepted, accepted_at, review_status, reviewed_at, country
+            'SELECT id, received_at, url, hostname, message, detected_content, full_context, signals_json, blocked, accepted, accepted_at, review_status, reviewed_at, country, score_total, score_details_json, duplicate_count, last_seen
              FROM reports
              ORDER BY received_at DESC
              LIMIT 200'
             )->fetchAll(PDO::FETCH_ASSOC);
         } catch (Throwable $exception) {
             $reportRows = $pdo->query(
-            'SELECT id, received_at, url, hostname, message, detected_content, signals_json, country
+            'SELECT id, received_at, url, hostname, message, detected_content, signals_json, country, score_total, score_details_json
              FROM reports
              ORDER BY received_at DESC
              LIMIT 200'
@@ -2838,6 +3141,21 @@ if (is_readable($dbPath)) {
             $reviewClass = $reviewStatus === 'pending' ? 'pending' : ('review-' . $reviewStatus);
             $chartData['reviews'][$reviewStatus] = ($chartData['reviews'][$reviewStatus] ?? 0) + 1;
 
+            $scoreTotal = null;
+            if (isset($entry['score_total']) && $entry['score_total'] !== '' && $entry['score_total'] !== null) {
+                $scoreTotal = (int) $entry['score_total'];
+            } elseif (is_array($signals) && isset($signals['confidenceScore'])) {
+                $scoreTotal = (int) $signals['confidenceScore'];
+            }
+            $scoreDetails = null;
+            $scoreDetailsRaw = (string) ($entry['score_details_json'] ?? '');
+            if ($scoreDetailsRaw !== '') {
+                $decodedScore = json_decode($scoreDetailsRaw, true);
+                if (is_array($decodedScore)) {
+                    $scoreDetails = $decodedScore;
+                }
+            }
+
             $recentDetections[] = [
                 'id' => (int) ($entry['id'] ?? 0),
                 'hostname' => $hostname !== '' ? $hostname : t($translations, $currentLanguage, 'no_domain'),
@@ -2853,7 +3171,11 @@ if (is_readable($dbPath)) {
                 'review_label' => $reviewLabel,
                 'review_class' => $reviewClass,
                 'reviewed_at' => (string) ($entry['reviewed_at'] ?? ''),
-                'signals' => $signalList
+                'signals' => $signalList,
+                'score_total' => $scoreTotal,
+                'score_details' => $scoreDetails,
+                'duplicate_count' => (int) ($entry['duplicate_count'] ?? 1),
+                'last_seen' => (string) ($entry['last_seen'] ?? '')
             ];
         }
         $stats['unique_hosts'] = count($uniqueHosts);
@@ -2899,6 +3221,22 @@ foreach ($chartData['daily'] as $date => $count) {
     }
 }
 
+$allowlistItems = loadListFile($allowlistFile);
+$allowlistLookup = [];
+foreach ($allowlistItems as $item) {
+    if (is_string($item) && $item !== '') {
+        $allowlistLookup[] = strtolower($item);
+    }
+}
+$matchesList = function (string $domain, array $list): bool {
+    foreach ($list as $entry) {
+        if ($domain === $entry || str_ends_with($domain, '.' . $entry)) {
+            return true;
+        }
+    }
+    return false;
+};
+
 $recentDomains = [];
 foreach ($reportLogStructured as $entry) {
     $domain = normalizeDomain((string) ($entry['hostname'] ?? ''));
@@ -2910,6 +3248,10 @@ foreach ($reportLogStructured as $entry) {
         }
     }
     if ($domain === '') {
+        continue;
+    }
+    $normalizedDomain = strtolower($domain);
+    if ($matchesList($normalizedDomain, $allowlistLookup)) {
         continue;
     }
     $command = trim((string) ($entry['detected_content'] ?? ''));
@@ -2931,7 +3273,6 @@ foreach ($reportLogStructured as $entry) {
 $recentDomainsHome = array_slice($recentDomains, 0, 8);
 
 $blocklistItems = loadListFile($blocklistFile);
-$allowlistItems = loadListFile($allowlistFile);
 $alertSites = loadListFile($alertsitesFile);
 $blocklistLookup = [];
 foreach ($blocklistItems as $item) {
@@ -2939,20 +3280,6 @@ foreach ($blocklistItems as $item) {
         $blocklistLookup[] = strtolower($item);
     }
 }
-$allowlistLookup = [];
-foreach ($allowlistItems as $item) {
-    if (is_string($item) && $item !== '') {
-        $allowlistLookup[] = strtolower($item);
-    }
-}
-$matchesList = function (string $domain, array $list): bool {
-    foreach ($list as $entry) {
-        if ($domain === $entry || str_ends_with($domain, '.' . $entry)) {
-            return true;
-        }
-    }
-    return false;
-};
 $alertSites = array_values(array_filter($alertSites, function ($domain) use ($blocklistLookup, $allowlistLookup, $matchesList) {
     if (!is_string($domain) || $domain === '') {
         return false;
@@ -2965,6 +3292,10 @@ $alertlistItems = $alertSites;
 $appeals = [];
 $listSuggestions = [];
 $userRows = [];
+$userProfiles = [];
+$userProfileAlerts = [];
+$userProfileIps = [];
+$userProfileMeta = [];
 $dataExplorer = [
     'tables' => [],
     'summary' => []
@@ -2999,6 +3330,93 @@ if ($pdo instanceof PDO) {
         )->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $exception) {
         $userRows = [];
+    }
+
+    if ($isAdmin && hasTableColumn($pdo, 'reports', 'client_id')) {
+        try {
+            $userProfiles = $pdo->query(
+                'SELECT client_id,
+                        COUNT(*) AS alert_count,
+                        MIN(received_at) AS first_seen,
+                        MAX(received_at) AS last_seen,
+                        COUNT(DISTINCT ip) AS ip_count
+                 FROM reports
+                 WHERE client_id IS NOT NULL AND client_id != ""
+                 GROUP BY client_id
+                 ORDER BY last_seen DESC
+                 LIMIT 80'
+            )->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $exception) {
+            $userProfiles = [];
+        }
+        try {
+            $alertRows = $pdo->query(
+                'SELECT client_id, received_at, hostname, url, message, detected_content, blocked, user_agent, country
+                 FROM reports
+                 WHERE client_id IS NOT NULL AND client_id != ""
+                 ORDER BY received_at DESC
+                 LIMIT 800'
+            )->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $exception) {
+            $alertRows = [];
+        }
+        foreach ($alertRows as $row) {
+            $clientId = (string) ($row['client_id'] ?? '');
+            if ($clientId === '') {
+                continue;
+            }
+            if (!isset($userProfileMeta[$clientId])) {
+                $ua = trim((string) ($row['user_agent'] ?? ''));
+                $country = trim((string) ($row['country'] ?? ''));
+                $browser = '';
+                if ($ua !== '') {
+                    $parsed = parseUserAgentSummary($ua);
+                    $browser = (string) ($parsed['browser'] ?? '');
+                }
+                $userProfileMeta[$clientId] = [
+                    'user_agent' => $ua,
+                    'browser' => $browser,
+                    'country' => $country
+                ];
+            } else {
+                if (($userProfileMeta[$clientId]['country'] ?? '') === '') {
+                    $userProfileMeta[$clientId]['country'] = trim((string) ($row['country'] ?? ''));
+                }
+            }
+            if (!isset($userProfileAlerts[$clientId])) {
+                $userProfileAlerts[$clientId] = [];
+            }
+            if (count($userProfileAlerts[$clientId]) >= 6) {
+                continue;
+            }
+            $userProfileAlerts[$clientId][] = $row;
+        }
+        try {
+            $ipRows = $pdo->query(
+                'SELECT client_id, ip, MAX(received_at) AS last_seen, COUNT(*) AS hits
+                 FROM reports
+                 WHERE client_id IS NOT NULL AND client_id != "" AND ip IS NOT NULL AND ip != ""
+                 GROUP BY client_id, ip
+                 ORDER BY last_seen DESC
+                 LIMIT 400'
+            )->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $exception) {
+            $ipRows = [];
+        }
+        foreach ($ipRows as $row) {
+            $clientId = (string) ($row['client_id'] ?? '');
+            $ip = (string) ($row['ip'] ?? '');
+            if ($clientId === '' || $ip === '') {
+                continue;
+            }
+            if (!isset($userProfileIps[$clientId])) {
+                $userProfileIps[$clientId] = [];
+            }
+            if (count($userProfileIps[$clientId]) >= 6) {
+                continue;
+            }
+            $userProfileIps[$clientId][] = $row;
+        }
     }
 
     if ($isAdmin) {
@@ -3160,7 +3578,7 @@ $chartLabels = [
     'browsers' => t($translations, $currentLanguage, 'browser_breakdown')
 ];
 
-$dashboardVersion = '0.8.0';
+$dashboardVersion = '0.8.20';
 
 $chartPayload = [
     'daily' => [
@@ -3218,6 +3636,34 @@ $chartPayload = [
     'labels' => $chartLabels
 ];
 
+function fixMojibake(string $value): string
+{
+    $fixed = $value;
+    for ($i = 0; $i < 2; $i++) {
+        if (!str_contains($fixed, 'Ã') && !str_contains($fixed, 'Â')) {
+            break;
+        }
+        $converted = @iconv('ISO-8859-1', 'UTF-8//IGNORE', $fixed);
+        if ($converted === false || $converted === $fixed) {
+            break;
+        }
+        $fixed = $converted;
+    }
+    return $fixed;
+}
+
+foreach ($translations as $langKey => $entries) {
+    if (!is_array($entries)) {
+        continue;
+    }
+    foreach ($entries as $entryKey => $entryValue) {
+        if (!is_string($entryValue)) {
+            continue;
+        }
+        $translations[$langKey][$entryKey] = fixMojibake($entryValue);
+    }
+}
+
 $chartPayloadPublic = $chartPayload;
 $chartPayloadPublic['topHosts'] = ['labels' => [], 'values' => []];
 
@@ -3270,7 +3716,7 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
 }
 ?>
 <!doctype html>
-<html lang="es">
+<html lang="<?= htmlspecialchars($currentLanguage, ENT_QUOTES, 'UTF-8'); ?>">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -4401,6 +4847,62 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
       .report-section {
         margin-top: 10px;
       }
+      .score-breakdown {
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--surface-muted);
+      }
+      .score-breakdown summary {
+        cursor: pointer;
+        font-weight: 600;
+        color: var(--accent-strong);
+        list-style: none;
+      }
+      .score-breakdown summary::-webkit-details-marker {
+        display: none;
+      }
+      .score-breakdown-meta {
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .score-breakdown-section {
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px dashed rgba(148, 163, 184, 0.45);
+      }
+      .score-breakdown-title {
+        font-weight: 600;
+        color: var(--accent);
+        margin-bottom: 4px;
+      }
+      .score-breakdown-empty {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .score-breakdown-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .score-breakdown-item {
+        padding: 4px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(59, 130, 246, 0.35);
+        background: rgba(59, 130, 246, 0.12);
+        color: var(--accent-strong);
+        font-size: 12px;
+      }
+      .score-breakdown-item[data-polarity="neg"] {
+        border-color: rgba(248, 113, 113, 0.5);
+        background: rgba(248, 113, 113, 0.12);
+        color: #b91c1c;
+      }
       .context-panel {
         margin-top: 8px;
         border: 1px dashed rgba(37, 99, 235, 0.35);
@@ -4538,6 +5040,71 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
         color: #1e6430;
         border: 1px solid rgba(47, 158, 68, 0.3);
       }
+      .profile-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+      }
+      .profile-card {
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 12px 14px;
+        background: var(--surface);
+        box-shadow: var(--shadow-soft);
+      }
+      .profile-card summary {
+        list-style: none;
+        cursor: pointer;
+      }
+      .profile-card summary::-webkit-details-marker {
+        display: none;
+      }
+      .profile-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .profile-stats {
+        display: flex;
+        gap: 10px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .profile-sub {
+        margin-top: 6px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .profile-body {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .profile-column ul {
+        margin: 8px 0 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .profile-column li {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 12px;
+      }
+      @media (max-width: 760px) {
+        .profile-body {
+          grid-template-columns: 1fr;
+        }
+      }
       .button-approve {
         background: #2f9e44;
         color: #fff;
@@ -4567,6 +5134,9 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
       .role-badge.analyst {
         background: rgba(37, 99, 235, 0.15);
         color: #1f4f5c;
+      }
+      .mono {
+        font-family: "SFMono-Regular", "JetBrains Mono", "Fira Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
       }
       .admin-panel {
         border: 1px dashed rgba(37, 99, 235, 0.5);
@@ -5530,7 +6100,7 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
                   $displayDetected = redactCredentials((string) $entry['detected'], $isAdmin);
                   $displayContext = redactCredentials((string) $entry['full_context'], $isAdmin);
                 ?>
-                <details class="report-card">
+                <details class="report-card" data-allow-toggle="true">
                   <summary class="investigable js-investigate" data-investigable="true" data-domain="<?= htmlspecialchars(isValidDomain($entry['hostname']) ? $entry['hostname'] : '', ENT_QUOTES, 'UTF-8'); ?>" data-url="<?= htmlspecialchars($entry['url'], ENT_QUOTES, 'UTF-8'); ?>" data-context="detection" data-timestamp="<?= htmlspecialchars($entry['timestamp'], ENT_QUOTES, 'UTF-8'); ?>">
                     <?= htmlspecialchars($entry['hostname'], ENT_QUOTES, 'UTF-8'); ?>
                     <?php if ($entry['blocked']): ?>
@@ -5562,6 +6132,19 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
                     <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'review_status'), ENT_QUOTES, 'UTF-8'); ?></strong>
                     <div class="muted"><?= htmlspecialchars($entry['review_label'], ENT_QUOTES, 'UTF-8'); ?></div>
                   </div>
+                  <?php if (!empty($entry['duplicate_count']) && (int) $entry['duplicate_count'] > 1): ?>
+                    <div class="report-section">
+                      <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_duplicates'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                      <div class="muted">
+                        <?= (int) $entry['duplicate_count']; ?>
+                        <?php if (!empty($entry['last_seen'])): ?>
+                          · <?= htmlspecialchars(t($translations, $currentLanguage, 'last_seen'), ENT_QUOTES, 'UTF-8'); ?>:
+                          <?= htmlspecialchars($entry['last_seen'], ENT_QUOTES, 'UTF-8'); ?>
+                        <?php endif; ?>
+                      </div>
+                    </div>
+                  <?php endif; ?>
+                  <?= renderScoreBreakdown($entry, $translations, $currentLanguage); ?>
                   <?php if (!empty($entry['reviewed_at'])): ?>
                     <div class="report-section">
                       <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'reviewed_at'), ENT_QUOTES, 'UTF-8'); ?></strong>
@@ -5662,7 +6245,7 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
                 <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_requests'), ENT_QUOTES, 'UTF-8'); ?></div>
               <?php else: ?>
                 <?php foreach ($appeals as $appeal): ?>
-                  <details class="report-card">
+                  <details class="report-card" data-allow-toggle="true">
                     <summary>
                       <?= htmlspecialchars((string) ($appeal['domain'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
                       <span class="report-meta">
@@ -5823,7 +6406,7 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
                   $displayDetected = redactCredentials((string) $entry['detected'], $isAdmin);
                   $displayContext = redactCredentials((string) $entry['full_context'], $isAdmin);
                 ?>
-                <details class="report-card">
+                <details class="report-card" data-allow-toggle="true">
                   <summary class="investigable js-investigate" data-investigable="true" data-domain="<?= htmlspecialchars(isValidDomain($entry['hostname']) ? $entry['hostname'] : '', ENT_QUOTES, 'UTF-8'); ?>" data-url="<?= htmlspecialchars($entry['url'], ENT_QUOTES, 'UTF-8'); ?>" data-context="detection" data-timestamp="<?= htmlspecialchars($entry['timestamp'], ENT_QUOTES, 'UTF-8'); ?>">
                     <?= htmlspecialchars($entry['hostname'], ENT_QUOTES, 'UTF-8'); ?>
                     <?php if ($entry['blocked']): ?>
@@ -5853,6 +6436,19 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
                     <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'review_status'), ENT_QUOTES, 'UTF-8'); ?></strong>
                     <div class="muted"><?= htmlspecialchars($entry['review_label'], ENT_QUOTES, 'UTF-8'); ?></div>
                   </div>
+                  <?php if (!empty($entry['duplicate_count']) && (int) $entry['duplicate_count'] > 1): ?>
+                    <div class="report-section">
+                      <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_duplicates'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                      <div class="muted">
+                        <?= (int) $entry['duplicate_count']; ?>
+                        <?php if (!empty($entry['last_seen'])): ?>
+                          · <?= htmlspecialchars(t($translations, $currentLanguage, 'last_seen'), ENT_QUOTES, 'UTF-8'); ?>:
+                          <?= htmlspecialchars($entry['last_seen'], ENT_QUOTES, 'UTF-8'); ?>
+                        <?php endif; ?>
+                      </div>
+                    </div>
+                  <?php endif; ?>
+                  <?= renderScoreBreakdown($entry, $translations, $currentLanguage); ?>
                   <?php if (!empty($entry['reviewed_at'])): ?>
                     <div class="report-section">
                       <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'reviewed_at'), ENT_QUOTES, 'UTF-8'); ?></strong>
@@ -5953,7 +6549,7 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
                 <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_requests'), ENT_QUOTES, 'UTF-8'); ?></div>
               <?php else: ?>
                 <?php foreach ($appeals as $appeal): ?>
-                  <details class="report-card">
+                  <details class="report-card" data-allow-toggle="true">
                     <summary>
                       <?= htmlspecialchars((string) ($appeal['domain'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
                       <span class="report-meta">
@@ -6114,7 +6710,7 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
                   $displayDetected = redactCredentials((string) $entry['detected'], $isAdmin);
                   $displayContext = redactCredentials((string) $entry['full_context'], $isAdmin);
                 ?>
-                <details class="report-card">
+                <details class="report-card" data-allow-toggle="true">
                   <summary class="investigable js-investigate" data-investigable="true" data-domain="<?= htmlspecialchars(isValidDomain($entry['hostname']) ? $entry['hostname'] : '', ENT_QUOTES, 'UTF-8'); ?>" data-url="<?= htmlspecialchars($entry['url'], ENT_QUOTES, 'UTF-8'); ?>" data-context="detection" data-timestamp="<?= htmlspecialchars($entry['timestamp'], ENT_QUOTES, 'UTF-8'); ?>">
                     <?= htmlspecialchars($entry['hostname'], ENT_QUOTES, 'UTF-8'); ?>
                     <?php if ($entry['blocked']): ?>
@@ -6144,6 +6740,19 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
                     <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'review_status'), ENT_QUOTES, 'UTF-8'); ?></strong>
                     <div class="muted"><?= htmlspecialchars($entry['review_label'], ENT_QUOTES, 'UTF-8'); ?></div>
                   </div>
+                  <?php if (!empty($entry['duplicate_count']) && (int) $entry['duplicate_count'] > 1): ?>
+                    <div class="report-section">
+                      <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_duplicates'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                      <div class="muted">
+                        <?= (int) $entry['duplicate_count']; ?>
+                        <?php if (!empty($entry['last_seen'])): ?>
+                          · <?= htmlspecialchars(t($translations, $currentLanguage, 'last_seen'), ENT_QUOTES, 'UTF-8'); ?>:
+                          <?= htmlspecialchars($entry['last_seen'], ENT_QUOTES, 'UTF-8'); ?>
+                        <?php endif; ?>
+                      </div>
+                    </div>
+                  <?php endif; ?>
+                  <?= renderScoreBreakdown($entry, $translations, $currentLanguage); ?>
                   <?php if (!empty($entry['reviewed_at'])): ?>
                     <div class="report-section">
                       <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'reviewed_at'), ENT_QUOTES, 'UTF-8'); ?></strong>
@@ -6244,7 +6853,7 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
                 <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_requests'), ENT_QUOTES, 'UTF-8'); ?></div>
               <?php else: ?>
                 <?php foreach ($appeals as $appeal): ?>
-                  <details class="report-card">
+                  <details class="report-card" data-allow-toggle="true">
                     <summary>
                       <?= htmlspecialchars((string) ($appeal['domain'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
                       <span class="report-meta">
@@ -6489,7 +7098,7 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
                 <div class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'no_suggestions'), ENT_QUOTES, 'UTF-8'); ?></div>
               <?php else: ?>
                 <?php foreach ($listSuggestions as $suggestion): ?>
-                  <details class="report-card">
+                  <details class="report-card" data-allow-toggle="true">
                     <summary>
                       <?= htmlspecialchars((string) ($suggestion['domain'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
                       <span class="status-pill <?= htmlspecialchars((string) ($suggestion['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
@@ -6908,6 +7517,96 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
                 </table>
               </div>
             </section>
+
+            <section class="card admin-panel workspace-section" style="margin-top: 24px;" id="user-profiles-section" data-workspace-section="users">
+              <div class="section-title">
+                <h2><?= htmlspecialchars(t($translations, $currentLanguage, 'user_profiles'), ENT_QUOTES, 'UTF-8'); ?></h2>
+                <span class="muted"><?= htmlspecialchars(t($translations, $currentLanguage, 'user_profiles_hint'), ENT_QUOTES, 'UTF-8'); ?></span>
+              </div>
+              <?php if (empty($userProfiles)): ?>
+                <div class="muted" style="margin-top: 12px;"><?= htmlspecialchars(t($translations, $currentLanguage, 'user_profile_no_data'), ENT_QUOTES, 'UTF-8'); ?></div>
+              <?php else: ?>
+                <div class="profile-grid" style="margin-top: 16px;">
+                  <?php foreach ($userProfiles as $profile): ?>
+                    <?php
+                      $clientId = (string) ($profile['client_id'] ?? '');
+                      $shortId = $clientId !== '' ? substr($clientId, 0, 8) . '…' : '';
+                      $alertCount = (int) ($profile['alert_count'] ?? 0);
+                      $ipCount = (int) ($profile['ip_count'] ?? 0);
+                      $firstSeen = (string) ($profile['first_seen'] ?? '');
+                      $lastSeen = (string) ($profile['last_seen'] ?? '');
+                      $alerts = $clientId !== '' ? ($userProfileAlerts[$clientId] ?? []) : [];
+                      $ips = $clientId !== '' ? ($userProfileIps[$clientId] ?? []) : [];
+                      $meta = $clientId !== '' ? ($userProfileMeta[$clientId] ?? []) : [];
+                      $ua = (string) ($meta['user_agent'] ?? '');
+                      $browser = (string) ($meta['browser'] ?? '');
+                      $country = (string) ($meta['country'] ?? '');
+                    ?>
+                    <details class="profile-card">
+                      <summary>
+                        <div class="profile-header">
+                          <div class="profile-id">
+                            <?= htmlspecialchars(t($translations, $currentLanguage, 'user_profile_id'), ENT_QUOTES, 'UTF-8'); ?>:
+                            <span class="mono"><?= htmlspecialchars($shortId, ENT_QUOTES, 'UTF-8'); ?></span>
+                          </div>
+                          <div class="profile-stats">
+                            <span><?= htmlspecialchars(t($translations, $currentLanguage, 'user_profile_alerts_count'), ENT_QUOTES, 'UTF-8'); ?>: <strong><?= $alertCount; ?></strong></span>
+                            <span><?= htmlspecialchars(t($translations, $currentLanguage, 'user_profile_ips_count'), ENT_QUOTES, 'UTF-8'); ?>: <strong><?= $ipCount; ?></strong></span>
+                          </div>
+                        </div>
+                        <div class="profile-sub">
+                          <span><?= htmlspecialchars(t($translations, $currentLanguage, 'user_profile_first_seen'), ENT_QUOTES, 'UTF-8'); ?>: <?= htmlspecialchars($firstSeen !== '' ? $firstSeen : '—', ENT_QUOTES, 'UTF-8'); ?></span>
+                          <span><?= htmlspecialchars(t($translations, $currentLanguage, 'user_profile_last_seen'), ENT_QUOTES, 'UTF-8'); ?>: <?= htmlspecialchars($lastSeen !== '' ? $lastSeen : '—', ENT_QUOTES, 'UTF-8'); ?></span>
+                          <span><?= htmlspecialchars(t($translations, $currentLanguage, 'user_profile_country'), ENT_QUOTES, 'UTF-8'); ?>: <?= htmlspecialchars($country !== '' ? $country : '—', ENT_QUOTES, 'UTF-8'); ?></span>
+                          <span><?= htmlspecialchars(t($translations, $currentLanguage, 'user_profile_browser'), ENT_QUOTES, 'UTF-8'); ?>: <?= htmlspecialchars($browser !== '' ? $browser : '—', ENT_QUOTES, 'UTF-8'); ?></span>
+                          <span><?= htmlspecialchars(t($translations, $currentLanguage, 'user_profile_user_agent'), ENT_QUOTES, 'UTF-8'); ?>: <span class="mono"><?= htmlspecialchars($ua !== '' ? $ua : '—', ENT_QUOTES, 'UTF-8'); ?></span></span>
+                        </div>
+                      </summary>
+                      <div class="profile-body">
+                        <div class="profile-column">
+                          <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'user_profile_recent_alerts'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                          <?php if (empty($alerts)): ?>
+                            <div class="muted">—</div>
+                          <?php else: ?>
+                            <ul>
+                              <?php foreach ($alerts as $alert): ?>
+                                <?php
+                                  $host = (string) ($alert['hostname'] ?? '');
+                                  $when = (string) ($alert['received_at'] ?? '');
+                                ?>
+                                <li>
+                                  <span class="mono"><?= htmlspecialchars($host !== '' ? $host : '—', ENT_QUOTES, 'UTF-8'); ?></span>
+                                  <small><?= htmlspecialchars($when, ENT_QUOTES, 'UTF-8'); ?></small>
+                                </li>
+                              <?php endforeach; ?>
+                            </ul>
+                          <?php endif; ?>
+                        </div>
+                        <div class="profile-column">
+                          <strong><?= htmlspecialchars(t($translations, $currentLanguage, 'user_profile_ip_history'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                          <?php if (empty($ips)): ?>
+                            <div class="muted">—</div>
+                          <?php else: ?>
+                            <ul>
+                              <?php foreach ($ips as $ipRow): ?>
+                                <?php
+                                  $ip = (string) ($ipRow['ip'] ?? '');
+                                  $seen = (string) ($ipRow['last_seen'] ?? '');
+                                ?>
+                                <li>
+                                  <span class="mono"><?= htmlspecialchars($ip !== '' ? $ip : '—', ENT_QUOTES, 'UTF-8'); ?></span>
+                                  <small><?= htmlspecialchars($seen, ENT_QUOTES, 'UTF-8'); ?></small>
+                                </li>
+                              <?php endforeach; ?>
+                            </ul>
+                          <?php endif; ?>
+                        </div>
+                      </div>
+                    </details>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
+            </section>
           <?php endif; ?>
 
           <?php if ($canViewLogs): ?>
@@ -6932,6 +7631,7 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
                             <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_message'), ENT_QUOTES, 'UTF-8'); ?></th>
                             <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_detected'), ENT_QUOTES, 'UTF-8'); ?></th>
                             <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_blocked'), ENT_QUOTES, 'UTF-8'); ?></th>
+                            <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_duplicates'), ENT_QUOTES, 'UTF-8'); ?></th>
                             <th><?= htmlspecialchars(t($translations, $currentLanguage, 'log_col_country'), ENT_QUOTES, 'UTF-8'); ?></th>
                           </tr>
                         </thead>
@@ -6954,6 +7654,13 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
                               <td><?= htmlspecialchars($displayMessage, ENT_QUOTES, 'UTF-8'); ?></td>
                               <td><?= htmlspecialchars($displayDetected, ENT_QUOTES, 'UTF-8'); ?></td>
                               <td><?= $entry['blocked'] ? htmlspecialchars(t($translations, $currentLanguage, 'blocked'), ENT_QUOTES, 'UTF-8') : ''; ?></td>
+                              <td>
+                                <?= (int) ($entry['duplicate_count'] ?? 1); ?>
+                                <?php if (!empty($entry['last_seen']) && (int) ($entry['duplicate_count'] ?? 1) > 1): ?>
+                                  <span class="muted">· <?= htmlspecialchars(t($translations, $currentLanguage, 'last_seen'), ENT_QUOTES, 'UTF-8'); ?>:
+                                    <?= htmlspecialchars((string) $entry['last_seen'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <?php endif; ?>
+                              </td>
                               <td><?= htmlspecialchars($entry['country'], ENT_QUOTES, 'UTF-8'); ?></td>
                             </tr>
                           <?php endforeach; ?>
@@ -8407,3 +9114,5 @@ if ($publicAnalyticsEnabled && isset($_GET['public']) && ($_GET['format'] ?? '')
     <?php endif; ?>
   </body>
 </html>
+
+

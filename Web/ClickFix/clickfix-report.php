@@ -42,6 +42,11 @@ CREATE TABLE IF NOT EXISTS reports (
     review_status TEXT DEFAULT 'pending',
     reviewed_by INTEGER,
     reviewed_at TEXT,
+    client_id TEXT,
+    score_total INTEGER,
+    score_details_json TEXT,
+    duplicate_count INTEGER DEFAULT 1,
+    last_seen TEXT,
     user_agent TEXT,
     ip TEXT,
     country TEXT
@@ -55,6 +60,7 @@ CREATE TABLE IF NOT EXISTS stats (
     block_count INTEGER,
     manual_sites_json TEXT,
     user_agent TEXT,
+    client_id TEXT,
     install_type TEXT,
     install_source TEXT,
     install_channel TEXT,
@@ -160,6 +166,21 @@ function ensureReportsSchema(PDO $pdo, string $debugFile): void
     }
     if (!isset($existing['previous_url'])) {
         $updates[] = 'ALTER TABLE reports ADD COLUMN previous_url TEXT';
+    }
+    if (!isset($existing['client_id'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN client_id TEXT';
+    }
+    if (!isset($existing['score_total'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN score_total INTEGER';
+    }
+    if (!isset($existing['score_details_json'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN score_details_json TEXT';
+    }
+    if (!isset($existing['duplicate_count'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN duplicate_count INTEGER DEFAULT 1';
+    }
+    if (!isset($existing['last_seen'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN last_seen TEXT';
     }
 
     foreach ($updates as $statement) {
@@ -290,6 +311,13 @@ function ensureStatsSchema(PDO $pdo, string $debugFile): void
             writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'statement' => 'ALTER stats']);
         }
     }
+    if (!isset($existing['client_id'])) {
+        try {
+            $pdo->exec('ALTER TABLE stats ADD COLUMN client_id TEXT');
+        } catch (Throwable $exception) {
+            writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'statement' => 'ALTER stats']);
+        }
+    }
 }
 
 function openDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFallback, string $debugFile): ?PDO
@@ -386,8 +414,26 @@ $fullContext = isset($payload['full_context'])
     ? trim((string) $payload['full_context'])
     : '';
 $statsData = isset($payload['data']) && is_array($payload['data']) ? $payload['data'] : [];
+$clientIdRaw = isset($payload['client_id']) ? (string) $payload['client_id'] : (string) ($statsData['clientId'] ?? '');
+$clientId = substr(preg_replace('/[^a-zA-Z0-9_-]/', '', trim($clientIdRaw)), 0, 64);
 $manualReport = filter_var($payload['manualReport'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
 $blocked = filter_var($payload['blocked'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
+$scoreTotalRaw = $payload['score_total'] ?? $payload['scoreTotal'] ?? ($signals['confidenceScore'] ?? null);
+$scoreTotal = null;
+if (is_numeric($scoreTotalRaw)) {
+    $scoreTotal = (int) $scoreTotalRaw;
+    $scoreTotal = max(0, min(100, $scoreTotal));
+}
+$scoreDetailsRaw = $payload['score_details'] ?? $payload['scoreDetails'] ?? null;
+$scoreDetailsJson = null;
+if (is_array($scoreDetailsRaw)) {
+    $scoreDetailsJson = json_encode($scoreDetailsRaw, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+} elseif (is_string($scoreDetailsRaw) && $scoreDetailsRaw !== '') {
+    $scoreDetailsJson = $scoreDetailsRaw;
+}
+if (is_string($scoreDetailsJson)) {
+    $scoreDetailsJson = substr($scoreDetailsJson, 0, 20000);
+}
 
 $url = substr($url, 0, 2048);
 $previousUrl = substr($previousUrl, 0, 2048);
@@ -476,7 +522,8 @@ $normalizedStats = [
     'country' => '',
     'install_type' => '',
     'install_source' => '',
-    'install_channel' => ''
+    'install_channel' => '',
+    'client_id' => $clientId
 ];
     $manualSites = $statsData['manualSites'] ?? [];
     if (is_array($manualSites)) {
@@ -542,6 +589,9 @@ $entry = [
     'full_context' => $fullContext,
     'blocked' => $blocked ? 1 : 0,
     'stats' => $normalizedStats,
+    'client_id' => $clientId,
+    'score_total' => $scoreTotal,
+    'score_details' => $scoreDetailsJson,
     'user_agent' => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512),
     'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
     'country' => $type === 'stats' && $normalizedStats['country'] !== '' ? $normalizedStats['country'] : $country
@@ -550,12 +600,13 @@ $logLine = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) 
 
 $pdo = openDatabase($dbPath, $schemaPath, $defaultSchemaSql, $debugFile);
 $inserted = false;
+$skipLogWrite = false;
 if ($pdo instanceof PDO) {
     try {
         if ($type === 'stats') {
             $statement = $pdo->prepare(
-                'INSERT INTO stats (received_at, enabled, alert_count, block_count, manual_sites_json, user_agent, install_type, install_source, install_channel, country)
-                 VALUES (:received_at, :enabled, :alert_count, :block_count, :manual_sites_json, :user_agent, :install_type, :install_source, :install_channel, :country)'
+                'INSERT INTO stats (received_at, enabled, alert_count, block_count, manual_sites_json, user_agent, client_id, install_type, install_source, install_channel, country)
+                 VALUES (:received_at, :enabled, :alert_count, :block_count, :manual_sites_json, :user_agent, :client_id, :install_type, :install_source, :install_channel, :country)'
             );
             $statement->execute([
                 ':received_at' => $entry['received_at'],
@@ -564,30 +615,87 @@ if ($pdo instanceof PDO) {
                 ':block_count' => $normalizedStats['block_count'],
                 ':manual_sites_json' => json_encode($normalizedStats['manual_sites'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
                 ':user_agent' => $entry['user_agent'],
+                ':client_id' => $clientId,
                 ':install_type' => $normalizedStats['install_type'],
                 ':install_source' => $normalizedStats['install_source'],
                 ':install_channel' => $normalizedStats['install_channel'],
                 ':country' => $entry['country']
             ]);
         } else {
-            $statement = $pdo->prepare(
-                'INSERT INTO reports (received_at, url, previous_url, hostname, message, detected_content, full_context, signals_json, blocked, user_agent, ip, country)
-                 VALUES (:received_at, :url, :previous_url, :hostname, :message, :detected_content, :full_context, :signals_json, :blocked, :user_agent, :ip, :country)'
-            );
-            $statement->execute([
-                ':received_at' => $entry['received_at'],
-                ':url' => $entry['url'],
-                ':previous_url' => $entry['previous_url'],
-                ':hostname' => $entry['hostname'],
-                ':message' => $entry['message'],
-                ':detected_content' => $entry['detected_content'],
-                ':full_context' => $entry['full_context'],
-                ':signals_json' => json_encode($entry['signals'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-                ':blocked' => $entry['blocked'],
-                ':user_agent' => $entry['user_agent'],
-                ':ip' => $entry['ip'],
-                ':country' => $entry['country']
-            ]);
+            $dedupeRow = null;
+            if ($clientId !== '' || $entry['ip'] !== '') {
+                $dedupeStatement = $pdo->prepare(
+                    'SELECT id, duplicate_count
+                     FROM reports
+                     WHERE client_id = :client_id
+                       AND hostname = :hostname
+                       AND url = :url
+                       AND message = :message
+                       AND detected_content = :detected
+                       AND blocked = :blocked
+                       AND ip = :ip
+                     ORDER BY received_at DESC
+                     LIMIT 1'
+                );
+                $dedupeStatement->execute([
+                    ':client_id' => $clientId,
+                    ':hostname' => $entry['hostname'],
+                    ':url' => $entry['url'],
+                    ':message' => $entry['message'],
+                    ':detected' => $entry['detected_content'],
+                    ':blocked' => $entry['blocked'],
+                    ':ip' => $entry['ip']
+                ]);
+                $dedupeRow = $dedupeStatement->fetch(PDO::FETCH_ASSOC) ?: null;
+            }
+            if ($dedupeRow) {
+                $newCount = ((int) ($dedupeRow['duplicate_count'] ?? 1)) + 1;
+                $updateStatement = $pdo->prepare(
+                    'UPDATE reports
+                     SET duplicate_count = :count,
+                         last_seen = :last_seen,
+                         user_agent = :user_agent,
+                         country = :country,
+                         score_total = COALESCE(:score_total, score_total),
+                         score_details_json = COALESCE(:score_details, score_details_json)
+                     WHERE id = :id'
+                );
+                $updateStatement->execute([
+                    ':count' => $newCount,
+                    ':last_seen' => $entry['received_at'],
+                    ':user_agent' => $entry['user_agent'],
+                    ':country' => $entry['country'],
+                    ':score_total' => $entry['score_total'],
+                    ':score_details' => $entry['score_details'],
+                    ':id' => (int) ($dedupeRow['id'] ?? 0)
+                ]);
+                $inserted = true;
+                $skipLogWrite = true;
+            } else {
+                $statement = $pdo->prepare(
+                    'INSERT INTO reports (received_at, url, previous_url, hostname, message, detected_content, full_context, signals_json, blocked, client_id, score_total, score_details_json, duplicate_count, last_seen, user_agent, ip, country)
+                     VALUES (:received_at, :url, :previous_url, :hostname, :message, :detected_content, :full_context, :signals_json, :blocked, :client_id, :score_total, :score_details, :duplicate_count, :last_seen, :user_agent, :ip, :country)'
+                );
+                $statement->execute([
+                    ':received_at' => $entry['received_at'],
+                    ':url' => $entry['url'],
+                    ':previous_url' => $entry['previous_url'],
+                    ':hostname' => $entry['hostname'],
+                    ':message' => $entry['message'],
+                    ':detected_content' => $entry['detected_content'],
+                    ':full_context' => $entry['full_context'],
+                    ':signals_json' => json_encode($entry['signals'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                    ':blocked' => $entry['blocked'],
+                    ':client_id' => $clientId,
+                    ':score_total' => $entry['score_total'],
+                    ':score_details' => $entry['score_details'],
+                    ':duplicate_count' => 1,
+                    ':last_seen' => $entry['received_at'],
+                    ':user_agent' => $entry['user_agent'],
+                    ':ip' => $entry['ip'],
+                    ':country' => $entry['country']
+                ]);
+            }
         }
         $inserted = true;
     } catch (Throwable $exception) {
@@ -595,7 +703,7 @@ if ($pdo instanceof PDO) {
     }
 }
 
-if (file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX) === false) {
+if (!$skipLogWrite && file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX) === false) {
     respondWithError(500, 'Failed to write report', $debugFile, ['log_file' => $logFile]);
 }
 
