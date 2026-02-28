@@ -13,3 +13,8 @@ Web/ClickFix/data/intel-cache.json
 /botanalyzer
 /botanalyzer/chrome-profile/AutofillStates
 /botanalyzer/chrome-profile/AutofillStates/2025.6.13.84507
+Web/ClickFix/clickfixallowlist
+Web/ClickFix/clickfixallowlist
+Web/ClickFix/clickfix-report.log
+*.log
+Web/ClickFix/alertsites
