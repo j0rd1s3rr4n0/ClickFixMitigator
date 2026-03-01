@@ -1,3 +1,12 @@
-2026/02/26-18:18:01.530 15f3c Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\Local Extension Settings\lbnlkjbjhfmffbmdgdcfjekciidcdmlg/MANIFEST-000001
-2026/02/26-18:18:01.530 15f3c Recovering log #7
-2026/02/26-18:18:01.533 15f3c Reusing old log C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\Local Extension Settings\lbnlkjbjhfmffbmdgdcfjekciidcdmlg/000007.log 
+2026/02/28-06:48:31.014 10528 Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\Local Extension Settings\lbnlkjbjhfmffbmdgdcfjekciidcdmlg/MANIFEST-000001
+2026/02/28-06:48:31.014 10528 Recovering log #7
+2026/02/28-06:48:31.020 10528 Reusing old log C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\Local Extension Settings\lbnlkjbjhfmffbmdgdcfjekciidcdmlg/000007.log 
+2026/02/28-07:42:31.191 10528 Level-0 table #12: started
+2026/02/28-07:42:31.203 10528 Level-0 table #12: 1089986 bytes OK
+2026/02/28-07:42:31.204 10528 Delete type=0 #7
+2026/02/28-07:54:31.056 b368 Compacting 1@1 + 1@2 files
+2026/02/28-07:54:31.060 b368 Generated table #13@1: 11 keys, 38369 bytes
+2026/02/28-07:54:31.060 b368 Compacted 1@1 + 1@2 files => 38369 bytes
+2026/02/28-07:54:31.061 b368 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/02/28-07:54:31.062 b368 Delete type=2 #9
+2026/02/28-07:54:31.062 b368 Delete type=2 #12

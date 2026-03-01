@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 import argparse
 import time
+import threading
+import subprocess
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urlparse
+import shutil
+from dataclasses import dataclass
+from queue import Queue, Empty
+from zipfile import ZipFile, ZIP_DEFLATED
 from pathlib import Path
 from typing import Iterable
 
@@ -29,6 +38,24 @@ CLEANUP_CAPTCHA_SELECTORS = [
     (By.CSS_SELECTOR, "body > section.recaptcha-section > main > div > div.captcha-check"),
 ]
 
+DEFAULT_SNAPSHOT_PREFIX = "botanalyzer_snapshot"
+EXCLUDED_SNAPSHOT_DIRS = {"venv", "chrome-profile", "__pycache__"}
+DEFAULT_PRECHECK_TIMEOUT = 8
+DEFAULT_PRECHECK_WORKERS = 60
+BLOCKED_SOCIAL_HOSTS = {
+    "facebook.com",
+    "www.facebook.com",
+    "m.facebook.com",
+    "tiktok.com",
+    "www.tiktok.com",
+    "m.tiktok.com",
+    "vt.tiktok.com",
+}
+ALLOW_SESSION_SCORE_THRESHOLD = 38
+MAX_REPEAT_VISITS = 3
+MAX_DUPLICATE_TABS_PER_URL = 1
+QUEUE_SENTINEL = "__BOTANALYZER_STOP__"
+
 
 def load_urls(path: Path) -> list[str]:
     if not path.exists():
@@ -44,6 +71,14 @@ def load_urls(path: Path) -> list[str]:
     return urls
 
 
+def is_http_url(value: str) -> bool:
+    try:
+        parsed = urlparse(value)
+    except Exception:
+        return False
+    return parsed.scheme in {"http", "https"}
+
+
 def normalize_url(value: str) -> str:
     line = value.strip()
     if not line or line.startswith("#"):
@@ -51,6 +86,31 @@ def normalize_url(value: str) -> str:
     if "://" not in line:
         line = f"https://{line}"
     return line
+
+
+def is_blocked_social_url(value: str) -> bool:
+    try:
+        parsed = urlparse(value)
+    except Exception:
+        return False
+    host = (parsed.hostname or "").lower()
+    if not host:
+        return False
+    if host in BLOCKED_SOCIAL_HOSTS:
+        return True
+    return host.endswith(".facebook.com") or host.endswith(".tiktok.com")
+
+
+def normalize_loop_url(value: str) -> str:
+    try:
+        parsed = urlparse(value)
+    except Exception:
+        return value
+    if not parsed.scheme or not parsed.netloc:
+        return value
+    host = parsed.hostname.lower() if parsed.hostname else parsed.netloc.lower()
+    path = parsed.path or "/"
+    return f"{parsed.scheme.lower()}://{host}{path}"
 
 
 def append_line(path: Path, line: str) -> None:
@@ -105,6 +165,142 @@ def normalize_extension_paths(values: Iterable[str]) -> tuple[list[Path], list[P
     return crx_files, unpacked_dirs
 
 
+def create_snapshot_zip(base_dir: Path, output_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with ZipFile(output_path, "w", ZIP_DEFLATED) as zipf:
+        for path in base_dir.rglob("*"):
+            if path.is_dir():
+                continue
+            if path == output_path:
+                continue
+            if path.name.startswith(DEFAULT_SNAPSHOT_PREFIX):
+                continue
+            if any(part in EXCLUDED_SNAPSHOT_DIRS for part in path.parts):
+                continue
+            try:
+                zipf.write(path, path.relative_to(base_dir))
+            except OSError:
+                continue
+
+
+def sync_extensions_from_profile(source_root: Path, target_root: Path) -> None:
+    source_profile = source_root / "Default"
+    target_profile = target_root / "Default"
+    if not source_profile.exists():
+        print(f"[WARN] Base profile not found at {source_profile}")
+        return
+    target_profile.mkdir(parents=True, exist_ok=True)
+
+    copy_dirs = [
+        "Extensions",
+        "Local Extension Settings",
+        "Extension State",
+    ]
+    copy_files = [
+        "Preferences",
+        "Secure Preferences",
+    ]
+    for name in copy_dirs:
+        src = source_profile / name
+        dst = target_profile / name
+        if not src.exists():
+            continue
+        try:
+            shutil.copytree(src, dst, dirs_exist_ok=True)
+        except OSError:
+            continue
+    for name in copy_files:
+        src = source_profile / name
+        dst = target_profile / name
+        if not src.exists():
+            continue
+        try:
+            shutil.copy2(src, dst)
+        except OSError:
+            continue
+
+    local_state = source_root / "Local State"
+    if local_state.exists():
+        try:
+            shutil.copy2(local_state, target_root / "Local State")
+        except OSError:
+            pass
+
+
+def curl_health_check(url: str, timeout: int) -> tuple[str, bool, str]:
+    if not is_http_url(url):
+        return url, True, "non-http"
+    command = [
+        "curl",
+        "-L",
+        "-m",
+        str(timeout),
+        "-s",
+        "-o",
+        os.devnull,
+        "-w",
+        "%{http_code}",
+        url,
+    ]
+    try:
+        completed = subprocess.run(command, capture_output=True, text=True)
+        code = (completed.stdout or "").strip()
+        ok = completed.returncode == 0 and code and code != "000"
+        return url, ok, code or "000"
+    except Exception:
+        return url, False, "error"
+
+
+def precheck_urls(
+    urls: list[str],
+    workers: int,
+    timeout: int,
+) -> tuple[list[str], list[tuple[str, str]]]:
+    if not urls:
+        return [], []
+    alive: list[str] = []
+    dead: list[tuple[str, str]] = []
+    max_workers = max(1, min(workers, 64))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(curl_health_check, url, timeout) for url in urls]
+        for future in as_completed(futures):
+            url, ok, code = future.result()
+            if ok:
+                alive.append(url)
+            else:
+                dead.append((url, code))
+    return alive, dead
+
+
+def stream_precheck_to_queue(
+    urls: list[str],
+    workers: int,
+    timeout: int,
+    url_queue: Queue[str],
+    urls_path: Path,
+    dead_path: Path,
+    file_lock: threading.Lock,
+) -> tuple[int, int]:
+    if not urls:
+        return 0, 0
+    alive_count = 0
+    dead_count = 0
+    max_workers = max(1, min(workers, 64))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(curl_health_check, url, timeout) for url in urls]
+        for future in as_completed(futures):
+            url, ok, code = future.result()
+            if ok:
+                url_queue.put(url)
+                alive_count += 1
+            else:
+                dead_count += 1
+                with file_lock:
+                    append_line(dead_path, f"{url} # {code}")
+                    remove_url_from_file(urls_path, url)
+    return alive_count, dead_count
+
+
 def build_driver(
     headful: bool,
     profile_dir: Path | None,
@@ -152,6 +348,21 @@ def init_driver(
     driver = build_driver(headful, profile_dir, extensions, lang, accept_languages)
     driver.set_page_load_timeout(page_timeout)
     return driver
+
+
+def resolve_worker_profile_dir(
+    base_dir: Path | None,
+    worker_id: int,
+    total_workers: int,
+    shared_profile: bool,
+) -> Path | None:
+    if base_dir is None:
+        return None
+    if shared_profile or total_workers <= 1:
+        return base_dir
+    worker_dir = base_dir / f"worker-{worker_id}"
+    worker_dir.mkdir(parents=True, exist_ok=True)
+    return worker_dir
 
 
 def reset_driver(
@@ -360,6 +571,362 @@ def wait_for_close(driver: webdriver.Chrome, wait_seconds: float) -> bool:
     return False
 
 
+def close_blocked_social_tabs(
+    driver: webdriver.Chrome,
+    main_window: str | None,
+    label: str,
+) -> str | None:
+    try:
+        handles = driver.window_handles
+    except WebDriverException:
+        return main_window
+    if not handles:
+        return main_window
+    current_main = main_window if main_window in handles else handles[0]
+    for handle in list(handles):
+        try:
+            driver.switch_to.window(handle)
+            current_url = driver.current_url or ""
+        except WebDriverException:
+            continue
+        if not is_blocked_social_url(current_url):
+            continue
+        if handle == current_main and len(handles) == 1:
+            try:
+                driver.get("about:blank")
+                print(f"[{label}] [BLOCKED] Social site detected -> blanked main tab")
+            except WebDriverException:
+                pass
+            continue
+        try:
+            driver.close()
+            print(f"[{label}] [BLOCKED] Social site tab closed: {current_url}")
+        except WebDriverException:
+            continue
+    try:
+        handles = driver.window_handles
+    except WebDriverException:
+        return current_main
+    if not handles:
+        return current_main
+    if current_main not in handles:
+        current_main = handles[0]
+    try:
+        driver.switch_to.window(current_main)
+    except WebDriverException:
+        pass
+    return current_main
+
+
+def close_duplicate_tabs(
+    driver: webdriver.Chrome,
+    main_window: str | None,
+    label: str,
+    max_per_url: int = MAX_DUPLICATE_TABS_PER_URL,
+) -> str | None:
+    try:
+        handles = driver.window_handles
+    except WebDriverException:
+        return main_window
+    if not handles:
+        return main_window
+    current_main = main_window if main_window in handles else handles[0]
+    url_map: dict[str, list[str]] = {}
+    for handle in handles:
+        try:
+            driver.switch_to.window(handle)
+            current_url = driver.current_url or ""
+        except WebDriverException:
+            continue
+        key = normalize_loop_url(current_url)
+        url_map.setdefault(key, []).append(handle)
+    for key, key_handles in url_map.items():
+        if len(key_handles) <= max_per_url:
+            continue
+        kept = 0
+        for handle in list(key_handles):
+            if handle == current_main and kept < max_per_url:
+                kept += 1
+                continue
+            if kept < max_per_url:
+                kept += 1
+                continue
+            try:
+                driver.switch_to.window(handle)
+                driver.close()
+                print(f"[{label}] [LOOP] Closed duplicate tab for {key}")
+            except WebDriverException:
+                continue
+    try:
+        handles = driver.window_handles
+    except WebDriverException:
+        return current_main
+    if not handles:
+        return current_main
+    if current_main not in handles:
+        current_main = handles[0]
+    try:
+        driver.switch_to.window(current_main)
+    except WebDriverException:
+        pass
+    return current_main
+
+
+def maybe_allow_clickfix_session(
+    driver: webdriver.Chrome,
+    label: str,
+    threshold: int = ALLOW_SESSION_SCORE_THRESHOLD,
+) -> bool:
+    script = r"""
+    const threshold = arguments[0];
+    const root = document.querySelector('.clickfix-blocked');
+    if (!root) return { detected: false };
+    const text = (root.innerText || '').slice(0, 30000);
+    const match = text.match(/(\d{1,3})\s*\/\s*100/);
+    const score = match ? parseInt(match[1], 10) : null;
+    let clicked = false;
+    if (score !== null && score < threshold) {
+      const buttons = Array.from(root.querySelectorAll('.clickfix-actions .clickfix-btn'));
+      let sessionBtn = null;
+      const tokens = [
+        'session', 'sesion', 'sesión', 'sessao', 'sessão',
+        'sitzung', 'сеанс', 'sessione', 'sessie',
+        'セッション', '세션', 'سشن'
+      ];
+      for (const btn of buttons) {
+        const label = (btn.textContent || '').toLowerCase();
+        if (tokens.some((token) => label.includes(token))) {
+          sessionBtn = btn;
+          break;
+        }
+      }
+      if (!sessionBtn) {
+        const outlineDanger = buttons.filter((btn) =>
+          btn.classList.contains('clickfix-btn-outline') && btn.classList.contains('danger')
+        );
+        if (outlineDanger.length >= 2) {
+          sessionBtn = outlineDanger[1];
+        }
+      }
+      if (!sessionBtn && buttons.length >= 3) {
+        sessionBtn = buttons[2];
+      }
+      if (sessionBtn) {
+        sessionBtn.scrollIntoView({ block: 'center' });
+        sessionBtn.click();
+        clicked = true;
+      }
+    }
+    return { detected: true, score: score, clicked: clicked };
+    """
+    try:
+        result = driver.execute_script(script, int(threshold))
+    except WebDriverException:
+        return False
+    if not isinstance(result, dict) or not result.get("detected"):
+        return False
+    score = result.get("score")
+    if result.get("clicked"):
+        print(f"[{label}] [ALLOW] ClickFix allow session (score={score})")
+        return True
+    if score is not None:
+        print(f"[{label}] [ALLOW] ClickFix detected score={score} (threshold={threshold})")
+    return False
+
+
+@dataclass
+class WorkerState:
+    worker_id: int
+    driver: webdriver.Chrome
+    profile_dir: Path | None
+    main_window: str | None
+    loop_counts: dict[str, int]
+
+
+def process_url(
+    state: WorkerState,
+    url: str,
+    args: argparse.Namespace,
+) -> None:
+    label = f"W{state.worker_id}"
+    print(f"[{label}] [OPEN] {url}")
+    try:
+        try:
+            try:
+                state.driver.get(url)
+            except WebDriverException:
+                print(f"[{label}] [TIMEOUT] {url}")
+            wait_for_dom_ready(state.driver, args.page_timeout)
+            if args.post_load_wait:
+                time.sleep(args.post_load_wait)
+            if maybe_allow_clickfix_session(state.driver, label, ALLOW_SESSION_SCORE_THRESHOLD):
+                time.sleep(2.0)
+                wait_for_dom_ready(state.driver, args.page_timeout)
+            try:
+                current_url = state.driver.current_url or ""
+            except WebDriverException:
+                current_url = ""
+            loop_key = normalize_loop_url(current_url)
+            if loop_key:
+                state.loop_counts[loop_key] = state.loop_counts.get(loop_key, 0) + 1
+                if state.loop_counts[loop_key] >= MAX_REPEAT_VISITS:
+                    print(f"[{label}] [LOOP] Repeated URL detected -> aborting {loop_key}")
+                    state.main_window = close_duplicate_tabs(state.driver, state.main_window, label)
+                    return
+            if is_blocked_social_url(current_url):
+                state.main_window = close_blocked_social_tabs(state.driver, state.main_window, label)
+                print(f"[{label}] [SKIP] Social site blocked: {current_url}")
+                return
+            found = wait_for_buttons(state.driver, args.button_timeout)
+            if found:
+                print(f"[{label}] [BUTTONS] {found} detected after JS load")
+            clicked = click_clickables_in_frames(state.driver, args.between_clicks)
+            print(f"[{label}] [CLICKED] {clicked} buttons")
+            state.main_window = close_blocked_social_tabs(state.driver, state.main_window, label)
+            state.main_window = close_duplicate_tabs(state.driver, state.main_window, label)
+            closed = wait_for_close(state.driver, args.wait_close)
+            if closed:
+                try:
+                    handles = state.driver.window_handles
+                except WebDriverException:
+                    handles = []
+                if handles:
+                    if state.main_window in handles:
+                        state.driver.switch_to.window(state.main_window)
+                    else:
+                        state.main_window = handles[0]
+                        state.driver.switch_to.window(state.main_window)
+                else:
+                    state.driver = reset_driver(
+                        state.driver,
+                        args.headful,
+                        state.profile_dir,
+                        args.extension,
+                        args.lang,
+                        args.accept_languages,
+                        args.page_timeout,
+                    )
+                    state.main_window = state.driver.current_window_handle
+                state.main_window = close_duplicate_tabs(state.driver, state.main_window, label)
+                state.main_window = close_blocked_social_tabs(state.driver, state.main_window, label)
+            else:
+                try:
+                    handles = state.driver.window_handles
+                except WebDriverException:
+                    handles = []
+                if handles:
+                    if state.main_window in handles:
+                        state.driver.switch_to.window(state.main_window)
+                    else:
+                        state.main_window = handles[0]
+                        state.driver.switch_to.window(state.main_window)
+        except Exception as error:
+            error_type = type(error).__name__
+            print(f"[{label}] [ERROR] {url} -> {error_type}: {error}")
+            try:
+                state.driver = reset_driver(
+                    state.driver,
+                    args.headful,
+                    state.profile_dir,
+                    args.extension,
+                    args.lang,
+                    args.accept_languages,
+                    args.page_timeout,
+                )
+                state.main_window = state.driver.current_window_handle
+            except Exception as reset_error:
+                reset_type = type(reset_error).__name__
+                print(f"[{label}] [FATAL] driver reset failed ({reset_type}): {reset_error}")
+                raise
+    finally:
+        clear_browser_state(state.driver)
+
+
+def worker_loop(
+    worker_id: int,
+    url_queue: Queue[str],
+    args: argparse.Namespace,
+    urls_path: Path,
+    done_path: Path,
+    file_lock: threading.Lock,
+) -> None:
+    base_profile_dir = Path(args.profile_dir) if args.profile_dir else None
+    profile_dir = resolve_worker_profile_dir(
+        Path(args.profile_dir) if args.profile_dir else None,
+        worker_id,
+        args.workers,
+        args.shared_profile,
+    )
+    # Force extension sync from the principal profile into every worker profile.
+    # This guarantees all Selenium workers run with the same installed extensions.
+    if base_profile_dir and profile_dir and profile_dir != base_profile_dir:
+        sync_extensions_from_profile(base_profile_dir, profile_dir)
+    try:
+        driver = init_driver(
+            args.headful,
+            profile_dir,
+            args.extension,
+            args.lang,
+            args.accept_languages,
+            args.page_timeout,
+        )
+    except WebDriverException:
+        fallback_dir = None
+        if profile_dir is not None:
+            stamp = time.strftime("%Y%m%d-%H%M%S")
+            fallback_dir = profile_dir / f"runtime-{stamp}"
+            print(f"[WARN] Chrome failed to start. Retrying with fresh profile: {fallback_dir}")
+        if fallback_dir is None:
+            raise
+        if base_profile_dir and fallback_dir != base_profile_dir:
+            sync_extensions_from_profile(base_profile_dir, fallback_dir)
+        driver = init_driver(
+            args.headful,
+            fallback_dir,
+            args.extension,
+            args.lang,
+            args.accept_languages,
+            args.page_timeout,
+        )
+        profile_dir = fallback_dir
+    try:
+        main_window = None
+        try:
+            main_window = driver.current_window_handle
+        except WebDriverException:
+            main_window = None
+        state = WorkerState(
+            worker_id=worker_id,
+            driver=driver,
+            profile_dir=profile_dir,
+            main_window=main_window,
+            loop_counts={},
+        )
+        print(f"[*] Worker {worker_id} initialized")
+        while True:
+            try:
+                url = url_queue.get(timeout=0.5)
+            except Empty:
+                continue
+            if url == QUEUE_SENTINEL:
+                url_queue.task_done()
+                break
+            try:
+                process_url(state, url, args)
+            except Exception:
+                pass
+            finally:
+                with file_lock:
+                    append_line(done_path, url)
+                    remove_url_from_file(urls_path, url)
+                url_queue.task_done()
+    finally:
+        try:
+            driver.quit()
+        except WebDriverException:
+            pass
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Click all buttons on URLs listed in urls.txt (Selenium).")
     parser.add_argument("--urls", default="urls.txt", help="Path to urls.txt")
@@ -381,6 +948,35 @@ def main() -> int:
         default=[],
         help="Path to .crx file or unpacked extension folder (repeatable).",
     )
+    parser.add_argument("--workers", type=int, default=1, help="Number of parallel browser workers.")
+    parser.add_argument(
+        "--shared-profile",
+        action="store_true",
+        help="Reuse the same Chrome profile for all workers (forces workers=1).",
+    )
+    parser.add_argument(
+        "--sync-extensions",
+        action="store_true",
+        default=None,
+        help="Sync extensions from the base profile into worker profiles.",
+    )
+    parser.add_argument(
+        "--zip",
+        dest="zip_output",
+        default="",
+        help="Snapshot zip path (default: botanalyzer_snapshot_YYYYmmdd-HHMMSS.zip)",
+    )
+    parser.add_argument("--no-zip", action="store_true", help="Disable snapshot zip generation")
+    parser.add_argument(
+        "--precheck",
+        action="store_true",
+        default=True,
+        help="Pre-check URLs with multi-threaded curl before Selenium.",
+    )
+    parser.add_argument("--no-precheck", action="store_true", help="Disable pre-check curl filtering")
+    parser.add_argument("--precheck-timeout", type=int, default=DEFAULT_PRECHECK_TIMEOUT)
+    parser.add_argument("--precheck-workers", type=int, default=DEFAULT_PRECHECK_WORKERS)
+    parser.add_argument("--dead", default="dead.txt", help="Path to dead URLs output file")
     parser.add_argument("--lang", help="Chrome UI language, e.g. es-ES")
     parser.add_argument("--accept-languages", help="Chrome accept_languages list, e.g. es-ES,es,en")
     args = parser.parse_args()
@@ -391,126 +987,77 @@ def main() -> int:
         default_extension = Path(__file__).resolve().parent.parent / "browser-extension"
         if default_extension.exists():
             args.extension.append(str(default_extension))
-    urls = load_urls(urls_path)
-    if not urls:
+    source_urls = load_urls(urls_path)
+    if not source_urls:
         print(f"No URLs found in {args.urls}")
         return 1
 
-    profile_dir = Path(args.profile_dir) if args.profile_dir else None
+    if args.no_precheck:
+        args.precheck = False
+
+    if not args.no_zip:
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        default_zip = f"{DEFAULT_SNAPSHOT_PREFIX}_{timestamp}.zip"
+        zip_path = Path(args.zip_output) if args.zip_output else (Path(__file__).resolve().parent / default_zip)
+        create_snapshot_zip(Path(__file__).resolve().parent, zip_path)
+        print(f"[*] Snapshot saved: {zip_path}")
+
+    args.workers = max(1, int(args.workers))
+    if args.sync_extensions is None:
+        args.sync_extensions = bool(args.workers > 1 and args.profile_dir and not args.shared_profile)
+    if args.shared_profile and args.workers > 1:
+        print("[WARN] --shared-profile with multiple workers can corrupt Chrome profile data.")
+    if args.workers > 6:
+        print(f"[WARN] workers={args.workers} is high; Chrome instances may be heavy.")
+
+    url_queue: Queue[str] = Queue()
+
+    file_lock = threading.Lock()
+    threads: list[threading.Thread] = []
+    print(f"[*] Initialized BotAnalyzer with {args.workers} worker(s)")
     try:
-        driver = init_driver(
-            args.headful,
-            profile_dir,
-            args.extension,
-            args.lang,
-            args.accept_languages,
-            args.page_timeout,
-        )
-    except WebDriverException as error:
-        fallback_dir = None
-        if profile_dir is not None:
-            stamp = time.strftime("%Y%m%d-%H%M%S")
-            fallback_dir = profile_dir / f"runtime-{stamp}"
-            print(f"[WARN] Chrome failed to start. Retrying with fresh profile: {fallback_dir}")
-        if fallback_dir is None:
-            raise
-        driver = init_driver(
-            args.headful,
-            fallback_dir,
-            args.extension,
-            args.lang,
-            args.accept_languages,
-            args.page_timeout,
-        )
-        profile_dir = fallback_dir
-    main_window = None
-    try:
-        main_window = driver.current_window_handle
-    except WebDriverException:
-        main_window = None
-    try:
-        print("[*] Initialized BotAnalyzer")
-        time.sleep(30)
-        try:
-            for url in urls:
-                print(f"[OPEN] {url}")
-                try:
-                    try:
-                        driver.get(url)
-                    except WebDriverException:
-                        print(f"[TIMEOUT] {url}")
-                    wait_for_dom_ready(driver, args.page_timeout)
-                    if args.post_load_wait:
-                        time.sleep(args.post_load_wait)
-                    found = wait_for_buttons(driver, args.button_timeout)
-                    if found:
-                        print(f"[BUTTONS] {found} detected after JS load")
-                    clicked = click_clickables_in_frames(driver, args.between_clicks)
-                    print(f"[CLICKED] {clicked} buttons")
-                    closed = wait_for_close(driver, args.wait_close)
-                    if closed:
-                        try:
-                            handles = driver.window_handles
-                        except WebDriverException:
-                            handles = []
-                        if handles:
-                            if main_window in handles:
-                                driver.switch_to.window(main_window)
-                            else:
-                                main_window = handles[0]
-                                driver.switch_to.window(main_window)
-                        else:
-                            driver = reset_driver(
-                                driver,
-                                args.headful,
-                                profile_dir,
-                                args.extension,
-                                args.lang,
-                                args.accept_languages,
-                                args.page_timeout,
-                            )
-                            main_window = driver.current_window_handle
-                    else:
-                        try:
-                            handles = driver.window_handles
-                        except WebDriverException:
-                            handles = []
-                        if handles:
-                            if main_window in handles:
-                                driver.switch_to.window(main_window)
-                            else:
-                                main_window = handles[0]
-                                driver.switch_to.window(main_window)
-                except Exception as error:
-                    error_type = type(error).__name__
-                    print(f"[ERROR] {url} -> {error_type}: {error}")
-                    try:
-                        driver = reset_driver(
-                            driver,
-                            args.headful,
-                            profile_dir,
-                            args.extension,
-                            args.lang,
-                            args.accept_languages,
-                            args.page_timeout,
-                        )
-                        main_window = driver.current_window_handle
-                    except Exception as reset_error:
-                        reset_type = type(reset_error).__name__
-                        print(f"[FATAL] driver reset failed ({reset_type}): {reset_error}")
-                        return 1
-                finally:
-                    append_line(done_path, url)
-                    remove_url_from_file(urls_path, url)
-                    clear_browser_state(driver)
-        except KeyboardInterrupt:
-            print("[CTRL+C] Exit requested. Stopping after current URL.")
-            return 0
-    finally:
-        try:
-            driver.quit()
-        except WebDriverException:
-            pass
+        for worker_id in range(1, args.workers + 1):
+            thread = threading.Thread(
+                target=worker_loop,
+                args=(worker_id, url_queue, args, urls_path, done_path, file_lock),
+                daemon=True,
+            )
+            threads.append(thread)
+            thread.start()
+
+        if args.precheck:
+            dead_path = Path(args.dead)
+            print(
+                f"[*] Pre-checking {len(source_urls)} URLs with curl "
+                f"({args.precheck_workers} workers) and streaming alive URLs to Selenium queue..."
+            )
+            alive_count, dead_count = stream_precheck_to_queue(
+                source_urls,
+                args.precheck_workers,
+                args.precheck_timeout,
+                url_queue,
+                urls_path,
+                dead_path,
+                file_lock,
+            )
+            if dead_count:
+                print(f"[PRECHECK] Skipped {dead_count} dead URLs (logged in {dead_path}).")
+            if alive_count == 0:
+                print("[PRECHECK] No live URLs remaining.")
+        else:
+            for url in source_urls:
+                url_queue.put(url)
+
+        for _ in range(args.workers):
+            url_queue.put(QUEUE_SENTINEL)
+
+        url_queue.join()
+
+        while any(thread.is_alive() for thread in threads):
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        print("[CTRL+C] Exit requested. Stopping after current URL.")
+        return 0
     return 0
 
 
