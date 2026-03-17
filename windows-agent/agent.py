@@ -11,7 +11,7 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional, Callable, Iterable, Tuple
+from typing import Any, Dict, Optional, Callable, Iterable, Tuple
 
 import psutil
 import win32gui
@@ -21,9 +21,13 @@ import keyboard
 import pystray
 from PIL import Image, ImageDraw
 
+from consent_dialog import ensure_agent_terms_acceptance
+from control_panel import AgentControlPanel
+from host_telemetry import collect_host_snapshot
+
 
 # ---- Build/version marker (to confirm you're running the right file) ----
-AGENT_VERSION = "agent-2026-01-29-full"
+AGENT_VERSION = "agent-2026-03-15-panel"
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "config.json"
@@ -33,6 +37,7 @@ ALERTSITES_PATH = BASE_DIR / "alertsites"
 DEFAULT_DB_PATH = BASE_DIR / "data" / "clickfix.sqlite"
 CLIPBOARD_CF_UNICODETEXT = 13
 TRAY_ICON_PATH = BASE_DIR / "logo.png"
+TERMS_PATH = BASE_DIR / "TERMS_AND_CONDITIONS.txt"
 MESSAGEBOX_YES = 6
 MESSAGEBOX_NO = 7
 
@@ -49,7 +54,11 @@ CREATE TABLE IF NOT EXISTS reports (
     blocked INTEGER DEFAULT 0,
     user_agent TEXT,
     ip TEXT,
-    country TEXT
+    country TEXT,
+    active_process TEXT,
+    active_window TEXT,
+    action_taken TEXT,
+    host_snapshot_json TEXT
 );
 
 CREATE TABLE IF NOT EXISTS stats (
@@ -59,7 +68,19 @@ CREATE TABLE IF NOT EXISTS stats (
     alert_count INTEGER,
     block_count INTEGER,
     manual_sites_json TEXT,
-    country TEXT
+    country TEXT,
+    host_health TEXT
+);
+
+CREATE TABLE IF NOT EXISTS host_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recorded_at TEXT NOT NULL,
+    hostname TEXT,
+    cpu_percent REAL,
+    memory_percent REAL,
+    dns_json TEXT,
+    antivirus_json TEXT,
+    processes_json TEXT
 );
 """
 
@@ -116,6 +137,8 @@ class TelemetryStore:
         self.last_stats_flush = 0.0
 
         self.alertsites_cache = self._load_alertsites()
+        self.last_host_snapshot: Dict[str, object] = {}
+        self._db_lock = threading.Lock()
 
         self._ensure_db()
 
@@ -126,8 +149,20 @@ class TelemetryStore:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
             with sqlite3.connect(self.db_path, timeout=3) as conn:
                 conn.executescript(DB_SCHEMA_SQL)
+                self._ensure_column(conn, "reports", "active_process", "TEXT")
+                self._ensure_column(conn, "reports", "active_window", "TEXT")
+                self._ensure_column(conn, "reports", "action_taken", "TEXT")
+                self._ensure_column(conn, "reports", "host_snapshot_json", "TEXT")
+                self._ensure_column(conn, "stats", "host_health", "TEXT")
         except Exception:
             logging.exception("Failed to ensure local SQLite schema at %s", self.db_path)
+
+    def _ensure_column(self, conn: sqlite3.Connection, table: str, column: str, column_type: str) -> None:
+        rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+        existing = {str(row[1]) for row in rows}
+        if column in existing:
+            return
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {column_type}")
 
     def _load_alertsites(self) -> set:
         if not self.alertsites_path.exists():
@@ -171,13 +206,14 @@ class TelemetryStore:
         if not self.enable_db:
             return
         try:
-            with sqlite3.connect(self.db_path, timeout=3) as conn:
+            with self._db_lock, sqlite3.connect(self.db_path, timeout=3) as conn:
                 conn.execute(
                     """
                     INSERT INTO reports (
                         received_at, url, hostname, message, detected_content,
-                        full_context, signals_json, blocked, user_agent, ip, country
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        full_context, signals_json, blocked, user_agent, ip, country,
+                        active_process, active_window, action_taken, host_snapshot_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         record.get("received_at"),
@@ -191,24 +227,28 @@ class TelemetryStore:
                         record.get("user_agent"),
                         record.get("ip"),
                         record.get("country"),
+                        record.get("active_process"),
+                        record.get("active_window"),
+                        record.get("action_taken"),
+                        record.get("host_snapshot_json"),
                     ),
                 )
         except Exception:
             logging.exception("Failed to write report to SQLite")
 
-    def record_stats(self, force: bool = False) -> None:
+    def record_stats(self, force: bool = False, host_health: Optional[str] = None) -> None:
         if not self.enable_db:
             return
         now = time.time()
         if not force and (now - self.last_stats_flush) < self.stats_flush_interval:
             return
         try:
-            with sqlite3.connect(self.db_path, timeout=3) as conn:
+            with self._db_lock, sqlite3.connect(self.db_path, timeout=3) as conn:
                 conn.execute(
                     """
                     INSERT INTO stats (
-                        received_at, enabled, alert_count, block_count, manual_sites_json, country
-                    ) VALUES (?, ?, ?, ?, ?, ?)
+                        received_at, enabled, alert_count, block_count, manual_sites_json, country, host_health
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         utc_now_iso(),
@@ -217,11 +257,37 @@ class TelemetryStore:
                         self.block_count,
                         json.dumps(sorted(self.alertsites_cache), ensure_ascii=False),
                         None,
+                        host_health,
                     ),
                 )
             self.last_stats_flush = now
         except Exception:
             logging.exception("Failed to write stats to SQLite")
+
+    def record_host_snapshot(self, snapshot: Dict[str, object]) -> None:
+        self.last_host_snapshot = snapshot
+        if not self.enable_db:
+            return
+        try:
+            with self._db_lock, sqlite3.connect(self.db_path, timeout=3) as conn:
+                conn.execute(
+                    """
+                    INSERT INTO host_snapshots (
+                        recorded_at, hostname, cpu_percent, memory_percent, dns_json, antivirus_json, processes_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        utc_now_iso(),
+                        snapshot.get("hostname"),
+                        snapshot.get("cpu_percent"),
+                        snapshot.get("memory_percent"),
+                        json.dumps(snapshot.get("dns", {}), ensure_ascii=False),
+                        json.dumps(snapshot.get("antivirus", []), ensure_ascii=False),
+                        json.dumps(snapshot.get("processes", []), ensure_ascii=False),
+                    ),
+                )
+        except Exception:
+            logging.exception("Failed to write host snapshot to SQLite")
 
     def record_detection(
         self,
@@ -255,6 +321,10 @@ class TelemetryStore:
             "user_agent": self.user_agent,
             "ip": None,
             "country": None,
+            "active_process": active_process,
+            "active_window": active_window,
+            "action_taken": "blocked" if blocked else "allowed",
+            "host_snapshot_json": json.dumps(self.last_host_snapshot, ensure_ascii=False),
         }
 
         self.log_event(
@@ -269,12 +339,30 @@ class TelemetryStore:
             },
         )
         self.record_report(record)
-        self.record_stats()
+        self.record_stats(host_health=self.derive_host_health())
+
+    def derive_host_health(self) -> str:
+        snapshot = self.last_host_snapshot or {}
+        cpu = float(snapshot.get("cpu_percent") or 0.0)
+        memory = float(snapshot.get("memory_percent") or 0.0)
+        if cpu >= 90 or memory >= 92:
+            return "stressed"
+        if cpu >= 70 or memory >= 80:
+            return "elevated"
+        return "healthy"
+
+    def query_rows(self, sql: str, params: Tuple[Any, ...] = ()) -> list[sqlite3.Row]:
+        if not self.enable_db:
+            return []
+        with self._db_lock, sqlite3.connect(self.db_path, timeout=3) as conn:
+            conn.row_factory = sqlite3.Row
+            return conn.execute(sql, params).fetchall()
 
 
 class ClipboardMonitor:
     def __init__(self, config: Dict[str, object]) -> None:
         self.config = config
+        self.config_lock = threading.Lock()
 
         rules = config.get("rules", {})
         self.suspicious_patterns = [
@@ -316,6 +404,22 @@ class ClipboardMonitor:
         self.stop_event = threading.Event()
         self.telemetry = TelemetryStore(BASE_DIR, config)
         self.hotkeys = self._load_hotkeys(config)
+        telemetry_cfg = config.get("telemetry", {})
+        if not isinstance(telemetry_cfg, dict):
+            telemetry_cfg = {}
+        ui_cfg = config.get("ui", {})
+        if not isinstance(ui_cfg, dict):
+            ui_cfg = {}
+        self.host_snapshot_interval = float(telemetry_cfg.get("host_snapshot_interval_s", 45))
+        self.panel = AgentControlPanel(
+            self,
+            TRAY_ICON_PATH,
+            TERMS_PATH,
+            refresh_interval_s=float(ui_cfg.get("refresh_interval_s", 3.0)),
+        )
+        self.show_panel_on_start = bool(ui_cfg.get("show_panel_on_start", True))
+        self.last_host_snapshot: Dict[str, object] = {}
+        self.last_host_snapshot_lock = threading.Lock()
 
         logging.debug(
             "ClipboardMonitor initialized. poll_interval=%s allow_timeout=%s run_sequence_timeout=%s",
@@ -448,6 +552,123 @@ class ClipboardMonitor:
             "execute": normalize(hotkeys.get("execute"), ["enter", "ctrl+shift+enter"]),
             "restore": normalize(hotkeys.get("restore"), ["ctrl+shift+u"]),
         }
+
+    def set_host_snapshot(self, snapshot: Dict[str, object]) -> None:
+        with self.last_host_snapshot_lock:
+            self.last_host_snapshot = snapshot
+        self.telemetry.record_host_snapshot(snapshot)
+
+    def get_host_snapshot(self) -> Dict[str, object]:
+        with self.last_host_snapshot_lock:
+            return dict(self.last_host_snapshot)
+
+    def open_panel(self, _=None) -> None:
+        self.panel.open()
+
+    def get_ui_snapshot(self) -> Dict[str, object]:
+        host_snapshot = self.get_host_snapshot()
+        recent_rows = self.telemetry.query_rows(
+            """
+            SELECT received_at, message, detected_content, blocked, active_process,
+                   active_window, action_taken, host_snapshot_json, signals_json
+            FROM reports
+            ORDER BY id DESC
+            LIMIT 50
+            """
+        )
+        recent_alerts = []
+        for row in recent_rows:
+            signals = {}
+            host_context = {}
+            try:
+                signals = json.loads(str(row["signals_json"] or "")) if row["signals_json"] else {}
+            except Exception:
+                signals = {}
+            try:
+                host_context = (
+                    json.loads(str(row["host_snapshot_json"] or "")) if row["host_snapshot_json"] else {}
+                )
+            except Exception:
+                host_context = {}
+            recent_alerts.append(
+                {
+                    "received_at": row["received_at"],
+                    "message": row["message"],
+                    "detected_content": row["detected_content"],
+                    "blocked": int(row["blocked"] or 0),
+                    "active_process": row["active_process"],
+                    "active_window": row["active_window"],
+                    "action_taken": row["action_taken"] or ("blocked" if int(row["blocked"] or 0) else "allowed"),
+                    "signals": signals,
+                    "host_context": host_context,
+                }
+            )
+
+        stats_rows = self.telemetry.query_rows(
+            """
+            SELECT received_at, alert_count, block_count
+            FROM stats
+            ORDER BY id DESC
+            LIMIT 14
+            """
+        )
+        trend = []
+        for row in reversed(stats_rows):
+            label = str(row["received_at"] or "")[11:16] or str(row["received_at"] or "")[:10]
+            trend.append(
+                {
+                    "label": label,
+                    "alerts": int(row["alert_count"] or 0),
+                    "blocks": int(row["block_count"] or 0),
+                }
+            )
+        counts = {
+            "total_alerts": self.telemetry.alert_count,
+            "total_blocks": self.telemetry.block_count,
+            "recent_count": len(recent_alerts[:10]),
+        }
+        return {
+            "version": AGENT_VERSION,
+            "counts": counts,
+            "host_health": self.telemetry.derive_host_health(),
+            "host_snapshot": host_snapshot,
+            "recent_alerts": recent_alerts,
+            "trend": trend,
+            "settings": json.loads(json.dumps(self.config)),
+        }
+
+    def save_settings(self, updates: Dict[str, str]) -> None:
+        numeric_float = {"clipboard_poll_interval_s", "run_sequence_timeout_s", "allow_timeout_s"}
+        numeric_int = {"min_clipboard_length"}
+        with self.config_lock:
+            sensitivity = self.config.setdefault("sensitivity", {})
+            if not isinstance(sensitivity, dict):
+                sensitivity = {}
+                self.config["sensitivity"] = sensitivity
+            for key, raw_value in updates.items():
+                if key not in sensitivity and key != "blocked_clipboard_placeholder":
+                    continue
+                if key in numeric_float:
+                    try:
+                        sensitivity[key] = float(raw_value)
+                    except Exception:
+                        continue
+                elif key in numeric_int:
+                    try:
+                        sensitivity[key] = int(raw_value)
+                    except Exception:
+                        continue
+                else:
+                    sensitivity[key] = raw_value
+            CONFIG_PATH.write_text(json.dumps(self.config, indent=2, ensure_ascii=False), encoding="utf-8")
+        self.poll_interval = float(self.config.get("sensitivity", {}).get("clipboard_poll_interval_s", self.poll_interval))
+        self.run_sequence_timeout = float(self.config.get("sensitivity", {}).get("run_sequence_timeout_s", self.run_sequence_timeout))
+        self.allow_timeout = float(self.config.get("sensitivity", {}).get("allow_timeout_s", self.allow_timeout))
+        self.min_clipboard_length = int(self.config.get("sensitivity", {}).get("min_clipboard_length", self.min_clipboard_length))
+        self.blocked_placeholder = str(
+            self.config.get("sensitivity", {}).get("blocked_clipboard_placeholder", self.blocked_placeholder)
+        )
+        self.telemetry.log_event("settings_update", {"updated_keys": sorted(updates.keys())})
 
     # ---------------- Alerts / UI ----------------
 
@@ -816,13 +1037,30 @@ class ClipboardMonitor:
         while self.running:
             time.sleep(0.5)
 
+    def monitor_host_telemetry(self) -> None:
+        logging.info("monitor_host_telemetry started")
+        while self.running:
+            try:
+                snapshot = collect_host_snapshot(process_limit=14)
+                self.set_host_snapshot(snapshot)
+                self.telemetry.record_stats(host_health=self.telemetry.derive_host_health())
+            except Exception:
+                logging.exception("monitor_host_telemetry loop error")
+            sleep_for = max(10.0, self.host_snapshot_interval)
+            for _ in range(int(sleep_for * 2)):
+                if not self.running:
+                    break
+                time.sleep(0.5)
+        logging.info("monitor_host_telemetry stopped")
+
     # ---------------- Tray icon ----------------
 
     def create_tray_icon(self) -> pystray.Icon:
         image = self.load_tray_image()
         menu = pystray.Menu(
-            pystray.MenuItem("Restaurar último portapapeles bloqueado", self.restore_last_clipboard),
-            pystray.MenuItem("Salir", self.stop),
+            pystray.MenuItem("Open panel", self.open_panel),
+            pystray.MenuItem("Restore last blocked clipboard", self.restore_last_clipboard),
+            pystray.MenuItem("Exit", self.stop),
         )
         return pystray.Icon("ClickFixMitigator", image, "ClickFix Mitigator", menu)
 
@@ -859,9 +1097,13 @@ class ClipboardMonitor:
         except Exception:
             logging.exception("Failed to clear keyboard hooks")
         try:
-            self.telemetry.record_stats(force=True)
+            self.telemetry.record_stats(force=True, host_health=self.telemetry.derive_host_health())
         except Exception:
             logging.exception("Failed to flush telemetry stats")
+        try:
+            self.panel.stop()
+        except Exception:
+            logging.exception("Failed to stop control panel")
         try:
             if self.tray_icon:
                 self.tray_icon.stop()
@@ -871,7 +1113,12 @@ class ClipboardMonitor:
 
     def run(self) -> None:
         logging.info("ClipboardMonitor run() starting")
-        self.telemetry.record_stats(force=True)
+        try:
+            self.set_host_snapshot(collect_host_snapshot(process_limit=14))
+        except Exception:
+            logging.exception("Initial host snapshot failed")
+        self.panel.start(show_on_start=self.show_panel_on_start)
+        self.telemetry.record_stats(force=True, host_health=self.telemetry.derive_host_health())
         self.telemetry.log_event("agent_start", {"pid": os.getpid()})
 
         # Start everything under watchdogs (including tray).
@@ -892,6 +1139,12 @@ class ClipboardMonitor:
                 target=self._run_thread_watchdog,
                 args=(self.run_tray_icon, "run_tray_icon"),
                 name="tray_watchdog",
+                daemon=False,
+            ),
+            threading.Thread(
+                target=self._run_thread_watchdog,
+                args=(self.monitor_host_telemetry, "monitor_host_telemetry"),
+                name="monitor_host_telemetry_watchdog",
                 daemon=False,
             ),
         ]
@@ -996,6 +1249,11 @@ def main() -> None:
 
     logging.info("Starting ClickFix Mitigator agent")
     print("ClickFix Mitigator iniciado. Revisa la bandeja del sistema.")
+
+    if not ensure_agent_terms_acceptance(config, BASE_DIR):
+        logging.warning("Agent terms were not accepted; exiting")
+        print("Windows Agent terms were not accepted. Exiting.")
+        return
 
     monitor = ClipboardMonitor(config)
     try:

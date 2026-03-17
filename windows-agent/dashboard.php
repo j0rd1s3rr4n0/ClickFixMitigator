@@ -43,7 +43,19 @@ CREATE TABLE IF NOT EXISTS stats (
     alert_count INTEGER,
     block_count INTEGER,
     manual_sites_json TEXT,
-    country TEXT
+    country TEXT,
+    host_health TEXT
+);
+
+CREATE TABLE IF NOT EXISTS host_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recorded_at TEXT NOT NULL,
+    hostname TEXT,
+    cpu_percent REAL,
+    memory_percent REAL,
+    dns_json TEXT,
+    antivirus_json TEXT,
+    processes_json TEXT
 );
 SQL;
 
@@ -55,13 +67,15 @@ $stats = [
     'last_update' => null,
     'extension_enabled' => null,
     'recent_count' => 0,
-    'alert_sites' => []
+    'alert_sites' => [],
+    'host_health' => null
 ];
 
 $recentDetections = [];
 $alertSites = [];
 $alertsitesFile = __DIR__ . '/alertsites';
 $agentLogEntries = [];
+$latestHostSnapshot = [];
 $chartData = [
     'daily' => [],
     'hourly' => array_fill(0, 24, 0),
@@ -145,7 +159,7 @@ if (is_readable($dbPath)) {
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
         $statsRows = $pdo->query(
-            'SELECT received_at, enabled, alert_count, block_count, manual_sites_json, country
+            'SELECT received_at, enabled, alert_count, block_count, manual_sites_json, country, host_health
              FROM stats
              ORDER BY received_at DESC
              LIMIT 50'
@@ -168,9 +182,13 @@ if (is_readable($dbPath)) {
             if ($stats['last_update'] === null && !empty($entry['received_at'])) {
                 $stats['last_update'] = (string) $entry['received_at'];
             }
+            if ($stats['host_health'] === null && !empty($entry['host_health'])) {
+                $stats['host_health'] = (string) $entry['host_health'];
+            }
         }
         $reportRows = $pdo->query(
-            'SELECT received_at, url, hostname, message, detected_content, signals_json, country
+            'SELECT received_at, url, hostname, message, detected_content, signals_json, country,
+                    active_process, active_window, action_taken, host_snapshot_json
              FROM reports
              ORDER BY received_at DESC
              LIMIT 200'
@@ -221,8 +239,23 @@ if (is_readable($dbPath)) {
                 'timestamp' => (string) ($entry['received_at'] ?? ''),
                 'message' => $message,
                 'detected' => $detected,
-                'full_context' => ''
+                'full_context' => json_encode([
+                    'action_taken' => (string) ($entry['action_taken'] ?? ''),
+                    'active_process' => (string) ($entry['active_process'] ?? ''),
+                    'active_window' => (string) ($entry['active_window'] ?? ''),
+                    'host_snapshot' => json_decode((string) ($entry['host_snapshot_json'] ?? '{}'), true),
+                ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
             ];
+        }
+
+        $hostSnapshotRows = $pdo->query(
+            'SELECT recorded_at, hostname, cpu_percent, memory_percent, dns_json, antivirus_json, processes_json
+             FROM host_snapshots
+             ORDER BY id DESC
+             LIMIT 1'
+        )->fetchAll(PDO::FETCH_ASSOC);
+        if (!empty($hostSnapshotRows[0])) {
+            $latestHostSnapshot = $hostSnapshotRows[0];
         }
     } catch (Throwable $exception) {
         $stats = $stats;
@@ -282,7 +315,7 @@ $chartPayload = [
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ClickFix Dashboard</title>
+    <title>ClickFix Mitigator Agent Console</title>
     <style>
       body {
         font-family: "Segoe UI", system-ui, sans-serif;
@@ -510,7 +543,7 @@ $chartPayload = [
     <div class="page">
       <header>
         <div>
-          <h1>ClickFix Dashboard</h1>
+          <h1>ClickFix Mitigator Agent Console</h1>
           <div class="muted">Última actualización: <?= htmlspecialchars((string) ($stats['last_update'] ?? 'N/D'), ENT_QUOTES, 'UTF-8'); ?></div>
         </div>
         <?php
@@ -548,6 +581,11 @@ $chartPayload = [
           <span class="stat-label">Sitios alertados</span>
           <div class="stat-value"><?= (int) count($stats['alert_sites']); ?></div>
           <span class="stat-footnote">Pendientes de revisión</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Host health</span>
+          <div class="stat-value"><?= htmlspecialchars((string) ($stats['host_health'] ?? "N/D"), ENT_QUOTES, "UTF-8"); ?></div>
+          <span class="stat-footnote">Ultima muestra local del agente</span>
         </div>
       </section>
 
@@ -621,6 +659,38 @@ $chartPayload = [
                 <div class="section-title">
                   <h3>agent.log</h3>
                   <span class="muted">Últimas entradas</span>
+          <section class="card" style="margin-top: 24px;">
+            <h2>Host telemetry</h2>
+            <?php if (empty($latestHostSnapshot)): ?>
+              <div class="muted">Sin snapshot local todavia.</div>
+            <?php else: ?>
+              <div class="report-section">
+                <strong>Ultimo snapshot</strong>
+                <div class="muted">
+                  <?= htmlspecialchars((string) ($latestHostSnapshot['recorded_at'] ?? "N/D"), ENT_QUOTES, "UTF-8"); ?>
+                  |
+                  <?= htmlspecialchars((string) ($latestHostSnapshot['hostname'] ?? "host"), ENT_QUOTES, "UTF-8"); ?>
+                </div>
+              </div>
+              <div class="report-section">
+                <strong>Resumen</strong>
+                <div class="muted">
+                  CPU: <?= htmlspecialchars((string) ($latestHostSnapshot['cpu_percent'] ?? "0"), ENT_QUOTES, "UTF-8"); ?>%
+                  |
+                  Memory: <?= htmlspecialchars((string) ($latestHostSnapshot['memory_percent'] ?? "0"), ENT_QUOTES, "UTF-8"); ?>%
+                </div>
+              </div>
+              <div class="report-section context-panel">
+                <strong>DNS / Antivirus / Processes</strong>
+                <pre><?= htmlspecialchars(json_encode([
+                    "dns" => json_decode((string) ($latestHostSnapshot['dns_json'] ?? "{}"), true),
+                    "antivirus" => json_decode((string) ($latestHostSnapshot['antivirus_json'] ?? "[]"), true),
+                    "processes" => json_decode((string) ($latestHostSnapshot['processes_json'] ?? "[]"), true),
+                ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, "UTF-8"); ?></pre>
+              </div>
+            <?php endif; ?>
+          </section>
+
                 </div>
                 <?php if (empty($agentLogEntries)): ?>
                   <div class="muted">Sin registros.</div>
