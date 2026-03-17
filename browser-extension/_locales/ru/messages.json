@@ -427,5 +427,197 @@
   },
   "fullscreenBlockedDetection": {
     "message": "Полноэкранный режим заблокирован из-за обнаруженных признаков. Нажмите Esc или F11, чтобы выйти из полноэкранного режима."
+  },
+  "scoreBreakdownSummary": {
+    "message": "Score breakdown: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "scoreBreakdownWeights": {
+    "message": "Weights: $1",
+    "placeholders": {
+      "weights": {
+        "content": "$1"
+      }
+    }
+  },
+  "scoreBreakdownUnavailable": {
+    "message": "Not enough data for this component."
+  },
+  "scoreBreakdownNoFactors": {
+    "message": "No contributing factors detected."
+  },
+  "scoreComponentSignals": {
+    "message": "Signals"
+  },
+  "scoreComponentClipboard": {
+    "message": "Clipboard content"
+  },
+  "scoreComponentContext": {
+    "message": "Context"
+  },
+  "scoreSignalCommandMatch": {
+    "message": "Command pattern"
+  },
+  "scoreSignalShellHint": {
+    "message": "Shell execution hints"
+  },
+  "scoreSignalEvasionHint": {
+    "message": "Obfuscation / evasion"
+  },
+  "scoreSignalMismatch": {
+    "message": "Clipboard mismatch"
+  },
+  "scoreSignalClipboardWarning": {
+    "message": "Clipboard warning"
+  },
+  "scoreSignalWinR": {
+    "message": "Win + R prompt"
+  },
+  "scoreSignalWinX": {
+    "message": "Win + X prompt"
+  },
+  "scoreSignalPasteSequence": {
+    "message": "Paste sequence"
+  },
+  "scoreSignalConsole": {
+    "message": "Console prompt"
+  },
+  "scoreSignalFileExplorer": {
+    "message": "File Explorer prompt"
+  },
+  "scoreSignalCopyTrigger": {
+    "message": "Copy trigger"
+  },
+  "scoreSignalBrowserError": {
+    "message": "Browser error prompt"
+  },
+  "scoreSignalFixAction": {
+    "message": "Fix action prompt"
+  },
+  "scoreSignalCaptcha": {
+    "message": "CAPTCHA prompt"
+  },
+  "scoreClipboardCommand": {
+    "message": "Command keywords"
+  },
+  "scoreClipboardExecutionHint": {
+    "message": "Execution hints"
+  },
+  "scoreClipboardUrl": {
+    "message": "Suspicious URL"
+  },
+  "scoreClipboardBase64": {
+    "message": "Base64 payload"
+  },
+  "scoreClipboardHighEntropy": {
+    "message": "High entropy"
+  },
+  "scoreClipboardShellMeta": {
+    "message": "Shell metacharacters"
+  },
+  "scoreClipboardLong": {
+    "message": "Unusually long text"
+  },
+  "scoreClipboardLeadingWhitespace": {
+    "message": "Leading whitespace"
+  },
+  "scoreClipboardLooksLikeCommand": {
+    "message": "Looks like a command"
+  },
+  "scoreContextAllowlisted": {
+    "message": "Allowlisted destination"
+  },
+  "scoreContextTrustedHost": {
+    "message": "Trusted host"
+  },
+  "scoreContextCodeContext": {
+    "message": "Code editor context"
+  },
+  "scoreContextIframe": {
+    "message": "Iframe context"
+  },
+  "scoreContextOpaqueIframes": {
+    "message": "Opaque iframes"
+  },
+  "scoreSettingsTitle": {
+    "message": "Scoring"
+  },
+  "scoreSettingsSubtitle": {
+    "message": "Adjust points and weights used to calculate confidence scores."
+  },
+  "scoreSettingsHint": {
+    "message": "Weights are normalized across available components."
+  },
+  "scoreSettingsSave": {
+    "message": "Save scoring"
+  },
+  "scoreSettingsReset": {
+    "message": "Reset defaults"
+  },
+  "scoreSettingsSaved": {
+    "message": "Scoring updated."
+  },
+  "scoreSettingsResetDone": {
+    "message": "Scoring reset to defaults."
+  },
+  "scoreWeightSignals": {
+    "message": "Signals weight"
+  },
+  "scoreWeightClipboard": {
+    "message": "Clipboard weight"
+  },
+  "scoreWeightContext": {
+    "message": "Context weight"
+  },
+  "scoreWeightUnit": {
+    "message": "%"
+  },
+  "scoreContextBaseTitle": {
+    "message": "Context base score"
+  },
+  "scorePointsUnit": {
+    "message": "pts"
+  },
+  "scoreGroupSignals": {
+    "message": "Signals rules"
+  },
+  "scoreGroupClipboard": {
+    "message": "Clipboard rules"
+  },
+  "scoreGroupContext": {
+    "message": "Context rules"
+  },
+  "scoreSettingsManagedByServer": {
+    "message": "Managed from server. Last sync: $1.",
+    "placeholders": {
+      "last_sync": {
+        "content": "$1"
+      }
+    }
+  },
+  "scoreSignalProgressive": {
+    "message": "Progressive escalation from continued detections"
+  },
+  "alertFilterTitle": {
+    "message": "Alert filter by color"
+  },
+  "alertFilterHint": {
+    "message": "Hide alerts below the selected color level."
+  },
+  "alertFilterGreen": {
+    "message": "Green and above"
+  },
+  "alertFilterYellow": {
+    "message": "Yellow and above"
+  },
+  "alertFilterOrange": {
+    "message": "Orange and above"
+  },
+  "alertFilterRed": {
+    "message": "Red only"
   }
 }

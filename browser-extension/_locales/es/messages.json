@@ -1,4 +1,4 @@
-{
+﻿{
   "appName": {
     "message": "ClickFix Mitigator"
   },
@@ -92,6 +92,9 @@
   },
   "alertWinX": {
     "message": "La página sugiere usar Win+X para abrir la terminal."
+  },
+  "alertWinXI": {
+    "message": "La pÃ¡gina sugiere el flujo Win+X y luego I/Terminal/PowerShell."
   },
   "alertBrowserError": {
     "message": "La página muestra un error falso del navegador."
@@ -244,6 +247,12 @@
   },
   "optionsSendCountry": {
     "message": "Compartir país en reportes"
+  },
+  "optionsDetectionScreenshots": {
+    "message": "Capturar y enviar imagen ANTES/DESPUÉS al detectar ClickFix (opcional)"
+  },
+  "optionsDetectionScreenshotsWarning": {
+    "message": "No recomendado si se visualiza información confidencial."
   },
   "optionsWhitelistTitle": {
     "message": "Lista blanca"
@@ -427,5 +436,200 @@
   },
   "fullscreenBlockedDetection": {
     "message": "Se bloqueó la pantalla completa porque se detectaron riesgos. Pulsa Esc o F11 para salir de pantalla completa."
+  },
+  "scoreBreakdownSummary": {
+    "message": "Desglose de puntuaci?n: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "scoreBreakdownWeights": {
+    "message": "Pesos: $1",
+    "placeholders": {
+      "weights": {
+        "content": "$1"
+      }
+    }
+  },
+  "scoreBreakdownUnavailable": {
+    "message": "No hay datos suficientes para este componente."
+  },
+  "scoreBreakdownNoFactors": {
+    "message": "Sin factores que aporten."
+  },
+  "scoreComponentSignals": {
+    "message": "Se?ales"
+  },
+  "scoreComponentClipboard": {
+    "message": "Portapapeles"
+  },
+  "scoreComponentContext": {
+    "message": "Contexto"
+  },
+  "scoreSignalCommandMatch": {
+    "message": "Patr?n de comando"
+  },
+  "scoreSignalShellHint": {
+    "message": "Pistas de ejecuci?n shell"
+  },
+  "scoreSignalEvasionHint": {
+    "message": "Ofuscaci?n / evasi?n"
+  },
+  "scoreSignalMismatch": {
+    "message": "Desajuste portapapeles"
+  },
+  "scoreSignalClipboardWarning": {
+    "message": "Advertencia de portapapeles"
+  },
+  "scoreSignalWinR": {
+    "message": "Win + R"
+  },
+  "scoreSignalWinX": {
+    "message": "Win + X"
+  },
+  "scoreSignalWinXI": {
+    "message": "Win + X y luego I/Terminal"
+  },
+  "scoreSignalPasteSequence": {
+    "message": "Secuencia de pegado"
+  },
+  "scoreSignalConsole": {
+    "message": "Consola"
+  },
+  "scoreSignalFileExplorer": {
+    "message": "Explorador de archivos"
+  },
+  "scoreSignalCopyTrigger": {
+    "message": "Disparador de copia"
+  },
+  "scoreSignalBrowserError": {
+    "message": "Error del navegador"
+  },
+  "scoreSignalFixAction": {
+    "message": "Acci?n de arreglo"
+  },
+  "scoreSignalCaptcha": {
+    "message": "Captcha"
+  },
+  "scoreClipboardCommand": {
+    "message": "Palabras de comando"
+  },
+  "scoreClipboardExecutionHint": {
+    "message": "Pistas de ejecuci?n"
+  },
+  "scoreClipboardUrl": {
+    "message": "URL sospechosa"
+  },
+  "scoreClipboardBase64": {
+    "message": "Carga Base64"
+  },
+  "scoreClipboardHighEntropy": {
+    "message": "Alta entrop?a"
+  },
+  "scoreClipboardShellMeta": {
+    "message": "Metacaracteres de shell"
+  },
+  "scoreClipboardLong": {
+    "message": "Texto inusualmente largo"
+  },
+  "scoreClipboardLeadingWhitespace": {
+    "message": "Espacios iniciales"
+  },
+  "scoreClipboardLooksLikeCommand": {
+    "message": "Parece un comando"
+  },
+  "scoreContextAllowlisted": {
+    "message": "Allowlist"
+  },
+  "scoreContextTrustedHost": {
+    "message": "Host confiable"
+  },
+  "scoreContextCodeContext": {
+    "message": "Contexto de c?digo"
+  },
+  "scoreContextIframe": {
+    "message": "Contexto iframe"
+  },
+  "scoreContextOpaqueIframes": {
+    "message": "Iframes opacos"
+  },
+  "scoreSettingsTitle": {
+    "message": "Puntuaci?n"
+  },
+  "scoreSettingsSubtitle": {
+    "message": "Ajusta puntos y pesos para calcular la confianza."
+  },
+  "scoreSettingsHint": {
+    "message": "Los pesos se normalizan entre componentes disponibles."
+  },
+  "scoreSettingsSave": {
+    "message": "Guardar puntuaci?n"
+  },
+  "scoreSettingsReset": {
+    "message": "Restablecer valores"
+  },
+  "scoreSettingsSaved": {
+    "message": "Puntuaci?n actualizada."
+  },
+  "scoreSettingsResetDone": {
+    "message": "Puntuaci?n restablecida."
+  },
+  "scoreWeightSignals": {
+    "message": "Peso de se?ales"
+  },
+  "scoreWeightClipboard": {
+    "message": "Peso del portapapeles"
+  },
+  "scoreWeightContext": {
+    "message": "Peso de contexto"
+  },
+  "scoreWeightUnit": {
+    "message": "%"
+  },
+  "scoreContextBaseTitle": {
+    "message": "Base de contexto"
+  },
+  "scorePointsUnit": {
+    "message": "pts"
+  },
+  "scoreGroupSignals": {
+    "message": "Reglas de se?ales"
+  },
+  "scoreGroupClipboard": {
+    "message": "Reglas del portapapeles"
+  },
+  "scoreGroupContext": {
+    "message": "Reglas de contexto"
+  },
+  "scoreSettingsManagedByServer": {
+    "message": "Gestionado desde servidor. Ultima sincronizacion: $1.",
+    "placeholders": {
+      "last_sync": {
+        "content": "$1"
+      }
+    }
+  },
+  "scoreSignalProgressive": {
+    "message": "Escalada progresiva por detecciones continuas"
+  },
+  "alertFilterTitle": {
+    "message": "Filtro de alertas por color"
+  },
+  "alertFilterHint": {
+    "message": "Oculta alertas por debajo del color seleccionado."
+  },
+  "alertFilterGreen": {
+    "message": "Verde y superiores"
+  },
+  "alertFilterYellow": {
+    "message": "Amarillo y superiores"
+  },
+  "alertFilterOrange": {
+    "message": "Naranja y superiores"
+  },
+  "alertFilterRed": {
+    "message": "Solo rojo"
   }
 }

@@ -9,7 +9,71 @@ const DEFAULT_SETTINGS = {
   blocklistSources: [],
   allowlistSources: [],
   saveClipboardBackup: true,
-  sendCountry: true
+  sendCountry: true,
+  detectionScreenshotCapture: false,
+  alertMinSeverity: "green",
+  scoreConfig: null,
+  scoreConfigManagedBy: "local",
+  scoreConfigServerUpdatedAt: 0
+};
+
+const SCORE_RULE_DEFINITIONS = {
+  signals: [
+    { flag: "commandMatch", key: "scoreSignalCommandMatch", defaultPoints: 20 },
+    { flag: "shellHint", key: "scoreSignalShellHint", defaultPoints: 14 },
+    { flag: "evasionHint", key: "scoreSignalEvasionHint", defaultPoints: 12 },
+    { flag: "mismatch", key: "scoreSignalMismatch", defaultPoints: 8 },
+    { flag: "clipboardWarning", key: "scoreSignalClipboardWarning", defaultPoints: 6 },
+    { flag: "winRHint", key: "scoreSignalWinR", defaultPoints: 6 },
+    { flag: "winXHint", key: "scoreSignalWinX", defaultPoints: 4 },
+    { flag: "pasteSequenceHint", key: "scoreSignalPasteSequence", defaultPoints: 6 },
+    { flag: "consoleHint", key: "scoreSignalConsole", defaultPoints: 5 },
+    { flag: "fileExplorerHint", key: "scoreSignalFileExplorer", defaultPoints: 4 },
+    { flag: "copyTriggerHint", key: "scoreSignalCopyTrigger", defaultPoints: 4 },
+    { flag: "browserErrorHint", key: "scoreSignalBrowserError", defaultPoints: 4 },
+    { flag: "fixActionHint", key: "scoreSignalFixAction", defaultPoints: 4 },
+    { flag: "captchaHint", key: "scoreSignalCaptcha", defaultPoints: 3 }
+  ],
+  clipboard: [
+    { flag: "hasCommand", key: "scoreClipboardCommand", defaultPoints: 22 },
+    { flag: "hasExecutionHint", key: "scoreClipboardExecutionHint", defaultPoints: 18 },
+    { flag: "hasUrl", key: "scoreClipboardUrl", defaultPoints: 12 },
+    { flag: "hasBase64", key: "scoreClipboardBase64", defaultPoints: 12 },
+    { flag: "hasHighEntropy", key: "scoreClipboardHighEntropy", defaultPoints: 10 },
+    { flag: "hasShellMeta", key: "scoreClipboardShellMeta", defaultPoints: 6 },
+    { flag: "isLong", key: "scoreClipboardLong", defaultPoints: 5 },
+    { flag: "hasLeadingWhitespace", key: "scoreClipboardLeadingWhitespace", defaultPoints: 5 },
+    { flag: "looksLikeCommand", key: "scoreClipboardLooksLikeCommand", defaultPoints: 10 }
+  ],
+  context: [
+    { flag: "isAllowlisted", key: "scoreContextAllowlisted", defaultPoints: -25 },
+    { flag: "isTrustedHost", key: "scoreContextTrustedHost", defaultPoints: -15 },
+    { flag: "isCodeContext", key: "scoreContextCodeContext", defaultPoints: -10 },
+    { flag: "isIframe", key: "scoreContextIframe", defaultPoints: 5 },
+    { flag: "opaqueIframes", key: "scoreContextOpaqueIframes", defaultPoints: 5 },
+    { flag: "opaqueIframesHigh", key: "scoreContextOpaqueIframes", defaultPoints: 10 }
+  ]
+};
+
+function buildDefaultScoreRules() {
+  const defaults = {};
+  Object.entries(SCORE_RULE_DEFINITIONS).forEach(([group, rules]) => {
+    defaults[group] = {};
+    rules.forEach((rule) => {
+      defaults[group][rule.flag] = rule.defaultPoints;
+    });
+  });
+  return defaults;
+}
+
+const DEFAULT_SCORE_CONFIG = {
+  weights: {
+    signals: 0.5,
+    clipboard: 0.35,
+    context: 0.15
+  },
+  contextBaseScore: 50,
+  rules: buildDefaultScoreRules()
 };
 
 const toggleEnabled = document.getElementById("toggle-enabled");
@@ -24,6 +88,8 @@ const addBlocklistButton = document.getElementById("add-blocklist");
 const blocklistList = document.getElementById("blocklist-list");
 const toggleClipboardBackup = document.getElementById("toggle-clipboard-backup");
 const toggleSendCountry = document.getElementById("toggle-send-country");
+const toggleDetectionScreenshots = document.getElementById("toggle-detection-screenshots");
+const alertMinSeveritySelect = document.getElementById("alert-min-severity");
 const allowlistInput = document.getElementById("allowlist-input");
 const addAllowlistButton = document.getElementById("add-allowlist");
 const allowlistList = document.getElementById("allowlist-list");
@@ -39,6 +105,14 @@ const statsBlockRateValue = document.getElementById("stats-block-rate-value");
 const statsBlockRateRing = document.getElementById("stats-block-rate-ring");
 const statsDetectionsChart = document.getElementById("stats-detections-chart");
 const statsDetectionsTotal = document.getElementById("stats-detections-total");
+const scoreWeightSignals = document.getElementById("score-weight-signals");
+const scoreWeightClipboard = document.getElementById("score-weight-clipboard");
+const scoreWeightContext = document.getElementById("score-weight-context");
+const scoreContextBase = document.getElementById("score-context-base");
+const scoreRulesContainer = document.getElementById("score-rules");
+const scoreSaveButton = document.getElementById("score-save");
+const scoreResetButton = document.getElementById("score-reset");
+const scoreStatus = document.getElementById("score-settings-status");
 
 const SUPPORTED_LOCALES = ["en", "es", "ca", "de", "fr", "nl", "he", "ru", "zh", "ko", "ja", "pt", "ar", "hi"];
 const DEFAULT_LOCALE = "en";
@@ -72,6 +146,90 @@ function normalizeLocale(locale) {
   }
   const base = lower.split("-")[0];
   return SUPPORTED_LOCALES.includes(base) ? base : DEFAULT_LOCALE;
+}
+
+function normalizeAlertMinSeverity(value) {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized === "yellow" || normalized === "orange" || normalized === "red") {
+    return normalized;
+  }
+  return "green";
+}
+
+function clampScorePoints(value, fallback) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+  return Math.max(-100, Math.min(100, Math.round(numeric)));
+}
+
+function clampWeightPercent(value, fallback) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+  return Math.max(0, Math.min(1, numeric / 100));
+}
+
+function normalizeWeight(value, fallback) {
+  let numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+  if (numeric > 1) {
+    if (numeric <= 100) {
+      numeric = numeric / 100;
+    } else {
+      return fallback;
+    }
+  }
+  return Math.max(0, Math.min(1, numeric));
+}
+
+function normalizeScoreConfig(rawConfig) {
+  const base = DEFAULT_SCORE_CONFIG;
+  const config = rawConfig && typeof rawConfig === "object" ? rawConfig : {};
+  const weights = config.weights && typeof config.weights === "object" ? config.weights : {};
+  const normalizedWeights = {
+    signals: normalizeWeight(weights.signals, base.weights.signals),
+    clipboard: normalizeWeight(weights.clipboard, base.weights.clipboard),
+    context: normalizeWeight(weights.context, base.weights.context)
+  };
+
+  const weightSum = normalizedWeights.signals + normalizedWeights.clipboard + normalizedWeights.context;
+  if (weightSum <= 0) {
+    normalizedWeights.signals = base.weights.signals;
+    normalizedWeights.clipboard = base.weights.clipboard;
+    normalizedWeights.context = base.weights.context;
+  }
+
+  const contextBaseScore = Math.max(
+    0,
+    Math.min(100, Number.isFinite(Number(config.contextBaseScore)) ? Number(config.contextBaseScore) : base.contextBaseScore)
+  );
+
+  const normalizedRules = buildDefaultScoreRules();
+  const rawRules = config.rules && typeof config.rules === "object" ? config.rules : {};
+  Object.entries(SCORE_RULE_DEFINITIONS).forEach(([group, rules]) => {
+    const groupRules = rawRules[group] && typeof rawRules[group] === "object" ? rawRules[group] : {};
+    rules.forEach((rule) => {
+      normalizedRules[group][rule.flag] = clampScorePoints(
+        groupRules[rule.flag],
+        rule.defaultPoints
+      );
+    });
+  });
+
+  return {
+    weights: normalizedWeights,
+    contextBaseScore,
+    rules: normalizedRules
+  };
+}
+
+function toPercent(value) {
+  return Math.round(Number(value || 0) * 100);
 }
 
 function applyTranslations() {
@@ -115,6 +273,13 @@ async function initLanguageSelector() {
     const nextLocale = normalizeLocale(languageSelect.value);
     await chrome.storage.local.set({ uiLanguage: nextLocale });
     await loadLocaleMessages(nextLocale);
+    const settings = await loadSettings();
+    renderHistory(settings.history || []);
+    renderScoreSettings(settings.scoreConfig);
+    applyScoreConfigMode(settings);
+    if (settings.scoreConfigManagedBy !== "server") {
+      setScoreStatus(scoreStatus?.dataset.statusKey || "");
+    }
   });
 }
 
@@ -162,7 +327,12 @@ async function loadSettings() {
     blocklistSources: settings.blocklistSources ?? [],
     allowlistSources: settings.allowlistSources ?? [],
     saveClipboardBackup: settings.saveClipboardBackup ?? true,
-    sendCountry: settings.sendCountry ?? true
+    sendCountry: settings.sendCountry ?? true,
+    detectionScreenshotCapture: settings.detectionScreenshotCapture ?? false,
+    alertMinSeverity: normalizeAlertMinSeverity(settings.alertMinSeverity),
+    scoreConfig: normalizeScoreConfig(settings.scoreConfig || DEFAULT_SCORE_CONFIG),
+    scoreConfigManagedBy: settings.scoreConfigManagedBy === "server" ? "server" : "local",
+    scoreConfigServerUpdatedAt: Number(settings.scoreConfigServerUpdatedAt || 0)
   };
 }
 
@@ -203,21 +373,135 @@ function renderHistory(history) {
   historyContainer.classList.remove("empty");
   history.forEach((entry) => {
     const message = buildLocalizedAlertMessage(entry);
+    const score = extractConfidenceScore(entry);
+    const severity = scoreToSeverity(score);
     const card = document.createElement("div");
     card.classList.add("history-item");
     const time = new Date(entry.timestamp).toLocaleString();
+    if (severity !== "neutral") {
+      card.dataset.severity = severity;
+    }
+    if (score !== null && score !== undefined) {
+      card.dataset.score = String(score);
+    }
+    const header = document.createElement("div");
+    header.classList.add("history-header");
     const title = document.createElement("strong");
+    title.classList.add("history-title");
     title.textContent = entry.hostname;
+    header.appendChild(title);
+    if (score !== null && score !== undefined) {
+      const badge = document.createElement("span");
+      badge.classList.add("history-score");
+      badge.textContent = `${score}/100`;
+      badge.title = t("alertConfidenceScore", score);
+      header.appendChild(badge);
+    }
     const body = document.createElement("div");
     body.classList.add("history-message");
     body.textContent = message;
+    const reasonsList = buildReasonListElement(entry);
+    const snippetsList = buildSnippetListElement(entry);
+    const breakdown = buildScoreBreakdownElement(entry);
     const meta = document.createElement("small");
     meta.textContent = time;
-    card.appendChild(title);
+    card.appendChild(header);
     card.appendChild(body);
+    if (reasonsList) {
+      card.appendChild(reasonsList);
+    }
+    if (snippetsList) {
+      card.appendChild(snippetsList);
+    }
+    if (breakdown) {
+      card.appendChild(breakdown);
+    }
     card.appendChild(meta);
     historyContainer.appendChild(card);
   });
+}
+
+function buildReasonLabels(entry) {
+  const reasonEntries = Array.isArray(entry?.reasonEntries) ? entry.reasonEntries : [];
+  return reasonEntries
+    .map((reason) => {
+      if (
+        !reason ||
+        !reason.key ||
+        reason.key === "alertConfidenceScore" ||
+        reason.key === "alertSnippet"
+      ) {
+        return null;
+      }
+      const base = reason.value === undefined ? t(reason.key) : t(reason.key, reason.value);
+      return base ? String(base).trim() : null;
+    })
+    .filter(Boolean);
+}
+
+function buildReasonListElement(entry) {
+  const labels = buildReasonLabels(entry);
+  if (!labels.length) {
+    return null;
+  }
+  const list = document.createElement("ul");
+  list.classList.add("score-breakdown-list");
+  labels.forEach((label) => {
+    const item = document.createElement("li");
+    item.classList.add("score-breakdown-item");
+    item.dataset.polarity = "pos";
+    item.textContent = label;
+    list.appendChild(item);
+  });
+  return list;
+}
+
+function extractEntrySnippets(entry) {
+  const snippets = [];
+  const addSnippet = (value) => {
+    const normalized = String(value || "").trim();
+    if (!normalized || snippets.includes(normalized)) {
+      return;
+    }
+    snippets.push(normalized);
+  };
+  const directSnippets = Array.isArray(entry?.snippets) ? entry.snippets : [];
+  directSnippets.forEach(addSnippet);
+  const reasonEntries = Array.isArray(entry?.reasonEntries) ? entry.reasonEntries : [];
+  reasonEntries.forEach((reason) => {
+    if (reason?.key === "alertSnippet" && reason.value !== undefined) {
+      addSnippet(reason.value);
+    }
+  });
+  if (!snippets.length && entry?.detectedContent) {
+    addSnippet(entry.detectedContent);
+  }
+  return snippets.map((snippet) => (snippet.length > 220 ? `${snippet.slice(0, 217)}...` : snippet));
+}
+
+function buildSnippetListElement(entry) {
+  const snippets = extractEntrySnippets(entry);
+  if (!snippets.length) {
+    return null;
+  }
+  const container = document.createElement("div");
+  container.classList.add("history-snippets");
+  const title = document.createElement("div");
+  title.classList.add("history-snippets-title");
+  title.textContent = "Snippets detected";
+  const list = document.createElement("ul");
+  list.classList.add("history-snippet-list");
+  snippets.forEach((snippet) => {
+    const item = document.createElement("li");
+    item.classList.add("history-snippet-item");
+    const code = document.createElement("code");
+    code.textContent = snippet;
+    item.appendChild(code);
+    list.appendChild(item);
+  });
+  container.appendChild(title);
+  container.appendChild(list);
+  return container;
 }
 
 function buildLocalizedAlertMessage(entry) {
@@ -228,6 +512,9 @@ function buildLocalizedAlertMessage(entry) {
         if (!reason || !reason.key) {
           return null;
         }
+        if (reason.key === "alertConfidenceScore" || reason.key === "alertSnippet") {
+          return null;
+        }
         return reason.value === undefined ? t(reason.key) : t(reason.key, reason.value);
       })
       .filter(Boolean);
@@ -236,6 +523,142 @@ function buildLocalizedAlertMessage(entry) {
     }
   }
   return entry?.message || "";
+}
+
+function extractConfidenceScore(entry) {
+  const directScore = entry?.confidenceScore;
+  if (Number.isFinite(directScore)) {
+    return Math.max(0, Math.min(100, Number(directScore)));
+  }
+  const reasonEntries = Array.isArray(entry?.reasonEntries) ? entry.reasonEntries : [];
+  for (const reason of reasonEntries) {
+    if (!reason || reason.key !== "alertConfidenceScore") {
+      continue;
+    }
+    const parsed = Number.parseInt(reason.value, 10);
+    if (!Number.isNaN(parsed)) {
+      return Math.max(0, Math.min(100, parsed));
+    }
+  }
+  const message = entry?.message || "";
+  const match = message.match(/(\d{1,3})\s*\/\s*100/);
+  if (match) {
+    const parsed = Number.parseInt(match[1], 10);
+    if (!Number.isNaN(parsed)) {
+      return Math.max(0, Math.min(100, parsed));
+    }
+  }
+  return null;
+}
+
+function getScoreDetails(entry) {
+  if (!entry) {
+    return null;
+  }
+  const raw = entry.scoreDetails ?? entry.score_details;
+  if (!raw) {
+    return null;
+  }
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && Array.isArray(parsed.components) ? parsed : null;
+    } catch (error) {
+      return null;
+    }
+  }
+  if (typeof raw === "object" && Array.isArray(raw.components)) {
+    return raw;
+  }
+  return null;
+}
+
+function buildScoreBreakdownElement(entry) {
+  const details = getScoreDetails(entry);
+  if (!details) {
+    return null;
+  }
+  const wrapper = document.createElement("details");
+  wrapper.classList.add("score-breakdown");
+  const summary = document.createElement("summary");
+  summary.textContent = t("scoreBreakdownSummary", details.total ?? 0);
+  wrapper.appendChild(summary);
+
+  const components = Array.isArray(details.components) ? details.components : [];
+  const weightParts = components
+    .filter((component) => component && component.available !== false)
+    .map((component) => {
+      const label = component.labelKey ? t(component.labelKey) : component.id;
+      const weight = Math.round((component.weight || 0) * 100);
+      return `${label} ${weight}%`;
+    });
+  if (weightParts.length) {
+    const meta = document.createElement("div");
+    meta.classList.add("score-breakdown-meta");
+    meta.textContent = t("scoreBreakdownWeights", weightParts.join(" · "));
+    wrapper.appendChild(meta);
+  }
+
+  components.forEach((component) => {
+    if (!component) {
+      return;
+    }
+    const section = document.createElement("div");
+    section.classList.add("score-breakdown-section");
+    const title = document.createElement("div");
+    title.classList.add("score-breakdown-title");
+    const label = component.labelKey ? t(component.labelKey) : component.id;
+    title.textContent = `${label} — ${component.score ?? 0}/100`;
+    section.appendChild(title);
+
+    const contributions = Array.isArray(component.contributions)
+      ? component.contributions
+      : [];
+    if (component.available === false) {
+      const empty = document.createElement("div");
+      empty.classList.add("score-breakdown-empty");
+      empty.textContent = t("scoreBreakdownUnavailable");
+      section.appendChild(empty);
+    } else if (!contributions.length) {
+      const empty = document.createElement("div");
+      empty.classList.add("score-breakdown-empty");
+      empty.textContent = t("scoreBreakdownNoFactors");
+      section.appendChild(empty);
+    } else {
+      const list = document.createElement("ul");
+      list.classList.add("score-breakdown-list");
+      contributions.forEach((entry) => {
+        const item = document.createElement("li");
+        item.classList.add("score-breakdown-item");
+        const points = Number(entry.points) || 0;
+        item.dataset.polarity = points >= 0 ? "pos" : "neg";
+        const reasonLabel = entry.key ? t(entry.key) : "";
+        const prefix = points >= 0 ? "+" : "";
+        item.textContent = `${prefix}${points} ${reasonLabel}`.trim();
+        list.appendChild(item);
+      });
+      section.appendChild(list);
+    }
+    wrapper.appendChild(section);
+  });
+
+  return wrapper;
+}
+
+function scoreToSeverity(score) {
+  if (score === null || score === undefined) {
+    return "neutral";
+  }
+  if (score > 40) {
+    return "critical";
+  }
+  if (score >= 30) {
+    return "high";
+  }
+  if (score > 15) {
+    return "medium";
+  }
+  return "low";
 }
 
 function formatAlertMessage(parts) {
@@ -384,6 +807,166 @@ function renderStats(settings) {
   }
 }
 
+function getScoreGroupTitleKey(group) {
+  if (group === "signals") {
+    return "scoreGroupSignals";
+  }
+  if (group === "clipboard") {
+    return "scoreGroupClipboard";
+  }
+  return "scoreGroupContext";
+}
+
+function renderScoreSettings(scoreConfig) {
+  if (!scoreRulesContainer) {
+    return;
+  }
+  const normalized = normalizeScoreConfig(scoreConfig);
+
+  if (scoreWeightSignals) {
+    scoreWeightSignals.value = toPercent(normalized.weights.signals);
+  }
+  if (scoreWeightClipboard) {
+    scoreWeightClipboard.value = toPercent(normalized.weights.clipboard);
+  }
+  if (scoreWeightContext) {
+    scoreWeightContext.value = toPercent(normalized.weights.context);
+  }
+  if (scoreContextBase) {
+    scoreContextBase.value = Math.round(normalized.contextBaseScore);
+  }
+
+  scoreRulesContainer.innerHTML = "";
+  Object.entries(SCORE_RULE_DEFINITIONS).forEach(([group, rules]) => {
+    const groupWrapper = document.createElement("div");
+    groupWrapper.className = "score-group";
+    const title = document.createElement("div");
+    title.className = "score-group-title";
+    title.textContent = t(getScoreGroupTitleKey(group));
+    groupWrapper.appendChild(title);
+
+    const grid = document.createElement("div");
+    grid.className = "score-rule-grid";
+    rules.forEach((rule) => {
+      const row = document.createElement("label");
+      row.className = "score-rule";
+      const label = document.createElement("span");
+      label.className = "score-rule-label";
+      label.textContent = t(rule.key);
+      const inputWrap = document.createElement("div");
+      inputWrap.className = "score-rule-input";
+      const input = document.createElement("input");
+      input.type = "number";
+      input.min = "-100";
+      input.max = "100";
+      input.step = "1";
+      input.dataset.scoreGroup = group;
+      input.dataset.scoreRule = rule.flag;
+      input.value = normalized.rules[group]?.[rule.flag] ?? rule.defaultPoints;
+      const unit = document.createElement("span");
+      unit.className = "score-rule-unit";
+      unit.textContent = t("scorePointsUnit");
+      inputWrap.appendChild(input);
+      inputWrap.appendChild(unit);
+      row.appendChild(label);
+      row.appendChild(inputWrap);
+      grid.appendChild(row);
+    });
+
+    groupWrapper.appendChild(grid);
+    scoreRulesContainer.appendChild(groupWrapper);
+  });
+}
+
+function collectScoreConfigFromForm() {
+  const rules = buildDefaultScoreRules();
+  const inputs = scoreRulesContainer?.querySelectorAll("input[data-score-group]") || [];
+  inputs.forEach((input) => {
+    const group = input.dataset.scoreGroup;
+    const rule = input.dataset.scoreRule;
+    if (!group || !rule || !rules[group]) {
+      return;
+    }
+    const parsed = Number(input.value);
+    rules[group][rule] = clampScorePoints(
+      parsed,
+      rules[group][rule]
+    );
+  });
+
+  const weights = {
+    signals: clampWeightPercent(scoreWeightSignals?.value, DEFAULT_SCORE_CONFIG.weights.signals),
+    clipboard: clampWeightPercent(scoreWeightClipboard?.value, DEFAULT_SCORE_CONFIG.weights.clipboard),
+    context: clampWeightPercent(scoreWeightContext?.value, DEFAULT_SCORE_CONFIG.weights.context)
+  };
+  const contextBaseValue = Number(scoreContextBase?.value);
+  const contextBaseScore = Number.isFinite(contextBaseValue)
+    ? Math.max(0, Math.min(100, Math.round(contextBaseValue)))
+    : DEFAULT_SCORE_CONFIG.contextBaseScore;
+
+  return normalizeScoreConfig({
+    weights,
+    contextBaseScore,
+    rules
+  });
+}
+
+function setScoreStatus(messageKey) {
+  if (!scoreStatus) {
+    return;
+  }
+  if (!messageKey) {
+    scoreStatus.textContent = "";
+    delete scoreStatus.dataset.statusKey;
+    return;
+  }
+  scoreStatus.dataset.statusKey = messageKey;
+  scoreStatus.textContent = t(messageKey);
+}
+
+function setScoreControlsDisabled(disabled) {
+  if (scoreWeightSignals) {
+    scoreWeightSignals.disabled = disabled;
+  }
+  if (scoreWeightClipboard) {
+    scoreWeightClipboard.disabled = disabled;
+  }
+  if (scoreWeightContext) {
+    scoreWeightContext.disabled = disabled;
+  }
+  if (scoreContextBase) {
+    scoreContextBase.disabled = disabled;
+  }
+  if (scoreSaveButton) {
+    scoreSaveButton.disabled = disabled;
+  }
+  if (scoreResetButton) {
+    scoreResetButton.disabled = disabled;
+  }
+  const ruleInputs = scoreRulesContainer?.querySelectorAll("input[data-score-group]") || [];
+  ruleInputs.forEach((input) => {
+    input.disabled = disabled;
+  });
+}
+
+function applyScoreConfigMode(settings) {
+  const serverManaged = settings?.scoreConfigManagedBy === "server";
+  setScoreControlsDisabled(serverManaged);
+  if (!serverManaged) {
+    if (scoreStatus?.dataset?.statusKey === "scoreSettingsManagedByServer") {
+      setScoreStatus("");
+    }
+    return;
+  }
+  const ts = Number(settings?.scoreConfigServerUpdatedAt || 0);
+  const label = ts > 0 ? new Date(ts).toLocaleString() : "-";
+  if (!scoreStatus) {
+    return;
+  }
+  scoreStatus.dataset.statusKey = "scoreSettingsManagedByServer";
+  scoreStatus.textContent = t("scoreSettingsManagedByServer", label);
+}
+
 async function addBlocklistSource(source) {
   if (!source) {
     return;
@@ -444,6 +1027,29 @@ addAllowlistButton.addEventListener("click", async () => {
   }
 });
 
+scoreSaveButton?.addEventListener("click", async () => {
+  const nextConfig = collectScoreConfigFromForm();
+  await chrome.storage.local.set({
+    scoreConfig: nextConfig,
+    scoreConfigManagedBy: "local",
+    scoreConfigServerUpdatedAt: 0
+  });
+  setScoreStatus("scoreSettingsSaved");
+  renderScoreSettings(nextConfig);
+  applyScoreConfigMode({ scoreConfigManagedBy: "local", scoreConfigServerUpdatedAt: 0 });
+});
+
+scoreResetButton?.addEventListener("click", async () => {
+  await chrome.storage.local.set({
+    scoreConfig: DEFAULT_SCORE_CONFIG,
+    scoreConfigManagedBy: "local",
+    scoreConfigServerUpdatedAt: 0
+  });
+  setScoreStatus("scoreSettingsResetDone");
+  renderScoreSettings(DEFAULT_SCORE_CONFIG);
+  applyScoreConfigMode({ scoreConfigManagedBy: "local", scoreConfigServerUpdatedAt: 0 });
+});
+
 clearHistoryButton.addEventListener("click", async () => {
   await chrome.storage.local.set({ history: [] });
   renderHistory([]);
@@ -473,6 +1079,18 @@ toggleSendCountry.addEventListener("change", async () => {
   await chrome.storage.local.set({ sendCountry: toggleSendCountry.checked });
 });
 
+toggleDetectionScreenshots?.addEventListener("change", async () => {
+  await chrome.storage.local.set({
+    detectionScreenshotCapture: Boolean(toggleDetectionScreenshots.checked)
+  });
+});
+
+alertMinSeveritySelect?.addEventListener("change", async () => {
+  await chrome.storage.local.set({
+    alertMinSeverity: normalizeAlertMinSeverity(alertMinSeveritySelect.value)
+  });
+});
+
 (async () => {
   await initLanguageSelector();
   await initThemeSelector();
@@ -489,11 +1107,22 @@ toggleSendCountry.addEventListener("change", async () => {
   }
   toggleClipboardBackup.checked = settings.saveClipboardBackup;
   toggleSendCountry.checked = settings.sendCountry;
+  if (toggleDetectionScreenshots) {
+    toggleDetectionScreenshots.checked = Boolean(settings.detectionScreenshotCapture);
+  }
+  if (alertMinSeveritySelect) {
+    alertMinSeveritySelect.value = settings.alertMinSeverity;
+  }
   renderWhitelist(settings.whitelist);
   renderBlocklistSources(settings.blocklistSources);
   renderAllowlistSources(settings.allowlistSources);
   renderHistory(settings.history);
   renderStats(settings);
+  renderScoreSettings(settings.scoreConfig);
+  applyScoreConfigMode(settings);
+  if (settings.scoreConfigManagedBy !== "server") {
+    setScoreStatus("");
+  }
 })();
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -508,5 +1137,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
     changes.whitelist;
   if (shouldUpdateStats) {
     loadSettings().then(renderStats);
+  }
+  if (changes.scoreConfig || changes.scoreConfigManagedBy || changes.scoreConfigServerUpdatedAt) {
+    loadSettings().then((settings) => {
+      renderScoreSettings(settings.scoreConfig);
+      applyScoreConfigMode(settings);
+    });
   }
 });

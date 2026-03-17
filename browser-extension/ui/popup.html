@@ -143,6 +143,18 @@
             <input id="toggle-mute-notifications" type="checkbox" />
           </label>
         </div>
+        <div class="section-head" style="margin-top: 10px;">
+          <h2 data-i18n="alertFilterTitle">Alert filter by color</h2>
+        </div>
+        <p class="hint" data-i18n="alertFilterHint">Hide alerts below the selected color level.</p>
+        <div class="row">
+          <select id="alert-min-severity">
+            <option value="green" data-i18n="alertFilterGreen">Green and above</option>
+            <option value="yellow" data-i18n="alertFilterYellow">Yellow and above</option>
+            <option value="orange" data-i18n="alertFilterOrange">Orange and above</option>
+            <option value="red" data-i18n="alertFilterRed">Red only</option>
+          </select>
+        </div>
       </section>
 
       <section class="card">

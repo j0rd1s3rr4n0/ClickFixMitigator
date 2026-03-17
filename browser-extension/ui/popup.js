@@ -4,6 +4,7 @@ const DEFAULT_SETTINGS = {
   familySafe: false,
   uiTheme: "system",
   muteDetectionNotifications: false,
+  alertMinSeverity: "green",
   whitelist: [],
   history: []
 };
@@ -12,6 +13,7 @@ const toggleEnabled = document.getElementById("toggle-enabled");
 const toggleBlockAll = document.getElementById("toggle-block-all");
 const toggleFamilySafe = document.getElementById("toggle-family-safe");
 const toggleMuteNotifications = document.getElementById("toggle-mute-notifications");
+const alertMinSeveritySelect = document.getElementById("alert-min-severity");
 const whitelistInput = document.getElementById("whitelist-input");
 const addDomainButton = document.getElementById("add-domain");
 const whitelistList = document.getElementById("whitelist-list");
@@ -155,7 +157,18 @@ async function initLanguageSelector() {
     const nextLocale = normalizeLocale(languageSelect.value);
     await chrome.storage.local.set({ uiLanguage: nextLocale });
     await loadLocaleMessages(nextLocale);
+    const settings = await loadSettings();
+    renderHistory(settings.history || []);
+    renderClipboardHistory(settings.clipboardBackups || []);
   });
+}
+
+function normalizeAlertMinSeverity(value) {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized === "yellow" || normalized === "orange" || normalized === "red") {
+    return normalized;
+  }
+  return "green";
 }
 
 function normalizeTheme(value) {
@@ -194,6 +207,7 @@ async function loadSettings() {
     familySafe: settings.familySafe ?? false,
     uiTheme: settings.uiTheme ?? "system",
     muteDetectionNotifications: settings.muteDetectionNotifications ?? false,
+    alertMinSeverity: normalizeAlertMinSeverity(settings.alertMinSeverity),
     whitelist: settings.whitelist ?? [],
     history: settings.history ?? [],
     clipboardBackups: settings.clipboardBackups ?? [],
@@ -242,22 +256,136 @@ function renderHistory(history) {
   historyContainer.classList.remove("empty");
   history.forEach((entry) => {
     const message = buildLocalizedAlertMessage(entry);
+    const score = extractConfidenceScore(entry);
+    const severity = scoreToSeverity(score);
     const card = document.createElement("div");
     card.classList.add("history-item");
     const time = new Date(entry.timestamp).toLocaleString();
+    if (severity !== "neutral") {
+      card.dataset.severity = severity;
+    }
+    if (score !== null && score !== undefined) {
+      card.dataset.score = String(score);
+    }
+    const header = document.createElement("div");
+    header.classList.add("history-header");
     const title = document.createElement("strong");
+    title.classList.add("history-title");
     title.textContent = entry.hostname;
+    header.appendChild(title);
+    if (score !== null && score !== undefined) {
+      const badge = document.createElement("span");
+      badge.classList.add("history-score");
+      badge.textContent = `${score}/100`;
+      badge.title = t("alertConfidenceScore", score);
+      header.appendChild(badge);
+    }
     const body = document.createElement("div");
     body.classList.add("history-message");
     body.textContent = message;
+    const reasonsList = buildReasonListElement(entry);
+    const snippetsList = buildSnippetListElement(entry);
+    const breakdown = buildScoreBreakdownElement(entry);
     const meta = document.createElement("small");
     meta.textContent = time;
-    card.appendChild(title);
+    card.appendChild(header);
     card.appendChild(body);
+    if (reasonsList) {
+      card.appendChild(reasonsList);
+    }
+    if (snippetsList) {
+      card.appendChild(snippetsList);
+    }
+    if (breakdown) {
+      card.appendChild(breakdown);
+    }
     card.appendChild(meta);
     historyContainer.appendChild(card);
   });
   resizePopupToContent();
+}
+
+function buildReasonLabels(entry) {
+  const reasonEntries = Array.isArray(entry?.reasonEntries) ? entry.reasonEntries : [];
+  return reasonEntries
+    .map((reason) => {
+      if (
+        !reason ||
+        !reason.key ||
+        reason.key === "alertConfidenceScore" ||
+        reason.key === "alertSnippet"
+      ) {
+        return null;
+      }
+      const base = reason.value === undefined ? t(reason.key) : t(reason.key, reason.value);
+      return base ? String(base).trim() : null;
+    })
+    .filter(Boolean);
+}
+
+function buildReasonListElement(entry) {
+  const labels = buildReasonLabels(entry);
+  if (!labels.length) {
+    return null;
+  }
+  const list = document.createElement("ul");
+  list.classList.add("score-breakdown-list");
+  labels.forEach((label) => {
+    const item = document.createElement("li");
+    item.classList.add("score-breakdown-item");
+    item.dataset.polarity = "pos";
+    item.textContent = label;
+    list.appendChild(item);
+  });
+  return list;
+}
+
+function extractEntrySnippets(entry) {
+  const snippets = [];
+  const addSnippet = (value) => {
+    const normalized = String(value || "").trim();
+    if (!normalized || snippets.includes(normalized)) {
+      return;
+    }
+    snippets.push(normalized);
+  };
+  const directSnippets = Array.isArray(entry?.snippets) ? entry.snippets : [];
+  directSnippets.forEach(addSnippet);
+  const reasonEntries = Array.isArray(entry?.reasonEntries) ? entry.reasonEntries : [];
+  reasonEntries.forEach((reason) => {
+    if (reason?.key === "alertSnippet" && reason.value !== undefined) {
+      addSnippet(reason.value);
+    }
+  });
+  if (!snippets.length && entry?.detectedContent) {
+    addSnippet(entry.detectedContent);
+  }
+  return snippets.map((snippet) => (snippet.length > 220 ? `${snippet.slice(0, 217)}...` : snippet));
+}
+
+function buildSnippetListElement(entry) {
+  const snippets = extractEntrySnippets(entry);
+  if (!snippets.length) {
+    return null;
+  }
+  const container = document.createElement("div");
+  container.classList.add("history-snippets");
+  const title = document.createElement("div");
+  title.classList.add("history-snippets-title");
+  title.textContent = "Snippets detected";
+  const list = document.createElement("ul");
+  list.classList.add("history-snippet-list");
+  snippets.forEach((snippet) => {
+    const item = document.createElement("li");
+    item.classList.add("history-snippet-item");
+    const code = document.createElement("code");
+    code.textContent = snippet;
+    item.appendChild(code);
+    list.appendChild(item);
+  });
+  container.appendChild(title);
+  container.appendChild(list);
+  return container;
 }
 
 function renderClipboardHistory(entries) {
@@ -327,6 +455,9 @@ function buildLocalizedAlertMessage(entry) {
         if (!reason || !reason.key) {
           return null;
         }
+        if (reason.key === "alertConfidenceScore" || reason.key === "alertSnippet") {
+          return null;
+        }
         return reason.value === undefined ? t(reason.key) : t(reason.key, reason.value);
       })
       .filter(Boolean);
@@ -335,6 +466,142 @@ function buildLocalizedAlertMessage(entry) {
     }
   }
   return entry?.message || "";
+}
+
+function extractConfidenceScore(entry) {
+  const directScore = entry?.confidenceScore;
+  if (Number.isFinite(directScore)) {
+    return Math.max(0, Math.min(100, Number(directScore)));
+  }
+  const reasonEntries = Array.isArray(entry?.reasonEntries) ? entry.reasonEntries : [];
+  for (const reason of reasonEntries) {
+    if (!reason || reason.key !== "alertConfidenceScore") {
+      continue;
+    }
+    const parsed = Number.parseInt(reason.value, 10);
+    if (!Number.isNaN(parsed)) {
+      return Math.max(0, Math.min(100, parsed));
+    }
+  }
+  const message = entry?.message || "";
+  const match = message.match(/(\d{1,3})\s*\/\s*100/);
+  if (match) {
+    const parsed = Number.parseInt(match[1], 10);
+    if (!Number.isNaN(parsed)) {
+      return Math.max(0, Math.min(100, parsed));
+    }
+  }
+  return null;
+}
+
+function getScoreDetails(entry) {
+  if (!entry) {
+    return null;
+  }
+  const raw = entry.scoreDetails ?? entry.score_details;
+  if (!raw) {
+    return null;
+  }
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && Array.isArray(parsed.components) ? parsed : null;
+    } catch (error) {
+      return null;
+    }
+  }
+  if (typeof raw === "object" && Array.isArray(raw.components)) {
+    return raw;
+  }
+  return null;
+}
+
+function buildScoreBreakdownElement(entry) {
+  const details = getScoreDetails(entry);
+  if (!details) {
+    return null;
+  }
+  const wrapper = document.createElement("details");
+  wrapper.classList.add("score-breakdown");
+  const summary = document.createElement("summary");
+  summary.textContent = t("scoreBreakdownSummary", details.total ?? 0);
+  wrapper.appendChild(summary);
+
+  const components = Array.isArray(details.components) ? details.components : [];
+  const weightParts = components
+    .filter((component) => component && component.available !== false)
+    .map((component) => {
+      const label = component.labelKey ? t(component.labelKey) : component.id;
+      const weight = Math.round((component.weight || 0) * 100);
+      return `${label} ${weight}%`;
+    });
+  if (weightParts.length) {
+    const meta = document.createElement("div");
+    meta.classList.add("score-breakdown-meta");
+    meta.textContent = t("scoreBreakdownWeights", weightParts.join(" · "));
+    wrapper.appendChild(meta);
+  }
+
+  components.forEach((component) => {
+    if (!component) {
+      return;
+    }
+    const section = document.createElement("div");
+    section.classList.add("score-breakdown-section");
+    const title = document.createElement("div");
+    title.classList.add("score-breakdown-title");
+    const label = component.labelKey ? t(component.labelKey) : component.id;
+    title.textContent = `${label} — ${component.score ?? 0}/100`;
+    section.appendChild(title);
+
+    const contributions = Array.isArray(component.contributions)
+      ? component.contributions
+      : [];
+    if (component.available === false) {
+      const empty = document.createElement("div");
+      empty.classList.add("score-breakdown-empty");
+      empty.textContent = t("scoreBreakdownUnavailable");
+      section.appendChild(empty);
+    } else if (!contributions.length) {
+      const empty = document.createElement("div");
+      empty.classList.add("score-breakdown-empty");
+      empty.textContent = t("scoreBreakdownNoFactors");
+      section.appendChild(empty);
+    } else {
+      const list = document.createElement("ul");
+      list.classList.add("score-breakdown-list");
+      contributions.forEach((entry) => {
+        const item = document.createElement("li");
+        item.classList.add("score-breakdown-item");
+        const points = Number(entry.points) || 0;
+        item.dataset.polarity = points >= 0 ? "pos" : "neg";
+        const reasonLabel = entry.key ? t(entry.key) : "";
+        const prefix = points >= 0 ? "+" : "";
+        item.textContent = `${prefix}${points} ${reasonLabel}`.trim();
+        list.appendChild(item);
+      });
+      section.appendChild(list);
+    }
+    wrapper.appendChild(section);
+  });
+
+  return wrapper;
+}
+
+function scoreToSeverity(score) {
+  if (score === null || score === undefined) {
+    return "neutral";
+  }
+  if (score > 40) {
+    return "critical";
+  }
+  if (score >= 30) {
+    return "high";
+  }
+  if (score > 15) {
+    return "medium";
+  }
+  return "low";
 }
 
 function formatAlertMessage(parts) {
@@ -504,6 +771,12 @@ toggleMuteNotifications?.addEventListener("change", async () => {
   await chrome.storage.local.set({ muteDetectionNotifications: toggleMuteNotifications.checked });
 });
 
+alertMinSeveritySelect?.addEventListener("change", async () => {
+  await chrome.storage.local.set({
+    alertMinSeverity: normalizeAlertMinSeverity(alertMinSeveritySelect.value)
+  });
+});
+
 async function reportSite(targetUrl) {
   if (!targetUrl) {
     reportStatus.textContent = t("popupReportStatusMissing");
@@ -560,6 +833,9 @@ reportButton.addEventListener("click", async () => {
   }
   if (toggleMuteNotifications) {
     toggleMuteNotifications.checked = settings.muteDetectionNotifications;
+  }
+  if (alertMinSeveritySelect) {
+    alertMinSeveritySelect.value = settings.alertMinSeverity;
   }
   renderWhitelist(settings.whitelist);
   renderHistory(settings.history);

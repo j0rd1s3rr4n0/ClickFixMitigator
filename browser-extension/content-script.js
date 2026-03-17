@@ -1,7 +1,17 @@
-const CLICKFIX_WIN_R_REGEX =
+﻿const CLICKFIX_WIN_R_REGEX =
   /(win\s*\+\s*r|w\s*i\s*n\s*\+\s*r|win\s+r|windows\s*\+\s*r|windows\s+key|windows\s+logo\s+key|windows\s+button|logo\s+de\s+windows|presiona\s+windows|tecla\s+windows|tecla\s+de\s+windows|tecla\s+⊞|⊞\s*\+\s*r|run\s+dialog|run\s*box|runbox|rundialog|open\s+run|abre\s+ejecutar|cuadro\s+de\s+ejecutar|ventana\s+de\s+ejecutar|simbolo\s+del\s+sistema|símbolo\s+del\s+sistema|abr(e|ir)\s+cmd|abr(e|ir)\s+powershell|abr(e|ir)\s+terminal|abre\s+la\s+consola)/i;
 const CLICKFIX_WIN_X_REGEX =
-  /(win\s*\+\s*x|w\s*i\s*n\s*\+\s*x|win\s+x|windows\s*\+\s*x|menu\s+de\s+acceso\s+rápido|quick\s+link\s+menu|power\s+user\s+menu|menu\s+winx|abre\s+winx|open\s+winx)/i;
+  /(win\s*\+\s*x|w\s*i\s*n\s*\+\s*x|win\s+x|windows\s*\+\s*x|windows\s+key\s*\+\s*x|menu\s+de\s+acceso\s+rÃ¡pido|menu\s+de\s+acceso\s+rapido|quick\s+link\s+menu|quick\s+links\s+menu|power\s+user\s+menu|menu\s+winx|abre\s+winx|open\s+winx)/i;
+const CLICKFIX_WIN_X_WEAK_STEP_REGEX =
+  /(pulsa|presiona|press|hit|usa)\s*(la\s+tecla\s+)?\+\s*x/i;
+const CLICKFIX_WINDOWS_ICON_HTML_REGEX =
+  /(fa-(?:brands|solid|regular)\s+fa-windows|icon[-_ ]windows|windows[-_ ]icon|microsoft[-_ ]windows|bi-windows)/i;
+const CLICKFIX_WIN_X_CONTEXT_REGEX =
+  /(terminal|powershell|command\s+prompt|cmd|consola|menu\s+de\s+acceso|power\s+user|quick\s+link|ctrl\s*\+\s*v|control\s*\+\s*v|pulsa\s+i|press\s+i)/i;
+const CLICKFIX_WIN_X_I_REGEX =
+  /(win\s*\+\s*x[\s\S]{0,120}(\bpulsa\s+i\b|\bpress\s+i\b|\b(?:elige|choose|select)\b[\s\S]{0,40}\b(terminal|powershell|command\s+prompt|cmd)\b)|(\bpulsa\s+i\b|\bpress\s+i\b)[\s\S]{0,120}win\s*\+\s*x)/i;
+const CLICKFIX_WIN_X_TERMINAL_STEP_REGEX =
+  /(\bpulsa\s+i\b|\bpress\s+i\b|\b(?:elige|choose|select)\b[\s\S]{0,40}\b(terminal|powershell|command\s+prompt|cmd)\b|terminal\s*\/\s*powershell)/i;
 const CLICKFIX_CAPTCHA_REGEX =
   /(captcha|no\s+soy\s+un\s+robot|no\s+eres\s+un\s+robot|i('?| a)?m\s+not\s+a\s+robot|verify\s+you('?| a)?re\s+human|human\s+verification|verifica\s+que\s+eres\s+humano|confirmar\s+que\s+eres\s+humano)/i;
 const CLICKFIX_FAKE_ERROR_REGEX =
@@ -11,7 +21,7 @@ const CLICKFIX_FIX_ACTION_REGEX =
 const CLICKFIX_CONSOLE_REGEX =
   /(devtools\s+console|consola\s+de\s+devtools|console\s+de\s+desarrolladores|developer\s+console|browser\s+console|web\s+console|console\s+of\s+the\s+browser|allow\s+pasting|permitir\s+pegar|pega\s+esto\s+en\s+la\s+consola|paste\s+this\s+into\s+the\s+console|paste\s+in(to)?\s+console|pega\s+en\s+la\s+consola|pegar\s+en\s+consola|open\s+devtools|abre\s+devtools|open\s+developer\s+tools|abre\s+las\s+herramientas\s+de\s+desarrollador)/i;
 const CLICKFIX_SHELL_PASTE_REGEX =
-  /(pega\s+en\s+(cmd|powershell|terminal|consola|ejecutar)|pega\s+esto\s+en\s+(cmd|powershell|terminal|consola|ejecutar)|pegalo\s+en\s+(cmd|powershell|terminal|consola|ejecutar)|paste\s+in(to)?\s+(cmd|powershell|terminal|run|command\s+prompt)|paste\s+this\s+in(to)?\s+(cmd|powershell|terminal|run|command\s+prompt)|open\s+(cmd|powershell|terminal|command\s+prompt)\s+and\s+paste|open\s+the\s+run\s+dialog|abre\s+el\s+cuadro\s+de\s+ejecutar|abre\s+ejecutar|open\s+cmd|open\s+powershell|open\s+terminal|abre\s+cmd|abre\s+powershell|abre\s+terminal)/i;
+  /(pega\s+en\s+(cmd|powershell|terminal|consola|ejecutar)|pega\s+esto\s+en\s+(cmd|powershell|terminal|consola|ejecutar)|pegalo\s+en\s+(cmd|powershell|terminal|consola|ejecutar)|paste\s+in(to)?\s+(cmd|powershell|terminal|run|command\s+prompt)|paste\s+this\s+in(to)?\s+(cmd|powershell|terminal|run|command\s+prompt)|open\s+(cmd|powershell|terminal|command\s+prompt)\s+and\s+paste|open\s+the\s+run\s+dialog|abre\s+el\s+cuadro\s+de\s+ejecutar|abre\s+ejecutar|open\s+cmd|open\s+powershell|open\s+terminal|abre\s+cmd|abre\s+powershell|abre\s+terminal|elige\s+(terminal|powershell|cmd)|choose\s+(terminal|powershell|command\s+prompt))/i;
 const CLICKFIX_PASTE_SEQUENCE_REGEX =
   /(ctrl\s*\+\s*v|control\s*\+\s*v|pega\s+con\s+ctrl\s*\+\s*v|press\s+ctrl\s*\+\s*v|then\s+press\s+enter|pulsa\s+enter|presiona\s+enter|hit\s+enter|ctrl\s*\+\s*shift\s*\+\s*enter|control\s*\+\s*shift\s*\+\s*enter)/i;
 const CLICKFIX_FILE_EXPLORER_REGEX =
@@ -51,6 +61,7 @@ const CLICKFIX_ICON_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAI
 let lastSelectionText = "";
 let winRDetected = false;
 let winXDetected = false;
+let winXTerminalDetected = false;
 let captchaDetected = false;
 let browserErrorDetected = false;
 let fixActionDetected = false;
@@ -79,6 +90,8 @@ let iframeScanPending = false;
 let clipboardPostCheckTimer = null;
 let lastUrlSnapshot = window.location.href;
 let hasDetectionsOnPage = false;
+let pageSignalScanPending = false;
+let lastPageSignalScanAt = 0;
 
 const isTopFrame = window === window.top;
 try {
@@ -98,6 +111,22 @@ function getHostname(url) {
     return "";
   }
 }
+
+const CLICKFIX_DISABLED_HOSTS = ["jordiserrano.me", "any.run"];
+
+function isClickFixDisabledHost(hostname) {
+  const host = String(hostname || "").trim().toLowerCase();
+  if (!host) {
+    return false;
+  }
+  return CLICKFIX_DISABLED_HOSTS.some(
+    (entry) => host === entry || host.endsWith(`.${entry}`)
+  );
+}
+
+const CLICKFIX_DISABLED_ON_THIS_HOST = isClickFixDisabledHost(
+  getHostname(window.location.href)
+);
 
 function getReferrerUrl() {
   const referrer = document.referrer;
@@ -605,6 +634,12 @@ function startFullscreenMonitor() {
 }
 
 function safeSendMessage(message, callback) {
+  if (CLICKFIX_DISABLED_ON_THIS_HOST) {
+    if (callback) {
+      callback();
+    }
+    return;
+  }
   if (!chrome?.runtime?.id) {
     if (callback) {
       callback();
@@ -630,46 +665,48 @@ function safeSendMessage(message, callback) {
   }
 }
 
-window.addEventListener("message", (event) => {
-  if (event.source !== window) {
-    return;
-  }
-  if (event.data?.type === BLOCK_ALL_BLOCKED_TYPE) {
-    markDetectionOnPage();
-    showBanner(t("blockAllClipboardBlocked"));
-    return;
-  }
-  if (event.data?.type === CLIPBOARD_THREAT_TYPE) {
-    handleClipboardThreatMessage(event.data);
-  }
-});
+if (!CLICKFIX_DISABLED_ON_THIS_HOST) {
+  window.addEventListener("message", (event) => {
+    if (event.source !== window) {
+      return;
+    }
+    if (event.data?.type === BLOCK_ALL_BLOCKED_TYPE) {
+      markDetectionOnPage();
+      showBanner(t("blockAllClipboardBlocked"));
+      return;
+    }
+    if (event.data?.type === CLIPBOARD_THREAT_TYPE) {
+      handleClipboardThreatMessage(event.data);
+    }
+  });
 
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes.uiLanguage) {
-    localeReady = initLocale();
-  }
-  if (
-    area === "local" &&
-    (changes.blockAllClipboard ||
-      changes.enabled ||
-      changes.whitelist ||
-      changes.allowlist ||
-      changes.allowlistUpdatedAt)
-  ) {
-    updateBlockAllClipboardState();
-  }
-  if (area === "local" && changes.familySafe) {
-    updateFamilySafeState();
-  }
-  if (area === "local" && changes.uiTheme) {
-    uiThemePreference = normalizeTheme(changes.uiTheme.newValue);
-  }
-  if (area === "local" && changes.muteDetectionNotifications) {
-    muteDetectionNotifications = Boolean(changes.muteDetectionNotifications.newValue);
-  }
-});
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.uiLanguage) {
+      localeReady = initLocale();
+    }
+    if (
+      area === "local" &&
+      (changes.blockAllClipboard ||
+        changes.enabled ||
+        changes.whitelist ||
+        changes.allowlist ||
+        changes.allowlistUpdatedAt)
+    ) {
+      updateBlockAllClipboardState();
+    }
+    if (area === "local" && changes.familySafe) {
+      updateFamilySafeState();
+    }
+    if (area === "local" && changes.uiTheme) {
+      uiThemePreference = normalizeTheme(changes.uiTheme.newValue);
+    }
+    if (area === "local" && changes.muteDetectionNotifications) {
+      muteDetectionNotifications = Boolean(changes.muteDetectionNotifications.newValue);
+    }
+  });
 
-localeReady = initLocale();
+  localeReady = initLocale();
+}
 
 async function getBlocklistStatus() {
   return new Promise((resolve) => {
@@ -1405,6 +1442,9 @@ function buildBlockedPage(hostname, reasonText, reasons = [], contextText = "", 
 }
 
 async function checkBlocklistAndBlock() {
+  if (CLICKFIX_DISABLED_ON_THIS_HOST) {
+    return false;
+  }
   if (!isTopFrame) {
     return false;
   }
@@ -1770,11 +1810,25 @@ function handleUrlChange() {
   lastUrlSnapshot = current;
   lastSelectionText = "";
   lastClipboardSnapshot = "";
+  winRDetected = false;
+  winXDetected = false;
+  winXTerminalDetected = false;
+  captchaDetected = false;
+  browserErrorDetected = false;
+  fixActionDetected = false;
+  consoleDetected = false;
+  shellDetected = false;
+  pasteSequenceDetected = false;
+  fileExplorerDetected = false;
+  commandDetected = false;
+  copyTriggerDetected = false;
+  lastScanSnapshot = { text: "", html: "", timestamp: 0 };
   currentAllowlisted = false;
   hasDetectionsOnPage = false;
   hideFullscreenNotice();
   updatePageContextFlags();
   scheduleIframeScan();
+  schedulePageSignalScan();
   updateBlockAllClipboardState();
   if (isTopFrame) {
     checkBlocklistAndBlock();
@@ -1993,7 +2047,47 @@ function scanForWinR() {
 
 function scanForWinX() {
   const snapshot = getScanSnapshot();
-  return findMatchSnippet(CLICKFIX_WIN_X_REGEX, snapshot.text);
+  const directText = findMatchSnippet(CLICKFIX_WIN_X_REGEX, snapshot.text);
+  if (directText) {
+    return directText;
+  }
+
+  const weakText = findMatchSnippet(CLICKFIX_WIN_X_WEAK_STEP_REGEX, snapshot.text);
+  if (weakText && CLICKFIX_WIN_X_CONTEXT_REGEX.test(snapshot.text)) {
+    return weakText;
+  }
+
+  const weakHtml = findMatchSnippet(CLICKFIX_WIN_X_WEAK_STEP_REGEX, snapshot.html);
+  if (
+    weakHtml &&
+    CLICKFIX_WINDOWS_ICON_HTML_REGEX.test(snapshot.html) &&
+    CLICKFIX_WIN_X_CONTEXT_REGEX.test(`${snapshot.text}\n${snapshot.html}`)
+  ) {
+    return weakHtml;
+  }
+  return "";
+}
+
+function scanForWinXTerminalStep() {
+  const snapshot = getScanSnapshot();
+  const combined = `${snapshot.text}\n${snapshot.html}`;
+  const direct = findMatchSnippet(CLICKFIX_WIN_X_I_REGEX, combined);
+  if (direct) {
+    return direct;
+  }
+  const hasWinX =
+    Boolean(findMatchSnippet(CLICKFIX_WIN_X_REGEX, snapshot.text)) ||
+    Boolean(findMatchSnippet(CLICKFIX_WIN_X_WEAK_STEP_REGEX, snapshot.text)) ||
+    (Boolean(findMatchSnippet(CLICKFIX_WIN_X_WEAK_STEP_REGEX, snapshot.html)) &&
+      CLICKFIX_WINDOWS_ICON_HTML_REGEX.test(snapshot.html));
+  if (!hasWinX) {
+    return "";
+  }
+  const step = findMatchSnippet(CLICKFIX_WIN_X_TERMINAL_STEP_REGEX, combined);
+  if (step && CLICKFIX_WIN_X_CONTEXT_REGEX.test(combined)) {
+    return step;
+  }
+  return "";
 }
 
 function scanForFakeError() {
@@ -2041,6 +2135,21 @@ function notifyWinXDetected() {
       timestamp: Date.now()
     });
     sendPageAlert("winx", snippet);
+  }
+}
+
+function notifyWinXTerminalDetected() {
+  const snippet = scanForWinXTerminalStep();
+  if (snippet && !winXTerminalDetected) {
+    winXTerminalDetected = true;
+    safeSendMessage({
+      type: "pageHint",
+      hint: "winx-i",
+      snippet,
+      url: window.location.href,
+      timestamp: Date.now()
+    });
+    sendPageAlert("winx-i", snippet);
   }
 }
 
@@ -2232,6 +2341,34 @@ function notifyFileExplorerDetected() {
   }
 }
 
+function runPageSignalScan() {
+  notifyWinRDetected();
+  notifyWinXDetected();
+  notifyWinXTerminalDetected();
+  notifyCaptchaDetected();
+  notifyBrowserErrorDetected();
+  notifyFixActionDetected();
+  notifyConsoleDetected();
+  notifyShellDetected();
+  notifyPasteSequenceDetected();
+  notifyCommandDetected();
+  notifyCopyTriggerDetected();
+  notifyFileExplorerDetected();
+}
+
+function schedulePageSignalScan() {
+  if (pageSignalScanPending) {
+    return;
+  }
+  pageSignalScanPending = true;
+  const delay = Date.now() - lastPageSignalScanAt > 1200 ? 70 : 240;
+  setTimeout(() => {
+    pageSignalScanPending = false;
+    lastPageSignalScanAt = Date.now();
+    runPageSignalScan();
+  }, delay);
+}
+
 function sendClipboardEvent(payload) {
   safeSendMessage({
     type: "clipboardEvent",
@@ -2337,9 +2474,11 @@ function startMonitoring() {
 
   const initMonitoring = () => {
     scheduleIframeScan();
+    schedulePageSignalScan();
     handleUrlChange();
     const observer = new MutationObserver(() => {
       scheduleIframeScan();
+      schedulePageSignalScan();
     });
     if (document.body) {
       observer.observe(document.body, {
@@ -2349,6 +2488,7 @@ function startMonitoring() {
       });
     }
     setInterval(handleUrlChange, 1000);
+    setInterval(schedulePageSignalScan, 1400);
   };
 
   if (document.readyState === "loading") {
@@ -2359,6 +2499,9 @@ function startMonitoring() {
 }
 
 (async () => {
+  if (CLICKFIX_DISABLED_ON_THIS_HOST) {
+    return;
+  }
   await ensureLocaleReady();
   await updateFamilySafeState();
   await updateThemeState();
@@ -2370,6 +2513,9 @@ function startMonitoring() {
 })();
 
 chrome.runtime.onMessage.addListener((message) => {
+  if (CLICKFIX_DISABLED_ON_THIS_HOST) {
+    return;
+  }
   if (message?.type === "replaceClipboard") {
     if (!isTopFrame) {
       return;

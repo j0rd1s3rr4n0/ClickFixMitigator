@@ -38,6 +38,23 @@
         <input id="toggle-send-country" type="checkbox" />
         <span data-i18n="optionsSendCountry">Compartir país en reportes</span>
       </label>
+      <label class="toggle">
+        <input id="toggle-detection-screenshots" type="checkbox" />
+        <span data-i18n="optionsDetectionScreenshots">Capturar y enviar imagen ANTES/DESPUÉS al detectar ClickFix (opcional)</span>
+      </label>
+      <p class="hint" data-i18n="optionsDetectionScreenshotsWarning">
+        No recomendado si se visualiza información confidencial.
+      </p>
+      <div class="row">
+        <label for="alert-min-severity" data-i18n="alertFilterTitle">Filtro de alertas por color</label>
+        <select id="alert-min-severity">
+          <option value="green" data-i18n="alertFilterGreen">Verde y superiores</option>
+          <option value="yellow" data-i18n="alertFilterYellow">Amarillo y superiores</option>
+          <option value="orange" data-i18n="alertFilterOrange">Naranja y superiores</option>
+          <option value="red" data-i18n="alertFilterRed">Solo rojo</option>
+        </select>
+      </div>
+      <p class="hint" data-i18n="alertFilterHint">Oculta alertas por debajo del color seleccionado.</p>
     </section>
 
     <section>
@@ -71,6 +88,54 @@
           <option value="dark" data-i18n="themeDark">Oscuro</option>
         </select>
       </div>
+    </section>
+
+    <section id="score-settings-section">
+      <h2 data-i18n="scoreSettingsTitle">Puntuación</h2>
+      <p class="hint" data-i18n="scoreSettingsSubtitle">
+        Ajusta puntos y pesos para calcular la confianza.
+      </p>
+      <div class="score-weight-grid">
+        <div class="score-weight-card">
+          <div class="score-weight-label" data-i18n="scoreWeightSignals">Peso de señales</div>
+          <div class="score-weight-input">
+            <input id="score-weight-signals" type="number" min="0" max="100" step="1" />
+            <span class="score-weight-unit" data-i18n="scoreWeightUnit">%</span>
+          </div>
+        </div>
+        <div class="score-weight-card">
+          <div class="score-weight-label" data-i18n="scoreWeightClipboard">Peso del portapapeles</div>
+          <div class="score-weight-input">
+            <input id="score-weight-clipboard" type="number" min="0" max="100" step="1" />
+            <span class="score-weight-unit" data-i18n="scoreWeightUnit">%</span>
+          </div>
+        </div>
+        <div class="score-weight-card">
+          <div class="score-weight-label" data-i18n="scoreWeightContext">Peso de contexto</div>
+          <div class="score-weight-input">
+            <input id="score-weight-context" type="number" min="0" max="100" step="1" />
+            <span class="score-weight-unit" data-i18n="scoreWeightUnit">%</span>
+          </div>
+        </div>
+        <div class="score-weight-card">
+          <div class="score-weight-label" data-i18n="scoreContextBaseTitle">Base de contexto</div>
+          <div class="score-weight-input">
+            <input id="score-context-base" type="number" min="0" max="100" step="1" />
+            <span class="score-weight-unit" data-i18n="scorePointsUnit">pts</span>
+          </div>
+        </div>
+      </div>
+      <div id="score-rules"></div>
+      <div class="row score-actions">
+        <button id="score-save" type="button" data-i18n="scoreSettingsSave">Guardar puntuación</button>
+        <button id="score-reset" type="button" class="secondary" data-i18n="scoreSettingsReset">
+          Restablecer valores
+        </button>
+      </div>
+      <p class="hint" id="score-settings-hint" data-i18n="scoreSettingsHint">
+        Los pesos se normalizan entre componentes disponibles.
+      </p>
+      <p class="hint score-status" id="score-settings-status"></p>
     </section>
 
     <section class="stats">

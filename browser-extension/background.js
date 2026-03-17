@@ -1,6 +1,78 @@
+const SCORE_RULE_DEFINITIONS = {
+  signals: [
+    { flag: "commandMatch", key: "scoreSignalCommandMatch", defaultPoints: 20 },
+    { flag: "shellHint", key: "scoreSignalShellHint", defaultPoints: 14 },
+    { flag: "evasionHint", key: "scoreSignalEvasionHint", defaultPoints: 12 },
+    { flag: "mismatch", key: "scoreSignalMismatch", defaultPoints: 8 },
+    { flag: "clipboardWarning", key: "scoreSignalClipboardWarning", defaultPoints: 6 },
+    { flag: "winRHint", key: "scoreSignalWinR", defaultPoints: 6 },
+    { flag: "winXHint", key: "scoreSignalWinX", defaultPoints: 4 },
+    { flag: "winXTerminalHint", key: "scoreSignalWinXI", defaultPoints: 6 },
+    { flag: "pasteSequenceHint", key: "scoreSignalPasteSequence", defaultPoints: 6 },
+    { flag: "consoleHint", key: "scoreSignalConsole", defaultPoints: 5 },
+    { flag: "fileExplorerHint", key: "scoreSignalFileExplorer", defaultPoints: 4 },
+    { flag: "copyTriggerHint", key: "scoreSignalCopyTrigger", defaultPoints: 4 },
+    { flag: "browserErrorHint", key: "scoreSignalBrowserError", defaultPoints: 4 },
+    { flag: "fixActionHint", key: "scoreSignalFixAction", defaultPoints: 4 },
+    { flag: "captchaHint", key: "scoreSignalCaptcha", defaultPoints: 3 }
+  ],
+  clipboard: [
+    { flag: "hasCommand", key: "scoreClipboardCommand", defaultPoints: 22 },
+    { flag: "hasExecutionHint", key: "scoreClipboardExecutionHint", defaultPoints: 18 },
+    { flag: "hasUrl", key: "scoreClipboardUrl", defaultPoints: 12 },
+    { flag: "hasBase64", key: "scoreClipboardBase64", defaultPoints: 12 },
+    { flag: "hasHighEntropy", key: "scoreClipboardHighEntropy", defaultPoints: 10 },
+    { flag: "hasShellMeta", key: "scoreClipboardShellMeta", defaultPoints: 6 },
+    { flag: "isLong", key: "scoreClipboardLong", defaultPoints: 5 },
+    { flag: "hasLeadingWhitespace", key: "scoreClipboardLeadingWhitespace", defaultPoints: 5 },
+    { flag: "looksLikeCommand", key: "scoreClipboardLooksLikeCommand", defaultPoints: 10 }
+  ],
+  context: [
+    { flag: "isAllowlisted", key: "scoreContextAllowlisted", defaultPoints: -25 },
+    { flag: "isTrustedHost", key: "scoreContextTrustedHost", defaultPoints: -15 },
+    { flag: "isCodeContext", key: "scoreContextCodeContext", defaultPoints: -10 },
+    { flag: "isIframe", key: "scoreContextIframe", defaultPoints: 5 },
+    { flag: "opaqueIframes", key: "scoreContextOpaqueIframes", defaultPoints: 5 },
+    { flag: "opaqueIframesHigh", key: "scoreContextOpaqueIframes", defaultPoints: 10 }
+  ]
+};
+
+function buildDefaultScoreRules() {
+  const defaults = {};
+  Object.entries(SCORE_RULE_DEFINITIONS).forEach(([group, rules]) => {
+    defaults[group] = {};
+    rules.forEach((rule) => {
+      defaults[group][rule.flag] = rule.defaultPoints;
+    });
+  });
+  return defaults;
+}
+
+const DEFAULT_SCORE_CONFIG = {
+  weights: {
+    signals: 0.5,
+    clipboard: 0.35,
+    context: 0.15
+  },
+  contextBaseScore: 50,
+  rules: buildDefaultScoreRules()
+};
+
+let cachedScoreConfig = DEFAULT_SCORE_CONFIG;
+
 const DEFAULT_SETTINGS = {
   enabled: true,
   blockAllClipboard: true,
+  blockUnsafeDownloads: true,
+  shadowAiMonitoring: true,
+  shadowAiWarnUser: false,
+  runtimeThreatScoring: true,
+  apiLicenseKey: "LIC-6CD9EE-8EDFC1-6ACB22-3DB8C5",
+  apiAccessToken: "",
+  apiRefreshToken: "",
+  apiAccessTokenExpiresAt: 0,
+  apiTokenScope: "",
+  apiTokenTier: "basic",
   whitelist: [],
   allowlist: [],
   history: [],
@@ -12,27 +84,139 @@ const DEFAULT_SETTINGS = {
   muteDetectionNotifications: false,
   saveClipboardBackup: true,
   sendCountry: true,
+  detectionScreenshotCapture: false,
   reportQueue: [],
   alertCount: 0,
   blockCount: 0,
   blocklistUpdatedAt: 0,
-  allowlistUpdatedAt: 0
+  allowlistUpdatedAt: 0,
+  scoreConfig: DEFAULT_SCORE_CONFIG,
+  scoreConfigManagedBy: "local",
+  scoreConfigServerUpdatedAt: 0,
+  alertMinSeverity: "green",
+  extensionMessageSeenIds: []
 };
 
-const CLICKFIX_BLOCKLIST_URL = "https://jordiserrano.me/ClickFix/clickfixlist";
-const CLICKFIX_ALLOWLIST_URL = "https://jordiserrano.me/ClickFix/clickfixallowlist";
-const CLICKFIX_REPORT_URL = "https://jordiserrano.me/ClickFix/clickfix-report.php";
+const CLICKFIX_DEPLOY_ORIGIN = "https://clickfix.jordiserrano.me";
+const CLICKFIX_DEPLOY_BASE_PATH = "";
+
+function normalizeDeployBasePath(path) {
+  const cleaned = String(path || "").trim().replace(/^\/+|\/+$/g, "");
+  return cleaned ? `/${cleaned}` : "";
+}
+
+function buildDeployUrl(relativePath) {
+  const origin = String(CLICKFIX_DEPLOY_ORIGIN || "").trim().replace(/\/+$/g, "");
+  const normalizedPath = normalizeDeployBasePath(CLICKFIX_DEPLOY_BASE_PATH);
+  const tail = String(relativePath || "").trim().replace(/^\/+/g, "");
+  return `${origin}${normalizedPath}/${tail}`;
+}
+
+function deployTrustedHost(origin) {
+  try {
+    return new URL(origin).hostname;
+  } catch (error) {
+    return "clickfix.jordiserrano.me";
+  }
+}
+
+const CLICKFIX_BLOCKLIST_URL = buildDeployUrl("clickfixlist");
+const CLICKFIX_ALLOWLIST_URL = buildDeployUrl("clickfixallowlist");
+const CLICKFIX_REPORT_URL = buildDeployUrl("clickfix-report.php");
+const CLICKFIX_SCORE_CONFIG_URL = buildDeployUrl("api/score-config.php");
+const CLICKFIX_API_TOKEN_URL = buildDeployUrl("api/token.php");
+const CLICKFIX_API_REFRESH_URL = buildDeployUrl("api/refresh.php");
+const CLICKFIX_PREMIUM_SCORE_CONFIG_URL = buildDeployUrl("api/premium/score-config.php");
+const CLICKFIX_API_MESSAGES_URL = buildDeployUrl("api/messages.php");
+const TRUSTED_REPORT_HOST = deployTrustedHost(CLICKFIX_DEPLOY_ORIGIN);
+const TRUSTED_REPORT_PATH_PREFIX = `${normalizeDeployBasePath(CLICKFIX_DEPLOY_BASE_PATH) || ""}/`;
+const SCORE_CONFIG_PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
+MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAyKByF/9SMi0TaiYK7Z7z
+A1JzNfBu9gDX1L9GgedSNfHX1vS1PdxS8rFnA4Q9JEfsa3inU92+iwmi38eATvxx
+K46YNtinlny4sJXYOdO1DpvaimnuosDPmKYvX2DSiLXzfIYu9c3+S0hFkkumI5Sy
+khUy+KU3GnjE6Jt+KdqbRA1dIazR2x6Jh4QovWOVsmkG/X/FvdN4c+dLerrnYT3x
+QiTyO4zIw5llapcaOaoUcbxx6JMSqDo2uhHMrH0LlFfUIJ5x1Tjec3XH/QkM0IGi
+2IfX426GUROWU8ctHOX70U8tvfdgvLZmbECMM6zx3fQik/3cvkie+gi4CwUNmk1k
+KxT/2LY0OBsC5Hwqh8YPDipltFiQFzuYkb+7gFTYHxYwczmaNnr+SivESt+UR+RQ
+0zXsJjxVe6p5yyg5xt5VplbjDW2EMVycdBBOdISpbOXCEBlthOS0jvDAFoG9PEkt
+xuGPPAWKHsZNru1+dN/fqMlHQARa+/9XFutNGUVy5SG7AgMBAAE=
+-----END PUBLIC KEY-----`;
+const DOWNLOAD_DANGEROUS_EXTENSIONS = new Set([
+  "exe",
+  "msi",
+  "msix",
+  "scr",
+  "com",
+  "pif",
+  "lnk",
+  "bat",
+  "cmd",
+  "ps1",
+  "vbs",
+  "js",
+  "jar",
+  "hta",
+  "dll"
+]);
+const DOWNLOAD_SCRIPT_EXTENSIONS = new Set(["bat", "cmd", "ps1", "vbs", "js", "hta"]);
+const DOWNLOAD_DOUBLE_EXTENSION_REGEX =
+  /\.(txt|pdf|docx?|xlsx?|pptx?|jpg|jpeg|png|gif|webp|zip|rar|7z)\.(exe|msi|bat|cmd|ps1|js|vbs|scr|com|jar|lnk)$/i;
+const TRUSTED_DOWNLOAD_HOSTS = [
+  "microsoft.com",
+  "github.com",
+  "google.com",
+  "apple.com",
+  "mozilla.org",
+  "adobe.com",
+  "docker.com",
+  "nodejs.org",
+  "python.org",
+  "jetbrains.com",
+  "cloudflare.com"
+];
+const SHADOW_AI_HOSTS = [
+  "chat.openai.com",
+  "chatgpt.com",
+  "claude.ai",
+  "gemini.google.com",
+  "copilot.microsoft.com",
+  "poe.com",
+  "perplexity.ai",
+  "you.com",
+  "mistral.ai"
+];
+const CLICKFIX_DISABLED_HOSTS = ["jordiserrano.me", "any.run"];
+const BRAND_REPUTATION_RULES = [
+  { name: "microsoft", hosts: ["microsoft.com", "live.com", "office.com", "outlook.com"] },
+  { name: "google", hosts: ["google.com", "youtube.com", "gmail.com"] },
+  { name: "apple", hosts: ["apple.com", "icloud.com"] },
+  { name: "amazon", hosts: ["amazon.com", "aws.amazon.com"] },
+  { name: "paypal", hosts: ["paypal.com"] },
+  { name: "meta", hosts: ["facebook.com", "instagram.com", "whatsapp.com"] },
+  { name: "github", hosts: ["github.com"] },
+  { name: "cloudflare", hosts: ["cloudflare.com"] }
+];
 const LIST_REFRESH_MINUTES = 3;
 const REPORT_FLUSH_MINUTES = 5;
+const PAGE_ALERT_DEBOUNCE_MS = 900;
 const REPORT_DEDUPE_WINDOW_MS = 15 * 60 * 1000;
 const REPORT_QUEUE_LIMIT = 300;
 const CLIPBOARD_BACKUP_LIMIT = 50;
-const CLICKFIX_ICON_DATA_URL = "data:image/png;base64,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";
+const BEFORE_CAPTURE_MAX_AGE_MS = 20 * 60 * 1000;
+const BEFORE_CAPTURE_REFRESH_MS = 4000;
+// Internal distribution marker; update this with the Chrome Web Store ID for production.
+const WEBSTORE_EXTENSION_ID = "nmldafmgfcfopjoigbmmlmcnininifaa";
+const DEFAULT_EXTENSION_DISTRIBUTION = "other";
+let cachedClientId = "";
+const beforeCaptureByTab = new Map();
+const beforeCaptureInFlight = new Set();
+const beforeCapturePromiseByTab = new Map();
+const TAB_SCRIPT_BLOCK_RULE_ID_BASE = 1_000_000;
 
 const COMMAND_REGEX =
   /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|bash|sh|zsh|curl|wget|rundll32|regsvr32|msbuild|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic|explorer(\.exe)?|reg\s+add|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d)\b/i;
 const SHELL_HINT_REGEX =
-  /(invoke-webrequest|invoke-restmethod|\biwr\b|\birm\b|curl\s+|wget\s+|downloadstring|frombase64string|start-bitstransfer|add-mppreference|invoke-expression|\biex\b|\biex\s*\(|encodedcommand|\-enc\b|\-encodedcommand\b|powershell\s+\-|cmd\s+\/c|bash\s+\-c|sh\s+\-c|rundll32\s+[^\s,]+,[^\s]+|regsvr32\s+\/i|certutil\s+\-urlcache|bitsadmin\s+\/transfer)/i;
+  /(invoke-webrequest|invoke-restmethod|\biwr\b|\birm\b|curl\s+|wget\s+|downloadstring|frombase64string|start-bitstransfer|add-mppreference|invoke-expression|\biex\b|\biex\s*\(|encodedcommand|\-enc\b|\-encodedcommand\b|\-e\b|powershell\s+\-|cmd\s+\/c|bash\s+\-c|sh\s+\-c|rundll32\s+[^\s,]+,[^\s]+|regsvr32\s+\/i|certutil\s+\-urlcache|bitsadmin\s+\/transfer)/i;
 const EVASION_REGEXES = [
   /\\x[0-9a-f]{2}/i,
   /\\u[0-9a-f]{4}/i,
@@ -40,16 +224,240 @@ const EVASION_REGEXES = [
   /[\^`]{2,}/,
   /[A-Za-z0-9+/]{80,}={0,2}/
 ];
+const ZERO_WIDTH_REGEX = /[\u200B-\u200D\u2060\uFEFF]/g;
+const CONTROL_CHAR_REGEX = /[\u0000-\u001F\u007F]/g;
+const DASH_REGEX = /[\u2010-\u2015\u2212\uFE63\uFF0D]/g;
 const CLIPBOARD_SNIPPET_LIMIT = 160;
 const CLIPBOARD_THROTTLE_MS = 30000;
 const BLOCKLIST_CACHE_MS = 10 * 60 * 1000;
 const FULL_CONTEXT_LIMIT = 40000;
+const DETECTION_PROGRESS_WINDOW_MS = 10 * 60 * 1000;
+const DETECTION_PROGRESS_MAX_BONUS = 25;
+const ALERT_SEVERITY_ORDER = {
+  green: 0,
+  yellow: 1,
+  orange: 2,
+  red: 3
+};
+
+function tabScriptBlockRuleIds(tabId) {
+  const normalizedTabId = Number(tabId);
+  if (!Number.isInteger(normalizedTabId) || normalizedTabId < 0) {
+    return [];
+  }
+  const base = TAB_SCRIPT_BLOCK_RULE_ID_BASE + normalizedTabId * 2;
+  return [base, base + 1];
+}
+
+async function setTabScriptBlocking(tabId, hostname, enabled) {
+  if (!chrome?.declarativeNetRequest?.updateSessionRules) {
+    return false;
+  }
+  const ruleIds = tabScriptBlockRuleIds(tabId);
+  if (ruleIds.length !== 2) {
+    return false;
+  }
+  const [scriptRuleId, cspRuleId] = ruleIds;
+  const updates = { removeRuleIds: [scriptRuleId, cspRuleId] };
+  if (!enabled) {
+    try {
+      await chrome.declarativeNetRequest.updateSessionRules(updates);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+  const normalizedHost = normalizeHostname(String(hostname || ""));
+  if (!normalizedHost) {
+    try {
+      await chrome.declarativeNetRequest.updateSessionRules(updates);
+      return false;
+    } catch (error) {
+      return false;
+    }
+  }
+  updates.addRules = [
+    {
+      id: scriptRuleId,
+      priority: 1,
+      action: { type: "block" },
+      condition: {
+        tabIds: [Number(tabId)],
+        resourceTypes: ["script"],
+        initiatorDomains: [normalizedHost]
+      }
+    },
+    {
+      id: cspRuleId,
+      priority: 1,
+      action: {
+        type: "modifyHeaders",
+        responseHeaders: [
+          {
+            header: "content-security-policy",
+            operation: "set",
+            value: "default-src 'self' 'unsafe-inline' data: blob:; script-src 'none'; object-src 'none'; base-uri 'none'"
+          }
+        ]
+      },
+      condition: {
+        tabIds: [Number(tabId)],
+        resourceTypes: ["main_frame"],
+        requestDomains: [normalizedHost]
+      }
+    }
+  ];
+  try {
+    await chrome.declarativeNetRequest.updateSessionRules(updates);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+function normalizeAlertMinSeverity(value) {
+  const normalized = String(value || "").toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(ALERT_SEVERITY_ORDER, normalized)) {
+    return normalized;
+  }
+  return "green";
+}
+
+function scoreToAlertSeverity(score) {
+  const numeric = Number(score);
+  if (!Number.isFinite(numeric)) {
+    return "green";
+  }
+  if (numeric > 40) {
+    return "red";
+  }
+  if (numeric >= 30) {
+    return "orange";
+  }
+  if (numeric > 15) {
+    return "yellow";
+  }
+  return "green";
+}
+
+function shouldSuppressByAlertSeverity(score, minimumSeverity) {
+  const minSeverity = normalizeAlertMinSeverity(minimumSeverity);
+  const scoreSeverity = scoreToAlertSeverity(score);
+  return ALERT_SEVERITY_ORDER[scoreSeverity] < ALERT_SEVERITY_ORDER[minSeverity];
+}
+
+function resolveInstallChannel(installType, installSource, fallbackChannel = "other") {
+  const type = String(installType || "").toLowerCase();
+  const source = String(installSource || "").toLowerCase();
+  if (source.includes("webstore") || source.includes("chrome_webstore")) {
+    return "chrome_webstore";
+  }
+  if (type === "development") {
+    return "development";
+  }
+  if (type === "sideload" || source === "local") {
+    return "sideload";
+  }
+  if (type === "normal" && source === "policy") {
+    return "policy";
+  }
+  if (type === "normal") {
+    return "normal";
+  }
+  return fallbackChannel || "other";
+}
+
+function resolveExtensionDistribution(installType, installSource) {
+  const runtimeId = chrome?.runtime?.id || "";
+  if (runtimeId && runtimeId === WEBSTORE_EXTENSION_ID) {
+    return "chrome_store";
+  }
+  const type = String(installType || "").toLowerCase();
+  const source = String(installSource || "").toLowerCase();
+  if (type === "development" || type === "sideload" || source === "local") {
+    return "github";
+  }
+  if (source.includes("webstore") || source.includes("chrome_webstore")) {
+    return "chrome_store";
+  }
+  return DEFAULT_EXTENSION_DISTRIBUTION;
+}
+
+async function getInstallInfo() {
+  const fallbackChannel =
+    chrome?.runtime?.id === WEBSTORE_EXTENSION_ID ? "chrome_webstore" : "other";
+  if (!chrome?.management?.getSelf) {
+    return {
+      installType: "",
+      installSource: "",
+      installChannel: fallbackChannel,
+      extensionDistribution: resolveExtensionDistribution("", "")
+    };
+  }
+  return new Promise((resolve) => {
+    chrome.management.getSelf((info) => {
+      if (chrome.runtime.lastError || !info) {
+        resolve({
+          installType: "",
+          installSource: "",
+          installChannel: fallbackChannel,
+          extensionDistribution: resolveExtensionDistribution("", "")
+        });
+        return;
+      }
+      const installType = info.installType || "";
+      const installSource = info.installSource || "";
+      resolve({
+        installType,
+        installSource,
+        installChannel: resolveInstallChannel(installType, installSource, fallbackChannel),
+        extensionDistribution: resolveExtensionDistribution(installType, installSource)
+      });
+    });
+  });
+}
+
+function generateClientId() {
+  try {
+    if (crypto?.randomUUID) {
+      return crypto.randomUUID();
+    }
+  } catch (error) {
+    // Ignore UUID errors.
+  }
+  return `${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 12)}`;
+}
+
+async function getClientId() {
+  if (cachedClientId) {
+    return cachedClientId;
+  }
+  const stored = await chrome.storage.local.get({ clientId: "" });
+  if (stored.clientId) {
+    cachedClientId = stored.clientId;
+    return cachedClientId;
+  }
+  const newId = generateClientId();
+  cachedClientId = newId;
+  await chrome.storage.local.set({ clientId: newId });
+  return cachedClientId;
+}
 
 async function getSettings() {
   const stored = await chrome.storage.local.get(DEFAULT_SETTINGS);
   return {
     enabled: stored.enabled ?? true,
-    blockAllClipboard: stored.blockAllClipboard ?? true,
+    blockAllClipboard: stored.blockAllClipboard ?? false,
+    blockUnsafeDownloads: stored.blockUnsafeDownloads ?? true,
+    shadowAiMonitoring: stored.shadowAiMonitoring ?? true,
+    shadowAiWarnUser: stored.shadowAiWarnUser ?? false,
+    runtimeThreatScoring: stored.runtimeThreatScoring ?? true,
+    apiLicenseKey: typeof stored.apiLicenseKey === "string" ? stored.apiLicenseKey : "",
+    apiAccessToken: typeof stored.apiAccessToken === "string" ? stored.apiAccessToken : "",
+    apiRefreshToken: typeof stored.apiRefreshToken === "string" ? stored.apiRefreshToken : "",
+    apiAccessTokenExpiresAt: Number(stored.apiAccessTokenExpiresAt || 0),
+    apiTokenScope: typeof stored.apiTokenScope === "string" ? stored.apiTokenScope : "",
+    apiTokenTier: typeof stored.apiTokenTier === "string" ? stored.apiTokenTier : "basic",
     whitelist: stored.whitelist ?? [],
     allowlist: stored.allowlist ?? [],
     history: stored.history ?? [],
@@ -61,11 +469,16 @@ async function getSettings() {
     muteDetectionNotifications: stored.muteDetectionNotifications ?? false,
     saveClipboardBackup: stored.saveClipboardBackup ?? true,
     sendCountry: stored.sendCountry ?? true,
+    detectionScreenshotCapture: stored.detectionScreenshotCapture ?? false,
     reportQueue: stored.reportQueue ?? [],
     alertCount: stored.alertCount ?? 0,
     blockCount: stored.blockCount ?? 0,
     blocklistUpdatedAt: stored.blocklistUpdatedAt ?? 0,
-    allowlistUpdatedAt: stored.allowlistUpdatedAt ?? 0
+    allowlistUpdatedAt: stored.allowlistUpdatedAt ?? 0,
+    scoreConfig: normalizeScoreConfig(stored.scoreConfig),
+    scoreConfigManagedBy: stored.scoreConfigManagedBy === "server" ? "server" : "local",
+    scoreConfigServerUpdatedAt: Number(stored.scoreConfigServerUpdatedAt || 0),
+    alertMinSeverity: normalizeAlertMinSeverity(stored.alertMinSeverity)
   };
 }
 
@@ -80,6 +493,9 @@ const SUPPORTED_LOCALES = ["en", "es", "ca", "de", "fr", "nl", "he", "ru", "zh",
 const DEFAULT_LOCALE = "en";
 let activeMessages = null;
 let localeReady = Promise.resolve();
+let scoreConfigReady = loadScoreConfig()
+  .then(() => refreshServerScoreConfig())
+  .catch(() => false);
 
 function formatMessage(message, substitutions) {
   if (!substitutions) {
@@ -123,8 +539,14 @@ async function initLocale() {
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes.uiLanguage) {
+  if (area !== "local") {
+    return;
+  }
+  if (changes.uiLanguage) {
     localeReady = initLocale();
+  }
+  if (changes.scoreConfig) {
+    cachedScoreConfig = normalizeScoreConfig(changes.scoreConfig.newValue);
   }
 });
 
@@ -140,6 +562,18 @@ function extractHostname(url) {
   }
 }
 
+function isClickFixDisabledHost(hostname) {
+  const host = String(hostname || "").trim().toLowerCase();
+  if (!host) {
+    return false;
+  }
+  return CLICKFIX_DISABLED_HOSTS.some((entry) => host === entry || host.endsWith(`.${entry}`));
+}
+
+function isClickFixDisabledUrl(url) {
+  return isClickFixDisabledHost(extractHostname(String(url || "")));
+}
+
 function normalizeHostname(value) {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -152,6 +586,251 @@ function normalizeHostname(value) {
     return extractHostname(`https://${trimmed}`);
   }
   return trimmed.replace(/^\*\./, "");
+}
+
+function dedupeStrings(values) {
+  const out = [];
+  (values || []).forEach((value) => {
+    const normalized = String(value || "").trim();
+    if (!normalized || out.includes(normalized)) {
+      return;
+    }
+    out.push(normalized);
+  });
+  return out;
+}
+
+function isIpLikeHostname(hostname) {
+  if (!hostname) {
+    return false;
+  }
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)) {
+    return true;
+  }
+  return hostname.includes(":");
+}
+
+function isTrustedDownloadHost(hostname) {
+  if (!hostname) {
+    return false;
+  }
+  return TRUSTED_DOWNLOAD_HOSTS.some((entry) => matchesHostname(hostname, entry));
+}
+
+function isShadowAiHost(hostname) {
+  if (!hostname) {
+    return false;
+  }
+  return SHADOW_AI_HOSTS.some((entry) => matchesHostname(hostname, entry));
+}
+
+function isTrustedReportEndpoint(url) {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === "https:" &&
+      parsed.hostname === TRUSTED_REPORT_HOST &&
+      parsed.pathname.startsWith(TRUSTED_REPORT_PATH_PREFIX)
+    );
+  } catch (error) {
+    return false;
+  }
+}
+
+function normalizeDownloadFilename(value) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
+  }
+  const withForwardSlash = raw.replace(/\\/g, "/");
+  const parts = withForwardSlash.split("/");
+  return parts[parts.length - 1] || "";
+}
+
+function extractFileExtension(filename) {
+  const normalized = normalizeDownloadFilename(filename).toLowerCase();
+  if (!normalized.includes(".")) {
+    return "";
+  }
+  return normalized.split(".").pop() || "";
+}
+
+function hasConfiguredScoreSigningKey() {
+  return (
+    SCORE_CONFIG_PUBLIC_KEY_PEM.includes("BEGIN PUBLIC KEY") &&
+    !SCORE_CONFIG_PUBLIC_KEY_PEM.includes("REPLACE_WITH_YOUR_SIGNING_PUBLIC_KEY")
+  );
+}
+
+function decodeBase64ToBytes(value) {
+  const binary = atob(String(value || ""));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+function pemToSpkiArrayBuffer(pem) {
+  const cleaned = String(pem || "")
+    .replace(/-----BEGIN PUBLIC KEY-----/g, "")
+    .replace(/-----END PUBLIC KEY-----/g, "")
+    .replace(/\s+/g, "");
+  return decodeBase64ToBytes(cleaned);
+}
+
+async function verifySignedPayload(signedPayload, signatureBase64) {
+  if (!hasConfiguredScoreSigningKey()) {
+    return false;
+  }
+  try {
+    const key = await crypto.subtle.importKey(
+      "spki",
+      pemToSpkiArrayBuffer(SCORE_CONFIG_PUBLIC_KEY_PEM),
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+    return await crypto.subtle.verify(
+      "RSASSA-PKCS1-v1_5",
+      key,
+      decodeBase64ToBytes(signatureBase64),
+      new TextEncoder().encode(String(signedPayload || ""))
+    );
+  } catch (error) {
+    return false;
+  }
+}
+
+function parseJwtPayload(token) {
+  const value = String(token || "");
+  const parts = value.split(".");
+  if (parts.length !== 3) {
+    return null;
+  }
+  try {
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const pad = payload.length % 4 === 0 ? "" : "=".repeat(4 - (payload.length % 4));
+    const json = atob(payload + pad);
+    const parsed = JSON.parse(json);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function parseExpiresAtMillis(expiresAtIso, fallbackSeconds = 600) {
+  const parsed = Date.parse(String(expiresAtIso || ""));
+  if (Number.isFinite(parsed) && parsed > Date.now()) {
+    return parsed;
+  }
+  return Date.now() + fallbackSeconds * 1000;
+}
+
+async function storeApiTokens(tokenPayload, fallbackTier = "basic") {
+  const accessToken = String(tokenPayload?.access_token || "").trim();
+  const refreshToken = String(tokenPayload?.refresh_token || "").trim();
+  const expiresAt = parseExpiresAtMillis(
+    tokenPayload?.expires_at,
+    Number(tokenPayload?.expires_in || 600)
+  );
+  const payloadClaims = parseJwtPayload(accessToken);
+  const scope =
+    String(tokenPayload?.scope || "") ||
+    String(payloadClaims?.scope || "");
+  const tier =
+    String(tokenPayload?.tier || "") ||
+    String(payloadClaims?.tier || "") ||
+    fallbackTier;
+
+  await chrome.storage.local.set({
+    apiAccessToken: accessToken,
+    apiRefreshToken: refreshToken,
+    apiAccessTokenExpiresAt: expiresAt,
+    apiTokenScope: scope,
+    apiTokenTier: tier
+  });
+  return accessToken;
+}
+
+async function requestApiTokenWithLicense(settings) {
+  const licenseKey = String(settings?.apiLicenseKey || "").trim();
+  if (!licenseKey) {
+    return "";
+  }
+  const deviceId = await getClientId();
+  try {
+    const response = await fetch(CLICKFIX_API_TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        license_key: licenseKey,
+        device_id: deviceId
+      })
+    });
+    if (!response.ok) {
+      return "";
+    }
+    const payload = await response.json();
+    if (!payload || payload.status !== "ok" || !payload.access_token) {
+      return "";
+    }
+    return storeApiTokens(payload);
+  } catch (error) {
+    return "";
+  }
+}
+
+async function refreshApiToken(settings) {
+  const refreshToken = String(settings?.apiRefreshToken || "").trim();
+  if (!refreshToken) {
+    return "";
+  }
+  const deviceId = await getClientId();
+  try {
+    const response = await fetch(CLICKFIX_API_REFRESH_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        refresh_token: refreshToken,
+        device_id: deviceId
+      })
+    });
+    if (!response.ok) {
+      return "";
+    }
+    const payload = await response.json();
+    if (!payload || payload.status !== "ok" || !payload.access_token) {
+      return "";
+    }
+    return storeApiTokens(payload, settings?.apiTokenTier || "basic");
+  } catch (error) {
+    return "";
+  }
+}
+
+async function ensureApiAccessToken() {
+  const settings = await getSettings();
+  const now = Date.now();
+  const currentToken = String(settings.apiAccessToken || "").trim();
+  const currentExp = Number(settings.apiAccessTokenExpiresAt || 0);
+  if (currentToken && currentExp > now + 60 * 1000) {
+    return currentToken;
+  }
+
+  const refreshed = await refreshApiToken(settings);
+  if (refreshed) {
+    return refreshed;
+  }
+  const issued = await requestApiTokenWithLicense(settings);
+  if (issued) {
+    return issued;
+  }
+
+  if (currentToken && currentExp > now) {
+    return currentToken;
+  }
+  return "";
 }
 
 function matchesHostname(hostname, entry) {
@@ -251,6 +930,164 @@ async function refreshAllowlist() {
   }
 }
 
+async function refreshServerScoreConfig() {
+  const applyConfig = async (rawConfig) => {
+    const normalized = normalizeScoreConfig(rawConfig);
+    cachedScoreConfig = normalized;
+    await chrome.storage.local.set({
+      scoreConfig: normalized,
+      scoreConfigManagedBy: "server",
+      scoreConfigServerUpdatedAt: Date.now()
+    });
+    return true;
+  };
+
+  try {
+    const token = await ensureApiAccessToken();
+    if (token) {
+      const premiumResponse = await fetch(CLICKFIX_PREMIUM_SCORE_CONFIG_URL, {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (premiumResponse.ok) {
+        const premiumPayload = await premiumResponse.json();
+        const signedPayload = String(premiumPayload?.signed_payload || "");
+        const signature = String(premiumPayload?.signature || "");
+        if (signedPayload && signature) {
+          const verified = await verifySignedPayload(signedPayload, signature);
+          if (verified) {
+            const decoded = JSON.parse(signedPayload);
+            const expiresAt = Date.parse(String(decoded?.expires_at || ""));
+            if (!Number.isFinite(expiresAt) || expiresAt > Date.now()) {
+              if (decoded && typeof decoded === "object" && decoded.scoreConfig) {
+                return applyConfig(decoded.scoreConfig);
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    // Ignore premium config retrieval errors and fallback to public config.
+  }
+
+  try {
+    const response = await fetch(CLICKFIX_SCORE_CONFIG_URL, { cache: "no-store" });
+    if (!response.ok) {
+      return false;
+    }
+    const payload = await response.json();
+    const rawConfig =
+      payload && typeof payload === "object" && payload.scoreConfig && typeof payload.scoreConfig === "object"
+        ? payload.scoreConfig
+        : payload;
+    return applyConfig(rawConfig);
+  } catch (error) {
+    return false;
+  }
+}
+
+function normalizeMessageSeverity(value) {
+  const severity = String(value || "").toLowerCase();
+  if (severity === "critical" || severity === "warning" || severity === "info") {
+    return severity;
+  }
+  return "info";
+}
+
+function extensionMessageNotificationTitle(message) {
+  const severity = normalizeMessageSeverity(message?.severity);
+  const title = String(message?.title || "").trim();
+  const prefix =
+    severity === "critical" ? "CRITICAL" : severity === "warning" ? "WARNING" : "INFO";
+  return `${t("appName")} [${prefix}]${title ? ` ${title}` : ""}`.slice(0, 120);
+}
+
+async function clearStaleExtensionMessageNotifications(activeMessageIds) {
+  if (!chrome?.notifications?.getAll || !chrome?.notifications?.clear) {
+    return;
+  }
+  const all = await chrome.notifications.getAll();
+  const ids = Object.keys(all || {});
+  for (const notificationId of ids) {
+    if (!notificationId.startsWith("clickfix-message-")) {
+      continue;
+    }
+    const messageId = notificationId.slice("clickfix-message-".length);
+    if (activeMessageIds.has(messageId)) {
+      continue;
+    }
+    try {
+      await chrome.notifications.clear(notificationId);
+    } catch (error) {
+      // Ignore clear failures for stale notifications.
+    }
+  }
+}
+
+async function refreshExtensionMessages() {
+  try {
+    const token = await ensureApiAccessToken();
+    if (!token) {
+      return false;
+    }
+    const clientId = await getClientId();
+    const url = `${CLICKFIX_API_MESSAGES_URL}?client_id=${encodeURIComponent(clientId)}`;
+    const response = await fetch(url, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      return false;
+    }
+    const payload = await response.json();
+    const incoming = Array.isArray(payload?.messages) ? payload.messages : [];
+    const activeMessageIds = new Set(
+      incoming
+        .map((message) => String(message?.id ?? "").trim())
+        .filter((id) => id !== "")
+    );
+    await clearStaleExtensionMessageNotifications(activeMessageIds);
+    if (!incoming.length) {
+      return true;
+    }
+    const settings = await getSettings();
+    const seenIds = Array.isArray(settings.extensionMessageSeenIds)
+      ? settings.extensionMessageSeenIds.map((id) => String(id))
+      : [];
+    const seenSet = new Set(seenIds);
+    const nextSeen = [...seenIds];
+    const iconUrl = chrome.runtime.getURL("icons/icon-128.png");
+
+    for (const message of incoming) {
+      const id = String(message?.id ?? "");
+      if (!id || seenSet.has(id)) {
+        continue;
+      }
+      const body = String(message?.body || "").trim();
+      if (!body) {
+        continue;
+      }
+      const severity = normalizeMessageSeverity(message?.severity);
+      chrome.notifications.create(`clickfix-message-${id}`, {
+        type: "basic",
+        iconUrl,
+        title: extensionMessageNotificationTitle(message),
+        message: body.slice(0, 360),
+        priority: severity === "critical" ? 2 : 1
+      });
+      seenSet.add(id);
+      nextSeen.push(id);
+    }
+
+    const capped = nextSeen.slice(-500);
+    await chrome.storage.local.set({ extensionMessageSeenIds: capped });
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 function pushHistory(history, entry) {
   const next = [entry, ...history];
   return next.slice(0, 50);
@@ -293,27 +1130,445 @@ async function addClipboardBackupEntry({ text, url, malicious }) {
   await chrome.storage.local.set({ clipboardBackups: next });
 }
 
+function clampScorePoints(value, fallback) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+  return Math.max(-100, Math.min(100, Math.round(numeric)));
+}
+
+function clampWeight(value, fallback) {
+  let numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+  if (numeric > 1) {
+    if (numeric <= 100) {
+      numeric = numeric / 100;
+    } else {
+      return fallback;
+    }
+  }
+  numeric = Math.max(0, Math.min(1, numeric));
+  return numeric;
+}
+
+function normalizeScoreConfig(rawConfig) {
+  const base = DEFAULT_SCORE_CONFIG;
+  const config = rawConfig && typeof rawConfig === "object" ? rawConfig : {};
+  const weights = config.weights && typeof config.weights === "object" ? config.weights : {};
+  const normalizedWeights = {
+    signals: clampWeight(weights.signals, base.weights.signals),
+    clipboard: clampWeight(weights.clipboard, base.weights.clipboard),
+    context: clampWeight(weights.context, base.weights.context)
+  };
+
+  const weightSum = normalizedWeights.signals + normalizedWeights.clipboard + normalizedWeights.context;
+  if (weightSum <= 0) {
+    normalizedWeights.signals = base.weights.signals;
+    normalizedWeights.clipboard = base.weights.clipboard;
+    normalizedWeights.context = base.weights.context;
+  }
+
+  const contextBaseScore = clampScore(
+    Number.isFinite(Number(config.contextBaseScore))
+      ? Number(config.contextBaseScore)
+      : base.contextBaseScore
+  );
+
+  const normalizedRules = buildDefaultScoreRules();
+  const rawRules = config.rules && typeof config.rules === "object" ? config.rules : {};
+  Object.entries(SCORE_RULE_DEFINITIONS).forEach(([group, rules]) => {
+    const groupRules = rawRules[group] && typeof rawRules[group] === "object" ? rawRules[group] : {};
+    rules.forEach((rule) => {
+      normalizedRules[group][rule.flag] = clampScorePoints(
+        groupRules[rule.flag],
+        rule.defaultPoints
+      );
+    });
+  });
+
+  return {
+    weights: normalizedWeights,
+    contextBaseScore,
+    rules: normalizedRules
+  };
+}
+
+async function loadScoreConfig() {
+  const { scoreConfig } = await chrome.storage.local.get({ scoreConfig: DEFAULT_SCORE_CONFIG });
+  cachedScoreConfig = normalizeScoreConfig(scoreConfig);
+  return cachedScoreConfig;
+}
+
+function getScoreConfig() {
+  return cachedScoreConfig || DEFAULT_SCORE_CONFIG;
+}
+
+function getScoreWeight(group) {
+  const config = getScoreConfig();
+  return config.weights?.[group] ?? DEFAULT_SCORE_CONFIG.weights[group];
+}
+
+function getScoreRules(group) {
+  const config = getScoreConfig();
+  const overrides = config.rules?.[group] || {};
+  return (SCORE_RULE_DEFINITIONS[group] || []).map((rule) => ({
+    flag: rule.flag,
+    key: rule.key,
+    points: clampScorePoints(overrides[rule.flag], rule.defaultPoints)
+  }));
+}
+
+function getContextBaseScore() {
+  const config = getScoreConfig();
+  const baseScore = Number(config.contextBaseScore);
+  if (!Number.isFinite(baseScore)) {
+    return DEFAULT_SCORE_CONFIG.contextBaseScore;
+  }
+  return Math.max(0, Math.min(100, Math.round(baseScore)));
+}
+
+function clampScore(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(100, Math.round(numeric)));
+}
+
+function buildScoreComponent({ id, labelKey, score, weight, contributions, available = true }) {
+  return {
+    id,
+    labelKey,
+    score: clampScore(score),
+    weight,
+    contributions,
+    available
+  };
+}
+
+function computeSignalScore(details) {
+  const contributions = [];
+  let score = 0;
+  getScoreRules("signals").forEach((rule) => {
+    if (details[rule.flag]) {
+      score += rule.points;
+      contributions.push({ key: rule.key, points: rule.points });
+    }
+  });
+  return buildScoreComponent({
+    id: "signals",
+    labelKey: "scoreComponentSignals",
+    score,
+    weight: getScoreWeight("signals"),
+    contributions,
+    available: true
+  });
+}
+
+function normalizeClipboardAnalysis(analysis) {
+  if (!analysis || typeof analysis !== "object") {
+    return null;
+  }
+  const hasCommand = Boolean(analysis.hasCommand ?? analysis.commandMatch);
+  const hasExecutionHint = Boolean(analysis.hasExecutionHint ?? analysis.shellHint ?? analysis.executionHint);
+  const hasUrl = Boolean(analysis.hasUrl ?? analysis.url);
+  const hasBase64 = Boolean(analysis.hasBase64 ?? analysis.base64);
+  const hasHighEntropy = Boolean(analysis.hasHighEntropy ?? analysis.highEntropy);
+  const hasShellMeta = Boolean(analysis.hasShellMeta ?? analysis.shellMeta);
+  const isLong = Boolean(analysis.isLong);
+  const hasLeadingWhitespace = Boolean(analysis.hasLeadingWhitespace ?? analysis.leadingWhitespace);
+  const looksLikeCommand = Boolean(analysis.looksLikeCommand);
+
+  return {
+    hasCommand,
+    hasExecutionHint,
+    hasUrl,
+    hasBase64,
+    hasHighEntropy,
+    hasShellMeta,
+    isLong,
+    hasLeadingWhitespace,
+    looksLikeCommand
+  };
+}
+
+function computeClipboardScore(analysis) {
+  const normalized = normalizeClipboardAnalysis(analysis);
+  if (!normalized) {
+    return buildScoreComponent({
+      id: "clipboard",
+      labelKey: "scoreComponentClipboard",
+      score: 0,
+      weight: getScoreWeight("clipboard"),
+      contributions: [],
+      available: false
+    });
+  }
+  const contributions = [];
+  let score = 0;
+  getScoreRules("clipboard").forEach((rule) => {
+    if (normalized[rule.flag]) {
+      score += rule.points;
+      contributions.push({ key: rule.key, points: rule.points });
+    }
+  });
+  return buildScoreComponent({
+    id: "clipboard",
+    labelKey: "scoreComponentClipboard",
+    score,
+    weight: getScoreWeight("clipboard"),
+    contributions,
+    available: true
+  });
+}
+
+function computeContextScore(context) {
+  if (!context || typeof context !== "object") {
+    return buildScoreComponent({
+      id: "context",
+      labelKey: "scoreComponentContext",
+      score: 0,
+      weight: getScoreWeight("context"),
+      contributions: [],
+      available: false
+    });
+  }
+  const contributions = [];
+  let score = getContextBaseScore();
+  const opaqueCount = Number(context.opaqueIframes || 0);
+  const flags = {
+    isAllowlisted: Boolean(context.isAllowlisted),
+    isTrustedHost: Boolean(context.isTrustedHost),
+    isCodeContext: Boolean(context.isCodeContext),
+    isIframe: context.frameType === "iframe",
+    opaqueIframes: opaqueCount >= 2 && opaqueCount < 4,
+    opaqueIframesHigh: opaqueCount >= 4
+  };
+  getScoreRules("context").forEach((rule) => {
+    if (flags[rule.flag]) {
+      score += rule.points;
+      contributions.push({ key: rule.key, points: rule.points });
+    }
+  });
+  return buildScoreComponent({
+    id: "context",
+    labelKey: "scoreComponentContext",
+    score,
+    weight: getScoreWeight("context"),
+    contributions,
+    available: true
+  });
+}
+
+function buildScoreBreakdown(details) {
+  const signalComponent = computeSignalScore(details);
+  const clipboardComponent = computeClipboardScore(details.clipboardAnalysis);
+  const contextComponent = computeContextScore(details.context || details.clipboardSource);
+
+  const components = [signalComponent, clipboardComponent, contextComponent];
+  const available = components.filter((component) => component.available);
+  const weightSum = available.reduce((total, component) => total + component.weight, 0) || 1;
+
+  const normalizedComponents = components.map((component) => {
+    if (!component.available) {
+      return component;
+    }
+    return {
+      ...component,
+      weight: component.weight / weightSum
+    };
+  });
+
+  const total = clampScore(
+    normalizedComponents
+      .filter((component) => component.available)
+      .reduce((sum, component) => sum + component.score * component.weight, 0)
+  );
+
+  return {
+    total,
+    method: "weighted",
+    components: normalizedComponents
+  };
+}
+
 function computeDetectionScore(details) {
-  const weights = [
-    ["commandMatch", 35],
-    ["shellHint", 20],
-    ["evasionHint", 15],
-    ["mismatch", 10],
-    ["clipboardWarning", 10],
-    ["winRHint", 10],
-    ["winXHint", 10],
-    ["pasteSequenceHint", 10],
-    ["consoleHint", 8],
-    ["fileExplorerHint", 6],
-    ["copyTriggerHint", 6],
-    ["browserErrorHint", 5],
-    ["fixActionHint", 5],
-    ["captchaHint", 5]
-  ];
-  const score = weights.reduce((total, [key, weight]) => {
-    return details[key] ? total + weight : total;
-  }, 0);
-  return Math.max(0, Math.min(100, Math.round(score)));
+  return buildScoreBreakdown(details);
+}
+
+function computeUrlRiskSignals(details) {
+  const reasons = [];
+  let score = 0;
+  const url = String(details?.url || "");
+  const hostname = extractHostname(url).toLowerCase();
+
+  if (!hostname) {
+    return { score: 0, reasons };
+  }
+  if (url.startsWith("http://")) {
+    score += 8;
+    reasons.push("URL uses insecure HTTP.");
+  }
+  if (hostname.includes("xn--")) {
+    score += 20;
+    reasons.push("Punycode domain detected.");
+  }
+  if (isIpLikeHostname(hostname)) {
+    score += 18;
+    reasons.push("Domain is an IP address.");
+  }
+  const labels = hostname.split(".");
+  const longestLabel = labels.reduce((max, label) => Math.max(max, label.length), 0);
+  if (longestLabel >= 24) {
+    score += 8;
+    reasons.push("Very long subdomain label.");
+  }
+  const hyphenCount = (hostname.match(/\-/g) || []).length;
+  if (hyphenCount >= 3) {
+    score += 6;
+    reasons.push("Domain has multiple hyphens.");
+  }
+  return { score, reasons };
+}
+
+function computeContentRiskSignals(details) {
+  const reasons = [];
+  let score = 0;
+  const add = (active, value, reason) => {
+    if (!active) {
+      return;
+    }
+    score += value;
+    reasons.push(reason);
+  };
+
+  add(details?.commandMatch, 14, "Command execution pattern found.");
+  add(details?.shellHint, 12, "Shell execution hint found.");
+  add(details?.evasionHint, 12, "Obfuscation/evasion pattern found.");
+  add(details?.clipboardWarning, 9, "Clipboard manipulation indicator found.");
+  add(details?.mismatch, 8, "Clipboard mismatch detected.");
+  add(details?.winRHint || details?.winXHint, 8, "System shortcut instruction found.");
+  add(details?.winXTerminalHint, 6, "Win+X then I/Terminal execution flow found.");
+  add(details?.consoleHint, 8, "Developer console instruction found.");
+  add(details?.pasteSequenceHint, 6, "Step-by-step paste execution flow found.");
+  add(details?.copyTriggerHint, 6, "Forced clipboard copy trigger found.");
+  add(details?.fileExplorerHint, 5, "File Explorer path execution instruction found.");
+  add(details?.browserErrorHint, 5, "Fake browser error social engineering pattern found.");
+  add(details?.fixActionHint, 5, "Fix/repair bait wording found.");
+  add(details?.captchaHint, 4, "Fake CAPTCHA lure pattern found.");
+  return { score, reasons };
+}
+
+function computeReputationRiskSignals(listDecision) {
+  const reasons = [];
+  let score = 0;
+  if (!listDecision) {
+    return { score, reasons };
+  }
+  if (listDecision.blocked && !listDecision.allowlisted) {
+    score += 35;
+    reasons.push("Host appears in active blocklist.");
+  }
+  if (listDecision.conflict) {
+    score += 8;
+    reasons.push("Host appears in both allowlist and blocklist.");
+  }
+  if (listDecision.allowlisted) {
+    score -= 25;
+    reasons.push("Host appears in allowlist.");
+  }
+  return { score, reasons };
+}
+
+function computeBrandRiskSignals(details) {
+  const reasons = [];
+  let score = 0;
+  const hostname = extractHostname(details?.url || "").toLowerCase();
+  if (!hostname) {
+    return { score, reasons };
+  }
+  const textPool = `${details?.detectedContent || ""}\n${details?.fullContext || ""}`
+    .toLowerCase()
+    .slice(0, 6000);
+  for (const brand of BRAND_REPUTATION_RULES) {
+    if (!textPool.includes(brand.name)) {
+      continue;
+    }
+    const brandMatchesHost = brand.hosts.some((entry) => matchesHostname(hostname, entry));
+    if (!brandMatchesHost) {
+      score += 10;
+      reasons.push(`Brand mismatch: mentions ${brand.name} but host is ${hostname}.`);
+      break;
+    }
+  }
+  return { score, reasons };
+}
+
+function computeLureRiskSignals(details) {
+  const reasons = [];
+  let score = 0;
+  if (details?.captchaHint && (details?.commandMatch || details?.shellHint || details?.downloadHint)) {
+    score += 12;
+    reasons.push("CAPTCHA + execution chain detected.");
+  }
+  if (details?.browserErrorHint && details?.fixActionHint) {
+    score += 10;
+    reasons.push("Browser error + fix-now social engineering flow detected.");
+  }
+  if (details?.downloadRisk?.unsafe) {
+    score += 20;
+    reasons.push("Download risk engine classified artifact as unsafe.");
+  }
+  return { score, reasons };
+}
+
+function buildRuntimeThreatVerdict(details, listDecision) {
+  const urlModel = computeUrlRiskSignals(details);
+  const contentModel = computeContentRiskSignals(details);
+  const reputationModel = computeReputationRiskSignals(listDecision);
+  const brandModel = computeBrandRiskSignals(details);
+  const lureModel = computeLureRiskSignals(details);
+
+  const total = clampScore(
+    urlModel.score +
+      contentModel.score +
+      reputationModel.score +
+      brandModel.score +
+      lureModel.score
+  );
+  const level = total >= 65 ? "unsafe" : total >= 38 ? "suspicious" : "low";
+
+  return {
+    total,
+    level,
+    models: {
+      url: urlModel.score,
+      content: contentModel.score,
+      reputation: reputationModel.score,
+      brand: brandModel.score,
+      vision: lureModel.score
+    },
+    reasons: dedupeStrings([
+      ...urlModel.reasons,
+      ...contentModel.reasons,
+      ...reputationModel.reasons,
+      ...brandModel.reasons,
+      ...lureModel.reasons
+    ])
+  };
+}
+
+function buildRuntimeVerdictSnippets(verdict) {
+  if (!verdict) {
+    return [];
+  }
+  const scoreLine = `Runtime verdict: ${verdict.level} (${verdict.total}/100)`;
+  const modelLine = `Models URL:${verdict.models.url} Content:${verdict.models.content} Reputation:${verdict.models.reputation} Brand:${verdict.models.brand} Vision:${verdict.models.vision}`;
+  const reasons = (verdict.reasons || []).slice(0, 4).map((reason) => `Runtime reason: ${reason}`);
+  return dedupeStrings([scoreLine, modelLine, ...reasons]);
 }
 
 function buildAlertReasons(details) {
@@ -338,6 +1593,9 @@ function buildAlertReasons(details) {
   }
   if (details.winXHint) {
     addReason(t("alertWinX"));
+  }
+  if (details.winXTerminalHint) {
+    addReason(t("alertWinXI"));
   }
   if (details.browserErrorHint) {
     addReason(t("alertBrowserError"));
@@ -390,16 +1648,6 @@ function buildAlertReasons(details) {
   return parts;
 }
 
-function formatAlertMessage(parts) {
-  if (!Array.isArray(parts) || parts.length === 0) {
-    return "";
-  }
-  if (parts.length === 1) {
-    return parts[0];
-  }
-  return parts.map((part) => `• ${part}`).join("\n");
-}
-
 function tEsMessage(key, substitutions) {
   return t(key, substitutions);
 }
@@ -438,6 +1686,9 @@ function buildAlertReasonEntries(details) {
   }
   if (details.winXHint) {
     addEntry("alertWinX");
+  }
+  if (details.winXTerminalHint) {
+    addEntry("alertWinXI");
   }
   if (details.browserErrorHint) {
     addEntry("alertBrowserError");
@@ -491,7 +1742,7 @@ function buildAlertReasonEntries(details) {
 }
 
 function buildAlertMessage(details) {
-  return formatAlertMessage(buildAlertReasons(details));
+  return buildAlertReasons(details).join(" ");
 }
 
 function buildAlertSnippets(details) {
@@ -512,11 +1763,635 @@ function buildAlertSnippets(details) {
   return snippets;
 }
 
+const pageAlertBatchState = new Map();
+
+function cleanupTabTransientState(tabId) {
+  if (!Number.isInteger(tabId)) {
+    return;
+  }
+  setTabScriptBlocking(tabId, "", false).catch(() => undefined);
+  beforeCaptureByTab.delete(tabId);
+  beforeCaptureInFlight.delete(tabId);
+  beforeCapturePromiseByTab.delete(tabId);
+  const prefix = `${tabId}|`;
+  for (const [key, state] of pageAlertBatchState.entries()) {
+    if (!String(key).startsWith(prefix)) {
+      continue;
+    }
+    if (state?.timer) {
+      clearTimeout(state.timer);
+    }
+    pageAlertBatchState.delete(key);
+  }
+  for (const key of detectionProgressCache.keys()) {
+    if (String(key).startsWith(prefix)) {
+      detectionProgressCache.delete(key);
+    }
+  }
+}
+
+function applyPageAlertTypeToDetails(details, alertType) {
+  if (!details || !alertType) {
+    return;
+  }
+  if (alertType === "command") details.commandMatch = true;
+  if (alertType === "winr") details.winRHint = true;
+  if (alertType === "winx") details.winXHint = true;
+  if (alertType === "winx-i") {
+    details.winXHint = true;
+    details.winXTerminalHint = true;
+    details.shellHint = true;
+    details.pasteSequenceHint = true;
+  }
+  if (alertType === "browser-error") details.browserErrorHint = true;
+  if (alertType === "fix-action") details.fixActionHint = true;
+  if (alertType === "captcha") details.captchaHint = true;
+  if (alertType === "console") details.consoleHint = true;
+  if (alertType === "shell") details.shellHint = true;
+  if (alertType === "paste-sequence") details.pasteSequenceHint = true;
+  if (alertType === "file-explorer") details.fileExplorerHint = true;
+  if (alertType === "copy-trigger") details.copyTriggerHint = true;
+}
+
+function mergePageSignalState(details, signalState) {
+  if (!details || !signalState || typeof signalState !== "object") {
+    return;
+  }
+  const mappings = [
+    "commandMatch",
+    "winRHint",
+    "winXHint",
+    "winXTerminalHint",
+    "browserErrorHint",
+    "fixActionHint",
+    "captchaHint",
+    "consoleHint",
+    "shellHint",
+    "pasteSequenceHint",
+    "fileExplorerHint",
+    "copyTriggerHint",
+    "evasionHint",
+    "mismatch",
+    "clipboardWarning"
+  ];
+  mappings.forEach((key) => {
+    if (signalState[key]) {
+      details[key] = true;
+    }
+  });
+}
+
+async function flushBatchedPageAlert(key) {
+  const state = pageAlertBatchState.get(key);
+  if (!state) {
+    return;
+  }
+  pageAlertBatchState.delete(key);
+  if (!state.url || (await shouldIgnore(state.url))) {
+    return;
+  }
+
+  const notificationId = await triggerAlert({
+    ...state.details,
+    snippets: [...state.snippets],
+    tabId: state.tabId
+  });
+  if (notificationId) {
+    lastPageHint = null;
+  }
+}
+
+function queueBatchedPageAlert(message, sender) {
+  const url = String(message?.url || "");
+  if (!url) {
+    return;
+  }
+  const tabId = Number.isInteger(sender?.tab?.id) ? sender.tab.id : null;
+  const keyHost = extractHostname(url) || url.slice(0, 120);
+  const key = `${tabId ?? "na"}|${keyHost}`;
+  let state = pageAlertBatchState.get(key);
+
+  if (!state) {
+    state = {
+      tabId,
+      snippets: new Set(),
+      timer: null,
+      details: {
+        url,
+        timestamp: message?.timestamp ?? Date.now(),
+        mismatch: false,
+        commandMatch: false,
+        winRHint: false,
+        winXHint: false,
+        winXTerminalHint: false,
+        browserErrorHint: false,
+        fixActionHint: false,
+        captchaHint: false,
+        consoleHint: false,
+        shellHint: false,
+        pasteSequenceHint: false,
+        fileExplorerHint: false,
+        copyTriggerHint: false,
+        evasionHint: false,
+        clipboardWarning: false,
+        snippets: [],
+        blockedClipboardText: "",
+        detectedContent: "",
+        fullContext: "",
+        previousUrl: "",
+        context: null
+      }
+    };
+  }
+
+  state.details.timestamp = Math.max(
+    Number(state.details.timestamp || 0),
+    Number(message?.timestamp || Date.now())
+  );
+  state.details.url = url;
+  state.details.context = message?.context || state.details.context;
+  if (message?.previousUrl && !state.details.previousUrl) {
+    state.details.previousUrl = String(message.previousUrl);
+  }
+  if (message?.detectedContent) {
+    const incoming = String(message.detectedContent);
+    if (incoming.length >= String(state.details.detectedContent || "").length) {
+      state.details.detectedContent = incoming;
+    }
+  }
+  if (message?.fullContext) {
+    const incoming = String(message.fullContext);
+    if (incoming.length >= String(state.details.fullContext || "").length) {
+      state.details.fullContext = incoming;
+    }
+  }
+
+  applyPageAlertTypeToDetails(state.details, message?.alertType);
+  mergePageSignalState(state.details, message?.signalState);
+
+  if (message?.snippet) {
+    state.snippets.add(String(message.snippet));
+    if (!state.details.detectedContent) {
+      state.details.detectedContent = String(message.snippet);
+    }
+  }
+  if (Array.isArray(message?.snippets)) {
+    message.snippets.forEach((snippet) => {
+      if (snippet) {
+        state.snippets.add(String(snippet));
+      }
+    });
+  }
+
+  if (state.timer) {
+    clearTimeout(state.timer);
+  }
+  state.timer = setTimeout(() => {
+    flushBatchedPageAlert(key).catch(() => undefined);
+  }, PAGE_ALERT_DEBOUNCE_MS);
+
+  pageAlertBatchState.set(key, state);
+}
+
+const detectionProgressCache = new Map();
+
+function buildDetectionProgressKey(details) {
+  const tabId = Number.isInteger(details?.tabId) ? String(details.tabId) : "na";
+  const hostname = extractHostname(details?.url || "");
+  if (hostname) {
+    return `${tabId}|${hostname}`;
+  }
+  const fallbackUrl = String(details?.url || "").slice(0, 120) || "unknown";
+  return `${tabId}|${fallbackUrl}`;
+}
+
+function extractDetectionSignals(details) {
+  const signals = new Set();
+  const addSignal = (name, active) => {
+    if (active) {
+      signals.add(name);
+    }
+  };
+
+  addSignal("mismatch", details?.mismatch);
+  addSignal("clipboardWarning", details?.clipboardWarning);
+  addSignal("commandMatch", details?.commandMatch);
+  addSignal("shellHint", details?.shellHint);
+  addSignal("evasionHint", details?.evasionHint);
+  addSignal("winRHint", details?.winRHint);
+  addSignal("winXHint", details?.winXHint);
+  addSignal("winXTerminalHint", details?.winXTerminalHint);
+  addSignal("browserErrorHint", details?.browserErrorHint);
+  addSignal("fixActionHint", details?.fixActionHint);
+  addSignal("captchaHint", details?.captchaHint);
+  addSignal("consoleHint", details?.consoleHint);
+  addSignal("pasteSequenceHint", details?.pasteSequenceHint);
+  addSignal("fileExplorerHint", details?.fileExplorerHint);
+  addSignal("copyTriggerHint", details?.copyTriggerHint);
+  addSignal("blockedClipboardText", Boolean(details?.blockedClipboardText));
+
+  const clipboard = details?.clipboardAnalysis;
+  if (clipboard && typeof clipboard === "object") {
+    addSignal("clipboardCommand", clipboard.hasCommand ?? clipboard.commandMatch);
+    addSignal("clipboardExecution", clipboard.hasExecutionHint ?? clipboard.shellHint);
+    addSignal("clipboardUrl", clipboard.hasUrl ?? clipboard.url);
+    addSignal("clipboardBase64", clipboard.hasBase64 ?? clipboard.base64);
+    addSignal("clipboardEntropy", clipboard.hasHighEntropy ?? clipboard.highEntropy);
+    addSignal("clipboardShellMeta", clipboard.hasShellMeta ?? clipboard.shellMeta);
+    addSignal("clipboardLong", clipboard.isLong);
+    addSignal(
+      "clipboardLeadingWhitespace",
+      clipboard.hasLeadingWhitespace ?? clipboard.leadingWhitespace
+    );
+    addSignal("clipboardLooksLikeCommand", clipboard.looksLikeCommand);
+  }
+
+  return signals;
+}
+
+function cleanupDetectionProgress(now) {
+  for (const [key, state] of detectionProgressCache.entries()) {
+    if (!state || now - state.lastSeen > DETECTION_PROGRESS_WINDOW_MS) {
+      detectionProgressCache.delete(key);
+    }
+  }
+}
+
+function computeProgressiveBonus(details) {
+  const now = Date.now();
+  cleanupDetectionProgress(now);
+  const key = buildDetectionProgressKey(details);
+  const currentSignals = extractDetectionSignals(details);
+  let state = detectionProgressCache.get(key);
+  if (!state || now - state.lastSeen > DETECTION_PROGRESS_WINDOW_MS) {
+    state = {
+      count: 0,
+      signals: new Set(),
+      lastSeen: now
+    };
+  }
+
+  let newSignals = 0;
+  for (const signal of currentSignals) {
+    if (!state.signals.has(signal)) {
+      state.signals.add(signal);
+      newSignals += 1;
+    }
+  }
+  state.count += 1;
+  state.lastSeen = now;
+  detectionProgressCache.set(key, state);
+
+  if (state.count <= 1) {
+    return {
+      bonus: 0,
+      eventCount: state.count,
+      newSignals,
+      totalSignals: state.signals.size
+    };
+  }
+
+  const eventBonus = Math.min(10, (state.count - 1) * 2);
+  const noveltyBonus = Math.min(12, newSignals * 3);
+  const breadthBonus = state.signals.size >= 6 ? 3 : state.signals.size >= 4 ? 1 : 0;
+  const bonus = Math.min(
+    DETECTION_PROGRESS_MAX_BONUS,
+    eventBonus + noveltyBonus + breadthBonus
+  );
+
+  return {
+    bonus,
+    eventCount: state.count,
+    newSignals,
+    totalSignals: state.signals.size
+  };
+}
+
+function applyProgressiveBonus(scoreDetails, progress) {
+  if (!scoreDetails || !progress || !Number.isFinite(progress.bonus) || progress.bonus <= 0) {
+    return 0;
+  }
+  const applied = Math.max(0, Math.min(DETECTION_PROGRESS_MAX_BONUS, Math.round(progress.bonus)));
+  if (!applied) {
+    return 0;
+  }
+  scoreDetails.total = clampScore((scoreDetails.total || 0) + applied);
+  if (Array.isArray(scoreDetails.components)) {
+    const signalComponent = scoreDetails.components.find(
+      (component) => component && component.id === "signals" && component.available !== false
+    );
+    if (signalComponent) {
+      signalComponent.score = clampScore((signalComponent.score || 0) + applied);
+      if (!Array.isArray(signalComponent.contributions)) {
+        signalComponent.contributions = [];
+      }
+      signalComponent.contributions.push({
+        key: "scoreSignalProgressive",
+        points: applied
+      });
+    }
+  }
+  return applied;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms) || 0)));
+}
+
+async function resolveCaptureWindowId(tabId) {
+  if (!tabId) {
+    return chrome.windows.WINDOW_ID_CURRENT;
+  }
+  try {
+    const tab = await new Promise((resolve) => {
+      chrome.tabs.get(tabId, (result) => {
+        if (chrome.runtime.lastError || !result) {
+          resolve(null);
+          return;
+        }
+        resolve(result);
+      });
+    });
+    if (tab && Number.isInteger(tab.windowId)) {
+      return tab.windowId;
+    }
+  } catch (error) {
+    // Ignore capture window resolution errors.
+  }
+  return chrome.windows.WINDOW_ID_CURRENT;
+}
+
+async function captureVisibleTabDataUrl(windowId, format = "jpeg", quality = 52) {
+  return new Promise((resolve) => {
+    chrome.tabs.captureVisibleTab(
+      windowId,
+      { format, quality: Math.max(1, Math.min(100, Number(quality) || 52)) },
+      (dataUrl) => {
+        if (chrome.runtime.lastError || !dataUrl || typeof dataUrl !== "string") {
+          resolve("");
+          return;
+        }
+        resolve(dataUrl);
+      }
+    );
+  });
+}
+
+function dataUrlByteLength(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== "string") {
+    return 0;
+  }
+  const commaIndex = dataUrl.indexOf(",");
+  if (commaIndex < 0) {
+    return dataUrl.length;
+  }
+  const base64 = dataUrl.slice(commaIndex + 1);
+  return Math.floor((base64.length * 3) / 4);
+}
+
+async function compressImageDataUrl(dataUrl, options = {}) {
+  const maxWidth = Math.max(240, Math.min(1920, Number(options.maxWidth) || 720));
+  const maxHeight = Math.max(180, Math.min(1920, Number(options.maxHeight) || 480));
+  const quality = Math.max(0.2, Math.min(0.9, Number(options.quality) || 0.58));
+  try {
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    if (!blob || !blob.size) {
+      return dataUrl;
+    }
+    const bitmap = await createImageBitmap(blob);
+    const ratio = Math.min(maxWidth / bitmap.width, maxHeight / bitmap.height, 1);
+    const targetWidth = Math.max(1, Math.round(bitmap.width * ratio));
+    const targetHeight = Math.max(1, Math.round(bitmap.height * ratio));
+    const canvas = new OffscreenCanvas(targetWidth, targetHeight);
+    const ctx = canvas.getContext("2d", { alpha: false });
+    if (!ctx) {
+      return dataUrl;
+    }
+    ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
+    const outBlob = await canvas.convertToBlob({ type: "image/jpeg", quality });
+    const b64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+      reader.onerror = reject;
+      reader.readAsDataURL(outBlob);
+    });
+    return typeof b64 === "string" ? b64 : dataUrl;
+  } catch (error) {
+    return dataUrl;
+  }
+}
+
+function shouldCaptureDetectionScreenshots(details, settings) {
+  if (!settings?.detectionScreenshotCapture) {
+    return false;
+  }
+  const eventType = String(details?.eventType || "clickfix_alert").toLowerCase();
+  if (eventType === "shadow_ai" || eventType === "unsafe_download") {
+    return false;
+  }
+  return true;
+}
+
+async function optimizeDetectionScreenshot(dataUrl) {
+  const raw = typeof dataUrl === "string" ? dataUrl : "";
+  if (!raw) {
+    return "";
+  }
+  let optimized = await compressImageDataUrl(raw, {
+    maxWidth: 720,
+    maxHeight: 480,
+    quality: 0.58
+  });
+  if (dataUrlByteLength(optimized) > 240 * 1024) {
+    optimized = await compressImageDataUrl(optimized, {
+      maxWidth: 640,
+      maxHeight: 420,
+      quality: 0.45
+    });
+  }
+  if (dataUrlByteLength(optimized) > 240 * 1024) {
+    return "";
+  }
+  return optimized;
+}
+
+function getCachedBeforeScreenshot(tabId, pageUrl = "") {
+  if (!Number.isInteger(tabId)) {
+    return "";
+  }
+  const entry = beforeCaptureByTab.get(tabId);
+  if (!entry || !entry.dataUrl) {
+    return "";
+  }
+  const age = Date.now() - Number(entry.capturedAt || 0);
+  if (age > BEFORE_CAPTURE_MAX_AGE_MS) {
+    beforeCaptureByTab.delete(tabId);
+    return "";
+  }
+  const currentHost = extractHostname(String(pageUrl || ""));
+  if (currentHost && entry.hostname && currentHost !== entry.hostname) {
+    return "";
+  }
+  return entry.dataUrl;
+}
+
+async function captureAndCacheBeforeScreenshot(tabId, pageUrl, captureWindowId = null) {
+  if (!Number.isInteger(tabId) || !/^https?:/i.test(String(pageUrl || ""))) {
+    return "";
+  }
+  const now = Date.now();
+  const resolvedWindowId =
+    Number.isInteger(captureWindowId) && captureWindowId >= 0
+      ? captureWindowId
+      : await resolveCaptureWindowId(tabId);
+  const rawBefore = await captureVisibleTabDataUrl(resolvedWindowId, "jpeg", 54);
+  const beforeScreenshot = await optimizeDetectionScreenshot(rawBefore);
+  if (!beforeScreenshot) {
+    return "";
+  }
+  beforeCaptureByTab.set(tabId, {
+    url: pageUrl,
+    hostname: extractHostname(pageUrl),
+    dataUrl: beforeScreenshot,
+    capturedAt: now
+  });
+  return beforeScreenshot;
+}
+
+async function waitForBeforeScreenshotCapture(tabId, pageUrl = "", timeoutMs = 900) {
+  if (!Number.isInteger(tabId)) {
+    return "";
+  }
+  const pendingCapture = beforeCapturePromiseByTab.get(tabId);
+  if (!pendingCapture) {
+    return getCachedBeforeScreenshot(tabId, pageUrl);
+  }
+  try {
+    await Promise.race([pendingCapture, sleep(timeoutMs)]);
+  } catch (error) {
+    // Ignore capture wait errors.
+  }
+  return getCachedBeforeScreenshot(tabId, pageUrl);
+}
+
+function shouldForceBeforeCapture(phase = "") {
+  const normalized = String(phase || "").toLowerCase();
+  return normalized === "load_complete" || normalized === "tab_complete";
+}
+
+async function resolveTabActiveState(tabId, knownValue) {
+  if (typeof knownValue === "boolean") {
+    return knownValue;
+  }
+  if (!Number.isInteger(tabId)) {
+    return false;
+  }
+  try {
+    const tab = await new Promise((resolve) => {
+      chrome.tabs.get(tabId, (result) => {
+        if (chrome.runtime.lastError || !result) {
+          resolve(null);
+          return;
+        }
+        resolve(result);
+      });
+    });
+    return Boolean(tab?.active);
+  } catch (error) {
+    return false;
+  }
+}
+
+async function maybeCaptureBeforeScreenshotForTab(tabId, pageUrl, options = {}) {
+  if (!Number.isInteger(tabId)) {
+    return;
+  }
+  if (!/^https?:/i.test(String(pageUrl || ""))) {
+    return;
+  }
+  if (options?.hasDetectionsOnPage) {
+    return;
+  }
+  const settings = await getSettings();
+  if (!settings?.detectionScreenshotCapture) {
+    beforeCaptureByTab.delete(tabId);
+    return;
+  }
+  const isActiveTab = await resolveTabActiveState(tabId, options?.active);
+  if (!isActiveTab) {
+    return;
+  }
+  const forceRefresh = shouldForceBeforeCapture(options?.capturePhase);
+  if (beforeCaptureInFlight.has(tabId)) {
+    return;
+  }
+  const existing = beforeCaptureByTab.get(tabId);
+  if (
+    !forceRefresh &&
+    existing &&
+    existing.url === pageUrl &&
+    Date.now() - Number(existing.capturedAt || 0) < BEFORE_CAPTURE_REFRESH_MS
+  ) {
+    return;
+  }
+  const capturePromise = (async () => {
+    beforeCaptureInFlight.add(tabId);
+    try {
+      await captureAndCacheBeforeScreenshot(tabId, pageUrl, options?.windowId ?? null);
+    } catch (error) {
+      // Ignore page-visit capture errors.
+    } finally {
+      beforeCaptureInFlight.delete(tabId);
+    }
+  })();
+  beforeCapturePromiseByTab.set(tabId, capturePromise);
+  try {
+    await capturePromise;
+  } finally {
+    if (beforeCapturePromiseByTab.get(tabId) === capturePromise) {
+      beforeCapturePromiseByTab.delete(tabId);
+    }
+  }
+}
+
+async function maybeCaptureBeforeScreenshotForPage(message, sender) {
+  const tabId = Number.isInteger(sender?.tab?.id) ? sender.tab.id : null;
+  if (!Number.isInteger(tabId)) {
+    return;
+  }
+  const pageUrl = String(message?.url || sender?.tab?.url || "");
+  await maybeCaptureBeforeScreenshotForTab(tabId, pageUrl, {
+    capturePhase: String(message?.capturePhase || ""),
+    active: typeof sender?.tab?.active === "boolean" ? sender.tab.active : undefined,
+    windowId: Number.isInteger(sender?.tab?.windowId) ? sender.tab.windowId : null,
+    hasDetectionsOnPage: Boolean(message?.hasDetectionsOnPage)
+  });
+}
+
 async function triggerAlert(details) {
   await ensureLocaleReady();
-  const confidenceScore = computeDetectionScore(details);
+  const scoreDetails = computeDetectionScore(details);
+  const progressive = computeProgressiveBonus(details);
+  const progressiveBonus = applyProgressiveBonus(scoreDetails, progressive);
   const settings = await getSettings();
+  const listDecision =
+    details.reportHostname === false ? null : await resolveListDecision(details.url);
+  const runtimeVerdict =
+    details.runtimeVerdict ||
+    (settings.runtimeThreatScoring ? buildRuntimeThreatVerdict(details, listDecision) : null);
+  const baseConfidenceScore = scoreDetails.total;
+  const confidenceScore = runtimeVerdict
+    ? clampScore(Math.max(baseConfidenceScore, Number(runtimeVerdict.total || 0)))
+    : baseConfidenceScore;
+  const runtimeSnippets = buildRuntimeVerdictSnippets(runtimeVerdict);
+  const mergedSnippets = dedupeStrings([...(details.snippets || []), ...runtimeSnippets]);
+
+  const alertSeverity = scoreToAlertSeverity(confidenceScore);
+  const alertMinSeverity = normalizeAlertMinSeverity(settings.alertMinSeverity);
+  const suppressAlertUi = shouldSuppressByAlertSeverity(confidenceScore, alertMinSeverity);
   const muteNotifications = Boolean(settings.muteDetectionNotifications);
+  const shouldRenderAlertUi = !details.suppressNotification && !muteNotifications && !suppressAlertUi;
   console.debug("[ClickFix] triggerAlert start", {
     url: details.url,
     tabId: details.tabId,
@@ -527,6 +2402,7 @@ async function triggerAlert(details) {
       commandMatch: details.commandMatch,
       winRHint: details.winRHint,
       winXHint: details.winXHint,
+      winXTerminalHint: details.winXTerminalHint,
       browserErrorHint: details.browserErrorHint,
       fixActionHint: details.fixActionHint,
       captchaHint: details.captchaHint,
@@ -536,11 +2412,25 @@ async function triggerAlert(details) {
       fileExplorerHint: details.fileExplorerHint,
       copyTriggerHint: details.copyTriggerHint,
       evasionHint: details.evasionHint,
-      confidenceScore
+      progressiveBonus,
+      alertSeverity,
+      alertMinSeverity,
+      suppressAlertUi,
+      confidenceScore,
+      runtimeVerdict
     }
   });
-  const detailsWithScore = { ...details, confidenceScore };
-  await incrementAlertCount();
+  const detailsWithScore = {
+    ...details,
+    confidenceScore,
+    scoreDetails,
+    progressiveBonus,
+    runtimeVerdict,
+    snippets: mergedSnippets
+  };
+  if (details.incrementAlertCount !== false) {
+    await incrementAlertCount();
+  }
   if (details.incrementBlockCount !== false) {
     await incrementBlockCount();
   }
@@ -548,41 +2438,60 @@ async function triggerAlert(details) {
   const reasonsEs = buildAlertReasonsEs(detailsWithScore);
   const reasonEntries = buildAlertReasonEntries(detailsWithScore);
   const snippets = buildAlertSnippets(detailsWithScore);
-  const message = formatAlertMessage(reasons);
-  const messageEs = formatAlertMessage(reasonsEs);
+  const message = reasons.join(" ");
+  const messageEs = reasonsEs.join(" ");
   const hostname = extractHostname(details.url);
   const timestamp = new Date(details.timestamp).toISOString();
   const reportHostname = details.reportHostname === false ? "" : hostname;
   const reportUrl = details.reportHostname === false ? "" : details.url;
   const reportPreviousUrl =
     details.reportHostname === false ? "" : details.previousUrl || "";
-  const allowlisted = await isAllowlisted(details.url);
+  const allowlisted =
+    details.reportHostname === false
+      ? false
+      : Boolean(listDecision ? listDecision.allowlisted : await isAllowlisted(details.url));
   const shouldBlockPage = !details.suppressPageBlock;
+  const shouldCaptureScreenshots = shouldCaptureDetectionScreenshots(details, settings);
+  const captureWindowId = shouldCaptureScreenshots
+    ? await resolveCaptureWindowId(details.tabId)
+    : chrome.windows.WINDOW_ID_CURRENT;
+  let afterScreenshot = "";
   const allowClipboardRestore = details.allowClipboardRestore !== false;
 
   await saveHistory({
     message,
+    reasonEntries,
+    snippets,
     url: reportUrl,
     hostname: reportHostname || (details.reportHostname === false ? t("historyClipboardOnly") : hostname),
     timestamp,
     reportHostname: details.reportHostname !== false,
-    reasonEntries
+    confidenceScore,
+    scoreDetails,
+    detectedContent: details.detectedContent || ""
   });
-  enqueueReport({
+  let queuedReport = {
     type: "alert",
     url: reportUrl,
     hostname: reportHostname,
     timestamp: details.timestamp,
     message,
+    reason_entries: reasonEntries,
+    snippets,
     detectedContent: details.detectedContent || "",
     full_context: details.fullContext || "",
     previous_url: reportPreviousUrl,
     clipboard_source: details.clipboardSource || null,
+    event_type: details.eventType || "clickfix_alert",
+    score_total: confidenceScore,
+    score_details: scoreDetails,
+    runtime_verdict: runtimeVerdict || null,
     signals: {
       mismatch: details.mismatch,
       commandMatch: details.commandMatch,
       winRHint: details.winRHint,
       winXHint: details.winXHint,
+      winXTerminalHint: details.winXTerminalHint,
       browserErrorHint: details.browserErrorHint,
       fixActionHint: details.fixActionHint,
       captchaHint: details.captchaHint,
@@ -592,14 +2501,16 @@ async function triggerAlert(details) {
       fileExplorerHint: details.fileExplorerHint,
       copyTriggerHint: details.copyTriggerHint,
       evasionHint: details.evasionHint,
+      runtimeLevel: runtimeVerdict?.level || "",
+      runtimeScore: runtimeVerdict?.total || 0,
       confidenceScore
     },
     blocked: shouldBlockPage && !allowlisted
-  });
+  };
 
-  const iconUrl = CLICKFIX_ICON_DATA_URL;
+  const iconUrl = chrome.runtime.getURL("icons/icon-128.png");
 
-  const notificationId = muteNotifications
+  const notificationId = !shouldRenderAlertUi
     ? null
     : await new Promise((resolve) => {
         chrome.notifications.create(
@@ -620,14 +2531,18 @@ async function triggerAlert(details) {
       });
 
   const targetTabId = details.tabId;
-  if (targetTabId) {
-    if (!muteNotifications) {
-      chrome.tabs.sendMessage(targetTabId, {
-        type: "showBanner",
-        text: message
-      });
-    }
-    if (shouldBlockPage && !allowlisted) {
+    if (targetTabId) {
+      if (shouldRenderAlertUi) {
+        chrome.tabs.sendMessage(targetTabId, {
+          type: "showBanner",
+          text: message,
+          reasonEntries,
+          scoreDetails,
+          confidenceScore,
+          snippets
+        });
+      }
+    if (shouldBlockPage && !allowlisted && !suppressAlertUi) {
       chrome.tabs.sendMessage(targetTabId, {
         type: "blockPage",
         hostname,
@@ -637,20 +2552,30 @@ async function triggerAlert(details) {
         reasonsEs,
         reasonEntries,
         contextText: details.detectedContent || "",
-        snippets
+        snippets,
+        scoreDetails
       });
+      if (shouldCaptureScreenshots) {
+        await sleep(1150);
+        const rawAfter = await captureVisibleTabDataUrl(captureWindowId, "jpeg", 54);
+        afterScreenshot = await optimizeDetectionScreenshot(rawAfter);
+      }
     }
   } else {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tabId = tabs?.[0]?.id;
       if (tabId) {
-        if (!muteNotifications) {
+        if (shouldRenderAlertUi) {
           chrome.tabs.sendMessage(tabId, {
             type: "showBanner",
-            text: message
+            text: message,
+            reasonEntries,
+            scoreDetails,
+            confidenceScore,
+            snippets
           });
         }
-        if (shouldBlockPage && !allowlisted) {
+        if (shouldBlockPage && !allowlisted && !suppressAlertUi) {
           chrome.tabs.sendMessage(tabId, {
             type: "blockPage",
             hostname,
@@ -667,6 +2592,28 @@ async function triggerAlert(details) {
     });
   }
 
+  if (
+    shouldCaptureScreenshots &&
+    !afterScreenshot &&
+    shouldBlockPage &&
+    !allowlisted &&
+    !suppressAlertUi
+  ) {
+    await sleep(1150);
+    const rawAfter = await captureVisibleTabDataUrl(captureWindowId, "jpeg", 54);
+    afterScreenshot = await optimizeDetectionScreenshot(rawAfter);
+  }
+
+  if (shouldCaptureScreenshots) {
+    queuedReport = {
+      ...queuedReport,
+      scan_capture_opt_in: true,
+      scan_before_image: null,
+      scan_after_image: afterScreenshot || null
+    };
+  }
+  enqueueReport(queuedReport);
+
   return notificationId;
 }
 
@@ -675,13 +2622,23 @@ function extractBase64Candidates(text) {
     return [];
   }
   const candidates = new Set();
-  const matches = text.match(/[A-Za-z0-9+/=]{24,}/g) || [];
-  matches.forEach((value) => {
+  const addCandidate = (value) => {
+    if (!value) {
+      return;
+    }
     const cleaned = value.replace(/=+$/, "");
     if (cleaned.length < 24 || cleaned.length % 4 === 1) {
       return;
     }
     candidates.add(value);
+  };
+  const matches = text.match(/[A-Za-z0-9+/=]{24,}/g) || [];
+  matches.forEach((value) => addCandidate(value));
+  const looseMatches =
+    text.match(/(?:[A-Za-z0-9+/=][\"'`\s\u2018\u2019\u201C\u201D]{0,3}){30,}/g) || [];
+  looseMatches.forEach((value) => {
+    const normalized = value.replace(/[^A-Za-z0-9+/=]/g, "");
+    addCandidate(normalized);
   });
   return [...candidates];
 }
@@ -704,7 +2661,11 @@ function decodeBase64Candidates(text) {
 }
 
 function analyzeText(text) {
-  const trimmed = text?.trim();
+  const cleaned = String(text || "")
+    .replace(ZERO_WIDTH_REGEX, "")
+    .replace(CONTROL_CHAR_REGEX, " ")
+    .replace(DASH_REGEX, "-");
+  const trimmed = cleaned.trim();
   if (!trimmed) {
     return { commandMatch: false, shellHint: false, evasionHint: false };
   }
@@ -748,6 +2709,162 @@ async function isBlocked(url) {
   return settings.blocklist.some((entry) => matchesHostname(hostname, entry));
 }
 
+async function analyzeDownloadRisk(downloadItem) {
+  const url = String(downloadItem?.finalUrl || downloadItem?.url || "");
+  const filename = normalizeDownloadFilename(downloadItem?.filename || downloadItem?.suggestedFilename || "");
+  const hostname = extractHostname(url);
+  const extension = extractFileExtension(filename);
+  const snippets = [];
+  let score = 0;
+
+  if (!url || !hostname) {
+    return {
+      unsafe: false,
+      score: 0,
+      url,
+      hostname,
+      filename,
+      snippets,
+      signals: {}
+    };
+  }
+
+  if (DOWNLOAD_DANGEROUS_EXTENSIONS.has(extension)) {
+    score += DOWNLOAD_SCRIPT_EXTENSIONS.has(extension) ? 38 : 28;
+    snippets.push(`Blocked extension: .${extension}`);
+  }
+  if (DOWNLOAD_DOUBLE_EXTENSION_REGEX.test(filename)) {
+    score += 24;
+    snippets.push("Double file extension indicates masquerading.");
+  }
+  if (url.startsWith("http://")) {
+    score += 10;
+    snippets.push("Download served over insecure HTTP.");
+  }
+  if (isIpLikeHostname(hostname)) {
+    score += 12;
+    snippets.push("Download host is an IP address.");
+  }
+  if (!isTrustedDownloadHost(hostname)) {
+    score += 15;
+    snippets.push(`Unfamiliar download host: ${hostname}`);
+  } else {
+    score -= 10;
+  }
+
+  const listDecision = await resolveListDecision(url);
+  if (listDecision.blocked && !listDecision.allowlisted) {
+    score += 40;
+    snippets.push("Host matched blocklist.");
+  }
+  if (listDecision.allowlisted) {
+    score -= 20;
+  }
+
+  const normalizedScore = Math.max(0, Math.min(100, score));
+  const unsafe = normalizedScore >= 45;
+  return {
+    unsafe,
+    score: normalizedScore,
+    url,
+    hostname,
+    filename,
+    snippets: dedupeStrings(snippets),
+    signals: {
+      dangerousExtension: DOWNLOAD_DANGEROUS_EXTENSIONS.has(extension),
+      scriptExtension: DOWNLOAD_SCRIPT_EXTENSIONS.has(extension),
+      doubleExtension: DOWNLOAD_DOUBLE_EXTENSION_REGEX.test(filename),
+      insecureTransport: url.startsWith("http://"),
+      ipHost: isIpLikeHostname(hostname),
+      unfamiliarHost: !isTrustedDownloadHost(hostname),
+      blocklistedHost: listDecision.blocked && !listDecision.allowlisted
+    }
+  };
+}
+
+function cancelDownload(downloadId) {
+  return new Promise((resolve) => {
+    if (!chrome?.downloads?.cancel) {
+      resolve(false);
+      return;
+    }
+    chrome.downloads.cancel(downloadId, () => {
+      if (chrome.runtime.lastError) {
+        resolve(false);
+        return;
+      }
+      resolve(true);
+    });
+  });
+}
+
+async function handleDownloadCreated(downloadItem) {
+  const settings = await getSettings();
+  if (!settings.enabled || !settings.blockUnsafeDownloads) {
+    return;
+  }
+  const risk = await analyzeDownloadRisk(downloadItem);
+  if (!risk.unsafe) {
+    return;
+  }
+
+  await cancelDownload(downloadItem.id);
+  const snippets = dedupeStrings([
+    `Unsafe download blocked: ${risk.filename || risk.url}`,
+    ...risk.snippets
+  ]);
+  const runtimeVerdict = {
+    total: risk.score,
+    level: risk.score >= 65 ? "unsafe" : "suspicious",
+    models: {
+      url: risk.signals.insecureTransport || risk.signals.ipHost ? 14 : 0,
+      content: risk.signals.dangerousExtension ? 18 : 0,
+      reputation: risk.signals.blocklistedHost ? 35 : 0,
+      brand: 0,
+      vision: risk.signals.doubleExtension ? 14 : 0
+    },
+    reasons: snippets.slice(0, 4)
+  };
+
+  await triggerAlert({
+    url: risk.url,
+    timestamp: Date.now(),
+    mismatch: false,
+    commandMatch: Boolean(risk.signals.scriptExtension),
+    winRHint: false,
+    winXHint: false,
+    winXTerminalHint: false,
+    browserErrorHint: false,
+    fixActionHint: false,
+    captchaHint: false,
+    consoleHint: false,
+    shellHint: Boolean(risk.signals.scriptExtension),
+    pasteSequenceHint: false,
+    fileExplorerHint: false,
+    copyTriggerHint: false,
+    evasionHint: Boolean(risk.signals.doubleExtension),
+    clipboardWarning: false,
+    snippets,
+    blockedClipboardText: "",
+    detectedContent: risk.filename || risk.url,
+    fullContext: JSON.stringify({ downloadRisk: risk.signals, filename: risk.filename }),
+    previousUrl: "",
+    clipboardAnalysis: null,
+    context: {
+      source: "download",
+      hostname: risk.hostname
+    },
+    tabId: Number.isInteger(downloadItem?.tabId) ? downloadItem.tabId : null,
+    incrementBlockCount: true,
+    allowClipboardRestore: false,
+    suppressPageBlock: true,
+    reportHostname: true,
+    eventType: "unsafe_download",
+    downloadRisk: risk,
+    runtimeVerdict
+  });
+}
+
 async function addToWhitelist(hostname) {
   if (!hostname) {
     return;
@@ -763,6 +2880,8 @@ async function addToWhitelist(hostname) {
 chrome.runtime.onInstalled.addListener(() => {
   refreshBlocklist();
   refreshAllowlist();
+  refreshServerScoreConfig();
+  refreshExtensionMessages();
   chrome.alarms.create("clickfix-refresh", { periodInMinutes: LIST_REFRESH_MINUTES });
   chrome.alarms.create("clickfix-reports", { periodInMinutes: REPORT_FLUSH_MINUTES });
   restoreReportQueue();
@@ -771,20 +2890,51 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onStartup.addListener(() => {
   refreshBlocklist();
   refreshAllowlist();
+  refreshServerScoreConfig();
+  refreshExtensionMessages();
   chrome.alarms.create("clickfix-refresh", { periodInMinutes: LIST_REFRESH_MINUTES });
   chrome.alarms.create("clickfix-reports", { periodInMinutes: REPORT_FLUSH_MINUTES });
   restoreReportQueue();
 });
 
+if (chrome?.downloads?.onCreated) {
+  chrome.downloads.onCreated.addListener((downloadItem) => {
+    handleDownloadCreated(downloadItem).catch(() => undefined);
+  });
+}
+
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "clickfix-refresh") {
     refreshBlocklist();
     refreshAllowlist();
+    refreshServerScoreConfig();
+    refreshExtensionMessages();
   }
   if (alarm.name === "clickfix-reports") {
     flushReportQueue();
   }
 });
+
+if (chrome?.tabs?.onRemoved) {
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    cleanupTabTransientState(tabId);
+  });
+}
+
+if (chrome?.tabs?.onUpdated) {
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (!tab || changeInfo?.status !== "complete") {
+      return;
+    }
+    const pageUrl = String(tab.url || "");
+    if (!/^https?:/i.test(pageUrl)) {
+      return;
+    }
+    if (isClickFixDisabledUrl(pageUrl)) {
+      return;
+    }
+  });
+}
 
 let lastPageHint = null;
 let lastClipboardBlock = { text: "", timestamp: 0 };
@@ -832,13 +2982,37 @@ async function resolveListDecision(url) {
 }
 
 async function sendReport(details) {
+  if (!isTrustedReportEndpoint(CLICKFIX_REPORT_URL)) {
+    return false;
+  }
   try {
-    await fetch(CLICKFIX_REPORT_URL, {
+    const token = await ensureApiAccessToken();
+    const headers = { "Content-Type": "application/json" };
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    let response = await fetch(CLICKFIX_REPORT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(details)
     });
-    return true;
+    if (response.status === 401 && token) {
+      await chrome.storage.local.set({
+        apiAccessToken: "",
+        apiAccessTokenExpiresAt: 0
+      });
+      const retryToken = await ensureApiAccessToken();
+      const retryHeaders = { "Content-Type": "application/json" };
+      if (retryToken) {
+        retryHeaders.Authorization = `Bearer ${retryToken}`;
+      }
+      response = await fetch(CLICKFIX_REPORT_URL, {
+        method: "POST",
+        headers: retryHeaders,
+        body: JSON.stringify(details)
+      });
+    }
+    return response.ok;
   } catch (error) {
     // Ignore reporting errors to avoid breaking the user flow.
   }
@@ -849,16 +3023,24 @@ async function sendStatsReport() {
   const settings = await getSettings();
   const alertSites = buildAlertSites(settings.history ?? []);
   const country = settings.sendCountry ? chrome.i18n.getUILanguage() : "";
+  const installInfo = await getInstallInfo();
+  const clientId = await getClientId();
   enqueueReport({
     type: "stats",
     timestamp: Date.now(),
+    client_id: clientId,
     data: {
       enabled: settings.enabled ?? true,
       manualSites: settings.whitelist ?? [],
       alertSites,
       alertCount: settings.alertCount ?? 0,
       blockCount: settings.blockCount ?? 0,
-      country
+      country,
+      installType: installInfo.installType || "",
+      installSource: installInfo.installSource || "",
+      installChannel: installInfo.installChannel || "",
+      extensionDistribution: installInfo.extensionDistribution || "",
+      clientId
     }
   });
 }
@@ -890,6 +3072,8 @@ function buildReportHash(details) {
     timestamp / (REPORT_FLUSH_MINUTES * 60 * 1000)
   );
   delete normalized.timestamp;
+  delete normalized.scan_before_image;
+  delete normalized.scan_after_image;
   return stableStringify(normalized);
 }
 
@@ -907,14 +3091,28 @@ async function persistReportQueue() {
 }
 
 async function enqueueReport(details) {
+  const clientId = await getClientId();
+  const installInfo = await getInstallInfo();
+  const withInstall =
+    details?.type === "stats"
+      ? details
+      : {
+          ...details,
+          installType: details.installType ?? installInfo.installType ?? "",
+          installSource: details.installSource ?? installInfo.installSource ?? "",
+          installChannel: details.installChannel ?? installInfo.installChannel ?? "",
+          extensionDistribution:
+            details.extensionDistribution ?? installInfo.extensionDistribution ?? "",
+          client_id: details.client_id ?? clientId
+        };
   const now = Date.now();
   cleanReportHashes(now);
-  const hash = buildReportHash(details);
+  const hash = buildReportHash(withInstall);
   if (reportHashes.has(hash)) {
     return;
   }
   reportHashes.set(hash, now);
-  reportQueue.push(details);
+  reportQueue.push(withInstall);
   if (reportQueue.length > REPORT_QUEUE_LIMIT) {
     reportQueue = reportQueue.slice(-REPORT_QUEUE_LIMIT);
   }
@@ -1012,6 +3210,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return;
   }
 
+  if (message.type === "pageVisit") {
+    if (isClickFixDisabledUrl(message.url || sender?.tab?.url || "")) {
+      return;
+    }
+    return;
+  }
+
   if (message.type === "checkBlocklist") {
     (async () => {
       const decision = await resolveListDecision(message.url);
@@ -1041,20 +3246,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "setTabScriptBlocking") {
+    (async () => {
+      const tabId = Number(sender?.tab?.id ?? message.tabId ?? -1);
+      const enabled = Boolean(message.enabled);
+      const hostname = String(message.hostname || message.url || "");
+      const ok = await setTabScriptBlocking(tabId, hostname, enabled);
+      sendResponse({ ok });
+    })();
+    return true;
+  }
+
   if (message.type === "manualReport") {
     (async () => {
+      if (isClickFixDisabledUrl(message.url || sender?.tab?.url || "")) {
+        return;
+      }
       await ensureLocaleReady();
-      const rawReason = typeof message.reason === "string" ? message.reason.trim() : "";
-      const cleanReason = rawReason.replace(/\s+/g, " ").slice(0, 160);
-      const reasonLabel = t("manualReportReason");
-      const reasonText = cleanReason ? `${reasonLabel}: ${cleanReason}` : reasonLabel;
       enqueueReport({
         url: message.url,
         hostname: message.hostname || extractHostname(message.url),
         timestamp: message.timestamp ?? Date.now(),
-        reason: reasonText,
-        message: reasonText,
+        reason: t("manualReportReason"),
         blocked: true,
+        event_type: "manual_report",
         manualReport: true,
         detectedContent: "",
         previous_url: message.previousUrl || ""
@@ -1082,37 +3297,99 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "pageAlert" && message.alertType) {
+    if (isClickFixDisabledUrl(message.url || sender?.tab?.url || "")) {
+      return;
+    }
+    queueBatchedPageAlert(message, sender);
+    return;
+  }
+
+  if (message.type === "shadowAIEvent") {
     (async () => {
-      if (await shouldIgnore(message.url)) {
+      if (isClickFixDisabledUrl(message.url || sender?.tab?.url || "")) {
         return;
       }
-      const snippets = message.snippet ? [message.snippet] : [];
-      const notificationId = await triggerAlert({
-        url: message.url,
+      const settings = await getSettings();
+      if (!settings.enabled || !settings.shadowAiMonitoring) {
+        return;
+      }
+      const url = String(message.url || sender?.tab?.url || "");
+      const hostname = extractHostname(url);
+      if (!hostname) {
+        return;
+      }
+      const aiContext = Boolean(message.isAiContext || isShadowAiHost(hostname));
+      if (!aiContext) {
+        return;
+      }
+
+      const action = String(message.action || "interaction").toLowerCase();
+      const promptSnippet = String(message.snippet || "").slice(0, 220);
+      const uploadInfo = Array.isArray(message.fileNames)
+        ? `Files: ${message.fileNames.slice(0, 4).join(", ")}`
+        : "";
+      const baseSnippet =
+        action === "file_upload"
+          ? `Shadow AI upload detected on ${hostname}.`
+          : `Shadow AI prompt/paste detected on ${hostname}.`;
+      const snippets = dedupeStrings([baseSnippet, promptSnippet, uploadInfo]);
+      const runtimeVerdict = {
+        total: action === "file_upload" ? 42 : 32,
+        level: action === "file_upload" ? "suspicious" : "low",
+        models: {
+          url: 4,
+          content: action === "file_upload" ? 16 : 10,
+          reputation: 8,
+          brand: 0,
+          vision: 0
+        },
+        reasons: snippets.slice(0, 4)
+      };
+
+      await triggerAlert({
+        url,
         timestamp: message.timestamp ?? Date.now(),
         mismatch: false,
-        commandMatch: message.alertType === "command",
-        winRHint: message.alertType === "winr",
-        winXHint: message.alertType === "winx",
-        browserErrorHint: message.alertType === "browser-error",
-        fixActionHint: message.alertType === "fix-action",
-        captchaHint: message.alertType === "captcha",
-        consoleHint: message.alertType === "console",
-        shellHint: message.alertType === "shell",
-        pasteSequenceHint: message.alertType === "paste-sequence",
-        fileExplorerHint: message.alertType === "file-explorer",
-        copyTriggerHint: message.alertType === "copy-trigger",
+        commandMatch: false,
+        shellHint: false,
+        evasionHint: false,
+        clipboardWarning: action !== "file_upload",
+        winRHint: false,
+        winXHint: false,
+        winXTerminalHint: false,
+        browserErrorHint: false,
+        fixActionHint: false,
+        captchaHint: false,
+        consoleHint: false,
+        pasteSequenceHint: false,
+        fileExplorerHint: false,
+        copyTriggerHint: false,
         snippets,
         blockedClipboardText: "",
-        detectedContent: message.snippet || "",
-        fullContext: message.fullContext || "",
+        detectedContent: promptSnippet || snippets[0] || "",
+        fullContext: JSON.stringify({
+          action,
+          promptLength: Number(message.promptLength || 0),
+          fileCount: Number(message.fileCount || 0),
+          fileNames: Array.isArray(message.fileNames) ? message.fileNames.slice(0, 10) : []
+        }),
         previousUrl: message.previousUrl || "",
-        tabId: sender?.tab?.id ?? null
+        clipboardAnalysis: null,
+        context: {
+          source: "shadow_ai",
+          action,
+          host: hostname
+        },
+        tabId: sender?.tab?.id ?? null,
+        incrementAlertCount: settings.shadowAiWarnUser,
+        incrementBlockCount: false,
+        allowClipboardRestore: false,
+        suppressPageBlock: true,
+        reportHostname: true,
+        eventType: "shadow_ai",
+        suppressNotification: !settings.shadowAiWarnUser,
+        runtimeVerdict
       });
-
-      if (notificationId) {
-        lastPageHint = null;
-      }
     })();
     return;
   }
@@ -1131,12 +3408,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         url: message.url,
         timestamp: message.timestamp ?? Date.now(),
         mismatch: false,
-        commandMatch: Boolean(analysis.commandMatch),
-        shellHint: Boolean(analysis.shellHint),
-        evasionHint: Boolean(analysis.evasionHint),
+        commandMatch: Boolean(analysis.commandMatch ?? analysis.hasCommand),
+        shellHint: Boolean(analysis.shellHint ?? analysis.hasExecutionHint),
+        evasionHint: Boolean(
+          analysis.evasionHint ??
+          analysis.hasBase64 ??
+          analysis.hasHighEntropy
+        ),
         clipboardWarning: true,
         winRHint: false,
         winXHint: false,
+        winXTerminalHint: false,
         browserErrorHint: false,
         fixActionHint: false,
         captchaHint: false,
@@ -1150,6 +3432,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         fullContext: message.fullContext || "",
         previousUrl: message.previousUrl || "",
         clipboardSource: message.source || null,
+        clipboardAnalysis: analysis,
+        context: message.context || message.source || null,
         tabId: sender?.tab?.id ?? null,
         incrementBlockCount: Boolean(message.blocked),
         allowClipboardRestore: false,
@@ -1172,7 +3456,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       const selectionText = message.selectionText || "";
       const clipboardText = message.clipboardText || "";
-      const clipboardAnalysis = analyzeText(clipboardText);
+      const incomingAnalysis = message.analysis || null;
+      const clipboardAnalysis = incomingAnalysis || analyzeText(clipboardText);
+      const commandMatch = Boolean(
+        clipboardAnalysis.commandMatch ?? clipboardAnalysis.hasCommand
+      );
+      const shellHint = Boolean(
+        clipboardAnalysis.shellHint ?? clipboardAnalysis.hasExecutionHint
+      );
+      const evasionHint = Boolean(
+        clipboardAnalysis.evasionHint ??
+          clipboardAnalysis.hasBase64 ??
+          clipboardAnalysis.hasHighEntropy
+      );
       const mismatch =
         message.eventType === "copy" &&
         message.clipboardAvailable &&
@@ -1180,12 +3476,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         clipboardText &&
         selectionText.trim() !== clipboardText.trim();
 
-      const clipboardSignals =
-        clipboardAnalysis.commandMatch ||
-        clipboardAnalysis.shellHint ||
-        clipboardAnalysis.evasionHint;
-      const commandMatch = clipboardAnalysis.commandMatch || clipboardAnalysis.shellHint;
-      const evasionHint = clipboardAnalysis.evasionHint;
+      const clipboardSignals = commandMatch || shellHint || evasionHint;
+      const commandMatchOrHint = commandMatch || shellHint;
       const isClipboardWatch = message.eventType === "clipboard-watch";
       const isPaste = message.eventType === "paste";
       const isCopy = message.eventType === "copy";
@@ -1228,9 +3520,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           url: message.url,
           timestamp: message.timestamp,
           mismatch,
-          commandMatch,
+          commandMatch: commandMatchOrHint,
           winRHint: false,
           winXHint: false,
+          winXTerminalHint: false,
           browserErrorHint: false,
           fixActionHint: false,
           captchaHint: false,
@@ -1246,6 +3539,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           detectedContent,
           fullContext: message.fullContext || "",
           previousUrl: message.previousUrl || "",
+          clipboardAnalysis,
+          context: message.context || null,
           tabId: sender?.tab?.id ?? null,
           incrementBlockCount: true,
           reportHostname: true

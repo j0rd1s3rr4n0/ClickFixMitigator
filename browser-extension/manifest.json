@@ -1,17 +1,21 @@
 {
   "manifest_version": 3,
   "name": "__MSG_appName__",
-  "version": "0.3.23",
+  "version": "0.4.9",
   "description": "__MSG_appDescription__",
   "default_locale": "en",
   "permissions": [
     "storage",
+    "tabs",
     "notifications",
     "clipboardRead",
     "clipboardWrite",
-    "alarms"
+    "alarms",
+    "management",
+    "downloads",
+    "declarativeNetRequest"
   ],
-  "host_permissions": ["<all_urls>"],
+  "host_permissions": ["<all_urls>", "file:///*"],
   "background": {
     "service_worker": "background.js"
   },
