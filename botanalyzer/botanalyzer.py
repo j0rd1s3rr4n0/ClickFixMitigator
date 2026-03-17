@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import argparse
 import time
 import threading
 import subprocess
 import os
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
 import shutil
@@ -13,10 +16,25 @@ from zipfile import ZipFile, ZIP_DEFLATED
 from pathlib import Path
 from typing import Iterable
 
-from selenium import webdriver
-from selenium.common.exceptions import WebDriverException
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
+SELENIUM_IMPORT_ERROR: Exception | None = None
+try:
+    from selenium import webdriver
+    from selenium.common.exceptions import WebDriverException
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.common.by import By
+except Exception as exc:  # pragma: no cover - import fallback path
+    webdriver = None  # type: ignore[assignment]
+
+    class WebDriverException(Exception):
+        pass
+
+    class _ByFallback:
+        TAG_NAME = "tag name"
+        CSS_SELECTOR = "css selector"
+
+    By = _ByFallback()  # type: ignore[assignment]
+    Options = None  # type: ignore[assignment]
+    SELENIUM_IMPORT_ERROR = exc
 
 
 DEFAULT_PAGE_TIMEOUT = 60
@@ -42,6 +60,7 @@ DEFAULT_SNAPSHOT_PREFIX = "botanalyzer_snapshot"
 EXCLUDED_SNAPSHOT_DIRS = {"venv", "chrome-profile", "__pycache__"}
 DEFAULT_PRECHECK_TIMEOUT = 8
 DEFAULT_PRECHECK_WORKERS = 60
+DEFAULT_PRECHECK_MAX_WORKERS = 256
 BLOCKED_SOCIAL_HOSTS = {
     "facebook.com",
     "www.facebook.com",
@@ -230,12 +249,17 @@ def sync_extensions_from_profile(source_root: Path, target_root: Path) -> None:
 def curl_health_check(url: str, timeout: int) -> tuple[str, bool, str]:
     if not is_http_url(url):
         return url, True, "non-http"
+    timeout = max(1, int(timeout))
+    connect_timeout = max(1, min(timeout, 6))
     command = [
         "curl",
         "-L",
+        "--connect-timeout",
+        str(connect_timeout),
         "-m",
         str(timeout),
         "-s",
+        "-k",
         "-o",
         os.devnull,
         "-w",
@@ -243,12 +267,25 @@ def curl_health_check(url: str, timeout: int) -> tuple[str, bool, str]:
         url,
     ]
     try:
-        completed = subprocess.run(command, capture_output=True, text=True)
+        completed = subprocess.run(command, capture_output=True, text=True, timeout=timeout + 3)
         code = (completed.stdout or "").strip()
         ok = completed.returncode == 0 and code and code != "000"
         return url, ok, code or "000"
     except Exception:
         return url, False, "error"
+
+
+def curl_runtime_healthy(timeout: int = 5) -> bool:
+    probe_timeout = max(2, int(timeout))
+    probes = [
+        "https://example.com",
+        "https://www.cloudflare.com",
+    ]
+    for probe in probes:
+        _, ok, _ = curl_health_check(probe, probe_timeout)
+        if ok:
+            return True
+    return False
 
 
 def precheck_urls(
@@ -260,7 +297,7 @@ def precheck_urls(
         return [], []
     alive: list[str] = []
     dead: list[tuple[str, str]] = []
-    max_workers = max(1, min(workers, 64))
+    max_workers = max(1, min(workers, DEFAULT_PRECHECK_MAX_WORKERS))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(curl_health_check, url, timeout) for url in urls]
         for future in as_completed(futures):
@@ -280,16 +317,21 @@ def stream_precheck_to_queue(
     urls_path: Path,
     dead_path: Path,
     file_lock: threading.Lock,
+    remove_dead_from_urls: bool = False,
+    progress_every: int = 200,
 ) -> tuple[int, int]:
     if not urls:
         return 0, 0
     alive_count = 0
     dead_count = 0
-    max_workers = max(1, min(workers, 64))
+    completed_count = 0
+    total = len(urls)
+    max_workers = max(1, min(workers, DEFAULT_PRECHECK_MAX_WORKERS))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(curl_health_check, url, timeout) for url in urls]
         for future in as_completed(futures):
             url, ok, code = future.result()
+            completed_count += 1
             if ok:
                 url_queue.put(url)
                 alive_count += 1
@@ -297,7 +339,17 @@ def stream_precheck_to_queue(
                 dead_count += 1
                 with file_lock:
                     append_line(dead_path, f"{url} # {code}")
-                    remove_url_from_file(urls_path, url)
+                    if remove_dead_from_urls:
+                        remove_url_from_file(urls_path, url)
+            if (
+                completed_count == 1
+                or completed_count == total
+                or (progress_every > 0 and completed_count % progress_every == 0)
+            ):
+                print(
+                    f"[PRECHECK] {completed_count}/{total} checked | "
+                    f"alive={alive_count} dead={dead_count}"
+                )
     return alive_count, dead_count
 
 
@@ -928,7 +980,19 @@ def worker_loop(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Click all buttons on URLs listed in urls.txt (Selenium).")
+    parser = argparse.ArgumentParser(
+        description="Click all buttons on URLs listed in urls.txt (Selenium).",
+        formatter_class=argparse.RawTextHelpFormatter,
+        epilog=(
+            "Examples:\n"
+            "  python botanalyzer.py --help\n"
+            "  python botanalyzer.py --urls urls.txt --done done.txt --headful\n"
+            "  python botanalyzer.py --workers 3 --precheck-workers 80 --precheck-timeout 8\n"
+            "  python botanalyzer.py --profile-dir ./chrome-profile --extension ../browser-extension\n"
+            "  python botanalyzer.py --no-precheck --no-zip --workers 1\n"
+            "  python botanalyzer.py --lang es-ES --accept-languages es-ES,es,en\n"
+        ),
+    )
     parser.add_argument("--urls", default="urls.txt", help="Path to urls.txt")
     parser.add_argument("--done", default="done.txt", help="Path to done.txt")
     parser.add_argument("--headful", action="store_true", help="Run with visible browser window")
@@ -979,7 +1043,20 @@ def main() -> int:
     parser.add_argument("--dead", default="dead.txt", help="Path to dead URLs output file")
     parser.add_argument("--lang", help="Chrome UI language, e.g. es-ES")
     parser.add_argument("--accept-languages", help="Chrome accept_languages list, e.g. es-ES,es,en")
+    # Running without arguments should only show available options and examples.
+    if len(sys.argv) == 1:
+        parser.print_help()
+        return 0
+
     args = parser.parse_args()
+
+    if SELENIUM_IMPORT_ERROR is not None:
+        print(
+            "[ERROR] Selenium is not installed in this environment. "
+            "Install dependencies before running scans."
+        )
+        print(f"Details: {SELENIUM_IMPORT_ERROR}")
+        return 2
 
     urls_path = Path(args.urls)
     done_path = Path(args.done)
@@ -994,6 +1071,14 @@ def main() -> int:
 
     if args.no_precheck:
         args.precheck = False
+    elif args.precheck:
+        probe_timeout = max(3, min(args.precheck_timeout, 8))
+        if not curl_runtime_healthy(probe_timeout):
+            print(
+                "[PRECHECK] curl health-check failed in this environment. "
+                "Precheck disabled for this run; Selenium will consume all URLs directly."
+            )
+            args.precheck = False
 
     if not args.no_zip:
         timestamp = time.strftime("%Y%m%d-%H%M%S")
@@ -1039,11 +1124,20 @@ def main() -> int:
                 urls_path,
                 dead_path,
                 file_lock,
+                remove_dead_from_urls=False,
             )
-            if dead_count:
+            if dead_count and alive_count > 0:
                 print(f"[PRECHECK] Skipped {dead_count} dead URLs (logged in {dead_path}).")
             if alive_count == 0:
-                print("[PRECHECK] No live URLs remaining.")
+                if dead_count:
+                    print(
+                        "[PRECHECK] curl marco todos los URLs como no vivos "
+                        f"({dead_count}/{len(source_urls)}). Falling back to Selenium for all URLs."
+                    )
+                else:
+                    print("[PRECHECK] No live URLs remaining by curl. Falling back to Selenium for all URLs.")
+                for url in source_urls:
+                    url_queue.put(url)
         else:
             for url in source_urls:
                 url_queue.put(url)
