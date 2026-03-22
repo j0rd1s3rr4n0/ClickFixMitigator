@@ -1,0 +1,635 @@
+{
+  "appName": {
+    "message": "ClickFix Mitigator"
+  },
+  "appDescription": {
+    "message": "Detects ClickFix patterns and clipboard mismatches."
+  },
+  "bannerTitle": {
+    "message": "ClickFix Mitigator Alert"
+  },
+  "clipboardThreatWarning": {
+    "message": "Security: This page tried to copy a potentially dangerous command. Do not paste this into a terminal. It can harm your system."
+  },
+  "closeButton": {
+    "message": "Close"
+  },
+  "blockAllClipboardUnavailable": {
+    "message": "Block All mode can’t be enabled on this page."
+  },
+  "notificationRestoreClipboard": {
+    "message": "Restore clipboard"
+  },
+  "notificationKeepClean": {
+    "message": "Keep clean"
+  },
+  "blockedTitle": {
+    "message": "Site blocked for possible ClickFix"
+  },
+  "blockedReasonDefault": {
+    "message": "Reason: ClickFix patterns detected"
+  },
+  "blockedReasonWithDetail": {
+    "message": "Reason: $1",
+    "placeholders": {
+      "detail": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonReported": {
+    "message": "Reason: ClickFix report"
+  },
+  "blockedStay": {
+    "message": "Stay on site"
+  },
+  "blockedBack": {
+    "message": "Go back"
+  },
+  "blockedReport": {
+    "message": "Report site"
+  },
+  "blockedAllowOnce": {
+    "message": "Allow once"
+  },
+  "blockedAllowSession": {
+    "message": "Allow for session"
+  },
+  "blockedAllowAlways": {
+    "message": "Always allow"
+  },
+  "blockedReported": {
+    "message": "Reported"
+  },
+  "blockedFamilySafeNotice": {
+    "message": "FamilySafe is enabled. This site stays blocked to protect this device."
+  },
+  "blockedHost": {
+    "message": "Site: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockedReasonsTitle": {
+    "message": "Detections"
+  },
+  "blockedContextTitle": {
+    "message": "Detected context"
+  },
+  "alertMismatch": {
+    "message": "Mismatch between selection and clipboard."
+  },
+  "alertCommand": {
+    "message": "Suspicious command pattern detected."
+  },
+  "alertClipboardCommand": {
+    "message": "Suspicious command detected in the clipboard."
+  },
+  "alertWinR": {
+    "message": "The page suggests using Win+R/Run dialog."
+  },
+  "alertWinX": {
+    "message": "The page suggests using Win+X to open the terminal."
+  },
+  "alertWinXI": {
+    "message": "The page suggests Win+X then I/Terminal/PowerShell execution flow."
+  },
+  "alertBrowserError": {
+    "message": "The page shows a fake browser error."
+  },
+  "alertFixAction": {
+    "message": "The page asks for a quick fix or to copy a command."
+  },
+  "alertCaptcha": {
+    "message": "Possible fake captcha detected."
+  },
+  "alertConsole": {
+    "message": "The page asks you to paste into the DevTools console."
+  },
+  "alertShell": {
+    "message": "The page asks you to paste commands in CMD/PowerShell/Run."
+  },
+  "alertPasteSequence": {
+    "message": "The page guides pasting with Ctrl+V/Enter."
+  },
+  "alertFileExplorer": {
+    "message": "The page asks you to paste a path in File Explorer."
+  },
+  "alertCopyTrigger": {
+    "message": "The page attempts to copy commands to the clipboard."
+  },
+  "alertEvasion": {
+    "message": "Obfuscated or encoded command content detected."
+  },
+  "alertSnippet": {
+    "message": "Detected snippet: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertClipboardBlocked": {
+    "message": "Clipboard blocked: \"$1\"",
+    "placeholders": {
+      "snippet": {
+        "content": "$1"
+      }
+    }
+  },
+  "alertConfidenceScore": {
+    "message": "Confidence score: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "blockAllClipboardBlocked": {
+    "message": "JavaScript clipboard copying was blocked."
+  },
+  "manualReportReason": {
+    "message": "Manual user report"
+  },
+  "blocklistReason": {
+    "message": "Blocked by list"
+  },
+  "popupTitle": {
+    "message": "ClickFix Mitigator"
+  },
+  "popupDetectionActive": {
+    "message": "Detection active"
+  },
+  "popupDetectionActiveHint": {
+    "message": "Monitors copy/paste lures and command patterns."
+  },
+  "popupAllowlistActive": {
+    "message": "Allowlist active"
+  },
+  "popupBlockAllHint": {
+    "message": "Prevents pages from writing to your clipboard."
+  },
+  "popupFamilySafeTitle": {
+    "message": "FamilySafe mode"
+  },
+  "popupFamilySafeHint": {
+    "message": "Blocks access with no bypass options."
+  },
+  "popupWhitelistTitle": {
+    "message": "Allowlist"
+  },
+  "popupWhitelistPlaceholder": {
+    "message": "example.com"
+  },
+  "popupAdd": {
+    "message": "Add"
+  },
+  "popupWhitelistEmpty": {
+    "message": "No domains in allowlist."
+  },
+  "popupRecentAlerts": {
+    "message": "Recent alerts"
+  },
+  "popupClearHistory": {
+    "message": "Clear history"
+  },
+  "popupClipboardTitle": {
+    "message": "Clipboard backups"
+  },
+  "popupClipboardEmpty": {
+    "message": "No clipboard backups."
+  },
+  "popupClipboardClear": {
+    "message": "Clear clipboard backups"
+  },
+  "popupClipboardCopy": {
+    "message": "Copy"
+  },
+  "popupClipboardCopied": {
+    "message": "Copied"
+  },
+  "popupReportTitle": {
+    "message": "Report malware or suspicious site"
+  },
+  "popupReportHint": {
+    "message": "Send a manual report to block a suspicious or malware domain."
+  },
+  "popupReportPlaceholder": {
+    "message": "https://example-site.com"
+  },
+  "popupReportButton": {
+    "message": "Report"
+  },
+  "popupReportStatusMissing": {
+    "message": "Enter a URL or use the current tab."
+  },
+  "popupReportStatusSent": {
+    "message": "Report sent: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "popupReportStatusInvalid": {
+    "message": "Invalid URL."
+  },
+  "popupReportStatusNoTab": {
+    "message": "Could not detect the active tab."
+  },
+  "popupOptionsLink": {
+    "message": "Advanced options"
+  },
+  "optionsTitle": {
+    "message": "Advanced options"
+  },
+  "optionsSubtitle": {
+    "message": "Configure detection behavior and review alert history."
+  },
+  "optionsStateTitle": {
+    "message": "Status"
+  },
+  "optionsBlockAllClipboard": {
+    "message": "Block all JavaScript clipboard copying"
+  },
+  "optionsFamilySafe": {
+    "message": "FamilySafe mode (no bypass)"
+  },
+  "optionsClipboardBackup": {
+    "message": "Keep previous clipboard backup"
+  },
+  "optionsSendCountry": {
+    "message": "Share country in reports"
+  },
+  "optionsDetectionScreenshots": {
+    "message": "Capture and send BEFORE/AFTER screenshot on ClickFix detection (optional)"
+  },
+  "optionsDetectionScreenshotsWarning": {
+    "message": "Not recommended if confidential information may be visible."
+  },
+  "optionsWhitelistTitle": {
+    "message": "Allowlist"
+  },
+  "optionsWhitelistAdd": {
+    "message": "Add domain"
+  },
+  "optionsBlocklistTitle": {
+    "message": "Additional blocklists"
+  },
+  "optionsBlocklistHint": {
+    "message": "Add ClickFix list URLs (one per list) to merge with the main list."
+  },
+  "optionsBlocklistPlaceholder": {
+    "message": "https://example.com/clickfixlist"
+  },
+  "optionsBlocklistAdd": {
+    "message": "Add list"
+  },
+  "optionsBlocklistEmpty": {
+    "message": "No additional lists."
+  },
+  "optionsAllowlistTitle": {
+    "message": "Additional allowlists"
+  },
+  "optionsAllowlistHint": {
+    "message": "Add allowlist URLs (one per list) to merge with the main list."
+  },
+  "optionsAllowlistPlaceholder": {
+    "message": "https://example.com/clickfixallowlist"
+  },
+  "optionsAllowlistAdd": {
+    "message": "Add list"
+  },
+  "optionsAllowlistEmpty": {
+    "message": "No additional lists."
+  },
+  "optionsHistoryTitle": {
+    "message": "Full history"
+  },
+  "historyClipboardOnly": {
+    "message": "Clipboard only"
+  },
+  "optionsHistoryEmpty": {
+    "message": "No recent alerts."
+  },
+  "optionsClearHistory": {
+    "message": "Clear history"
+  },
+  "optionsRemove": {
+    "message": "Remove"
+  },
+  "languageTitle": {
+    "message": "Language"
+  },
+  "languageEnglish": {
+    "message": "English"
+  },
+  "languageSpanish": {
+    "message": "Spanish"
+  },
+  "languageGerman": {
+    "message": "German"
+  },
+  "languageFrench": {
+    "message": "French"
+  },
+  "languageDutch": {
+    "message": "Dutch"
+  },
+  "languagePortuguese": {
+    "message": "Portuguese"
+  },
+  "languageRussian": {
+    "message": "Russian"
+  },
+  "languageChinese": {
+    "message": "Chinese"
+  },
+  "languageJapanese": {
+    "message": "Japanese"
+  },
+  "languageKorean": {
+    "message": "Korean"
+  },
+  "languageHebrew": {
+    "message": "Hebrew"
+  },
+  "languageArabic": {
+    "message": "Arabic"
+  },
+  "languageHindi": {
+    "message": "Hindi"
+  },
+  "languageCatalan": {
+    "message": "Catalan"
+  },
+  "themeTitle": {
+    "message": "Theme"
+  },
+  "themeSystem": {
+    "message": "System"
+  },
+  "themeLight": {
+    "message": "Light"
+  },
+  "themeDark": {
+    "message": "Dark"
+  },
+  "linksTitle": {
+    "message": "Links"
+  },
+  "linksGithub": {
+    "message": "GitHub"
+  },
+  "linksChromeWebStore": {
+    "message": "Chrome Web Store"
+  },
+  "popupMuteNotificationsTitle": {
+    "message": "Mute detection notifications"
+  },
+  "popupMuteNotificationsHint": {
+    "message": "Suppresses system alerts and detection banners."
+  },
+  "optionsMuteNotifications": {
+    "message": "Mute detection notifications"
+  },
+  "statsTitle": {
+    "message": "Statistics"
+  },
+  "statsSubtitle": {
+    "message": "Overview of detections and blocks."
+  },
+  "statsTotalAlerts": {
+    "message": "Total alerts"
+  },
+  "statsTotalBlocked": {
+    "message": "Total blocked"
+  },
+  "statsBlocklistCount": {
+    "message": "Sites in blocklist"
+  },
+  "statsAllowlistCount": {
+    "message": "Sites in allowlist"
+  },
+  "statsBlockedRate": {
+    "message": "Blocked rate"
+  },
+  "statsBlockedRateHint": {
+    "message": "Share of alerts that ended in a block."
+  },
+  "statsDetectionsChart": {
+    "message": "Detections chart"
+  },
+  "statsLast7Days": {
+    "message": "Last 7 days"
+  },
+  "popupReportReasonLabel": {
+    "message": "Reason (optional)"
+  },
+  "popupReportReasonPlaceholder": {
+    "message": "Short reason (e.g., fake captcha)"
+  },
+  "fullscreenExitPrompt": {
+    "message": "Fullscreen detected. Press Esc or F11 to exit fullscreen."
+  },
+  "fullscreenBlockedDetection": {
+    "message": "Fullscreen blocked because detections were found. Press Esc or F11 to exit fullscreen."
+  },
+  "scoreBreakdownSummary": {
+    "message": "Score breakdown: $1/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "scoreBreakdownWeights": {
+    "message": "Weights: $1",
+    "placeholders": {
+      "weights": {
+        "content": "$1"
+      }
+    }
+  },
+  "scoreBreakdownUnavailable": {
+    "message": "Not enough data for this component."
+  },
+  "scoreBreakdownNoFactors": {
+    "message": "No contributing factors detected."
+  },
+  "scoreComponentSignals": {
+    "message": "Signals"
+  },
+  "scoreComponentClipboard": {
+    "message": "Clipboard content"
+  },
+  "scoreComponentContext": {
+    "message": "Context"
+  },
+  "scoreSignalCommandMatch": {
+    "message": "Command pattern"
+  },
+  "scoreSignalShellHint": {
+    "message": "Shell execution hints"
+  },
+  "scoreSignalEvasionHint": {
+    "message": "Obfuscation / evasion"
+  },
+  "scoreSignalMismatch": {
+    "message": "Clipboard mismatch"
+  },
+  "scoreSignalClipboardWarning": {
+    "message": "Clipboard warning"
+  },
+  "scoreSignalWinR": {
+    "message": "Win + R prompt"
+  },
+  "scoreSignalWinX": {
+    "message": "Win + X prompt"
+  },
+  "scoreSignalWinXI": {
+    "message": "Win + X then I/Terminal"
+  },
+  "scoreSignalPasteSequence": {
+    "message": "Paste sequence"
+  },
+  "scoreSignalConsole": {
+    "message": "Console prompt"
+  },
+  "scoreSignalFileExplorer": {
+    "message": "File Explorer prompt"
+  },
+  "scoreSignalCopyTrigger": {
+    "message": "Copy trigger"
+  },
+  "scoreSignalBrowserError": {
+    "message": "Browser error prompt"
+  },
+  "scoreSignalFixAction": {
+    "message": "Fix action prompt"
+  },
+  "scoreSignalCaptcha": {
+    "message": "CAPTCHA prompt"
+  },
+  "scoreClipboardCommand": {
+    "message": "Command keywords"
+  },
+  "scoreClipboardExecutionHint": {
+    "message": "Execution hints"
+  },
+  "scoreClipboardUrl": {
+    "message": "Suspicious URL"
+  },
+  "scoreClipboardBase64": {
+    "message": "Base64 payload"
+  },
+  "scoreClipboardHighEntropy": {
+    "message": "High entropy"
+  },
+  "scoreClipboardShellMeta": {
+    "message": "Shell metacharacters"
+  },
+  "scoreClipboardLong": {
+    "message": "Unusually long text"
+  },
+  "scoreClipboardLeadingWhitespace": {
+    "message": "Leading whitespace"
+  },
+  "scoreClipboardLooksLikeCommand": {
+    "message": "Looks like a command"
+  },
+  "scoreContextAllowlisted": {
+    "message": "Allowlisted destination"
+  },
+  "scoreContextTrustedHost": {
+    "message": "Trusted host"
+  },
+  "scoreContextCodeContext": {
+    "message": "Code editor context"
+  },
+  "scoreContextIframe": {
+    "message": "Iframe context"
+  },
+  "scoreContextOpaqueIframes": {
+    "message": "Opaque iframes"
+  },
+  "scoreSettingsTitle": {
+    "message": "Scoring"
+  },
+  "scoreSettingsSubtitle": {
+    "message": "Adjust points and weights used to calculate confidence scores."
+  },
+  "scoreSettingsHint": {
+    "message": "Weights are normalized across available components."
+  },
+  "scoreSettingsSave": {
+    "message": "Save scoring"
+  },
+  "scoreSettingsReset": {
+    "message": "Reset defaults"
+  },
+  "scoreSettingsSaved": {
+    "message": "Scoring updated."
+  },
+  "scoreSettingsResetDone": {
+    "message": "Scoring reset to defaults."
+  },
+  "scoreWeightSignals": {
+    "message": "Signals weight"
+  },
+  "scoreWeightClipboard": {
+    "message": "Clipboard weight"
+  },
+  "scoreWeightContext": {
+    "message": "Context weight"
+  },
+  "scoreWeightUnit": {
+    "message": "%"
+  },
+  "scoreContextBaseTitle": {
+    "message": "Context base score"
+  },
+  "scorePointsUnit": {
+    "message": "pts"
+  },
+  "scoreGroupSignals": {
+    "message": "Signals rules"
+  },
+  "scoreGroupClipboard": {
+    "message": "Clipboard rules"
+  },
+  "scoreGroupContext": {
+    "message": "Context rules"
+  },
+  "scoreSettingsManagedByServer": {
+    "message": "Managed from server. Last sync: $1.",
+    "placeholders": {
+      "last_sync": {
+        "content": "$1"
+      }
+    }
+  },
+  "scoreSignalProgressive": {
+    "message": "Progressive escalation from continued detections"
+  },
+  "alertFilterTitle": {
+    "message": "Alert filter by color"
+  },
+  "alertFilterHint": {
+    "message": "Hide alerts below the selected color level."
+  },
+  "alertFilterGreen": {
+    "message": "Green and above"
+  },
+  "alertFilterYellow": {
+    "message": "Yellow and above"
+  },
+  "alertFilterOrange": {
+    "message": "Orange and above"
+  },
+  "alertFilterRed": {
+    "message": "Red only"
+  }
+}

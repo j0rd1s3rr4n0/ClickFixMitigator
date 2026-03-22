@@ -2,6 +2,13 @@
 
 All notable changes to the extension are documented in this file.
 
+## 0.4.10 - 2026-03-22
+- Added a Firefox-specific Manifest V3 package path with `background.scripts` instead of a Chrome-only service worker background.
+- Added `manifest.firefox.json` with `browser_specific_settings.gecko` metadata for Firefox distribution/review.
+- Added `build-firefox.ps1` to generate a staged Firefox build and `.xpi` package from the shared extension codebase.
+- Added a dedicated Firefox Android manifest/package path with `gecko_android` metadata and its own build script.
+- Updated extension docs with Firefox build, temporary install, and packaging instructions.
+
 ## 0.4.9 - 2026-03-09
 - Screenshot semantics update:
   - Extension now sends only `after` screenshot evidence for alert events.

@@ -1,0 +1,1 @@
+Store/package ready for Firefox Android. Zip the contents of this folder.

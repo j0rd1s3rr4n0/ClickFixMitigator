@@ -17,7 +17,8 @@
   ],
   "host_permissions": ["<all_urls>", "file:///*"],
   "background": {
-    "service_worker": "background.js"
+    "scripts": ["background.js"],
+    "type": "classic"
   },
   "action": {
     "default_popup": "ui/popup.html",
@@ -51,6 +52,15 @@
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "clickfixmitigator@jordiserrano.me",
+      "strict_min_version": "121.0",
+      "data_collection_permissions": {
+        "required": ["websiteActivity", "websiteContent"],
+        "optional": []
+      }
+    }
   }
-
 }

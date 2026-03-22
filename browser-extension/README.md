@@ -1,6 +1,6 @@
 # ClickFix Mitigator (Extension)
 
-Revision: 2026-03-12
+Revision: 2026-03-22
 
 Extension defensiva centrada en detectar flujos tipo ClickFix, alertar sobre indicios de interaccion de alto riesgo y reducir la probabilidad de ejecucion accidental.
 
@@ -8,6 +8,7 @@ Extension defensiva centrada en detectar flujos tipo ClickFix, alertar sobre ind
 
 - GitHub: https://github.com/j0rd1s3rr4n0/ClickFixMitigator
 - Chrome Web Store: https://chromewebstore.google.com/detail/clickfix-mitigator/nmldafmgfcfopjoigbmmlmcnininifaa
+- Firefox package: build locally with `browser-extension/build-firefox.ps1`
 - Politica de privacidad: ../PrivacyPolicy.md
 
 ## Funciones clave
@@ -41,6 +42,47 @@ La extension no se activa en:
 - Envia eventos a `clickfix-report.php`.
 - Recibe mensajeria administrada desde backend.
 - Triage/veredictos y evidencia se gestionan en `Web/ClickFix/dashboard.php`.
+
+## Firefox
+
+La base de codigo es la misma, pero Firefox usa un manifest propio para evitar depender de `service_worker` en el fondo.
+
+### Construir paquete Firefox
+
+```powershell
+cd browser-extension
+.\build-firefox.ps1
+```
+
+Salida esperada:
+
+- `browser-extension/dist/firefox/`
+- `browser-extension/dist/clickfix-mitigator-firefox-0.4.10.xpi`
+
+### Probar en Firefox
+
+1. Abre `about:debugging#/runtime/this-firefox`.
+2. Pulsa `Load Temporary Add-on`.
+3. Selecciona `browser-extension/dist/firefox/manifest.json`.
+
+### Publicacion en Mozilla Add-ons
+
+- Usa el paquete `.xpi` generado en `browser-extension/dist/`.
+- El manifest Firefox incluye `browser_specific_settings.gecko` y permisos de recopilacion declarados para el proceso de revision.
+
+### Construir paquete Firefox para Android
+
+```powershell
+cd browser-extension
+.\build-firefox-android.ps1
+```
+
+Salida esperada:
+
+- `browser-extension/dist/firefox-android/`
+- `browser-extension/dist/clickfix-mitigator-firefox-android-0.4.10.xpi`
+
+Este paquete declara `browser_specific_settings.gecko_android` para que AMO lo pueda marcar como compatible con Firefox para Android.
 
 ## Privacidad
 
