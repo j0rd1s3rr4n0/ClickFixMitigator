@@ -2,6 +2,18 @@
 
 All notable changes to the ClickFix Mitigator Windows Agent are documented in this file.
 
+## agent-2026-03-22-gui-alerts - 2026-03-22
+- Turned the desktop panel into the primary alert surface:
+  - Added a live alert banner in the main window.
+  - Added an in-panel alert feed for recent detections.
+  - Added a custom popup alert window owned by the agent GUI instead of relying on Windows notifications.
+- Expanded control actions in the GUI:
+  - Added `Exit agent` and `Minimize to tray` actions in the panel.
+  - Added direct `Open alerts` and `Restore clipboard` actions from the live alert area.
+- Extended settings management:
+  - Added panel-controlled toggles for `show_panel_on_start`, `open_panel_on_alert`, `use_system_notifications`, and `close_to_tray`.
+  - Default behavior now prefers the agent GUI and keeps Windows toasts disabled unless explicitly enabled.
+
 ## agent-2026-03-15-panel - 2026-03-15
 - Desktop control panel introduced:
   - Added a native control panel with logo/header, overview KPIs, alert trend chart, recent alerts, telemetry viewer, settings editor, and embedded terms tab.

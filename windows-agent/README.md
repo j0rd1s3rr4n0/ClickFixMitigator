@@ -1,7 +1,7 @@
 ﻿# Windows Agent - ClickFix Mitigator
 
-Revision: 2026-03-15
-Version: agent-2026-03-15-panel
+Revision: 2026-03-22
+Version: agent-2026-03-22-gui-alerts
 
 The Windows Agent is a separate desktop defensive application for ClickFix Mitigator. It is built for host-side visibility and intervention on Windows systems where clipboard abuse, guided execution, and suspicious paste-then-run flows need to be interrupted before execution.
 
@@ -23,6 +23,11 @@ Unlike the browser extension, the Windows Agent can inspect local execution cont
   - host telemetry view
   - settings editor
   - embedded agent terms view
+- Uses its own GUI alert surface:
+  - live alert banner in the console
+  - in-panel alert feed
+  - custom popup alerts owned by the app
+  - optional Windows toast notifications only if explicitly enabled
 - Stores local evidence for operational review in SQLite and JSON logs.
 
 ## Additional host telemetry
@@ -75,6 +80,9 @@ Key sections:
 - `hotkeys.*`: monitored sequences and restore shortcut
 - `telemetry.*`: SQLite/log paths and host snapshot interval
 - `ui.*`: desktop panel startup behavior and refresh interval
+- `ui.open_panel_on_alert`: bring the panel to front when a detection is raised
+- `ui.use_system_notifications`: optional fallback to Windows toast notifications
+- `ui.close_to_tray`: keep the app living in the tray when the window is closed/minimized
 - `consent.*`: required terms version, terms file path, acceptance state path
 
 ## Run
@@ -89,7 +97,7 @@ On startup the agent will:
 2. Start clipboard and hotkey monitoring.
 3. Start the desktop control panel.
 4. Collect periodic host telemetry snapshots.
-5. Expose tray actions for opening the panel, restoring blocked clipboard content, and exiting.
+5. Raise alerts through the agent GUI itself and expose tray actions for opening the panel, restoring blocked clipboard content, and exiting.
 
 ## Local storage
 

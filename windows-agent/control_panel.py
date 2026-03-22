@@ -1,8 +1,8 @@
-import json
+﻿import json
 import queue
 import threading
 from pathlib import Path
-from tkinter import Canvas, PhotoImage, StringVar, Tk
+from tkinter import BooleanVar, Canvas, PhotoImage, StringVar, Tk, Toplevel
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 from typing import Any, Dict, List
@@ -14,18 +14,26 @@ class AgentControlPanel:
         self.logo_path = logo_path
         self.terms_path = terms_path
         self.refresh_interval_ms = max(1000, int(refresh_interval_s * 1000))
-        self.command_queue: "queue.Queue[str]" = queue.Queue()
+        self.command_queue: "queue.Queue[Any]" = queue.Queue()
         self.thread: threading.Thread | None = None
         self.root: Tk | None = None
+        self.notebook = None
         self.alert_tree = None
         self.alert_detail = None
         self.telemetry_text = None
         self.terms_text = None
         self.trend_canvas = None
-        self.kpi_vars: Dict[str, StringVar] = {}
-        self.setting_vars: Dict[str, Any] = {}
+        self.telemetry_summary = None
+        self.alert_feed_text = None
         self.logo_image = None
         self.visible_on_start = True
+        self.alert_lookup: Dict[str, Dict[str, Any]] = {}
+        self.alert_history: List[Dict[str, Any]] = []
+        self.alert_popup: Toplevel | None = None
+        self.kpi_vars: Dict[str, StringVar] = {}
+        self.setting_vars: Dict[str, Any] = {}
+        self.setting_bool_vars: Dict[str, BooleanVar] = {}
+        self.alert_banner_var = StringVar(value="Defensive console active. Waiting for new alerts.")
 
     def start(self, show_on_start: bool = True) -> None:
         if self.thread and self.thread.is_alive():
@@ -41,11 +49,14 @@ class AgentControlPanel:
     def stop(self) -> None:
         self.command_queue.put("stop")
 
+    def push_alert(self, payload: Dict[str, Any]) -> None:
+        self.command_queue.put(("alert", payload))
+
     def _run(self) -> None:
         self.root = Tk()
         self.root.title("ClickFix Mitigator Agent")
-        self.root.geometry("1180x760")
-        self.root.minsize(980, 660)
+        self.root.geometry("1260x820")
+        self.root.minsize(1040, 720)
         self.root.configure(bg="#081019")
         self.root.protocol("WM_DELETE_WINDOW", self._hide_window)
         self._build_ui()
@@ -91,14 +102,33 @@ class AgentControlPanel:
         ttk.Label(hero, text="ClickFix Mitigator Agent", style="HeroTitle.TLabel").grid(row=0, column=1, sticky="w")
         ttk.Label(
             hero,
-            text="Desktop defensive panel for alerts, trends, settings, and host telemetry.",
+            text="Desktop defensive console for alerts, trends, settings, host telemetry, and operator actions.",
             style="HeroSub.TLabel",
         ).grid(row=1, column=1, sticky="w")
 
         actions = ttk.Frame(hero, style="Card.TFrame")
         actions.grid(row=0, column=2, rowspan=2, sticky="e")
-        ttk.Button(actions, text="Restore clipboard", command=self.controller.restore_last_clipboard).pack(side="right")
+        ttk.Button(actions, text="Exit agent", command=self.controller.stop).pack(side="right")
+        ttk.Button(actions, text="Minimize to tray", command=self._hide_window).pack(side="right", padx=(0, 8))
+        ttk.Button(actions, text="Restore clipboard", command=self.controller.restore_last_clipboard).pack(side="right", padx=(0, 8))
         ttk.Button(actions, text="Refresh now", command=self._refresh).pack(side="right", padx=(0, 8))
+
+        banner = ttk.Frame(shell, style="Card.TFrame", padding=(14, 10))
+        banner.pack(fill="x", pady=(8, 10))
+        ttk.Label(banner, text="Live alert console", style="CardTitle.TLabel").pack(anchor="w")
+        ttk.Label(
+            banner,
+            textvariable=self.alert_banner_var,
+            background="#0d1622",
+            foreground="#f4fbff",
+            wraplength=1080,
+            font=("Segoe UI", 10, "bold"),
+        ).pack(anchor="w", pady=(8, 10))
+        banner_actions = ttk.Frame(banner, style="Card.TFrame")
+        banner_actions.pack(fill="x")
+        ttk.Button(banner_actions, text="Open alerts", command=self._focus_alerts_tab).pack(side="left")
+        ttk.Button(banner_actions, text="Dismiss banner", command=self._dismiss_alert_banner).pack(side="left", padx=(8, 0))
+        ttk.Button(banner_actions, text="Restore clipboard", command=self.controller.restore_last_clipboard).pack(side="right")
 
         kpi_row = ttk.Frame(shell, style="Card.TFrame")
         kpi_row.pack(fill="x", pady=(8, 10))
@@ -116,6 +146,7 @@ class AgentControlPanel:
             ttk.Label(card, textvariable=var, font=("Segoe UI", 18, "bold"), background="#0d1622", foreground="#f5fbff").pack(anchor="w", pady=(8, 0))
 
         notebook = ttk.Notebook(shell)
+        self.notebook = notebook
         notebook.pack(fill="both", expand=True)
 
         overview = ttk.Frame(notebook, style="Card.TFrame", padding=12)
@@ -133,6 +164,12 @@ class AgentControlPanel:
         ttk.Label(overview, text="Alert trend", style="CardTitle.TLabel").pack(anchor="w")
         self.trend_canvas = Canvas(overview, height=250, bg="#09131d", highlightthickness=1, highlightbackground="#183146")
         self.trend_canvas.pack(fill="x", pady=(10, 14))
+
+        ttk.Label(overview, text="Recent in-panel alerts", style="CardTitle.TLabel").pack(anchor="w")
+        alert_feed = ScrolledText(overview, height=7, wrap="word", background="#0d1622", foreground="#dbeaf3", insertbackground="#dbeaf3")
+        alert_feed.pack(fill="x", pady=(8, 14))
+        alert_feed.configure(state="disabled")
+        self.alert_feed_text = alert_feed
 
         summary = ScrolledText(overview, height=12, wrap="word", background="#0d1622", foreground="#dbeaf3", insertbackground="#dbeaf3")
         summary.pack(fill="both", expand=True)
@@ -177,8 +214,27 @@ class AgentControlPanel:
             variable = StringVar(value="")
             self.setting_vars[key] = variable
             ttk.Entry(settings_form, textvariable=variable, width=42).grid(row=row, column=1, sticky="ew", pady=6)
+
+        bool_row = 6
+        for key, label in [
+            ("show_panel_on_start", "Show panel on start"),
+            ("open_panel_on_alert", "Bring panel to front on alert"),
+            ("use_system_notifications", "Enable Windows toast notifications"),
+            ("close_to_tray", "Close window to tray instead of stopping"),
+        ]:
+            variable = BooleanVar(value=False)
+            self.setting_bool_vars[key] = variable
+            ttk.Checkbutton(settings_form, variable=variable, text=label).grid(
+                row=bool_row, column=0, columnspan=2, sticky="w", pady=4
+            )
+            bool_row += 1
+
         settings_form.columnconfigure(1, weight=1)
-        ttk.Button(settings_form, text="Save settings", command=self._save_settings).grid(row=10, column=1, sticky="e", pady=(12, 0))
+        action_row = ttk.Frame(settings_form, style="Card.TFrame")
+        action_row.grid(row=bool_row + 1, column=0, columnspan=2, sticky="e", pady=(12, 0))
+        ttk.Button(action_row, text="Minimize to tray", command=self._hide_window).pack(side="left")
+        ttk.Button(action_row, text="Exit agent", command=self.controller.stop).pack(side="left", padx=(8, 0))
+        ttk.Button(action_row, text="Save settings", command=self._save_settings).pack(side="left", padx=(8, 0))
 
         terms_box = ScrolledText(terms, wrap="word", background="#0d1622", foreground="#dbeaf3", insertbackground="#dbeaf3")
         terms_box.pack(fill="both", expand=True)
@@ -196,6 +252,14 @@ class AgentControlPanel:
         if self.root is not None:
             self.root.withdraw()
 
+    def _dismiss_alert_banner(self) -> None:
+        self.alert_banner_var.set("Defensive console active. Waiting for new alerts.")
+
+    def _focus_alerts_tab(self) -> None:
+        if self.notebook is not None:
+            self.notebook.select(1)
+        self.open()
+
     def _process_commands(self) -> None:
         if self.root is None:
             return
@@ -204,13 +268,19 @@ class AgentControlPanel:
                 command = self.command_queue.get_nowait()
             except queue.Empty:
                 break
-            if command == "show":
+            action = command
+            payload = None
+            if isinstance(command, tuple) and len(command) == 2:
+                action, payload = command
+            if action == "show":
                 self.root.deiconify()
                 self.root.lift()
                 self.root.focus_force()
-            elif command == "stop":
+            elif action == "stop":
                 self.root.destroy()
                 return
+            elif action == "alert" and isinstance(payload, dict):
+                self._handle_alert(payload)
         self.root.after(300, self._process_commands)
 
     def _refresh(self) -> None:
@@ -219,6 +289,7 @@ class AgentControlPanel:
         snapshot = self.controller.get_ui_snapshot()
         self._render_kpis(snapshot)
         self._render_trend(snapshot)
+        self._render_alert_feed()
         self._render_summary(snapshot)
         self._render_alerts(snapshot)
         self._render_telemetry(snapshot)
@@ -252,6 +323,7 @@ class AgentControlPanel:
         for line in range(5):
             y = pad_y + (chart_h / 4) * line
             canvas.create_line(pad_x, y, width - pad_x, y, fill="#183146")
+
         def make_points(field: str) -> List[float]:
             points: List[float] = []
             for index, item in enumerate(trend):
@@ -260,12 +332,32 @@ class AgentControlPanel:
                 y = pad_y + chart_h - ((value / max_value) * chart_h)
                 points.extend([x, y])
             return points
+
         alert_points = make_points("alerts")
         block_points = make_points("blocks")
         if len(alert_points) >= 4:
             canvas.create_line(*alert_points, fill="#44d5ff", width=3, smooth=True)
         if len(block_points) >= 4:
             canvas.create_line(*block_points, fill="#78efb4", width=3, smooth=True)
+
+    def _render_alert_feed(self) -> None:
+        if self.alert_feed_text is None:
+            return
+        lines: List[str] = []
+        for item in self.alert_history[:8]:
+            lines.append(
+                f"[{item.get('received_at', '--')}] {item.get('action', '--')} | {item.get('process', '--')} | {item.get('reason', '--')}"
+            )
+            preview = str(item.get("preview", "")).strip()
+            if preview:
+                lines.append(f"  {preview}")
+            lines.append("")
+        if not lines:
+            lines = ["No in-panel alerts yet."]
+        self.alert_feed_text.configure(state="normal")
+        self.alert_feed_text.delete("1.0", "end")
+        self.alert_feed_text.insert("1.0", "\n".join(lines).strip())
+        self.alert_feed_text.configure(state="disabled")
 
     def _render_summary(self, snapshot: Dict[str, Any]) -> None:
         text = self.telemetry_summary
@@ -322,9 +414,12 @@ class AgentControlPanel:
     def _render_settings(self, snapshot: Dict[str, Any]) -> None:
         settings = snapshot.get("settings", {})
         sensitivity = settings.get("sensitivity", {})
+        ui = settings.get("ui", {})
         for key in self.setting_vars:
             if key in sensitivity:
                 self.setting_vars[key].set(str(sensitivity.get(key, "")))
+        for key in self.setting_bool_vars:
+            self.setting_bool_vars[key].set(bool(ui.get(key, False)))
 
     def _on_alert_selected(self, _event: Any) -> None:
         if self.alert_tree is None or self.alert_detail is None:
@@ -340,6 +435,71 @@ class AgentControlPanel:
 
     def _save_settings(self) -> None:
         updates = {key: value.get().strip() for key, value in self.setting_vars.items()}
+        for key, value in self.setting_bool_vars.items():
+            updates[key] = "1" if value.get() else "0"
         self.controller.save_settings(updates)
         self._refresh()
 
+    def _handle_alert(self, payload: Dict[str, Any]) -> None:
+        if self.root is None:
+            return
+        self.alert_history.insert(0, payload)
+        self.alert_history = self.alert_history[:30]
+        self.alert_banner_var.set(
+            f"{payload.get('action', 'Alert')} | {payload.get('reason', 'Suspicious activity detected')} | {payload.get('process', 'Unknown process')}"
+        )
+        self._render_alert_feed()
+        self._show_alert_popup(payload)
+
+    def _show_alert_popup(self, payload: Dict[str, Any]) -> None:
+        if self.root is None:
+            return
+        if self.alert_popup is not None:
+            try:
+                self.alert_popup.destroy()
+            except Exception:
+                pass
+            self.alert_popup = None
+
+        popup = Toplevel(self.root)
+        popup.title("ClickFix Mitigator Alert")
+        popup.configure(bg="#081019")
+        popup.attributes("-topmost", True)
+        popup.resizable(False, False)
+        popup.geometry("520x220+980+120")
+        popup.transient(self.root)
+
+        frame = ttk.Frame(popup, padding=14, style="Card.TFrame")
+        frame.pack(fill="both", expand=True)
+        ttk.Label(frame, text="Suspicious activity intercepted", style="CardTitle.TLabel").pack(anchor="w")
+        ttk.Label(
+            frame,
+            text=f"{payload.get('action', '--')} | {payload.get('reason', '--')}",
+            background="#0d1622",
+            foreground="#f4fbff",
+            wraplength=460,
+            font=("Segoe UI", 10, "bold"),
+        ).pack(anchor="w", pady=(8, 6))
+        ttk.Label(
+            frame,
+            text=f"Process: {payload.get('process', '--')} | Window: {payload.get('window', '--')}",
+            background="#0d1622",
+            foreground="#bcd2df",
+            wraplength=460,
+        ).pack(anchor="w")
+        ttk.Label(
+            frame,
+            text=str(payload.get("preview", "")),
+            background="#0d1622",
+            foreground="#dbeaf3",
+            wraplength=460,
+        ).pack(anchor="w", pady=(8, 10))
+
+        actions = ttk.Frame(frame, style="Card.TFrame")
+        actions.pack(fill="x")
+        ttk.Button(actions, text="Open alerts", command=lambda: [self._focus_alerts_tab(), popup.destroy()]).pack(side="left")
+        ttk.Button(actions, text="Restore clipboard", command=self.controller.restore_last_clipboard).pack(side="left", padx=(8, 0))
+        ttk.Button(actions, text="Dismiss", command=popup.destroy).pack(side="right")
+
+        self.alert_popup = popup
+        popup.after(12000, lambda: popup.winfo_exists() and popup.destroy())

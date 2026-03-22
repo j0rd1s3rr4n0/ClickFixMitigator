@@ -16,7 +16,6 @@ from typing import Any, Dict, Optional, Callable, Iterable, Tuple
 import psutil
 import win32gui
 import win32process
-from winotify import Notification
 import keyboard
 import pystray
 from PIL import Image, ImageDraw
@@ -27,7 +26,7 @@ from host_telemetry import collect_host_snapshot
 
 
 # ---- Build/version marker (to confirm you're running the right file) ----
-AGENT_VERSION = "agent-2026-03-15-panel"
+AGENT_VERSION = "agent-2026-03-22-gui-alerts"
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "config.json"
@@ -418,6 +417,9 @@ class ClipboardMonitor:
             refresh_interval_s=float(ui_cfg.get("refresh_interval_s", 3.0)),
         )
         self.show_panel_on_start = bool(ui_cfg.get("show_panel_on_start", True))
+        self.open_panel_on_alert = bool(ui_cfg.get("open_panel_on_alert", True))
+        self.use_system_notifications = bool(ui_cfg.get("use_system_notifications", False))
+        self.close_to_tray = bool(ui_cfg.get("close_to_tray", True))
         self.last_host_snapshot: Dict[str, object] = {}
         self.last_host_snapshot_lock = threading.Lock()
 
@@ -640,12 +642,20 @@ class ClipboardMonitor:
     def save_settings(self, updates: Dict[str, str]) -> None:
         numeric_float = {"clipboard_poll_interval_s", "run_sequence_timeout_s", "allow_timeout_s"}
         numeric_int = {"min_clipboard_length"}
+        boolean_keys = {"show_panel_on_start", "open_panel_on_alert", "use_system_notifications", "close_to_tray"}
         with self.config_lock:
             sensitivity = self.config.setdefault("sensitivity", {})
             if not isinstance(sensitivity, dict):
                 sensitivity = {}
                 self.config["sensitivity"] = sensitivity
+            ui = self.config.setdefault("ui", {})
+            if not isinstance(ui, dict):
+                ui = {}
+                self.config["ui"] = ui
             for key, raw_value in updates.items():
+                if key in boolean_keys:
+                    ui[key] = str(raw_value).strip() in {"1", "true", "yes", "on"}
+                    continue
                 if key not in sensitivity and key != "blocked_clipboard_placeholder":
                     continue
                 if key in numeric_float:
@@ -668,15 +678,27 @@ class ClipboardMonitor:
         self.blocked_placeholder = str(
             self.config.get("sensitivity", {}).get("blocked_clipboard_placeholder", self.blocked_placeholder)
         )
+        self.show_panel_on_start = bool(self.config.get("ui", {}).get("show_panel_on_start", self.show_panel_on_start))
+        self.open_panel_on_alert = bool(self.config.get("ui", {}).get("open_panel_on_alert", self.open_panel_on_alert))
+        self.use_system_notifications = bool(self.config.get("ui", {}).get("use_system_notifications", self.use_system_notifications))
+        self.close_to_tray = bool(self.config.get("ui", {}).get("close_to_tray", self.close_to_tray))
         self.telemetry.log_event("settings_update", {"updated_keys": sorted(updates.keys())})
 
     # ---------------- Alerts / UI ----------------
 
     def raise_alert(self, context: AlertContext) -> None:
         preview = safe_truncate(context.text, self.max_clipboard_preview)
+        payload = {
+            "received_at": utc_now_iso(),
+            "reason": context.reason,
+            "action": context.action,
+            "process": context.active_process,
+            "window": context.active_window,
+            "preview": preview,
+        }
         message = (
             f"Motivo: {context.reason}\n"
-            f"Acción: {context.action}\n"
+            f"Accion: {context.action}\n"
             f"Proceso: {context.active_process}\n"
             f"Ventana: {context.active_window}\n"
             f"Texto: {preview}"
@@ -691,24 +713,36 @@ class ClipboardMonitor:
         )
 
         try:
-            notification = Notification(
-                app_id=self.toast_app_id,
-                title="ClickFix Mitigator",
-                msg=message,
-                duration="short",
-            )
-            notification.show()
-            logging.debug("Toast notification shown")
+            self.panel.push_alert(payload)
+            if self.open_panel_on_alert:
+                self.panel.open()
         except Exception:
-            logging.exception("Failed to show toast notification; falling back to print")
+            logging.exception("Failed to push alert into control panel")
+
+        if self.use_system_notifications:
+            try:
+                from winotify import Notification
+
+                notification = Notification(
+                    app_id=self.toast_app_id,
+                    title="ClickFix Mitigator",
+                    msg=message,
+                    duration="short",
+                )
+                notification.show()
+                logging.debug("Toast notification shown")
+            except Exception:
+                logging.exception("Failed to show toast notification; falling back to print")
+                print("[ALERTA]", message)
+        else:
             print("[ALERTA]", message)
 
     def prompt_user_decision(self, reason: str, text: str) -> bool:
         message = (
-            "Se detectó un comando sospechoso.\n\n"
+            "Se detecto un comando sospechoso.\n\n"
             f"Motivo: {reason}\n"
             f"Texto: {safe_truncate(text, self.max_clipboard_preview)}\n\n"
-            "¿Permitir este comando?"
+            "Permitir este comando?"
         )
         logging.debug("Prompting user decision. reason=%s text_preview=%r", reason, text[:200])
 

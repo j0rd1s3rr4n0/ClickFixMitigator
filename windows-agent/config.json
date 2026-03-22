@@ -88,7 +88,10 @@
   },
   "ui": {
     "show_panel_on_start": true,
-    "refresh_interval_s": 3
+    "refresh_interval_s": 3,
+    "open_panel_on_alert": true,
+    "use_system_notifications": false,
+    "close_to_tray": true
   },
   "consent": {
     "required": true,
