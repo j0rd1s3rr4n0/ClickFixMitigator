@@ -214,9 +214,9 @@ const beforeCapturePromiseByTab = new Map();
 const TAB_SCRIPT_BLOCK_RULE_ID_BASE = 1_000_000;
 
 const COMMAND_REGEX =
-  /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|bash|sh|zsh|curl|wget|rundll32|regsvr32|msbuild|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic|explorer(\.exe)?|reg\s+add|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d)\b/i;
+  /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|bash|sh|zsh|curl|wget|rundll32|regsvr32|msbuild|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic|explorer(\.exe)?|reg\s+add|net\.exe\s+use|net\s+use|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d|n[\s^`]*e[\s^`]*t[\s^`]*\s+u[\s^`]*s[\s^`]*e)\b/i;
 const SHELL_HINT_REGEX =
-  /(invoke-webrequest|invoke-restmethod|\biwr\b|\birm\b|curl\s+|wget\s+|downloadstring|frombase64string|start-bitstransfer|add-mppreference|invoke-expression|\biex\b|\biex\s*\(|encodedcommand|\-enc\b|\-encodedcommand\b|\-e\b|powershell\s+\-|cmd\s+\/c|bash\s+\-c|sh\s+\-c|rundll32\s+[^\s,]+,[^\s]+|regsvr32\s+\/i|certutil\s+\-urlcache|bitsadmin\s+\/transfer)/i;
+  /(invoke-webrequest|invoke-restmethod|\biwr\b|\birm\b|curl\s+|wget\s+|downloadstring|frombase64string|start-bitstransfer|add-mppreference|invoke-expression|\biex\b|\biex\s*\(|encodedcommand|\-enc\b|\-encodedcommand\b|\-e\b|powershell\s+\-|cmd\s+\/c|bash\s+\-c|sh\s+\-c|rundll32\s+[^\s,]+,[^\s]+|regsvr32\s+\/i|certutil\s+\-urlcache|bitsadmin\s+\/transfer|net\.exe\s+use|net\s+use|net\s+use\s+\\\\)/i;
 const EVASION_REGEXES = [
   /\\x[0-9a-f]{2}/i,
   /\\u[0-9a-f]{4}/i,
@@ -2847,7 +2847,14 @@ async function handleDownloadCreated(downloadItem) {
     snippets,
     blockedClipboardText: "",
     detectedContent: risk.filename || risk.url,
-    fullContext: JSON.stringify({ downloadRisk: risk.signals, filename: risk.filename }),
+    fullContext: JSON.stringify({
+      downloadRisk: risk.signals,
+      filename: risk.filename,
+      download_filename: risk.filename,
+      download_url: risk.url,
+      download_host: risk.hostname,
+      download_path: String(downloadItem?.filename || "")
+    }),
     previousUrl: "",
     clipboardAnalysis: null,
     context: {
