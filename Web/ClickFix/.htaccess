@@ -1,0 +1,36 @@
+<FilesMatch "^\.env">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+<FilesMatch "\.(sqlite|sql|log|pem)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+<FilesMatch "^(clickfix-score-config(?:-premium)?\.json|access_requests\.ndjson)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^(?:clickfix-score-config(?:-premium)?\.json)$ - [F,L,NC]
+  RewriteRule ^data/.*\.ndjson$ - [F,L,NC]
+  RewriteRule ^(?:keys|data/(?:backups|sessions|logs))/ - [F,L,NC]
+</IfModule>

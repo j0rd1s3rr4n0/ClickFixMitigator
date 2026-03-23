@@ -70,93 +70,6 @@ function clickfix_dashboard_redact_sensitive(string $input): string
     return $value;
 }
 
-function clickfix_dashboard_public_metrics(array $metrics): array
-{
-    $publicMetrics = $metrics;
-    unset($publicMetrics['unique_users'], $publicMetrics['active_extension_clients_24h']);
-    $publicMetrics['countries_count'] = (int) ($publicMetrics['countries_count'] ?? 0);
-    $publicMetrics['pending_domains_outside_lists'] = (int) ($publicMetrics['pending_domains_outside_lists'] ?? 0);
-    $publicMetrics['block_rate'] = (float) ($publicMetrics['block_rate_24h'] ?? 0.0);
-
-    return $publicMetrics;
-}
-
-function clickfix_dashboard_geo_hint(): array
-{
-    $country = strtoupper(trim((string) ($_SERVER['HTTP_CF_IPCOUNTRY'] ?? '')));
-    if ($country === '' || $country === 'XX') {
-        $country = strtoupper(trim((string) ($_SERVER['HTTP_X_COUNTRY_CODE'] ?? '')));
-    }
-    if ($country === '') {
-        $country = strtoupper(trim((string) ($_SERVER['HTTP_GEOIP_COUNTRY_CODE'] ?? '')));
-    }
-    if ($country === '') {
-        $country = strtoupper(trim((string) ($_SERVER['HTTP_CLOUDFRONT_VIEWER_COUNTRY'] ?? '')));
-    }
-    $region = strtoupper(trim((string) ($_SERVER['HTTP_CF_REGION'] ?? $_SERVER['HTTP_X_REGION'] ?? $_SERVER['HTTP_GEOIP_REGION'] ?? '')));
-    $regionName = strtolower(trim((string) ($_SERVER['HTTP_CF_REGION_NAME'] ?? $_SERVER['HTTP_X_REGION_NAME'] ?? $_SERVER['HTTP_GEOIP_REGION_NAME'] ?? '')));
-    if ($country === '' && isset($_SESSION['clickfix_geo_context_lookup']) && is_array($_SESSION['clickfix_geo_context_lookup'])) {
-        $cached = $_SESSION['clickfix_geo_context_lookup'];
-        $country = strtoupper(trim((string) ($cached['countryCode'] ?? '')));
-        $region = strtoupper(trim((string) ($cached['region'] ?? '')));
-        $regionName = strtolower(trim((string) ($cached['regionName'] ?? '')));
-    }
-    if ($country === '') {
-        return [];
-    }
-    return [
-        'countryCode' => $country,
-        'region' => $region,
-        'regionName' => $regionName,
-    ];
-}
-
-function clickfix_dashboard_detect_geo_language(): string
-{
-    $geo = clickfix_dashboard_geo_hint();
-    if (empty($geo)) {
-        return '';
-    }
-    $countryCode = strtoupper(trim((string) ($geo['countryCode'] ?? '')));
-    $region = strtoupper(trim((string) ($geo['region'] ?? '')));
-    $regionName = strtolower(trim((string) ($geo['regionName'] ?? '')));
-    if ($countryCode === 'ES' && ($region === 'CT' || str_contains($regionName, 'catal'))) {
-        return 'ca';
-    }
-    if ($countryCode === 'ES') {
-        return 'es';
-    }
-    if ($countryCode === 'FR') {
-        return 'fr';
-    }
-    if ($countryCode === 'IT') {
-        return 'it';
-    }
-    if ($countryCode === 'DE') {
-        return 'de';
-    }
-    return '';
-}
-
-function clickfix_dashboard_detect_accept_language(): string
-{
-    $header = strtolower((string) ($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''));
-    if ($header === '') {
-        return '';
-    }
-    foreach (explode(',', $header) as $part) {
-        $code = trim(explode(';', $part)[0] ?? '');
-        if ($code === '') {
-            continue;
-        }
-        $base = substr($code, 0, 2);
-        if (in_array($base, ['es', 'ca', 'fr', 'de', 'it', 'en'], true)) {
-            return $base;
-        }
-    }
-    return '';
-}
-
 try {
     $pdo = clickfix_open_db(true);
 } catch (Throwable $exception) {
@@ -174,10 +87,8 @@ $redactSensitiveForViewer = $loggedIn
     && !clickfix_user_has_min_role($user, 'analyst_sr');
 $publicPages = ['home', 'search', 'about', 'coverage', 'access', 'investigation', 'profile'];
 $pageAccess = [
-    'settings' => 'analyst_jr',
     'ops' => 'analyst_jr',
     'analytics' => 'analyst_jr',
-    'intel_stats' => 'analyst_jr',
     'intel' => 'analyst_jr',
     'community' => 'analyst_jr',
     'extensions' => 'analyst_sr',
@@ -191,7 +102,7 @@ $pageAccess = [
 ];
 $privatePages = array_keys($pageAccess);
 $allPages = array_merge($publicPages, $privatePages);
-$langSupported = ['en', 'es', 'ca', 'de', 'fr', 'it'];
+$langSupported = ['en', 'es'];
 $langParam = strtolower(trim((string) ($_GET['lang'] ?? '')));
 if (!in_array($langParam, $langSupported, true)) {
     $langParam = '';
@@ -201,35 +112,16 @@ if ($langParam !== '') {
 }
 $lang = strtolower(trim((string) ($_SESSION['clickfix_lang'] ?? '')));
 if (!in_array($lang, $langSupported, true)) {
-    $lang = '';
-}
-if ($lang === '' && $loggedIn) {
-    $lang = clickfix_normalize_user_language((string) ($user['preferred_lang'] ?? 'en'));
+    $lang = $loggedIn ? clickfix_normalize_user_language((string) ($user['preferred_lang'] ?? 'en')) : 'en';
     if (!in_array($lang, $langSupported, true)) {
-        $lang = '';
+        $lang = 'en';
     }
+    $_SESSION['clickfix_lang'] = $lang;
 }
-if ($lang === '') {
-    $geoLang = clickfix_dashboard_detect_geo_language();
-    if ($geoLang !== '' && in_array($geoLang, $langSupported, true)) {
-        $lang = $geoLang;
-    }
-}
-if ($lang === '') {
-    $acceptLang = clickfix_dashboard_detect_accept_language();
-    if ($acceptLang !== '' && in_array($acceptLang, $langSupported, true)) {
-        $lang = $acceptLang;
-    }
-}
-if ($lang === '') {
-    $lang = 'en';
-}
-$_SESSION['clickfix_lang'] = $lang;
 $page = strtolower(trim((string) ($_GET['page'] ?? 'home')));
 if (!in_array($page, $allPages, true)) {
     $page = 'home';
 }
-$publicView = (string) ($_GET['public'] ?? '') === '1';
 $focusReportId = (int) ($_GET['report_id'] ?? 0);
 $postReturnPage = in_array($page, ['ops', 'home', 'search', 'analytics'], true) ? $page : 'ops';
 if (in_array($page, $privatePages, true) && !$loggedIn) {
@@ -258,15 +150,6 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
                 $sessionLang = 'en';
             }
             $_SESSION['clickfix_lang'] = $sessionLang;
-            clickfix_log_user_session_event(
-                $pdo,
-                (int) ($auth['id'] ?? 0),
-                (string) ($auth['username'] ?? ''),
-                'login',
-                $loginIp,
-                (string) ($_SERVER['HTTP_USER_AGENT'] ?? ''),
-                session_id()
-            );
             clickfix_flash('Sesion iniciada.');
             clickfix_redirect('dashboard.php?page=ops');
         }
@@ -274,18 +157,6 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         clickfix_redirect('dashboard.php?page=access&public=1');
     }
     if ($action === 'logout') {
-        $logoutUser = clickfix_current_user();
-        if ($logoutUser !== null) {
-            clickfix_log_user_session_event(
-                $pdo,
-                (int) ($logoutUser['id'] ?? 0),
-                (string) ($logoutUser['username'] ?? ''),
-                'logout',
-                clickfix_client_ip(),
-                (string) ($_SERVER['HTTP_USER_AGENT'] ?? ''),
-                session_id()
-            );
-        }
         unset($_SESSION['clickfix_user']);
         unset($_SESSION['clickfix_lang']);
         @session_regenerate_id(true);
@@ -297,14 +168,8 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         clickfix_redirect('dashboard.php?page=' . urlencode($page));
     }
     if ($action === 'request_access') {
-        $ok = clickfix_store_access_request(
-            $pdo,
-            (string) ($_POST['access_email'] ?? ''),
-            (string) ($_POST['request_lang'] ?? 'en'),
-            (string) ($_POST['access_linkedin'] ?? ''),
-            (string) ($_POST['company_website'] ?? '')
-        );
-        clickfix_flash($ok ? 'Solicitud enviada.' : 'No se pudo enviar la solicitud. Revisa el email y vuelve a intentarlo.');
+        clickfix_store_access_request($pdo, (string) ($_POST['access_email'] ?? ''), (string) ($_POST['request_lang'] ?? 'en'));
+        clickfix_flash('Solicitud enviada.');
         clickfix_redirect('dashboard.php?page=access&public=1');
     }
     if ($action === 'submit_appeal') {
@@ -330,10 +195,6 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
     $canCommunityReviewSenior = clickfix_user_has_min_role($actor, 'analyst_sr');
     $redactSensitiveForActor = clickfix_user_has_min_role($actor, 'analyst_jr')
         && !clickfix_user_has_min_role($actor, 'analyst_sr');
-    $apiReturnPage = strtolower(trim((string) ($_POST['return_page'] ?? '')));
-    if (!in_array($apiReturnPage, ['intel', 'settings'], true)) {
-        $apiReturnPage = $page === 'settings' ? 'settings' : 'intel';
-    }
 
     if ($action === 'user_self_update_lang') {
         $preferredLang = (string) ($_POST['self_lang'] ?? 'en');
@@ -341,32 +202,12 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         if ($ok) {
             clickfix_user_reload_session($pdo, $actorId);
             $nextLang = clickfix_normalize_user_language($preferredLang);
-            $_SESSION['clickfix_lang'] = in_array($nextLang, ['en', 'es', 'ca', 'de', 'fr'], true) ? $nextLang : 'en';
+            $_SESSION['clickfix_lang'] = in_array($nextLang, ['en', 'es'], true) ? $nextLang : 'en';
             clickfix_flash('Idioma por defecto actualizado.');
         } else {
             clickfix_flash('No se pudo actualizar el idioma por defecto.');
         }
-        clickfix_redirect('dashboard.php?page=settings');
-    }
-
-    if ($action === 'user_self_update_account') {
-        $preferredLang = (string) ($_POST['self_lang'] ?? 'en');
-        $okLang = clickfix_user_update_preferences($pdo, $actorId, $preferredLang);
-        $okProfile = clickfix_user_update_theme_avatar(
-            $pdo,
-            $actorId,
-            (string) ($_POST['self_theme'] ?? 'default'),
-            (string) ($_POST['self_avatar_url'] ?? '')
-        );
-        if ($okLang || $okProfile) {
-            clickfix_user_reload_session($pdo, $actorId);
-            $nextLang = clickfix_normalize_user_language($preferredLang);
-            $_SESSION['clickfix_lang'] = in_array($nextLang, ['en', 'es', 'ca', 'de', 'fr'], true) ? $nextLang : 'en';
-            clickfix_flash('Ajustes de cuenta actualizados.');
-        } else {
-            clickfix_flash('No se pudieron actualizar los ajustes de cuenta.');
-        }
-        clickfix_redirect('dashboard.php?page=settings');
+        clickfix_redirect('dashboard.php?page=access');
     }
 
     if ($action === 'user_self_change_password') {
@@ -376,8 +217,8 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             (string) ($_POST['self_current_password'] ?? ''),
             (string) ($_POST['self_new_password'] ?? '')
         );
-        clickfix_flash($ok ? 'Contraseña actualizada.' : 'No se pudo cambiar la contraseña (revisa tu clave actual y el minimo de 10 caracteres).');
-        clickfix_redirect('dashboard.php?page=settings');
+        clickfix_flash($ok ? 'Contrasena actualizada.' : 'No se pudo cambiar la contrasena (revisa tu clave actual y el minimo de 10 caracteres).');
+        clickfix_redirect('dashboard.php?page=access');
     }
 
     if ($action === 'user_self_profile_update') {
@@ -614,16 +455,10 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
                 $summary,
                 'auto, from-alert, clickfix',
                 ['nodes' => $graphNodes, 'edges' => $graphEdges],
-                clickfix_is_admin(),
-                $reportId
+                clickfix_is_admin()
             );
             if ($savedId !== null) {
-                $queuedJobId = clickfix_investigation_enqueue_alert_correlation($pdo, (int) $savedId, $reportId, $actorId, 4);
-                if ($queuedJobId !== null) {
-                    clickfix_flash('Investigacion creada desde alerta #' . $reportId . ' y correlacion encolada (#' . $queuedJobId . ').');
-                } else {
-                    clickfix_flash('Investigacion creada desde alerta #' . $reportId . '. No se pudo encolar la correlacion automatica.');
-                }
+                clickfix_flash('Investigacion creada desde alerta #' . $reportId . '.');
                 clickfix_redirect('dashboard.php?page=intel&graph_id=' . $savedId);
             }
             clickfix_flash('No se pudo crear la investigacion automatica.');
@@ -675,11 +510,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage));
         }
         $ok = clickfix_update_report_review($pdo, $reportId, $status, $actorId);
-        if ($ok && $status === 'accepted') {
-            clickfix_flash('Revision actualizada. El dominio ha quedado bloqueado automaticamente si era valido.');
-        } else {
-            clickfix_flash($ok ? 'Revision actualizada.' : 'No hubo cambios en la revision (verifica el evento y el estado).');
-        }
+        clickfix_flash($ok ? 'Revision actualizada.' : 'No hubo cambios en la revision (verifica el evento y el estado).');
         clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage) . '&report_id=' . $reportId);
     }
     if ($action === 'review_bulk') {
@@ -716,11 +547,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         }
         $totalCount = count($reportIds);
         $failedCount = max(0, $totalCount - $updatedCount);
-        $bulkMessage = 'Revision masiva aplicada: ' . $updatedCount . '/' . $totalCount . ($failedCount > 0 ? (' (' . $failedCount . ' sin cambios)') : '') . '.';
-        if ($status === 'accepted' && $updatedCount > 0) {
-            $bulkMessage .= ' Los dominios aceptados se han bloqueado automaticamente cuando eran validos.';
-        }
-        clickfix_flash($bulkMessage);
+        clickfix_flash('Revision masiva aplicada: ' . $updatedCount . '/' . $totalCount . ($failedCount > 0 ? (' (' . $failedCount . ' sin cambios)') : '') . '.');
         clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage));
     }
     if ($action === 'appeal_status') {
@@ -808,22 +635,6 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         }
         $ok = clickfix_scan_swap_before_after($pdo, $reportId, $actorId);
         clickfix_flash($ok ? 'Capturas before/after intercambiadas.' : 'No se pudieron intercambiar las capturas.');
-        clickfix_redirect('dashboard.php?page=' . urlencode($returnPage));
-    }
-    if ($action === 'scan_image_assign') {
-        if (!$canManageReports) {
-            clickfix_flash('Permisos insuficientes para reasignar capturas.');
-            clickfix_redirect('dashboard.php?page=ops');
-        }
-        $reportId = (int) ($_POST['scan_report_id'] ?? 0);
-        $sourceKind = (string) ($_POST['scan_source_kind'] ?? '');
-        $targetKind = (string) ($_POST['scan_target_kind'] ?? '');
-        $returnPage = strtolower(trim((string) ($_POST['return_page'] ?? 'home')));
-        if (!in_array($returnPage, ['home', 'analytics', 'ops', 'search'], true)) {
-            $returnPage = 'home';
-        }
-        $ok = clickfix_scan_assign_kind($pdo, $reportId, $sourceKind, $targetKind, $actorId, true);
-        clickfix_flash($ok ? 'Captura reasignada correctamente a ' . strtoupper($targetKind) . '.' : 'No se pudo reasignar la captura.');
         clickfix_redirect('dashboard.php?page=' . urlencode($returnPage));
     }
     if ($action === 'scan_image_upload') {
@@ -1015,74 +826,6 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         clickfix_flash($ok ? 'Configuracion de score guardada.' : ('Error al guardar configuracion: ' . (string) $error));
         clickfix_redirect('dashboard.php?page=configs');
     }
-    if ($action === 'internal_ad_settings_save') {
-        if (!$canManageConfigs) {
-            clickfix_flash('Permisos insuficientes: requiere Administrador.');
-            clickfix_redirect('dashboard.php?page=ops');
-        }
-        $ok = clickfix_internal_ad_settings_save($pdo, [
-            'enabled_global' => ((string) ($_POST['ads_enabled_global'] ?? '0')) === '1',
-            'show_guest' => ((string) ($_POST['ads_show_guest'] ?? '0')) === '1',
-            'show_analyst_jr' => ((string) ($_POST['ads_show_analyst_jr'] ?? '0')) === '1',
-            'show_analyst_mid' => ((string) ($_POST['ads_show_analyst_mid'] ?? '0')) === '1',
-            'show_analyst_sr' => ((string) ($_POST['ads_show_analyst_sr'] ?? '0')) === '1',
-            'show_admin' => ((string) ($_POST['ads_show_admin'] ?? '0')) === '1',
-        ], $actorId);
-        clickfix_flash($ok ? 'Politica global de anuncios actualizada.' : 'No se pudo guardar la politica global de anuncios.');
-        clickfix_redirect('dashboard.php?page=configs');
-    }
-    if ($action === 'internal_ad_save') {
-        if (!$canManageConfigs) {
-            clickfix_flash('Permisos insuficientes: requiere Administrador.');
-            clickfix_redirect('dashboard.php?page=ops');
-        }
-        $ok = clickfix_internal_ad_save($pdo, [
-            'title' => (string) ($_POST['ad_title'] ?? ''),
-            'body' => (string) ($_POST['ad_body'] ?? ''),
-            'cta_label' => (string) ($_POST['ad_cta_label'] ?? ''),
-            'cta_url' => (string) ($_POST['ad_cta_url'] ?? ''),
-            'placement' => (string) ($_POST['ad_placement'] ?? 'both'),
-            'theme' => (string) ($_POST['ad_theme'] ?? 'cyan'),
-            'priority' => (int) ($_POST['ad_priority'] ?? 100),
-            'starts_at' => (string) ($_POST['ad_starts_at'] ?? ''),
-            'expires_at' => (string) ($_POST['ad_expires_at'] ?? ''),
-            'active' => ((string) ($_POST['ad_active'] ?? '1')) === '1',
-            'target_guest' => ((string) ($_POST['ad_target_guest'] ?? '0')) === '1',
-            'target_analyst_jr' => ((string) ($_POST['ad_target_analyst_jr'] ?? '0')) === '1',
-            'target_analyst_mid' => ((string) ($_POST['ad_target_analyst_mid'] ?? '0')) === '1',
-            'target_analyst_sr' => ((string) ($_POST['ad_target_analyst_sr'] ?? '0')) === '1',
-            'target_admin' => ((string) ($_POST['ad_target_admin'] ?? '0')) === '1',
-        ], $actorId);
-        clickfix_flash($ok ? 'Anuncio guardado.' : 'No se pudo guardar el anuncio. Revisa titulo, contenido, URL o targets.');
-        clickfix_redirect('dashboard.php?page=configs');
-    }
-    if ($action === 'internal_ad_toggle') {
-        if (!$canManageConfigs) {
-            clickfix_flash('Permisos insuficientes: requiere Administrador.');
-            clickfix_redirect('dashboard.php?page=ops');
-        }
-        $ok = clickfix_internal_ad_toggle($pdo, (int) ($_POST['ad_id'] ?? 0), ((string) ($_POST['ad_active'] ?? '0')) === '1');
-        clickfix_flash($ok ? 'Estado del anuncio actualizado.' : 'No se pudo actualizar el estado del anuncio.');
-        clickfix_redirect('dashboard.php?page=configs');
-    }
-    if ($action === 'internal_ad_delete') {
-        if (!$canManageConfigs) {
-            clickfix_flash('Permisos insuficientes: requiere Administrador.');
-            clickfix_redirect('dashboard.php?page=ops');
-        }
-        $ok = clickfix_internal_ad_delete($pdo, (int) ($_POST['ad_id'] ?? 0));
-        clickfix_flash($ok ? 'Anuncio eliminado.' : 'No se pudo eliminar el anuncio.');
-        clickfix_redirect('dashboard.php?page=configs');
-    }
-    if ($action === 'internal_ads_seed_test') {
-        if (!$canManageConfigs) {
-            clickfix_flash('Permisos insuficientes: requiere Administrador.');
-            clickfix_redirect('dashboard.php?page=ops');
-        }
-        $created = clickfix_internal_ads_seed_test($pdo, $actorId, true);
-        clickfix_flash('Anuncios de test generados: ' . (int) $created . '.');
-        clickfix_redirect('dashboard.php?page=configs');
-    }
     if ($action === 'report_schedule_save') {
         if (!$canManageReports) {
             clickfix_flash('Permisos insuficientes: requiere Administrador.');
@@ -1164,27 +907,6 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         }
         clickfix_redirect('dashboard.php?page=intel');
     }
-    if ($action === 'investigation_home_feature') {
-        if (!$canManageConfigs) {
-            clickfix_flash('Permisos insuficientes: requiere Administrador.');
-            clickfix_redirect('dashboard.php?page=intel');
-        }
-        $graphId = (int) ($_POST['graph_id'] ?? 0);
-        $showOnHome = ((string) ($_POST['show_on_home'] ?? '0')) === '1';
-        $homePosition = (int) ($_POST['home_position'] ?? 0);
-        $sourceReportId = (int) ($_POST['source_report_id'] ?? 0);
-        $ok = clickfix_investigation_set_home_feature(
-            $pdo,
-            $graphId,
-            $actorId,
-            $showOnHome,
-            $homePosition,
-            $sourceReportId,
-            true
-        );
-        clickfix_flash($ok ? 'Configuracion de Inicio actualizada.' : 'No se pudo actualizar la configuracion de Inicio.');
-        clickfix_redirect('dashboard.php?page=intel&graph_id=' . max(0, $graphId));
-    }
     if ($action === 'investigation_share') {
         if (!clickfix_user_has_min_role($actor, 'analyst_jr')) {
             clickfix_flash('Permisos insuficientes para compartir investigaciones.');
@@ -1219,8 +941,8 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         $note = (string) ($_POST['api_note'] ?? '');
         $ok = clickfix_user_api_key_upsert($pdo, $actorId, $provider, $apiKey, $note);
         clickfix_flash($ok ? 'API key guardada para tu usuario.' : 'No se pudo guardar la API key (proveedor o clave invalida).');
-        $redirect = 'dashboard.php?page=' . urlencode($apiReturnPage);
-        if ($apiReturnPage === 'intel' && $graphId > 0) {
+        $redirect = 'dashboard.php?page=intel';
+        if ($graphId > 0) {
             $redirect .= '&graph_id=' . $graphId;
         }
         clickfix_redirect($redirect);
@@ -1234,8 +956,8 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         $provider = (string) ($_POST['provider'] ?? '');
         $ok = clickfix_user_api_key_delete($pdo, $actorId, $provider);
         clickfix_flash($ok ? 'API key eliminada para tu usuario.' : 'No se pudo eliminar la API key.');
-        $redirect = 'dashboard.php?page=' . urlencode($apiReturnPage);
-        if ($apiReturnPage === 'intel' && $graphId > 0) {
+        $redirect = 'dashboard.php?page=intel';
+        if ($graphId > 0) {
             $redirect .= '&graph_id=' . $graphId;
         }
         clickfix_redirect($redirect);
@@ -1266,8 +988,8 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         } else {
             clickfix_flash('No se pudo crear la API key de plataforma. Verifica permisos o configuracion.');
         }
-        $redirect = 'dashboard.php?page=' . urlencode($apiReturnPage);
-        if ($apiReturnPage === 'intel' && $graphId > 0) {
+        $redirect = 'dashboard.php?page=intel';
+        if ($graphId > 0) {
             $redirect .= '&graph_id=' . $graphId;
         }
         clickfix_redirect($redirect);
@@ -1281,8 +1003,8 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         $keyId = (int) ($_POST['platform_api_key_id'] ?? 0);
         $ok = clickfix_user_platform_api_key_revoke($pdo, $actorId, $keyId);
         clickfix_flash($ok ? 'API key de plataforma revocada.' : 'No se pudo revocar la API key de plataforma.');
-        $redirect = 'dashboard.php?page=' . urlencode($apiReturnPage);
-        if ($apiReturnPage === 'intel' && $graphId > 0) {
+        $redirect = 'dashboard.php?page=intel';
+        if ($graphId > 0) {
             $redirect .= '&graph_id=' . $graphId;
         }
         clickfix_redirect($redirect);
@@ -1297,12 +1019,9 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         $target = (string) ($_POST['lookup_target'] ?? '');
         $apiKey = clickfix_user_api_key_value($pdo, $actorId, $provider);
         if ($apiKey === '') {
-            $apiKey = clickfix_provider_service_api_key($provider);
-        }
-        if ($apiKey === '') {
-            clickfix_flash('No hay credencial activa para ese proveedor.');
-            $redirect = 'dashboard.php?page=' . urlencode($apiReturnPage);
-            if ($apiReturnPage === 'intel' && $graphId > 0) {
+            clickfix_flash('No tienes API key activa para ese proveedor.');
+            $redirect = 'dashboard.php?page=intel';
+            if ($graphId > 0) {
                 $redirect .= '&graph_id=' . $graphId;
             }
             clickfix_redirect($redirect);
@@ -1330,170 +1049,13 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             $responseJson
         );
         if (!empty($lookup['ok'])) {
-            clickfix_flash($lookupStored ? 'Consulta de proveedor completada y guardada en historial.' : 'Consulta de proveedor completada (no se pudo guardar historial).');
+            clickfix_flash($lookupStored ? 'Consulta API completada y guardada en historial.' : 'Consulta API completada (no se pudo guardar historial).');
         } else {
             $baseError = (string) ($lookup['error'] ?? 'error');
-            clickfix_flash($lookupStored ? ('Consulta de proveedor sin exito: ' . $baseError . ' (guardada en historial).') : ('Consulta de proveedor sin exito: ' . $baseError));
+            clickfix_flash($lookupStored ? ('Consulta API sin exito: ' . $baseError . ' (guardada en historial).') : ('Consulta API sin exito: ' . $baseError));
         }
-        $redirect = 'dashboard.php?page=' . urlencode($apiReturnPage);
-        if ($apiReturnPage === 'intel' && $graphId > 0) {
-            $redirect .= '&graph_id=' . $graphId;
-        }
-        clickfix_redirect($redirect);
-    }
-    if ($action === 'investigation_ioc_workbench') {
-        if (!clickfix_user_has_min_role($actor, 'analyst_jr')) {
-            clickfix_flash('Permisos insuficientes para enrichment de investigacion.');
-            clickfix_redirect('dashboard.php?page=home&public=1');
-        }
-        $graphId = (int) ($_POST['graph_id'] ?? 0);
-        $inputRaw = trim((string) ($_POST['ioc_intake_text'] ?? ''));
-        $inputRaw = substr($inputRaw, 0, 40000);
-        if ($inputRaw === '') {
-            clickfix_flash('Pega texto, HTML, comandos o IOCs antes de procesar el intake.');
-            $redirect = 'dashboard.php?page=' . urlencode($apiReturnPage);
-            if ($apiReturnPage === 'intel' && $graphId > 0) {
-                $redirect .= '&graph_id=' . $graphId;
-            }
-            clickfix_redirect($redirect);
-        }
-
-        $providers = array_values(array_unique(array_filter(array_map(
-            'clickfix_normalize_user_api_provider',
-            is_array($_POST['batch_providers'] ?? null) ? (array) $_POST['batch_providers'] : []
-        ))));
-        $refanged = cfintel_refang_text($inputRaw);
-        $artifacts = cfintel_extract_artifacts_from_text($inputRaw);
-        $artifactCounts = [];
-        foreach (cfintel_artifact_types() as $artifactType) {
-            $artifactCounts[$artifactType] = 0;
-        }
-        foreach ($artifacts as $artifactRow) {
-            $artifactType = (string) ($artifactRow['type'] ?? '');
-            if (isset($artifactCounts[$artifactType])) {
-                $artifactCounts[$artifactType]++;
-            }
-        }
-
-        $decodeResults = [];
-        $decodeSeen = [];
-        $decodeCandidates = array_merge(
-            [$inputRaw, $refanged],
-            array_map(static function (array $row): string {
-                return (string) ($row['value'] ?? '');
-            }, $artifacts)
-        );
-        foreach ($decodeCandidates as $candidate) {
-            $candidate = trim((string) $candidate);
-            if ($candidate === '') {
-                continue;
-            }
-            $decodeKey = strtolower($candidate);
-            if (isset($decodeSeen[$decodeKey])) {
-                continue;
-            }
-            $decodeSeen[$decodeKey] = true;
-            $decoded = cfintel_decode_value($candidate);
-            if (!empty($decoded)) {
-                $decodeResults[] = [
-                    'input' => $candidate,
-                    'decoded' => $decoded,
-                ];
-            }
-            if (count($decodeResults) >= 12) {
-                break;
-            }
-        }
-
-        $providerReadyTargets = [];
-        $providerSeen = [];
-        foreach ($artifacts as $artifactRow) {
-            $type = (string) ($artifactRow['type'] ?? '');
-            $value = trim((string) ($artifactRow['value'] ?? ''));
-            if ($value === '' || !in_array($type, ['domain', 'ip', 'url'], true)) {
-                continue;
-            }
-            $key = $type . '|' . strtolower($value);
-            if (isset($providerSeen[$key])) {
-                continue;
-            }
-            $providerSeen[$key] = true;
-            $providerReadyTargets[] = ['type' => $type, 'value' => $value];
-            if (count($providerReadyTargets) >= 15) {
-                break;
-            }
-        }
-
-        $batchResults = [];
-        $batchCount = 0;
-        foreach ($providers as $provider) {
-            $apiKey = clickfix_user_api_key_value($pdo, $actorId, $provider);
-            if ($apiKey === '') {
-                $apiKey = clickfix_provider_service_api_key($provider);
-            }
-            foreach ($providerReadyTargets as $targetRow) {
-                $targetType = (string) ($targetRow['type'] ?? '');
-                $targetValue = (string) ($targetRow['value'] ?? '');
-                $providerAllowed =
-                    $provider === 'virustotal'
-                    || ($provider === 'abuseipdb' && in_array($targetType, ['domain', 'ip'], true))
-                    || ($provider === 'urlscan' && in_array($targetType, ['domain', 'url'], true))
-                    || ($provider === 'threatrip' && $targetType === 'sha256');
-                if (!$providerAllowed) {
-                    continue;
-                }
-                if ($apiKey === '') {
-                    $batchResults[] = [
-                        'provider' => $provider,
-                        'target' => $targetValue,
-                        'target_type' => $targetType,
-                        'ok' => false,
-                        'status' => 0,
-                        'error' => 'No hay credencial activa para ese proveedor.',
-                        'summary' => [],
-                    ];
-                    continue;
-                }
-                $lookup = clickfix_user_api_lookup($provider, $apiKey, $targetValue);
-                $responseJson = clickfix_intel_pretty_json($lookup['response'] ?? '', 120000);
-                clickfix_investigation_api_lookup_store(
-                    $pdo,
-                    $actorId,
-                    $graphId,
-                    $lookup,
-                    $responseJson
-                );
-                $batchResults[] = [
-                    'provider' => (string) ($lookup['provider'] ?? $provider),
-                    'target' => (string) ($lookup['target'] ?? $targetValue),
-                    'target_type' => $targetType,
-                    'ok' => !empty($lookup['ok']),
-                    'status' => (int) ($lookup['status'] ?? 0),
-                    'error' => (string) ($lookup['error'] ?? ''),
-                    'summary' => is_array($lookup['summary'] ?? null) ? $lookup['summary'] : [],
-                ];
-                $batchCount++;
-            }
-        }
-
-        if (!isset($_SESSION['clickfix_intel_workbench']) || !is_array($_SESSION['clickfix_intel_workbench'])) {
-            $_SESSION['clickfix_intel_workbench'] = [];
-        }
-        $_SESSION['clickfix_intel_workbench'][$actorId] = [
-            'captured_at' => gmdate('c'),
-            'input' => $inputRaw,
-            'refanged' => $refanged,
-            'artifact_counts' => $artifactCounts,
-            'artifacts' => $artifacts,
-            'decoded' => $decodeResults,
-            'batch_results' => $batchResults,
-        ];
-
-        $artifactTotal = array_sum($artifactCounts);
-        $decodeCount = count($decodeResults);
-        clickfix_flash('IOC intake procesado: ' . $artifactTotal . ' artefactos, ' . $decodeCount . ' decodificaciones y ' . $batchCount . ' consultas batch.');
-        $redirect = 'dashboard.php?page=' . urlencode($apiReturnPage);
-        if ($apiReturnPage === 'intel' && $graphId > 0) {
+        $redirect = 'dashboard.php?page=intel';
+        if ($graphId > 0) {
             $redirect .= '&graph_id=' . $graphId;
         }
         clickfix_redirect($redirect);
@@ -1538,7 +1100,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         if ($updated && (int) ($_POST['edit_user_id'] ?? 0) === $actorId) {
             clickfix_user_reload_session($pdo, $actorId);
             $selfLang = clickfix_normalize_user_language((string) ($_POST['edit_lang'] ?? 'en'));
-            if (in_array($selfLang, ['en', 'es', 'ca', 'de', 'fr'], true)) {
+            if (in_array($selfLang, ['en', 'es'], true)) {
                 $_SESSION['clickfix_lang'] = $selfLang;
             }
         }
@@ -1551,11 +1113,10 @@ $metrics = clickfix_live_metrics($pdo);
 $format = strtolower(trim((string) ($_GET['format'] ?? '')));
 if ($format === 'live' || $format === 'json') {
     $includeRecent = $format === 'json' || (($_GET['include_recent'] ?? '') === '1');
-    $responseMetrics = $publicView ? clickfix_dashboard_public_metrics($metrics) : $metrics;
     $payload = [
         'status' => 'ok',
         'generated_at' => gmdate('c'),
-        'stats' => $responseMetrics,
+        'stats' => $metrics,
     ];
     $publicPreview = clickfix_public_preview_payload($pdo, 14, 8);
     if (!empty($publicPreview['charts']) && is_array($publicPreview['charts'])) {
@@ -1565,21 +1126,6 @@ if ($format === 'live' || $format === 'json') {
         $payload['recent_domains'] = $publicPreview['recent_domains'];
     } else {
         $payload['recent_domains'] = [];
-    }
-    if (!empty($publicPreview['geo_points']) && is_array($publicPreview['geo_points'])) {
-        $payload['geo_points'] = $publicPreview['geo_points'];
-    } else {
-        $payload['geo_points'] = [];
-    }
-    if (!empty($publicPreview['geo_points_alerts']) && is_array($publicPreview['geo_points_alerts'])) {
-        $payload['geo_points_alerts'] = $publicPreview['geo_points_alerts'];
-    } else {
-        $payload['geo_points_alerts'] = $payload['geo_points'];
-    }
-    if (!empty($publicPreview['geo_points_domains']) && is_array($publicPreview['geo_points_domains'])) {
-        $payload['geo_points_domains'] = $publicPreview['geo_points_domains'];
-    } else {
-        $payload['geo_points_domains'] = [];
     }
     if ($includeRecent) {
         $recentRows = clickfix_recent_reports($pdo, 20);
@@ -1644,7 +1190,7 @@ if ($format === 'related_reports') {
     }
     $canSrForRelated = clickfix_user_has_min_role($user, 'analyst_sr');
     $sourceHost = clickfix_normalize_domain((string) ($sourceReport['hostname'] ?? ''));
-    $sourceIp = $canSrForRelated ? clickfix_hostname_web_ip($pdo, $sourceHost, true) : '';
+    $sourceIp = $canSrForRelated ? trim((string) ($sourceReport['ip'] ?? '')) : '';
     $relatedRows = clickfix_related_reports($pdo, $reportId, $sourceHost, $sourceIp, 30);
     if ($redactSensitiveForViewer) {
         $relatedRows = array_map(static function (array $row): array {
@@ -1670,7 +1216,7 @@ if ($format === 'related_reports') {
             'activity_at' => (string) (($row['last_seen'] ?? '') !== '' ? ($row['last_seen'] ?? '') : ($row['received_at'] ?? '')),
             'hostname' => (string) ($row['hostname'] ?? ''),
             'url' => (string) ($row['url'] ?? ''),
-            'ip' => $canSrForRelated ? (string) ($row['web_ip'] ?? '') : '',
+            'ip' => $canSrForRelated ? (string) ($row['ip'] ?? '') : '',
             'score_total' => isset($row['score_total']) ? (int) $row['score_total'] : 0,
             'review_status' => (string) ($row['review_status'] ?? 'pending'),
             'blocked' => !empty($row['blocked']),
@@ -1717,12 +1263,7 @@ $pageNeedsReportPreview = $canAdminViewer && $page === 'reports';
 $pageNeedsScanReviewQueue = $canAdminViewer && $page === 'home';
 $pageNeedsPendingOutsideData = $loggedIn && clickfix_user_has_min_role($user, 'analyst_jr') && in_array($page, ['home', 'analytics', 'lists'], true);
 $pageNeedsAnomalyData = $loggedIn && clickfix_user_has_min_role($user, 'analyst_jr') && in_array($page, ['home', 'analytics'], true);
-$pageNeedsProjectExposure = $canSrViewer && in_array($page, ['home', 'analytics'], true);
 $pageNeedsVtReportedStats = $loggedIn && clickfix_user_has_min_role($user, 'analyst_jr') && $page === 'intel';
-$pageNeedsApiSettings = $loggedIn && clickfix_user_has_min_role($user, 'analyst_jr') && in_array($page, ['intel', 'settings'], true);
-$pageNeedsIntelStats = $loggedIn && clickfix_user_has_min_role($user, 'analyst_jr') && $page === 'intel_stats';
-$hideApiUi = clickfix_env_truthy('CLICKFIX_HIDE_API_UI', false);
-$showApiUi = $pageNeedsApiSettings && !$hideApiUi;
 
 $reports = [];
 if ($pageNeedsReports) {
@@ -1771,8 +1312,6 @@ if ($pageNeedsPendingOutsideData) {
     $pendingOutsideLimit = $page === 'lists' ? 260 : 80;
     $pendingOutsideReports = clickfix_pending_reports_outside_lists($pdo, $allowlistSnapshot, $blocklistSnapshot, $pendingOutsideLimit);
 }
-$pageNeedsPendingReviewData = $loggedIn && in_array($page, ['home', 'ops', 'analytics'], true);
-$pendingReviewRows = $pageNeedsPendingReviewData ? clickfix_recent_reports($pdo, 80, null) : [];
 $usersDirectory = $pageNeedsUserDirectory ? clickfix_recent_users($pdo, 400) : [];
 $users = $pageNeedsUsersAdmin ? clickfix_recent_users($pdo, 200) : [];
 $analyticsDays = ($page === 'home' || $page === 'analytics') ? 30 : 7;
@@ -1782,24 +1321,12 @@ $latestScanAssetsApproved = is_array($analyticsOverview['latest_scan_assets'] ??
     ? $analyticsOverview['latest_scan_assets']
     : ['before' => null, 'after' => null, 'before_exists' => false, 'after_exists' => false, 'before_status' => 'missing', 'after_status' => 'missing'];
 $latestScanAssetsReview = $latestScanAssetsApproved;
-if ($canAdminViewer && $latestScanPreview === null) {
-    $adminLatestEvidence = clickfix_latest_scan_evidence($pdo, false, 500);
-    if (is_array($adminLatestEvidence['report'] ?? null)) {
-        $latestScanPreview = $adminLatestEvidence['report'];
-    }
-    if (is_array($adminLatestEvidence['assets'] ?? null)) {
-        $latestScanAssetsReview = $adminLatestEvidence['assets'];
-    }
-}
 if ($canAdminViewer && is_array($latestScanPreview) && !empty($latestScanPreview['id'])) {
     $latestScanAssetsReview = clickfix_scan_preview_assets($pdo, (int) $latestScanPreview['id'], false);
 }
-$featuredHomeInvestigations = $page === 'home' ? clickfix_featured_home_investigations($pdo, 6, false) : [];
 $scanReviewQueue = $pageNeedsScanReviewQueue ? clickfix_scan_image_review_queue($pdo, 120) : [];
 $mlInsights = $pageNeedsMlInsights ? clickfix_ml_insights($pdo, 300) : [];
 $anomalyInsights = $pageNeedsAnomalyData ? clickfix_anomaly_detector($pdo, 35, 24) : [];
-$intelCorrelationStats = $pageNeedsIntelStats ? clickfix_investigation_correlation_stats($pdo, 12) : [];
-$projectExposureOverview = $pageNeedsProjectExposure ? clickfix_project_exposure_overview($pdo, 30) : [];
 $vtReportedStats = $pageNeedsVtReportedStats ? clickfix_vt_reported_webs_stats($pdo, 30) : [];
 $extensionClients = $pageNeedsExtensionData ? clickfix_recent_extension_clients($pdo, 200) : [];
 $extensionUserLinks = $pageNeedsExtensionData ? clickfix_extension_user_links($pdo, 800) : [];
@@ -1893,11 +1420,6 @@ if (!in_array($reportPeriodPreview, ['daily', 'weekly', 'monthly'], true)) {
     $reportPeriodPreview = 'daily';
 }
 $reportPreview = $pageNeedsReportPreview ? clickfix_generate_period_report($pdo, $reportPeriodPreview) : [];
-$internalAdSettings = clickfix_internal_ad_settings($pdo);
-$internalAdsAdminList = ($canAdminViewer && $page === 'configs') ? clickfix_internal_ads_recent($pdo, 160) : [];
-$dashboardAdRole = $loggedIn ? $viewerRole : 'guest';
-$internalDashboardAds = clickfix_internal_ads_for_context($pdo, 'dashboard', $dashboardAdRole, 3);
-$showInternalDashboardAdsPanel = !empty($internalDashboardAds);
 $monetization = clickfix_monetization_config();
 $monetizationDisplayRoles = ['analyst_jr', 'analyst_mid'];
 $showMonetizationForGuest = !$loggedIn;
@@ -1976,49 +1498,33 @@ if ($page === 'investigation' && $shareToken !== '') {
 $investigations = [];
 $selectedInvestigation = null;
 $investigationEvents = [];
-$investigationQuickTargets = [];
-$intelSelectionReports = [];
-$intelRequestedGraphId = 0;
-$intelComposeNew = false;
-$intelWorkspaceActive = false;
 $intelUserApiKeys = [];
 $platformApiKeys = [];
 $platformApiKeyJustCreated = null;
 $intelApiLookupResult = null;
 $intelApiLookupHistory = [];
-$intelApiLookupMapRows = [];
-$intelApiCommonKeywords = [];
-$intelWorkbenchResult = null;
 if ($loggedIn && $page === 'intel') {
     $investigations = clickfix_recent_investigations($pdo, (int) ($user['id'] ?? 0), clickfix_is_admin(), 120);
-    $intelRequestedGraphId = (int) ($_GET['graph_id'] ?? 0);
-    $intelComposeNew = (string) ($_GET['compose'] ?? '') === '1';
-    if ($intelRequestedGraphId > 0) {
-        $selectedInvestigation = clickfix_get_investigation($pdo, $intelRequestedGraphId, (int) ($user['id'] ?? 0), clickfix_is_admin());
+    $requestedGraphId = (int) ($_GET['graph_id'] ?? 0);
+    if ($requestedGraphId > 0) {
+        $selectedInvestigation = clickfix_get_investigation($pdo, $requestedGraphId, (int) ($user['id'] ?? 0), clickfix_is_admin());
         if ($selectedInvestigation === null && clickfix_user_has_min_role($user, 'analyst_mid')) {
-            $candidate = clickfix_get_investigation_any($pdo, $intelRequestedGraphId);
+            $candidate = clickfix_get_investigation_any($pdo, $requestedGraphId);
             if (is_array($candidate) && !empty($candidate['submitted_to_community'])) {
                 $selectedInvestigation = $candidate;
             }
         }
     }
-    $intelWorkspaceActive = $selectedInvestigation !== null || $intelComposeNew;
+    if ($selectedInvestigation === null && !empty($investigations)) {
+        $selectedInvestigation = $investigations[0];
+    }
     if ($selectedInvestigation !== null) {
         $investigationEvents = clickfix_investigation_events($pdo, (int) ($selectedInvestigation['id'] ?? 0), 220);
-        $investigationQuickTargets = cfintel_collect_investigation_targets($selectedInvestigation);
     }
-    if (!$intelWorkspaceActive) {
-        $intelSelectionReports = clickfix_recent_reports($pdo, 18);
-    }
-}
-if ($pageNeedsApiSettings) {
-    $intelUserApiKeys = clickfix_user_api_keys($pdo, (int) ($user['id'] ?? 0), $showApiUi);
+    $intelUserApiKeys = clickfix_user_api_keys($pdo, (int) ($user['id'] ?? 0), true);
     $platformApiKeys = clickfix_user_platform_api_keys($pdo, (int) ($user['id'] ?? 0));
     $lookupStore = (isset($_SESSION['clickfix_intel_api_lookup']) && is_array($_SESSION['clickfix_intel_api_lookup']))
         ? $_SESSION['clickfix_intel_api_lookup']
-        : [];
-    $workbenchStore = (isset($_SESSION['clickfix_intel_workbench']) && is_array($_SESSION['clickfix_intel_workbench']))
-        ? $_SESSION['clickfix_intel_workbench']
         : [];
     $platformKeyStore = (isset($_SESSION['clickfix_platform_api_key_once']) && is_array($_SESSION['clickfix_platform_api_key_once']))
         ? $_SESSION['clickfix_platform_api_key_once']
@@ -2028,41 +1534,13 @@ if ($pageNeedsApiSettings) {
         $intelApiLookupResult = $lookupStore[$viewerId];
         unset($_SESSION['clickfix_intel_api_lookup'][$viewerId]);
     }
-    if ($viewerId > 0 && isset($workbenchStore[$viewerId]) && is_array($workbenchStore[$viewerId])) {
-        $intelWorkbenchResult = $workbenchStore[$viewerId];
-        unset($_SESSION['clickfix_intel_workbench'][$viewerId]);
-    }
     if ($viewerId > 0 && isset($platformKeyStore[$viewerId]) && is_array($platformKeyStore[$viewerId])) {
         $platformApiKeyJustCreated = $platformKeyStore[$viewerId];
         unset($_SESSION['clickfix_platform_api_key_once'][$viewerId]);
     }
-    if ($viewerId > 0 && !($page === 'intel' && $selectedInvestigation === null)) {
-        $historyGraphId = ($page === 'intel' && $selectedInvestigation !== null) ? (int) ($selectedInvestigation['id'] ?? 0) : 0;
+    if ($viewerId > 0) {
+        $historyGraphId = (int) ($selectedInvestigation['id'] ?? 0);
         $intelApiLookupHistory = clickfix_investigation_api_lookup_recent($pdo, $viewerId, 18, $historyGraphId);
-        $intelApiLookupMapRows = array_map(static function (array $row): array {
-            $summary = is_array($row['summary'] ?? null) ? $row['summary'] : [];
-            $enriched = cfintel_lookup_compact_details($row);
-            return [
-                'id' => (int) ($row['id'] ?? 0),
-                'created_at' => (string) ($row['created_at'] ?? ''),
-                'provider' => strtolower(trim((string) ($row['provider'] ?? 'unknown'))),
-                'target' => (string) ($row['target'] ?? ''),
-                'target_type' => (string) ($row['target_type'] ?? 'unknown'),
-                'status' => (int) ($row['status'] ?? 0),
-                'ok' => !empty($row['ok']),
-                'error' => (string) ($row['error'] ?? ''),
-                'summary' => $summary,
-                'details' => is_array($enriched['details'] ?? null) ? $enriched['details'] : [],
-                'keywords' => is_array($enriched['keywords'] ?? null) ? $enriched['keywords'] : [],
-            ];
-        }, $intelApiLookupHistory);
-        $intelApiCommonKeywords = cfintel_common_api_keywords($intelApiLookupMapRows, 16);
-    }
-}
-if ($loggedIn && $page === 'intel' && $selectedInvestigation !== null) {
-    $exportFormat = strtolower(trim((string) ($_GET['export_iocs'] ?? '')));
-    if ($exportFormat !== '') {
-        cfintel_output_ioc_export($selectedInvestigation, $investigationQuickTargets, $exportFormat);
     }
 }
 $communityInvestigations = ($loggedIn && clickfix_user_has_min_role($user, 'analyst_jr') && $page === 'community')
@@ -2091,13 +1569,12 @@ if ($page === 'profile' && $profileTargetId <= 0 && $loggedIn) {
     $profileTargetId = (int) ($user['id'] ?? 0);
 }
 $profileTab = strtolower(trim((string) ($_GET['tab'] ?? 'investigations')));
-if (!in_array($profileTab, ['investigations', 'reports', 'sessions'], true)) {
+if (!in_array($profileTab, ['investigations', 'reports'], true)) {
     $profileTab = 'investigations';
 }
 $profileUser = null;
 $profileInvestigations = [];
 $profileReports = [];
-$profileSessionHistory = [];
 $profileCanViewPrivate = false;
 $profileCanEdit = false;
 if ($page === 'profile' && $profileTargetId > 0) {
@@ -2109,7 +1586,6 @@ if ($page === 'profile' && $profileTargetId > 0) {
             $profileCanEdit = !empty($profileUser['is_owner']);
             $profileInvestigations = clickfix_user_profile_investigations($pdo, $profileTargetId, $profileCanViewPrivate, 200);
             $profileReports = $profileCanViewPrivate ? clickfix_user_profile_reports($pdo, $profileTargetId, 200) : [];
-            $profileSessionHistory = $profileCanViewPrivate ? clickfix_user_session_history($pdo, $profileTargetId, 250) : [];
         }
     }
 
@@ -2160,504 +1636,6 @@ function cfintel_target_meta(string $target): array
     return ['type' => 'unknown', 'display' => $value, 'domain' => '', 'ip' => '', 'url' => ''];
 }
 
-function cfintel_refang_text(string $text): string
-{
-    if ($text === '') {
-        return '';
-    }
-    $refanged = preg_replace_callback('/hxxps?/i', static function (array $match): string {
-        $value = strtolower((string) ($match[0] ?? 'hxxp'));
-        return $value === 'hxxps' ? 'https' : 'http';
-    }, $text);
-    if (!is_string($refanged)) {
-        $refanged = $text;
-    }
-    $replaceMap = [
-        '[.]' => '.',
-        '(.)' => '.',
-        '[dot]' => '.',
-        '[@]' => '@',
-        '[:]' => ':',
-    ];
-    $refanged = str_ireplace(array_keys($replaceMap), array_values($replaceMap), $refanged);
-    return $refanged;
-}
-
-function cfintel_artifact_types(): array
-{
-    return ['url', 'domain', 'ip', 'md5', 'sha1', 'sha256', 'email', 'cve'];
-}
-
-function cfintel_extract_artifacts_from_text(string $text): array
-{
-    $text = trim($text);
-    if ($text === '') {
-        return [];
-    }
-    $clean = cfintel_refang_text($text);
-    $artifacts = [];
-    $seen = [];
-    $push = static function (string $type, string $value) use (&$artifacts, &$seen): void {
-        $type = strtolower(trim($type));
-        $value = trim($value);
-        if ($type === '' || $value === '') {
-            return;
-        }
-        $key = $type . '|' . strtolower($value);
-        if (isset($seen[$key])) {
-            return;
-        }
-        $seen[$key] = true;
-        $artifacts[] = ['type' => $type, 'value' => $value];
-    };
-
-    if (preg_match_all('#https?://[^\s<>"\'`]+#i', $clean, $matches)) {
-        foreach ((array) ($matches[0] ?? []) as $match) {
-            $value = trim((string) $match);
-            $value = rtrim($value, ".,;:!?)]]}>'\"");
-            if ($value !== '') {
-                $push('url', $value);
-            }
-        }
-    }
-    if (preg_match_all('/\b(?:\d{1,3}\.){3}\d{1,3}\b/', $clean, $matches)) {
-        foreach ((array) ($matches[0] ?? []) as $match) {
-            $value = (string) $match;
-            if (filter_var($value, FILTER_VALIDATE_IP) !== false) {
-                $push('ip', $value);
-            }
-        }
-    }
-    if (preg_match_all('/(?<!@)\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}\b/i', $clean, $matches)) {
-        foreach ((array) ($matches[0] ?? []) as $match) {
-            $domain = clickfix_normalize_domain((string) $match);
-            if ($domain !== '') {
-                $push('domain', $domain);
-            }
-        }
-    }
-    if (preg_match_all('/\b[a-f0-9]{64}\b/i', $clean, $matches)) {
-        foreach ((array) ($matches[0] ?? []) as $match) {
-            $push('sha256', strtolower((string) $match));
-        }
-    }
-    $withoutSha256 = preg_replace('/\b[a-f0-9]{64}\b/i', ' ', $clean);
-    if (!is_string($withoutSha256)) {
-        $withoutSha256 = $clean;
-    }
-    if (preg_match_all('/\b[a-f0-9]{40}\b/i', $withoutSha256, $matches)) {
-        foreach ((array) ($matches[0] ?? []) as $match) {
-            $push('sha1', strtolower((string) $match));
-        }
-    }
-    $withoutSha1 = preg_replace('/\b[a-f0-9]{40}\b/i', ' ', $withoutSha256);
-    if (!is_string($withoutSha1)) {
-        $withoutSha1 = $withoutSha256;
-    }
-    if (preg_match_all('/\b[a-f0-9]{32}\b/i', $withoutSha1, $matches)) {
-        foreach ((array) ($matches[0] ?? []) as $match) {
-            $push('md5', strtolower((string) $match));
-        }
-    }
-    if (preg_match_all('/\b[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,63}\b/i', $clean, $matches)) {
-        foreach ((array) ($matches[0] ?? []) as $match) {
-            $push('email', strtolower((string) $match));
-        }
-    }
-    if (preg_match_all('/\bCVE-\d{4}-\d{4,}\b/i', $clean, $matches)) {
-        foreach ((array) ($matches[0] ?? []) as $match) {
-            $push('cve', strtoupper((string) $match));
-        }
-    }
-
-    usort($artifacts, static function (array $a, array $b): int {
-        $typeCmp = strcmp((string) ($a['type'] ?? ''), (string) ($b['type'] ?? ''));
-        if ($typeCmp !== 0) {
-            return $typeCmp;
-        }
-        return strcmp((string) ($a['value'] ?? ''), (string) ($b['value'] ?? ''));
-    });
-
-    return $artifacts;
-}
-
-function cfintel_decode_is_useful_text(string $value): bool
-{
-    $trimmed = trim($value);
-    if ($trimmed === '') {
-        return false;
-    }
-    $length = strlen($trimmed);
-    if ($length < 4) {
-        return false;
-    }
-    $printable = preg_match_all('/[\P{C}\t\r\n]/u', $trimmed, $matches);
-    if (!is_int($printable) || $printable <= 0) {
-        return false;
-    }
-    return ($printable / max(1, $length)) >= 0.7;
-}
-
-function cfintel_decode_candidate_base64(string $value, bool $urlSafe = false): string
-{
-    $candidate = preg_replace('/\s+/', '', $value);
-    if (!is_string($candidate) || $candidate === '' || strlen($candidate) < 12) {
-        return '';
-    }
-    if ($urlSafe) {
-        $candidate = strtr($candidate, '-_', '+/');
-    }
-    if (!preg_match('/^[A-Za-z0-9+\/]+=*$/', $candidate)) {
-        return '';
-    }
-    $padding = strlen($candidate) % 4;
-    if ($padding !== 0) {
-        $candidate .= str_repeat('=', 4 - $padding);
-    }
-    $decoded = base64_decode($candidate, true);
-    if (!is_string($decoded) || $decoded === '' || !cfintel_decode_is_useful_text($decoded)) {
-        return '';
-    }
-    return $decoded;
-}
-
-function cfintel_decode_candidate_hex(string $value): string
-{
-    $clean = preg_replace('/[\s:]/', '', $value);
-    if (!is_string($clean) || $clean === '' || strlen($clean) < 8 || (strlen($clean) % 2) !== 0) {
-        return '';
-    }
-    if (!preg_match('/^[0-9a-f]+$/i', $clean)) {
-        return '';
-    }
-    $decoded = @hex2bin($clean);
-    if (!is_string($decoded) || $decoded === '' || !cfintel_decode_is_useful_text($decoded)) {
-        return '';
-    }
-    return $decoded;
-}
-
-function cfintel_decode_value(string $value): array
-{
-    $raw = trim($value);
-    if ($raw === '') {
-        return [];
-    }
-    $results = [];
-
-    $urlDecoded = rawurldecode($raw);
-    if ($urlDecoded !== $raw && cfintel_decode_is_useful_text($urlDecoded)) {
-        $results['url_decoded'] = $urlDecoded;
-    }
-
-    $b64 = cfintel_decode_candidate_base64($raw, false);
-    if ($b64 !== '') {
-        $results['base64'] = $b64;
-        $nested = cfintel_decode_candidate_base64(trim($b64), false);
-        if ($nested !== '' && $nested !== $b64) {
-            $results['base64_double'] = $nested;
-        }
-    }
-    $b64Url = cfintel_decode_candidate_base64($raw, true);
-    if ($b64Url !== '' && !isset($results['base64'])) {
-        $results['base64url'] = $b64Url;
-    }
-
-    $hexDecoded = cfintel_decode_candidate_hex($raw);
-    if ($hexDecoded !== '') {
-        $results['hex'] = $hexDecoded;
-    }
-
-    $rot13 = str_rot13($raw);
-    if ($rot13 !== $raw && cfintel_decode_is_useful_text($rot13)) {
-        $results['rot13'] = $rot13;
-    }
-
-    $parts = explode('.', $raw);
-    if (count($parts) === 3) {
-        $jwt = [];
-        $header = cfintel_decode_candidate_base64($parts[0], true);
-        $payload = cfintel_decode_candidate_base64($parts[1], true);
-        if ($header !== '') {
-            $jwt['header'] = $header;
-        }
-        if ($payload !== '') {
-            $jwt['payload'] = $payload;
-        }
-        if (!empty($jwt)) {
-            $jwt['signature'] = trim((string) $parts[2]);
-            $results['jwt'] = $jwt;
-        }
-    }
-
-    return $results;
-}
-
-function cfintel_extract_targets_from_text(string $text): array
-{
-    $text = trim(cfintel_refang_text($text));
-    if ($text === '') {
-        return [];
-    }
-    $result = [];
-    $seen = [];
-
-    $push = static function (string $value) use (&$result, &$seen): void {
-        $clean = trim($value);
-        if ($clean === '') {
-            return;
-        }
-        $clean = rtrim($clean, ".,;:!?)]]}>'\"");
-        $meta = cfintel_target_meta($clean);
-        if (($meta['type'] ?? 'unknown') === 'unknown' || ($meta['display'] ?? '') === '') {
-            return;
-        }
-        $key = (string) ($meta['type'] ?? 'unknown') . '|' . (string) ($meta['display'] ?? '');
-        if (isset($seen[$key])) {
-            return;
-        }
-        $seen[$key] = true;
-        $result[] = [
-            'value' => (string) ($meta['display'] ?? ''),
-            'type' => (string) ($meta['type'] ?? 'unknown'),
-        ];
-    };
-
-    if (preg_match_all('#https?://[^\s<>"\'`]+#i', $text, $matches)) {
-        foreach ((array) ($matches[0] ?? []) as $match) {
-            $push((string) $match);
-        }
-    }
-    if (preg_match_all('/\b(?:\d{1,3}\.){3}\d{1,3}\b/', $text, $matches)) {
-        foreach ((array) ($matches[0] ?? []) as $match) {
-            if (filter_var((string) $match, FILTER_VALIDATE_IP) !== false) {
-                $push((string) $match);
-            }
-        }
-    }
-    if (preg_match_all('/(?<!@)\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}\b/i', $text, $matches)) {
-        foreach ((array) ($matches[0] ?? []) as $match) {
-            $push((string) $match);
-        }
-    }
-
-    return $result;
-}
-
-function cfintel_collect_investigation_targets(?array $investigation): array
-{
-    if (!is_array($investigation)) {
-        return [];
-    }
-    $targets = [];
-    $seen = [];
-    $appendTargets = static function (array $items, string $source) use (&$targets, &$seen): void {
-        foreach ($items as $item) {
-            $value = trim((string) ($item['value'] ?? ''));
-            $type = trim((string) ($item['type'] ?? 'unknown'));
-            if ($value === '' || $type === 'unknown') {
-                continue;
-            }
-            $key = $type . '|' . strtolower($value);
-            if (isset($seen[$key])) {
-                continue;
-            }
-            $seen[$key] = true;
-            $targets[] = [
-                'value' => $value,
-                'type' => $type,
-                'source' => $source,
-            ];
-        }
-    };
-
-    $appendTargets(cfintel_extract_targets_from_text((string) ($investigation['site_domain'] ?? '')), 'dominio principal');
-    $appendTargets(cfintel_extract_targets_from_text((string) ($investigation['summary'] ?? '')), 'resumen');
-
-    $graph = is_array($investigation['graph'] ?? null) ? $investigation['graph'] : ['nodes' => [], 'edges' => []];
-    foreach ((array) ($graph['nodes'] ?? []) as $node) {
-        $nodeLabel = trim((string) ($node['label'] ?? ''));
-        $nodeSource = $nodeLabel !== '' ? ('nodo: ' . $nodeLabel) : 'nodo';
-        $appendTargets(cfintel_extract_targets_from_text($nodeLabel), $nodeSource);
-        $appendTargets(cfintel_extract_targets_from_text((string) ($node['notes'] ?? '')), $nodeSource . ' / notas');
-        foreach ((array) ($node['tags'] ?? []) as $tag) {
-            $appendTargets(cfintel_extract_targets_from_text((string) $tag), $nodeSource . ' / tag');
-        }
-    }
-
-    usort($targets, static function (array $a, array $b): int {
-        $typeCmp = strcmp((string) ($a['type'] ?? ''), (string) ($b['type'] ?? ''));
-        if ($typeCmp !== 0) {
-            return $typeCmp;
-        }
-        return strcmp((string) ($a['value'] ?? ''), (string) ($b['value'] ?? ''));
-    });
-
-    return array_slice($targets, 0, 60);
-}
-
-function cfintel_export_rows(array $targets): array
-{
-    $rows = [];
-    foreach ($targets as $target) {
-        $value = trim((string) ($target['value'] ?? ''));
-        $type = trim((string) ($target['type'] ?? 'unknown'));
-        if ($value === '' || !in_array($type, ['domain', 'ip', 'url'], true)) {
-            continue;
-        }
-        $rows[] = [
-            'type' => $type,
-            'value' => $value,
-            'source' => trim((string) ($target['source'] ?? '')),
-        ];
-    }
-    return $rows;
-}
-
-function cfintel_export_filename(array $investigation, string $format): string
-{
-    $base = trim((string) ($investigation['site_domain'] ?? $investigation['title'] ?? ('investigation-' . (int) ($investigation['id'] ?? 0))));
-    $base = preg_replace('/[^a-z0-9._-]+/i', '-', strtolower($base)) ?? 'investigation';
-    $base = trim($base, '-._');
-    if ($base === '') {
-        $base = 'investigation';
-    }
-    return $base . '-iocs.' . $format;
-}
-
-function cfintel_misp_event_payload(array $investigation, array $rows): array
-{
-    $info = trim((string) ($investigation['title'] ?? 'ClickFix investigation'));
-    if ($info === '') {
-        $info = 'ClickFix investigation';
-    }
-    $summary = trim((string) ($investigation['summary'] ?? ''));
-    $eventDate = gmdate('Y-m-d');
-    $updatedAt = trim((string) ($investigation['updated_at'] ?? ''));
-    if ($updatedAt !== '') {
-        $ts = strtotime($updatedAt);
-        if ($ts !== false) {
-            $eventDate = gmdate('Y-m-d', $ts);
-        }
-    }
-
-    $attributes = [];
-    foreach ($rows as $row) {
-        $type = (string) ($row['type'] ?? '');
-        $value = (string) ($row['value'] ?? '');
-        if ($value === '') {
-            continue;
-        }
-        $mispType = $type === 'ip' ? 'ip-dst' : $type;
-        $comment = 'ClickFix Mitigator';
-        $source = trim((string) ($row['source'] ?? ''));
-        if ($source !== '') {
-            $comment .= ' | source: ' . $source;
-        }
-        $attributes[] = [
-            'type' => $mispType,
-            'category' => 'Network activity',
-            'to_ids' => true,
-            'distribution' => '0',
-            'value' => $value,
-            'comment' => substr($comment, 0, 255),
-        ];
-    }
-
-    $event = [
-        'info' => substr($info, 0, 240),
-        'date' => $eventDate,
-        'threat_level_id' => '2',
-        'analysis' => '1',
-        'distribution' => '0',
-        'Attribute' => $attributes,
-        'Tag' => [
-            ['name' => 'clickfix'],
-            ['name' => 'investigation'],
-        ],
-    ];
-    $domain = trim((string) ($investigation['site_domain'] ?? ''));
-    if ($domain !== '') {
-        $event['Tag'][] = ['name' => 'domain:' . $domain];
-    }
-    if ($summary !== '') {
-        $event['EventReport'] = [[
-            'name' => 'Investigation summary',
-            'content' => substr($summary, 0, 20000),
-            'distribution' => '0',
-        ]];
-    }
-
-    return ['Event' => $event];
-}
-
-function cfintel_output_ioc_export(array $investigation, array $targets, string $format): void
-{
-    $rows = cfintel_export_rows($targets);
-    if (empty($rows)) {
-        clickfix_flash('No hay IOCs exportables en esta investigacion.');
-        clickfix_redirect('dashboard.php?page=intel&graph_id=' . (int) ($investigation['id'] ?? 0));
-    }
-
-    $format = strtolower(trim($format));
-    $allowed = ['txt', 'csv', 'json', 'misp'];
-    if (!in_array($format, $allowed, true)) {
-        $format = 'json';
-    }
-
-    $filename = cfintel_export_filename($investigation, $format === 'misp' ? 'misp.json' : $format);
-    $body = '';
-    $contentType = 'application/json; charset=utf-8';
-
-    if ($format === 'txt') {
-        $contentType = 'text/plain; charset=utf-8';
-        $lines = [];
-        foreach ($rows as $row) {
-            $lines[] = (string) ($row['value'] ?? '');
-        }
-        $body = implode("\r\n", $lines) . "\r\n";
-    } elseif ($format === 'csv') {
-        $contentType = 'text/csv; charset=utf-8';
-        $fp = fopen('php://temp', 'r+');
-        if ($fp !== false) {
-            fputcsv($fp, ['type', 'value', 'source']);
-            foreach ($rows as $row) {
-                fputcsv($fp, [
-                    (string) ($row['type'] ?? ''),
-                    (string) ($row['value'] ?? ''),
-                    (string) ($row['source'] ?? ''),
-                ]);
-            }
-            rewind($fp);
-            $body = (string) stream_get_contents($fp);
-            fclose($fp);
-        }
-    } elseif ($format === 'misp') {
-        $payload = cfintel_misp_event_payload($investigation, $rows);
-        $body = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '{}';
-    } else {
-        $payload = [
-            'status' => 'ok',
-            'generated_at' => gmdate('c'),
-            'investigation' => [
-                'id' => (int) ($investigation['id'] ?? 0),
-                'title' => (string) ($investigation['title'] ?? ''),
-                'site_domain' => (string) ($investigation['site_domain'] ?? ''),
-                'verdict' => (string) ($investigation['verdict'] ?? ''),
-            ],
-            'count' => count($rows),
-            'iocs' => $rows,
-        ];
-        $body = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '{}';
-    }
-
-    header('Content-Type: ' . $contentType);
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    header('Cache-Control: no-store');
-    echo $body;
-    exit;
-}
-
 function cfintel_virustotal_gui_url(string $target): string
 {
     $meta = cfintel_target_meta($target);
@@ -2686,290 +1664,6 @@ function cfintel_virustotal_summary(array $summary): array
         'harmless' => (int) ($summary['harmless'] ?? 0),
         'undetected' => (int) ($summary['undetected'] ?? 0),
     ];
-}
-
-function cfintel_normalize_keyword(string $value): string
-{
-    $keyword = strtolower(trim($value));
-    if ($keyword === '') {
-        return '';
-    }
-    $keyword = preg_replace('/\s+/', '_', $keyword);
-    if (!is_string($keyword) || $keyword === '') {
-        return '';
-    }
-    $keyword = preg_replace('/[^a-z0-9._:-]/', '', $keyword);
-    if (!is_string($keyword) || $keyword === '') {
-        return '';
-    }
-    $keyword = trim($keyword, '._:-');
-    if ($keyword === '' || strlen($keyword) < 3 || strlen($keyword) > 48) {
-        return '';
-    }
-    return $keyword;
-}
-
-function cfintel_add_keyword(array &$keywords, array &$seen, string $value): void
-{
-    $keyword = cfintel_normalize_keyword($value);
-    if ($keyword === '') {
-        return;
-    }
-    if (isset($seen[$keyword])) {
-        return;
-    }
-    $seen[$keyword] = true;
-    $keywords[] = $keyword;
-}
-
-function cfintel_lookup_compact_details(array $row): array
-{
-    $provider = strtolower(trim((string) ($row['provider'] ?? 'unknown')));
-    $summary = is_array($row['summary'] ?? null) ? $row['summary'] : [];
-    $responseRaw = trim((string) ($row['response_json'] ?? ''));
-    $response = json_decode($responseRaw, true);
-    if (!is_array($response)) {
-        $response = [];
-    }
-
-    $details = [
-        'related_domain' => '',
-        'related_ip' => '',
-        'country_code' => '',
-        'country_name' => '',
-        'isp' => '',
-        'usage_type' => '',
-        'resolved_from' => '',
-        'query_ip' => '',
-        'abuse_score' => 0,
-        'total_reports' => 0,
-        'vt_reputation' => 0,
-        'vt_registrar' => '',
-        'vt_cert_issuer' => '',
-        'vt_malicious_engines' => [],
-        'vt_malicious_labels' => [],
-        'hostnames' => [],
-    ];
-    $keywords = [];
-    $seen = [];
-
-    cfintel_add_keyword($keywords, $seen, $provider);
-    cfintel_add_keyword($keywords, $seen, (string) ($row['target_type'] ?? 'unknown'));
-
-    if ($provider === 'virustotal') {
-        $malicious = (int) ($summary['malicious'] ?? 0);
-        $suspicious = (int) ($summary['suspicious'] ?? 0);
-        if ($malicious > 0) {
-            cfintel_add_keyword($keywords, $seen, 'malicious');
-        }
-        if ($suspicious > 0) {
-            cfintel_add_keyword($keywords, $seen, 'suspicious');
-        }
-        $data = is_array($response['data'] ?? null) ? $response['data'] : [];
-        $attributes = is_array($data['attributes'] ?? null) ? $data['attributes'] : [];
-        $domainId = clickfix_normalize_domain((string) ($data['id'] ?? ''));
-        if ($domainId !== '') {
-            $details['related_domain'] = $domainId;
-        }
-        $details['vt_reputation'] = (int) ($attributes['reputation'] ?? 0);
-        $details['vt_registrar'] = (string) ($attributes['registrar'] ?? '');
-        $cert = is_array($attributes['last_https_certificate'] ?? null) ? $attributes['last_https_certificate'] : [];
-        $issuer = is_array($cert['issuer'] ?? null) ? $cert['issuer'] : [];
-        $details['vt_cert_issuer'] = (string) ($issuer['CN'] ?? ($issuer['O'] ?? ''));
-
-        $dnsRecords = is_array($attributes['last_dns_records'] ?? null) ? $attributes['last_dns_records'] : [];
-        foreach ($dnsRecords as $dnsRow) {
-            if (!is_array($dnsRow)) {
-                continue;
-            }
-            $type = strtoupper(trim((string) ($dnsRow['type'] ?? '')));
-            $value = trim((string) ($dnsRow['value'] ?? ''));
-            if ($type === 'A' && filter_var($value, FILTER_VALIDATE_IP)) {
-                $details['related_ip'] = $value;
-                break;
-            }
-        }
-
-        $analysis = is_array($attributes['last_analysis_results'] ?? null) ? $attributes['last_analysis_results'] : [];
-        $malEngines = [];
-        $malLabels = [];
-        foreach ($analysis as $engineName => $analysisRow) {
-            if (!is_array($analysisRow)) {
-                continue;
-            }
-            $category = strtolower(trim((string) ($analysisRow['category'] ?? '')));
-            $result = strtolower(trim((string) ($analysisRow['result'] ?? '')));
-            if ($category === 'malicious') {
-                $engine = trim((string) $engineName);
-                if ($engine !== '' && count($malEngines) < 10 && !in_array($engine, $malEngines, true)) {
-                    $malEngines[] = $engine;
-                    cfintel_add_keyword($keywords, $seen, $engine);
-                }
-            }
-            if ($result !== '' && !in_array($result, ['clean', 'unrated', 'malicious', 'suspicious'], true)) {
-                if (count($malLabels) < 8 && !in_array($result, $malLabels, true)) {
-                    $malLabels[] = $result;
-                    cfintel_add_keyword($keywords, $seen, $result);
-                }
-            }
-        }
-        $details['vt_malicious_engines'] = $malEngines;
-        $details['vt_malicious_labels'] = $malLabels;
-        cfintel_add_keyword($keywords, $seen, (string) $details['vt_cert_issuer']);
-        cfintel_add_keyword($keywords, $seen, (string) $details['vt_registrar']);
-    } elseif ($provider === 'abuseipdb') {
-        $details['abuse_score'] = (int) ($summary['abuseConfidenceScore'] ?? 0);
-        $details['total_reports'] = (int) ($summary['totalReports'] ?? 0);
-        $details['country_code'] = strtoupper(trim((string) ($summary['countryCode'] ?? '')));
-        $details['isp'] = trim((string) ($summary['isp'] ?? ''));
-        $details['query_ip'] = trim((string) ($summary['queryIp'] ?? ''));
-        $details['resolved_from'] = clickfix_normalize_domain((string) ($summary['resolvedFrom'] ?? ''));
-        if (filter_var($details['query_ip'], FILTER_VALIDATE_IP)) {
-            $details['related_ip'] = $details['query_ip'];
-        }
-        if ($details['resolved_from'] !== '') {
-            $details['related_domain'] = $details['resolved_from'];
-        }
-
-        $data = is_array($response['data'] ?? null) ? $response['data'] : [];
-        $domain = clickfix_normalize_domain((string) ($data['domain'] ?? ''));
-        if ($domain !== '') {
-            $details['related_domain'] = $domain;
-        }
-        $dataIp = trim((string) ($data['ipAddress'] ?? ''));
-        if (filter_var($dataIp, FILTER_VALIDATE_IP)) {
-            $details['related_ip'] = $dataIp;
-            $details['query_ip'] = $dataIp;
-        }
-        $countryName = trim((string) ($data['countryName'] ?? ''));
-        if ($countryName !== '') {
-            $details['country_name'] = $countryName;
-        }
-        $usageType = trim((string) ($data['usageType'] ?? ''));
-        if ($usageType !== '') {
-            $details['usage_type'] = $usageType;
-        }
-        $hostnames = is_array($data['hostnames'] ?? null) ? $data['hostnames'] : [];
-        foreach ($hostnames as $host) {
-            $normalizedHost = clickfix_normalize_domain((string) $host);
-            if ($normalizedHost !== '' && !in_array($normalizedHost, $details['hostnames'], true) && count($details['hostnames']) < 8) {
-                $details['hostnames'][] = $normalizedHost;
-            }
-        }
-        if ($details['abuse_score'] >= 70) {
-            cfintel_add_keyword($keywords, $seen, 'abuse_high');
-        } elseif ($details['abuse_score'] > 0) {
-            cfintel_add_keyword($keywords, $seen, 'abuse_positive');
-        }
-        if ($details['total_reports'] > 0) {
-            cfintel_add_keyword($keywords, $seen, 'reported_ip');
-        }
-        if ($details['country_code'] !== '') {
-            cfintel_add_keyword($keywords, $seen, 'cc_' . $details['country_code']);
-        }
-        cfintel_add_keyword($keywords, $seen, (string) $details['usage_type']);
-        cfintel_add_keyword($keywords, $seen, (string) $details['isp']);
-    } elseif ($provider === 'urlscan') {
-        $total = (int) ($summary['total'] ?? 0);
-        if ($total > 0) {
-            cfintel_add_keyword($keywords, $seen, 'urlscan_hits');
-        }
-        $results = is_array($response['results'] ?? null) ? $response['results'] : [];
-        if (!empty($results[0]) && is_array($results[0])) {
-            $first = $results[0];
-            $page = is_array($first['page'] ?? null) ? $first['page'] : [];
-            $task = is_array($first['task'] ?? null) ? $first['task'] : [];
-            $domain = clickfix_normalize_domain((string) ($page['domain'] ?? ($task['domain'] ?? '')));
-            if ($domain !== '') {
-                $details['related_domain'] = $domain;
-            }
-            $pageIp = trim((string) ($page['ip'] ?? ''));
-            if (filter_var($pageIp, FILTER_VALIDATE_IP)) {
-                $details['related_ip'] = $pageIp;
-            }
-            $country = trim((string) ($page['country'] ?? ''));
-            if ($country !== '') {
-                $details['country_code'] = strtoupper($country);
-            }
-        }
-    }
-
-    if ($details['related_domain'] !== '') {
-        cfintel_add_keyword($keywords, $seen, $details['related_domain']);
-    }
-    if ($details['related_ip'] !== '') {
-        cfintel_add_keyword($keywords, $seen, 'ip_' . str_replace('.', '_', $details['related_ip']));
-    }
-    if ($details['country_name'] !== '') {
-        cfintel_add_keyword($keywords, $seen, $details['country_name']);
-    }
-    foreach ($details['hostnames'] as $hostname) {
-        cfintel_add_keyword($keywords, $seen, $hostname);
-    }
-
-    return [
-        'details' => $details,
-        'keywords' => $keywords,
-    ];
-}
-
-function cfintel_common_api_keywords(array $lookupRows, int $limit = 16): array
-{
-    $limit = max(5, min(50, $limit));
-    if (empty($lookupRows)) {
-        return [];
-    }
-    $stopwords = [
-        'unknown' => true,
-        'domain' => true,
-        'url' => true,
-        'ip' => true,
-        'data' => true,
-        'result' => true,
-        'results' => true,
-        'api' => true,
-    ];
-    $counts = [];
-    foreach ($lookupRows as $row) {
-        if (!is_array($row)) {
-            continue;
-        }
-        $rowKeywords = is_array($row['keywords'] ?? null) ? $row['keywords'] : [];
-        if (empty($rowKeywords)) {
-            $enriched = cfintel_lookup_compact_details($row);
-            $rowKeywords = is_array($enriched['keywords'] ?? null) ? $enriched['keywords'] : [];
-        }
-        $seenRow = [];
-        foreach ($rowKeywords as $keywordRaw) {
-            $keyword = cfintel_normalize_keyword((string) $keywordRaw);
-            if ($keyword === '' || isset($stopwords[$keyword])) {
-                continue;
-            }
-            if (isset($seenRow[$keyword])) {
-                continue;
-            }
-            $seenRow[$keyword] = true;
-            $counts[$keyword] = (int) ($counts[$keyword] ?? 0) + 1;
-        }
-    }
-    if (empty($counts)) {
-        return [];
-    }
-    arsort($counts);
-    $items = [];
-    foreach ($counts as $keyword => $hits) {
-        if ($hits <= 0) {
-            continue;
-        }
-        $items[] = [
-            'keyword' => (string) $keyword,
-            'hits' => (int) $hits,
-        ];
-        if (count($items) >= $limit) {
-            break;
-        }
-    }
-    return $items;
 }
 
 $canViewExactEventContext = $loggedIn && cfcan($user, 'analyst_sr');
@@ -3009,10 +1703,8 @@ function cft(string $key): string
             'nav_about' => 'Acerca',
             'nav_access' => 'Acceso',
             'nav_profile' => 'Perfil',
-            'nav_settings' => 'Ajustes',
             'nav_ops' => 'Operaciones',
             'nav_graphs' => 'Graficos',
-            'nav_intel_stats' => 'Intel Stats',
             'nav_investigation' => 'Investigacion',
             'nav_community' => 'Community',
             'nav_extensions' => 'Extensiones',
@@ -3023,13 +1715,9 @@ function cft(string $key): string
             'nav_score_config' => 'Score Config',
             'nav_reports' => 'Reportes',
             'nav_users' => 'Usuarios',
-            'lang_label' => 'Idioma',
-            'lang_es' => 'Español',
+        'lang_label' => 'Idioma',
+            'lang_es' => 'Espanol',
             'lang_en' => 'English',
-            'lang_ca' => 'Catala',
-            'lang_de' => 'Aleman',
-            'lang_fr' => 'Frances',
-            'lang_it' => 'Italiano',
             'label_module' => 'Modulo',
             'label_role' => 'Rol',
             'dc_title' => 'Centro de datos',
@@ -3087,10 +1775,8 @@ function cft(string $key): string
             'nav_about' => 'About',
             'nav_access' => 'Access',
             'nav_profile' => 'Profile',
-            'nav_settings' => 'Settings',
             'nav_ops' => 'Operations',
             'nav_graphs' => 'Analytics',
-            'nav_intel_stats' => 'Intel Stats',
             'nav_investigation' => 'Investigation',
             'nav_community' => 'Community',
             'nav_extensions' => 'Extensions',
@@ -3104,10 +1790,6 @@ function cft(string $key): string
             'lang_label' => 'Language',
             'lang_es' => 'Spanish',
             'lang_en' => 'English',
-            'lang_ca' => 'Catalan',
-            'lang_de' => 'German',
-            'lang_fr' => 'French',
-            'lang_it' => 'Italian',
             'label_module' => 'Module',
             'label_role' => 'Role',
             'dc_title' => 'Data center',
@@ -3159,108 +1841,8 @@ function cft(string $key): string
             'about_contact_links' => 'Official channels',
         ],
     ];
-    $dict['ca'] = array_merge($dict['es'], [
-        'nav_home' => 'Inici',
-        'nav_search' => 'Cerca',
-        'nav_about' => 'Sobre',
-        'nav_access' => 'Acces',
-        'nav_settings' => 'Ajustos',
-        'nav_ops' => 'Operacions',
-        'nav_graphs' => 'Grafics',
-        'nav_investigation' => 'Investigacio',
-        'nav_community' => 'Comunitat',
-        'nav_requests' => 'Sol-licituds',
-        'nav_messaging' => 'Missatgeria',
-        'nav_data_center' => 'Centre de dades',
-        'nav_reports' => 'Informes',
-        'lang_es' => 'Espanyol',
-        'lang_en' => 'Angles',
-        'lang_ca' => 'Catala',
-        'lang_de' => 'Alemany',
-        'lang_fr' => 'Frances',
-        'lang_it' => 'Italia',
-        'label_module' => 'Modul',
-        'dc_title' => 'Centre de dades',
-        'msg_title' => 'Missatgeria per a extensions',
-        'support_title' => 'Dona suport al projecte',
-        'intel_api_keys_title' => 'API keys privades',
-        'review_legend_title' => 'Guia de revisio',
-        'about_project_title' => 'Missio i enfocament',
-        'about_owner_title' => 'Direccio del projecte i contacte',
-    ]);
-    $dict['de'] = array_merge($dict['en'], [
-        'nav_home' => 'Start',
-        'nav_search' => 'Suche',
-        'nav_coverage' => 'Abdeckung',
-        'nav_about' => 'Uber uns',
-        'nav_access' => 'Zugang',
-        'nav_profile' => 'Profil',
-        'nav_settings' => 'Einstellungen',
-        'nav_ops' => 'Betrieb',
-        'nav_graphs' => 'Analysen',
-        'nav_investigation' => 'Untersuchung',
-        'nav_extensions' => 'Erweiterungen',
-        'nav_lists' => 'Listen',
-        'nav_requests' => 'Anfragen',
-        'nav_messaging' => 'Nachrichten',
-        'nav_data_center' => 'Datenzentrum',
-        'nav_reports' => 'Berichte',
-        'nav_users' => 'Benutzer',
-        'lang_label' => 'Sprache',
-        'lang_es' => 'Spanisch',
-        'lang_en' => 'Englisch',
-        'lang_ca' => 'Katalanisch',
-        'lang_de' => 'Deutsch',
-        'lang_fr' => 'Franzosisch',
-        'lang_it' => 'Italienisch',
-        'label_role' => 'Rolle',
-        'dc_title' => 'Datenzentrum',
-        'msg_title' => 'Nachrichten fur Erweiterungen',
-        'support_title' => 'Projekt unterstutzen',
-        'intel_api_keys_title' => 'Private API-Schlussel',
-        'review_legend_title' => 'Prufleitfaden',
-        'about_project_title' => 'Mission und Ansatz',
-        'about_owner_title' => 'Projektleitung und Kontakt',
-    ]);
-    $dict['fr'] = array_merge($dict['en'], [
-        'nav_home' => 'Accueil',
-        'nav_search' => 'Recherche',
-        'nav_coverage' => 'Couverture',
-        'nav_about' => 'A propos',
-        'nav_access' => 'Acces',
-        'nav_profile' => 'Profil',
-        'nav_settings' => 'Parametres',
-        'nav_ops' => 'Operations',
-        'nav_graphs' => 'Analytique',
-        'nav_community' => 'Communaute',
-        'nav_requests' => 'Demandes',
-        'nav_messaging' => 'Messagerie',
-        'nav_data_center' => 'Centre de donnees',
-        'nav_reports' => 'Rapports',
-        'nav_users' => 'Utilisateurs',
-        'lang_label' => 'Langue',
-        'lang_es' => 'Espagnol',
-        'lang_en' => 'Anglais',
-        'lang_ca' => 'Catalan',
-        'lang_de' => 'Allemand',
-        'lang_fr' => 'Francais',
-        'lang_it' => 'Italien',
-        'label_role' => 'Role',
-        'dc_title' => 'Centre de donnees',
-        'msg_title' => 'Messagerie pour extensions',
-        'support_title' => 'Soutenir le projet',
-        'intel_api_keys_title' => 'Cles API privees',
-        'review_legend_title' => 'Guide de revue',
-        'about_project_title' => 'Mission et approche',
-        'about_owner_title' => 'Direction du projet et contact',
-    ]);
     if (isset($dict[$lang][$key])) {
         return (string) $dict[$lang][$key];
-    }
-    $fallbackByLang = ['ca' => 'es', 'de' => 'en', 'fr' => 'en', 'it' => 'en'];
-    $effectiveLang = $fallbackByLang[$lang] ?? $lang;
-    if (isset($dict[$effectiveLang][$key])) {
-        return (string) $dict[$effectiveLang][$key];
     }
     if (isset($dict['es'][$key])) {
         return (string) $dict['es'][$key];
@@ -3271,7 +1853,6 @@ function cft(string $key): string
 function cfworkflowlabel(string $status, string $lang): string
 {
     $status = clickfix_investigation_workflow_status($status);
-    $lang = strtolower(trim($lang));
     $labels = [
         'en' => [
             'draft' => 'Draft',
@@ -3291,38 +1872,7 @@ function cfworkflowlabel(string $status, string $lang): string
             'verified_internal' => 'Verificada Interna',
             'rejected' => 'Rechazada',
         ],
-        'ca' => [
-            'draft' => 'Esborrany',
-            'jr_submitted' => 'Enviat per JR',
-            'mid_verified' => 'Validat per Mid',
-            'sr_review' => 'Revisio Senior',
-            'verified_public' => 'Verificada publica',
-            'verified_internal' => 'Verificada interna',
-            'rejected' => 'Rebutjada',
-        ],
-        'de' => [
-            'draft' => 'Entwurf',
-            'jr_submitted' => 'Von JR eingereicht',
-            'mid_verified' => 'Von Mid validiert',
-            'sr_review' => 'Senior Review',
-            'verified_public' => 'Offentlich verifiziert',
-            'verified_internal' => 'Intern verifiziert',
-            'rejected' => 'Abgelehnt',
-        ],
-        'fr' => [
-            'draft' => 'Brouillon',
-            'jr_submitted' => 'Soumis par JR',
-            'mid_verified' => 'Valide par Mid',
-            'sr_review' => 'Revue Senior',
-            'verified_public' => 'Verifie public',
-            'verified_internal' => 'Verifie interne',
-            'rejected' => 'Rejete',
-        ],
     ];
-    if (!isset($labels[$lang])) {
-        $fallbackByLang = ['ca' => 'es', 'de' => 'en', 'fr' => 'en', 'it' => 'en'];
-        $lang = $fallbackByLang[$lang] ?? 'en';
-    }
     if (isset($labels[$lang][$status])) {
         return (string) $labels[$lang][$status];
     }
@@ -3332,163 +1882,14 @@ function cfworkflowlabel(string $status, string $lang): string
 function cfmalwarelabel(string $classification, string $lang): string
 {
     $classification = strtolower(trim($classification));
-    $lang = strtolower(trim($lang));
     $labels = [
         'en' => ['malware' => 'Malware', 'legit' => 'Legit', 'neutral' => 'Neutral'],
         'es' => ['malware' => 'Malware', 'legit' => 'Legitimo', 'neutral' => 'Neutral'],
-        'ca' => ['malware' => 'Malware', 'legit' => 'Legitim', 'neutral' => 'Neutral'],
-        'de' => ['malware' => 'Malware', 'legit' => 'Legitim', 'neutral' => 'Neutral'],
-        'fr' => ['malware' => 'Malware', 'legit' => 'Legitime', 'neutral' => 'Neutre'],
     ];
-    if (!isset($labels[$lang])) {
-        $fallbackByLang = ['ca' => 'es', 'de' => 'en', 'fr' => 'en', 'it' => 'en'];
-        $lang = $fallbackByLang[$lang] ?? 'en';
-    }
     if (isset($labels[$lang][$classification])) {
         return (string) $labels[$lang][$classification];
     }
     return (string) ($labels['en']['neutral'] ?? 'Neutral');
-}
-
-function cfdashboardliteralmaps(): array
-{
-    static $maps = null;
-    if ($maps !== null) {
-        return $maps;
-    }
-    $maps = ['ca' => [], 'de' => [], 'fr' => []];
-    $phrases = [
-        'Cerrar sesion' => ['ca' => 'Tancar sessio', 'de' => 'Abmelden', 'fr' => 'Se deconnecter'],
-        'ClickFix Command Center' => ['ca' => 'ClickFix Centre de Comandament', 'de' => 'ClickFix Command Center', 'fr' => 'ClickFix Centre de Commandement'],
-        'Deteccion, explicabilidad y respuesta en una sola superficie de control.' => ['ca' => 'Deteccio, explicabilitat i resposta en una sola superficie de control.', 'de' => 'Erkennung, Erklarbarkeit und Reaktion auf einer zentralen Oberflache.', 'fr' => 'Detection, explicabilite et reponse sur une surface unique de pilotage.'],
-        'Busqueda forense' => ['ca' => 'Cerca forense', 'de' => 'Forensische Suche', 'fr' => 'Recherche forensique'],
-        'Operaciones' => ['ca' => 'Operacions', 'de' => 'Betrieb', 'fr' => 'Operations'],
-        'Investigacion' => ['ca' => 'Investigacio', 'de' => 'Untersuchung', 'fr' => 'Investigation'],
-        'Inicio rapido' => ['ca' => 'Inici rapid', 'de' => 'Schnellstart', 'fr' => 'Demarrage rapide'],
-        'Workspace autenticado' => ['ca' => 'Workspace autenticat', 'de' => 'Authentifizierter Workspace', 'fr' => 'Workspace authentifie'],
-        'Vista publica' => ['ca' => 'Vista publica', 'de' => 'Offentliche Ansicht', 'fr' => 'Vue publique'],
-        'alertas totales' => ['ca' => 'alertes totals', 'de' => 'gesamtwarnungen', 'fr' => 'alertes totales'],
-        'bloqueos totales' => ['ca' => 'bloquejos totals', 'de' => 'gesamtblockierungen', 'fr' => 'blocages totaux'],
-        'dominios unicos' => ['ca' => 'dominis unics', 'de' => 'eindeutige Domains', 'fr' => 'domaines uniques'],
-        'usuarios 24h' => ['ca' => 'usuaris 24h', 'de' => 'Benutzer 24h', 'fr' => 'utilisateurs 24h'],
-        'alertas 24h' => ['ca' => 'alertes 24h', 'de' => 'Warnungen 24h', 'fr' => 'alertes 24h'],
-        'bloqueos 24h' => ['ca' => 'bloquejos 24h', 'de' => 'Blockierungen 24h', 'fr' => 'blocages 24h'],
-        'ratio bloqueo 24h' => ['ca' => 'ratio bloqueig 24h', 'de' => 'Blockierungsquote 24h', 'fr' => 'ratio de blocage 24h'],
-        'alto riesgo 24h' => ['ca' => 'alt risc 24h', 'de' => 'hohes Risiko 24h', 'fr' => 'haut risque 24h'],
-        'nuevos dominios 24h' => ['ca' => 'nous dominis 24h', 'de' => 'neue Domains 24h', 'fr' => 'nouveaux domaines 24h'],
-        'clientes ext 24h' => ['ca' => 'clients ext 24h', 'de' => 'Erweiterungs-Clients 24h', 'fr' => 'clients extension 24h'],
-        'revisadas' => ['ca' => 'revisades', 'de' => 'gepruft', 'fr' => 'revues'],
-        'cobertura revision' => ['ca' => 'cobertura revisio', 'de' => 'Review-Abdeckung', 'fr' => 'couverture revue'],
-        'sitios manuales' => ['ca' => 'llocs manuals', 'de' => 'manuelle Sites', 'fr' => 'sites manuels'],
-        'pendientes' => ['ca' => 'pendents', 'de' => 'ausstehend', 'fr' => 'en attente'],
-        'Pendientes reales (fuera de allowlist/blocklist)' => ['ca' => 'Pendents reals (fora de allowlist/blocklist)', 'de' => 'Reale offene Falle (ausserhalb allowlist/blocklist)', 'fr' => 'En attente reels (hors allowlist/blocklist)'],
-        'Ultimo escaneo' => ['ca' => 'Ultim escaneig', 'de' => 'Letzter Scan', 'fr' => 'Dernier scan'],
-        'Sin capturas disponibles.' => ['ca' => 'Sense captures disponibles.', 'de' => 'Keine Screenshots verfugbar.', 'fr' => 'Aucune capture disponible.'],
-        'Antes' => ['ca' => 'Abans', 'de' => 'Vorher', 'fr' => 'Avant'],
-        'Despues' => ['ca' => 'Despres', 'de' => 'Nachher', 'fr' => 'Apres'],
-        'Ver aqui (manual)' => ['ca' => 'Veure aqui (manual)', 'de' => 'Hier ansehen (manuell)', 'fr' => 'Voir ici (manuel)'],
-        'Descargar' => ['ca' => 'Descarregar', 'de' => 'Herunterladen', 'fr' => 'Telecharger'],
-        'Guardar revision' => ['ca' => 'Desar revisio', 'de' => 'Review speichern', 'fr' => 'Enregistrer la revue'],
-        'Eliminar captura' => ['ca' => 'Eliminar captura', 'de' => 'Screenshot loschen', 'fr' => 'Supprimer capture'],
-        'Aprobar y usar en publico' => ['ca' => 'Aprovar i usar en public', 'de' => 'Freigeben und offentlich nutzen', 'fr' => 'Approuver et utiliser en public'],
-        'Mapa usuarios extension' => ['ca' => 'Mapa usuaris extensio', 'de' => 'Karte Erweiterungs-Benutzer', 'fr' => 'Carte utilisateurs extension'],
-        'Mapa webs detectadas' => ['ca' => 'Mapa webs detectades', 'de' => 'Karte erkannter Webseiten', 'fr' => 'Carte des sites detectes'],
-        'Graficos globales (14 dias)' => ['ca' => 'Grafics globals (14 dies)', 'de' => 'Globale Diagramme (14 Tage)', 'fr' => 'Graphiques globaux (14 jours)'],
-        'Tendencia diaria' => ['ca' => 'Tendencia diaria', 'de' => 'Taglicher Trend', 'fr' => 'Tendance quotidienne'],
-        'Ratio de bloqueo por dia' => ['ca' => 'Ratio de bloqueig per dia', 'de' => 'Blockierungsquote pro Tag', 'fr' => 'Ratio de blocage par jour'],
-        'No hay capturas pendientes.' => ['ca' => 'No hi ha captures pendents.', 'de' => 'Keine ausstehenden Screenshots.', 'fr' => 'Aucune capture en attente.'],
-        'Fuentes de inteligencia' => ['ca' => 'Fonts dintel-ligencia', 'de' => 'Intelligence-Quellen', 'fr' => 'Sources de renseignement'],
-        'Cobertura de amenazas' => ['ca' => 'Cobertura damenaces', 'de' => 'Bedrohungsabdeckung', 'fr' => 'Couverture des menaces'],
-        'Acceso y login' => ['ca' => 'Acces i login', 'de' => 'Zugang und Login', 'fr' => 'Acces et connexion'],
-        'Solicitar acceso' => ['ca' => 'Sol-licitar acces', 'de' => 'Zugang anfordern', 'fr' => 'Demander acces'],
-        'Entrar' => ['ca' => 'Entrar', 'de' => 'Anmelden', 'fr' => 'Se connecter'],
-        'Desistimiento' => ['ca' => 'Desistiment', 'de' => 'Widerspruch', 'fr' => 'Desistement'],
-        'Enviar desistimiento' => ['ca' => 'Enviar desistiment', 'de' => 'Widerspruch senden', 'fr' => 'Envoyer desistement'],
-        'Mi cuenta' => ['ca' => 'El meu compte', 'de' => 'Mein Konto', 'fr' => 'Mon compte'],
-        'Idioma por defecto' => ['ca' => 'Idioma per defecte', 'de' => 'Standardsprache', 'fr' => 'Langue par defaut'],
-        'Guardar idioma' => ['ca' => 'Desar idioma', 'de' => 'Sprache speichern', 'fr' => 'Enregistrer la langue'],
-        'Cambiar mi contraseña' => ['ca' => 'Canviar la meva contrasenya', 'de' => 'Mein Passwort andern', 'fr' => 'Changer mon mot de passe'],
-        'Perfil no encontrado' => ['ca' => 'Perfil no trobat', 'de' => 'Profil nicht gefunden', 'fr' => 'Profil introuvable'],
-        'Editar perfil' => ['ca' => 'Editar perfil', 'de' => 'Profil bearbeiten', 'fr' => 'Modifier profil'],
-        'Guardar perfil' => ['ca' => 'Desar perfil', 'de' => 'Profil speichern', 'fr' => 'Enregistrer profil'],
-        'Investigacion no disponible' => ['ca' => 'Investigacio no disponible', 'de' => 'Untersuchung nicht verfugbar', 'fr' => 'Investigation non disponible'],
-        'Grafo de investigacion' => ['ca' => 'Graf dinvestigacio', 'de' => 'Untersuchungsgraph', 'fr' => 'Graphe dinvestigation'],
-        'Detalle del nodo seleccionado' => ['ca' => 'Detall del node seleccionat', 'de' => 'Details des ausgewahlten Knotens', 'fr' => 'Detail du noeud selectionne'],
-        'Sin nodo seleccionado.' => ['ca' => 'Cap node seleccionat.', 'de' => 'Kein Knoten ausgewahlt.', 'fr' => 'Aucun noeud selectionne.'],
-        'Investigaciones de sitios' => ['ca' => 'Investigacions de llocs', 'de' => 'Site-Untersuchungen', 'fr' => 'Investigations de sites'],
-        'Case queue' => ['ca' => 'Cua de casos', 'de' => 'Fall-Warteschlange', 'fr' => 'File de cas'],
-        'Nueva investigacion' => ['ca' => 'Nova investigacio', 'de' => 'Neue Untersuchung', 'fr' => 'Nouvelle investigation'],
-        'Guardar investigacion' => ['ca' => 'Desar investigacio', 'de' => 'Untersuchung speichern', 'fr' => 'Enregistrer investigation'],
-        'Eventos recientes' => ['ca' => 'Esdeveniments recents', 'de' => 'Neueste Ereignisse', 'fr' => 'Evenements recents'],
-        'Sin eventos recientes.' => ['ca' => 'Sense esdeveniments recents.', 'de' => 'Keine aktuellen Ereignisse.', 'fr' => 'Aucun evenement recent.'],
-        'Motivos detectados' => ['ca' => 'Motius detectats', 'de' => 'Erkannte Grunde', 'fr' => 'Motifs detectes'],
-        'Snippets detectados' => ['ca' => 'Snippets detectats', 'de' => 'Erkannte Snippets', 'fr' => 'Snippets detectes'],
-        'Ver relacionadas' => ['ca' => 'Veure relacionades', 'de' => 'Verwandte anzeigen', 'fr' => 'Voir liees'],
-        'Bloquear dominio' => ['ca' => 'Bloquejar domini', 'de' => 'Domain blockieren', 'fr' => 'Bloquer domaine'],
-        'Mandar a investigacion' => ['ca' => 'Enviar a investigacio', 'de' => 'Zur Untersuchung senden', 'fr' => 'Envoyer en investigation'],
-        'Generar investigacion' => ['ca' => 'Generar investigacio', 'de' => 'Untersuchung erzeugen', 'fr' => 'Generer investigation'],
-        'Eliminar deteccion' => ['ca' => 'Eliminar deteccio', 'de' => 'Erkennung loschen', 'fr' => 'Supprimer detection'],
-        'Capturas web (before/after)' => ['ca' => 'Captures web (before/after)', 'de' => 'Web-Screenshots (before/after)', 'fr' => 'Captures web (before/after)'],
-        'Vista tabular clasica' => ['ca' => 'Vista tabular classica', 'de' => 'Klassische Tabellenansicht', 'fr' => 'Vue tabulaire classique'],
-        'Solo pendientes' => ['ca' => 'Nomes pendents', 'de' => 'Nur ausstehend', 'fr' => 'Seulement en attente'],
-        'Aplicar veredicto masivo' => ['ca' => 'Aplicar veredicte massiu', 'de' => 'Massenverdict anwenden', 'fr' => 'Appliquer verdict massif'],
-        'Graficos y metricas operativas' => ['ca' => 'Grafics i metriques operatives', 'de' => 'Operative Diagramme und Metriken', 'fr' => 'Graphiques et metriques operationnelles'],
-        'Detector de anomalias (24h vs baseline)' => ['ca' => 'Detector danomalies (24h vs baseline)', 'de' => 'Anomalie-Detektor (24h vs Baseline)', 'fr' => 'Detecteur danomalies (24h vs baseline)'],
-        'Keywords por ventana temporal' => ['ca' => 'Keywords per finestra temporal', 'de' => 'Keywords nach Zeitfenster', 'fr' => 'Keywords par fenetre temporelle'],
-        'Predicciones de riesgo (Top)' => ['ca' => 'Prediccions de risc (Top)', 'de' => 'Risikovorhersagen (Top)', 'fr' => 'Predictions de risque (Top)'],
-        'Busqueda avanzada' => ['ca' => 'Cerca avancada', 'de' => 'Erweiterte Suche', 'fr' => 'Recherche avancee'],
-        'Gestion de listas' => ['ca' => 'Gestio de llistes', 'de' => 'Listenverwaltung', 'fr' => 'Gestion des listes'],
-        'Historial de mensajes' => ['ca' => 'Historial de missatges', 'de' => 'Nachrichtenverlauf', 'fr' => 'Historique des messages'],
-        'Limpiar historial' => ['ca' => 'Netejar historial', 'de' => 'Verlauf leeren', 'fr' => 'Nettoyer historique'],
-        'Eliminar de plataforma' => ['ca' => 'Eliminar de plataforma', 'de' => 'Von Plattform loschen', 'fr' => 'Supprimer de la plateforme'],
-        'Solicitudes de acceso' => ['ca' => 'Sol-licituds dacces', 'de' => 'Zugriffsanfragen', 'fr' => 'Demandes dacces'],
-        'Nuevo usuario' => ['ca' => 'Nou usuari', 'de' => 'Neuer Benutzer', 'fr' => 'Nouvel utilisateur'],
-        'Crear usuario' => ['ca' => 'Crear usuari', 'de' => 'Benutzer erstellen', 'fr' => 'Creer utilisateur'],
-        'Radar rapido' => ['ca' => 'Radar rapid', 'de' => 'Schnellradar', 'fr' => 'Radar rapide'],
-        'Top paises' => ['ca' => 'Top paisos', 'de' => 'Top Lander', 'fr' => 'Top pays'],
-        'Sin datos recientes' => ['ca' => 'Sense dades recents', 'de' => 'Keine aktuellen Daten', 'fr' => 'Aucune donnee recente'],
-        'Copiar' => ['ca' => 'Copiar', 'de' => 'Kopieren', 'fr' => 'Copier'],
-        'Copiado' => ['ca' => 'Copiat', 'de' => 'Kopiert', 'fr' => 'Copie'],
-        'Error copia' => ['ca' => 'Error de copia', 'de' => 'Kopierfehler', 'fr' => 'Erreur de copie'],
-        'Cargando captura...' => ['ca' => 'Carregant captura...', 'de' => 'Screenshot wird geladen...', 'fr' => 'Chargement de la capture...'],
-        'No se pudo cargar la captura.' => ['ca' => 'No sha pogut carregar la captura.', 'de' => 'Screenshot konnte nicht geladen werden.', 'fr' => 'Impossible de charger la capture.'],
-        'No se encontraron alertas relacionadas.' => ['ca' => 'No shan trobat alertes relacionades.', 'de' => 'Keine verwandten Warnungen gefunden.', 'fr' => 'Aucune alerte liee trouvee.'],
-        'Sin contexto capturado.' => ['ca' => 'Sense context capturat.', 'de' => 'Kein erfasster Kontext.', 'fr' => 'Aucun contexte capture.'],
-        'Cargando alertas relacionadas...' => ['ca' => 'Carregant alertes relacionades...', 'de' => 'Verwandte Warnungen werden geladen...', 'fr' => 'Chargement des alertes liees...'],
-        'Selecciona al menos una alerta para revision masiva.' => ['ca' => 'Selecciona almenys una alerta per a revisio massiva.', 'de' => 'Bitte mindestens eine Warnung fur Massenreview auswahlen.', 'fr' => 'Selectionnez au moins une alerte pour la revue massive.'],
-        'Mapa no disponible (Leaflet no cargado).' => ['ca' => 'Mapa no disponible (Leaflet no carregat).', 'de' => 'Karte nicht verfugbar (Leaflet nicht geladen).', 'fr' => 'Carte indisponible (Leaflet non charge).'],
-        'No se pudo cargar geointeligencia de usuarios.' => ['ca' => 'No sha pogut carregar geointel-ligencia dusuaris.', 'de' => 'Geointelligence der Benutzer konnte nicht geladen werden.', 'fr' => 'Impossible de charger la geointelligence des utilisateurs.'],
-        'No se pudo cargar geointeligencia de webs.' => ['ca' => 'No sha pogut carregar geointel-ligencia de webs.', 'de' => 'Geointelligence der Webseiten konnte nicht geladen werden.', 'fr' => 'Impossible de charger la geointelligence des sites.'],
-        'Sin datos de geointeligencia.' => ['ca' => 'Sense dades de geointel-ligencia.', 'de' => 'Keine Geointelligence-Daten.', 'fr' => 'Aucune donnee de geointelligence.'],
-    ];
-
-    foreach ($phrases as $source => $targets) {
-        foreach ($maps as $targetLang => &$targetMap) {
-            if (isset($targets[$targetLang])) {
-                $targetMap[$source] = (string) $targets[$targetLang];
-            }
-        }
-        unset($targetMap);
-    }
-    foreach ($maps as &$targetMap) {
-        uksort($targetMap, static fn (string $a, string $b): int => strlen($b) <=> strlen($a));
-    }
-    unset($targetMap);
-    return $maps;
-}
-
-function cfdashboardtranslateoutput(string $output, string $lang): string
-{
-    $lang = strtolower(trim($lang));
-    if (!in_array($lang, ['ca', 'de', 'fr'], true)) {
-        return $output;
-    }
-    $maps = cfdashboardliteralmaps();
-    $map = $maps[$lang] ?? [];
-    if (empty($map)) {
-        return $output;
-    }
-    return strtr($output, $map);
 }
 
 function cfextractreasons(array $report): array
@@ -3647,45 +2048,6 @@ foreach ($reports as $reportRow) {
             return clickfix_dashboard_redact_sensitive((string) $snippet);
         }, $eventSnippets);
     }
-    $downloadIoc = [];
-    if ($eventType === 'unsafe_download') {
-        $downloadIoc = [
-            'hash' => '',
-            'filename' => '',
-            'path' => '',
-            'site' => '',
-            'url' => '',
-        ];
-        $contextData = null;
-        $contextTrim = trim($eventFullContext);
-        if ($contextTrim !== '' && ($contextTrim[0] === '{' || $contextTrim[0] === '[')) {
-            $decoded = json_decode($contextTrim, true);
-            if (is_array($decoded)) {
-                $contextData = $decoded;
-            }
-        }
-        if (is_array($contextData)) {
-            $downloadIoc['hash'] = (string) ($contextData['sha256'] ?? $contextData['hash'] ?? '');
-            $downloadIoc['filename'] = (string) ($contextData['download_filename'] ?? $contextData['filename'] ?? '');
-            $downloadIoc['path'] = (string) ($contextData['download_path'] ?? '');
-            $downloadIoc['url'] = (string) ($contextData['download_url'] ?? '');
-            $downloadIoc['site'] = (string) ($contextData['download_host'] ?? $contextData['host'] ?? '');
-        }
-        if ($downloadIoc['filename'] === '') {
-            $downloadIoc['filename'] = (string) ($reportRow['detected_content'] ?? '');
-        }
-        if ($downloadIoc['url'] === '') {
-            $downloadIoc['url'] = (string) ($reportRow['url'] ?? '');
-        }
-        if ($downloadIoc['site'] === '') {
-            $downloadIoc['site'] = (string) ($reportRow['hostname'] ?? '');
-        }
-        if ($redactSensitiveForViewer) {
-            foreach ($downloadIoc as $k => $v) {
-                $downloadIoc[$k] = clickfix_dashboard_redact_sensitive((string) $v);
-            }
-        }
-    }
     $eventWorkbenchRows[] = [
         'id' => (int) ($reportRow['id'] ?? 0),
         'received_at' => $receivedAt,
@@ -3717,7 +2079,6 @@ foreach ($reports as $reportRow) {
         'snippets' => $eventSnippets,
         'signals' => is_array($reportRow['signals'] ?? null) ? $reportRow['signals'] : [],
         'score_details' => is_array($reportRow['score_details'] ?? null) ? $reportRow['score_details'] : null,
-        'download_ioc' => $downloadIoc,
     ];
 }
 $eventDomainGroupsMap = [];
@@ -3784,24 +2145,14 @@ $sharedGraphJson = json_encode($sharedGraph, JSON_UNESCAPED_UNICODE | JSON_UNESC
 if ($sharedGraphJson === false) {
     $sharedGraphJson = 'null';
 }
-$intelApiLookupMapRowsJson = json_encode($intelApiLookupMapRows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
-if ($intelApiLookupMapRowsJson === false) {
-    $intelApiLookupMapRowsJson = '[]';
-}
-$intelApiCommonKeywordsJson = json_encode($intelApiCommonKeywords, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
-if ($intelApiCommonKeywordsJson === false) {
-    $intelApiCommonKeywordsJson = '[]';
-}
 $pageLabelMap = [
     'home' => cft('nav_home'),
     'search' => cft('nav_search'),
     'coverage' => cft('nav_coverage'),
     'about' => cft('nav_about'),
     'access' => cft('nav_access'),
-    'settings' => cft('nav_settings'),
     'ops' => cft('nav_ops'),
     'analytics' => cft('nav_graphs'),
-    'intel_stats' => cft('nav_intel_stats'),
     'intel' => cft('nav_investigation'),
     'community' => cft('nav_community'),
     'extensions' => cft('nav_extensions'),
@@ -3822,13 +2173,9 @@ if ($scriptDirUrl === '/' || $scriptDirUrl === '\\' || $scriptDirUrl === '.') {
 }
 $leafletCssUrl = ($scriptDirUrl !== '' ? $scriptDirUrl : '') . '/assets/vendor/leaflet/leaflet.css';
 $leafletJsUrl = ($scriptDirUrl !== '' ? $scriptDirUrl : '') . '/assets/vendor/leaflet/leaflet.js';
-$leafletWorldGeoJsonUrl = ($scriptDirUrl !== '' ? $scriptDirUrl : '') . '/assets/vendor/leaflet/data/world-countries.geo.json';
-$activeTheme = $loggedIn ? clickfix_profile_normalize_theme((string) ($user['profile_theme'] ?? 'default')) : 'default';
-$bodyClass = 'theme-' . $activeTheme;
-ob_start();
 ?>
 <!doctype html>
-<html lang="es">
+<html lang="<?= clickfix_h($lang); ?>">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -3856,36 +2203,8 @@ ob_start();
       --radius:18px;
       --radius-sm:13px;
     }
-    body.theme-teal{
-      --brand:#56d6c9;
-      --brand-2:#4fe38d;
-      --bg:#051211;
-      --bg-layer:#0a2221;
-      --bg-soft:#113732;
-      --line:#2f6f64;
-      --line-soft:#25564f;
-    }
-    body.theme-sunset{
-      --brand:#ffb75e;
-      --brand-2:#ff8f70;
-      --bg:#170b08;
-      --bg-layer:#2a1410;
-      --bg-soft:#3c1d15;
-      --line:#89543c;
-      --line-soft:#6f432f;
-    }
-    body.theme-mono{
-      --brand:#b9c2cf;
-      --brand-2:#dee4ec;
-      --bg:#07090d;
-      --bg-layer:#11161f;
-      --bg-soft:#1a212d;
-      --line:#4a5568;
-      --line-soft:#394353;
-    }
     *{box-sizing:border-box}
     html,body{height:100%;scroll-behavior:smooth}
-    html{-webkit-text-size-adjust:100%}
     body{
       margin:0;
       color:var(--txt);
@@ -3895,24 +2214,10 @@ ob_start();
         radial-gradient(960px 460px at 95% -10%,rgba(87,240,190,.18),transparent 58%),
         radial-gradient(760px 320px at 52% 108%,rgba(109,129,255,.12),transparent 62%),
         repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 1px,transparent 1px 92px),
-      linear-gradient(145deg,var(--bg),var(--bg-layer) 45%,#0d1a31 100%);
+        linear-gradient(145deg,var(--bg),var(--bg-layer) 45%,#0d1a31 100%);
       min-height:100vh;
     }
-    body.nav-open-mobile{
-      overflow:hidden;
-    }
-    :root{
-      --sticky-header-offset:136px;
-    }
-    .wrap{
-      width:min(1920px,99vw);
-      margin:auto;
-      padding:
-        calc(10px + env(safe-area-inset-top))
-        0
-        calc(18px + env(safe-area-inset-bottom))
-        0
-    }
+    .wrap{width:min(1920px,99vw);margin:auto;padding:10px 0 18px}
     .workspace{
       display:grid;
       grid-template-columns:minmax(0,1fr) 350px;
@@ -3925,7 +2230,7 @@ ob_start();
       flex-direction:column;
       gap:8px;
       position:sticky;
-      top:var(--sticky-header-offset);
+      top:128px;
       align-self:start;
     }
     .side-card{padding:10px}
@@ -4047,43 +2352,6 @@ ob_start();
       place-items:center;
       overflow:hidden;
     }
-    .internal-ads-stack{
-      display:grid;
-      gap:8px;
-    }
-    .internal-ad-card{
-      border:1px solid #355f86;
-      border-radius:14px;
-      background:linear-gradient(155deg,#102840,#0d2136);
-      padding:10px;
-      display:grid;
-      gap:8px;
-    }
-    .internal-ad-card.cyan{border-color:#2f82a8;background:linear-gradient(155deg,#0f2941,#0b2235)}
-    .internal-ad-card.lime{border-color:#4e8d5c;background:linear-gradient(155deg,#132d2b,#0f2230)}
-    .internal-ad-card.amber{border-color:#9b6d35;background:linear-gradient(155deg,#312412,#14263b)}
-    .internal-ad-card.fuchsia{border-color:#8a4db6;background:linear-gradient(155deg,#2d1836,#0f2237)}
-    .internal-ad-kicker{
-      font:.64rem 'JetBrains Mono',monospace;
-      color:#b9d8f0;
-      text-transform:uppercase;
-      letter-spacing:.08em;
-    }
-    .internal-ad-card b{
-      display:block;
-      font:700 .9rem 'Sora',sans-serif;
-      color:#f3fbff;
-      line-height:1.25;
-    }
-    .internal-ad-card p{
-      margin:0;
-      color:#c7def2;
-      font-size:.78rem;
-      line-height:1.42;
-    }
-    .internal-ad-card .btn{
-      width:auto;
-    }
     .support-note{margin:0 0 8px;color:#bcd6ef;font-size:.8rem;line-height:1.4}
     .top,.card{
       background:linear-gradient(170deg,rgba(15,37,64,.76),rgba(10,24,45,.78));
@@ -4093,86 +2361,21 @@ ob_start();
       backdrop-filter:blur(12px);
     }
     .top{
-      display:grid;
-      gap:12px;
-      padding:14px 16px;
+      display:flex;
+      justify-content:space-between;
+      gap:14px;
+      padding:12px 14px;
       margin-bottom:8px;
+      align-items:flex-start;
       position:sticky;
       top:10px;
-      z-index:28;
-      background:
-        radial-gradient(circle at top right,rgba(93,200,255,.18),transparent 32%),
-        linear-gradient(170deg,rgba(15,37,64,.92),rgba(10,24,45,.94));
-      border-color:rgba(104,155,208,.52);
-      box-shadow:0 22px 48px rgba(3,10,22,.42);
+      z-index:12;
     }
-    .app-header-main{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:16px;
-      flex-wrap:wrap;
-    }
-    .nav-toggle{
-      display:none;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
-      min-height:42px;
-      padding:9px 12px;
-      border-radius:12px;
-      border:1px solid #3f6690;
-      background:linear-gradient(140deg,#132d49,#10253d);
-      color:#e6f4ff;
-      font:700 .74rem 'JetBrains Mono',monospace;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      cursor:pointer;
-      transition:.22s ease;
-      box-shadow:0 10px 22px rgba(8,26,44,.22);
-    }
-    .nav-toggle:hover{
-      border-color:#79dbff;
-      transform:translateY(-1px);
-      box-shadow:0 12px 24px rgba(16,78,129,.32);
-    }
-    .nav-toggle-lines{
-      display:inline-grid;
-      gap:3px;
-      width:15px;
-    }
-    .nav-toggle-lines span{
-      display:block;
-      width:15px;
-      height:2px;
-      border-radius:999px;
-      background:currentColor;
-    }
-    .app-header-brand{
-      display:grid;
-      gap:6px;
-      min-width:280px;
-      flex:1 1 420px;
-    }
-    .app-header-title{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .app-header-title b{font:700 1.06rem 'Sora',sans-serif;letter-spacing:.2px}
-    .app-header-subline{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-      color:#b9d4ec;
-      font:.78rem 'JetBrains Mono',monospace;
-    }
-    .app-header-subline .sep{opacity:.55}
     .mono,code{font-family:'JetBrains Mono',monospace}
+    .top b{font:700 1rem 'Sora',sans-serif;letter-spacing:.25px}
     .top .mut{font-size:.79rem}
     .module-chip{
+      margin-top:8px;
       display:inline-flex;
       align-items:center;
       gap:7px;
@@ -4183,14 +2386,7 @@ ob_start();
       font:600 .7rem 'JetBrains Mono',monospace;
       color:#e0f5ff;
     }
-    .top-status{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-      align-items:flex-start;
-      flex:1 1 500px;
-    }
+    .top-status{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
     .status-chip{
       padding:5px 10px;
       border-radius:999px;
@@ -4200,39 +2396,34 @@ ob_start();
       color:#e5f2ff;
     }
     .status-chip a{color:#c9f2ff;text-decoration:none}
-    .app-header-navrow{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-      padding-top:10px;
-      border-top:1px solid rgba(96,137,177,.28);
-    }
-    .header-nav{
+    nav{
       display:flex;
       flex-wrap:wrap;
       gap:8px;
-      flex:1 1 720px;
-      min-width:0;
+      margin:0 0 8px;
+      padding:8px;
+      border-radius:var(--radius-sm);
+      border:1px solid rgba(92,139,192,.42);
+      background:linear-gradient(170deg,rgba(13,30,50,.8),rgba(10,23,39,.82));
+      position:sticky;
+      top:74px;
+      z-index:11;
+      box-shadow:0 14px 36px rgba(4,11,24,.38);
+      backdrop-filter:blur(10px);
     }
-    .header-nav a,
+    .nav-spacer{margin-left:auto}
     .nav-actions{
+      margin-left:auto;
       display:flex;
       align-items:center;
       gap:8px;
       flex-wrap:wrap;
-    }
-    .nav-actions{
-      justify-content:flex-end;
-      flex:0 1 auto;
     }
     .nav-actions form{margin:0}
-    .header-nav a,
     .nav-actions .nav-btn{
       text-decoration:none;
       color:#dff1ff;
-      padding:8px 11px;
+      padding:7px 10px;
       border-radius:12px;
       border:1px solid #3f6690;
       background:linear-gradient(140deg,#132d49,#10253d);
@@ -4244,13 +2435,11 @@ ob_start();
       width:auto;
       cursor:pointer;
     }
-    .header-nav a:hover,
     .nav-actions .nav-btn:hover{
       border-color:#79dbff;
       transform:translateY(-1px);
       box-shadow:0 10px 20px rgba(16,78,129,.3);
     }
-    .header-nav a.active,
     .nav-actions .nav-btn.active{
       color:#06182a;
       border-color:transparent;
@@ -4265,6 +2454,28 @@ ob_start();
     .nav-actions .nav-btn.logout:hover{
       border-color:#e2879a;
       box-shadow:0 10px 20px rgba(145,42,68,.35);
+    }
+    nav a{
+      text-decoration:none;
+      color:#dff1ff;
+      padding:7px 10px;
+      border-radius:12px;
+      border:1px solid #3f6690;
+      background:linear-gradient(140deg,#132d49,#10253d);
+      font:600 .76rem 'JetBrains Mono',monospace;
+      letter-spacing:.1px;
+      transition:.22s ease;
+    }
+    nav a:hover{
+      border-color:#79dbff;
+      transform:translateY(-1px);
+      box-shadow:0 10px 20px rgba(16,78,129,.3);
+    }
+    nav a.active{
+      color:#06182a;
+      border-color:transparent;
+      background:linear-gradient(135deg,var(--brand),var(--brand-2));
+      box-shadow:0 12px 26px rgba(99,217,255,.32);
     }
     .hero{display:grid;grid-template-columns:2fr .9fr;gap:8px;margin-bottom:8px}
     .hero-main,.hero-side{padding:11px}
@@ -4468,22 +2679,6 @@ ob_start();
     }
     .event-feed-item:hover{border-color:#73d4ff;background:#143150}
     .event-feed-item.is-active{border-color:#67edc1;background:linear-gradient(145deg,#194867,#143d59)}
-    .event-feed-item.is-blocked{
-      border-color:#ff6d7d;
-      background:linear-gradient(145deg,#3f1c29,#2b1520);
-      box-shadow:inset 0 0 0 1px #ff899766;
-    }
-    .event-feed-item.is-blocked:hover{
-      border-color:#ffa8b3;
-      background:linear-gradient(145deg,#4a1f2d,#341724);
-    }
-    .event-feed-item.is-active.is-blocked{
-      border-color:#ff8f9f;
-      background:linear-gradient(145deg,#5a2435,#3d1b27);
-      box-shadow:inset 0 0 0 1px #ffb2bc88;
-    }
-    .event-feed-item.is-blocked .event-feed-host{color:#ffdce1}
-    .event-feed-item.is-blocked .event-feed-meta{color:#f2c2cb}
     .event-feed-main{display:flex;flex-direction:column;gap:2px;min-width:0}
     .event-feed-host{font-weight:700;word-break:break-word}
     .event-feed-meta{font:.72rem 'JetBrains Mono',monospace;color:var(--mut);word-break:break-word}
@@ -4618,349 +2813,6 @@ ob_start();
       font-weight:700;
     }
     .intel-layout{display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:12px}
-    .intel-layout.workspace-only{grid-template-columns:minmax(0,1fr)}
-    .intel-selector-shell{
-      display:grid;
-      gap:14px;
-      border:1px solid #2b5378;
-      border-radius:16px;
-      background:linear-gradient(155deg,#0a1f31,#0b2438);
-      padding:16px;
-      box-shadow:0 24px 60px -44px #000;
-    }
-    .intel-selector-head{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:14px;
-      flex-wrap:wrap;
-    }
-    .intel-selector-head h3{margin:0 0 6px}
-    .intel-selector-head p{margin:0;max-width:720px}
-    .intel-selector-grid{
-      display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:12px;
-      align-items:start;
-    }
-    .intel-selector-column{
-      display:grid;
-      gap:10px;
-      border:1px solid #294c6d;
-      border-radius:14px;
-      background:linear-gradient(160deg,#0d253a,#0c2235);
-      padding:12px;
-      min-height:100%;
-    }
-    .intel-selector-column h4{margin:0}
-    .intel-selector-column .mut{margin:0}
-    .intel-picker-stack{display:grid;gap:10px}
-    .intel-picker-card{
-      display:grid;
-      gap:8px;
-      padding:12px;
-      border:1px solid #2f567d;
-      border-radius:12px;
-      background:#10283f;
-      box-shadow:inset 0 1px 0 #ffffff08;
-    }
-    .intel-picker-card strong{display:block;font-size:.96rem;color:#f5fbff}
-    .intel-picker-card .mono{font-size:.72rem}
-    .intel-picker-card .summary{
-      font-size:.82rem;
-      color:#d4e9fa;
-      display:-webkit-box;
-      -webkit-line-clamp:3;
-      -webkit-box-orient:vertical;
-      overflow:hidden;
-    }
-    .intel-picker-actions{display:flex;gap:8px;flex-wrap:wrap}
-    .intel-picker-actions .btn{width:auto}
-    .intel-empty-state{
-      padding:18px 14px;
-      border:1px dashed #3c668c;
-      border-radius:12px;
-      background:#0d2438;
-      color:#bedbf0;
-    }
-    .intel-selector-v2{
-      border-color:#2f5b84;
-      background:
-        radial-gradient(circle at top left, rgba(68,151,218,.12), transparent 55%),
-        linear-gradient(155deg,#0a1f31,#0b2236 60%,#0a1f31);
-      padding:18px;
-    }
-    .intel-focus-hero{
-      display:grid;
-      grid-template-columns:minmax(0,1fr) minmax(220px,260px);
-      gap:16px;
-      align-items:start;
-    }
-    .intel-focus-eyebrow{
-      font-size:.7rem;
-      letter-spacing:.16em;
-      text-transform:uppercase;
-      color:#6db3ff;
-      margin-bottom:6px;
-    }
-    .intel-focus-steps{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:10px;
-    }
-    .intel-step{
-      padding:4px 10px;
-      border-radius:999px;
-      border:1px solid #295d84;
-      font-size:.72rem;
-      color:#b7d8f7;
-      background:#0f2840;
-    }
-    .intel-step.active{
-      border-color:#5ad0ff;
-      color:#e7f7ff;
-      box-shadow:0 0 0 1px #5ad0ff33 inset;
-    }
-    .intel-focus-meta{
-      display:grid;
-      gap:10px;
-      border:1px solid #2b567d;
-      border-radius:14px;
-      padding:12px;
-      background:#0f2740;
-    }
-    .intel-stat{
-      display:flex;
-      align-items:baseline;
-      justify-content:space-between;
-      gap:8px;
-      padding:6px 8px;
-      border-radius:10px;
-      background:#0b2135;
-      border:1px solid #234d72;
-    }
-    .intel-stat .k{font-size:.7rem;color:#9fbfe0;text-transform:uppercase;letter-spacing:.12em}
-    .intel-stat .v{font-size:1.15rem;font-weight:700;color:#f5fbff}
-    .intel-focus-search{
-      display:grid;
-      gap:6px;
-      font-size:.72rem;
-      color:#b8d5ef;
-    }
-    .intel-focus-search input{
-      width:100%;
-      padding:9px 10px;
-      border-radius:10px;
-      border:1px solid #2a587f;
-      background:#0a1b2a;
-      color:#e6f4ff;
-    }
-    .intel-focus-tabs{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:10px;
-    }
-    .intel-tab{
-      border:1px solid #2b567d;
-      background:#0c2236;
-      color:#c7def4;
-      padding:8px 12px;
-      border-radius:10px;
-      font-weight:600;
-      cursor:pointer;
-    }
-    .intel-tab.is-active{
-      background:#14324c;
-      border-color:#64b5ff;
-      color:#f2f9ff;
-      box-shadow:0 0 0 1px #64b5ff33 inset;
-    }
-    .intel-focus-panels{margin-top:10px;display:grid;gap:12px}
-    .intel-panel-head{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .intel-panel-head h4{margin:0}
-    .intel-panel-chip{
-      padding:6px 10px;
-      border-radius:999px;
-      font-size:.72rem;
-      border:1px solid #2b5a82;
-      background:#0c2338;
-      color:#b9d6f0;
-    }
-    .intel-focus-list{display:grid;gap:10px}
-    .intel-focus-card{
-      display:grid;
-      gap:10px;
-      padding:14px;
-      border-radius:14px;
-      border:1px solid #2f567d;
-      background:#0f263c;
-      box-shadow:inset 0 1px 0 #ffffff08;
-    }
-    .intel-focus-card.hero{
-      background:linear-gradient(145deg,#102a42,#0c2032);
-      border-color:#3b6e9a;
-    }
-    .intel-focus-main strong{
-      display:block;
-      font-size:1rem;
-      color:#f5fbff;
-      margin-bottom:6px;
-    }
-    .intel-meta-row{
-      display:flex;
-      gap:6px;
-      flex-wrap:wrap;
-      align-items:center;
-      font-size:.72rem;
-      color:#b9d7ef;
-    }
-    .intel-badge{
-      padding:3px 8px;
-      border-radius:999px;
-      border:1px solid #2a587f;
-      background:#0b2135;
-      color:#c4dcf2;
-      text-transform:lowercase;
-    }
-    .intel-badge.score{border-color:#4aa6ff;color:#e6f4ff;background:#103251}
-    .intel-badge.soft{opacity:.9}
-    .intel-badge.critical{border-color:#a94a56;color:#ffd2d8;background:#3f1822}
-    .intel-focus-summary .summary{
-      font-size:.82rem;
-      color:#d4e9fa;
-      display:-webkit-box;
-      -webkit-line-clamp:3;
-      -webkit-box-orient:vertical;
-      overflow:hidden;
-    }
-    .intel-summary-details{
-      margin-top:6px;
-      font-size:.75rem;
-      color:#b8d5ef;
-    }
-    .intel-summary-details summary{
-      cursor:pointer;
-      color:#8ac5ff;
-    }
-    .intel-focus-actions{display:flex;gap:8px;flex-wrap:wrap}
-    .intel-focus-card.is-hidden{display:none}
-    .intel-focus-bar{
-      position:sticky;
-      top:calc(var(--sticky-header-offset) + 8px);
-      z-index:18;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-      margin:12px 0;
-      padding:11px 12px;
-      border:1px solid #315c82;
-      border-radius:13px;
-      background:linear-gradient(155deg,rgba(14,38,58,.96),rgba(11,31,49,.96));
-      backdrop-filter:blur(14px);
-      box-shadow:0 18px 40px -34px #000;
-    }
-    .intel-focus-main{display:grid;gap:4px}
-    .intel-focus-main strong{font-size:1rem;color:#f6fbff}
-    .intel-focus-main span{color:#bddcff;font:.76rem 'JetBrains Mono',monospace}
-    .intel-focus-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .intel-focus-actions .btn{width:auto}
-    .intel-cockpit{
-      display:grid;
-      grid-template-columns:repeat(6,minmax(0,1fr));
-      gap:10px;
-      margin:0 0 12px;
-    }
-    .intel-cockpit-card{
-      border:1px solid #2c5478;
-      border-radius:14px;
-      background:linear-gradient(160deg,#0f2a42,#0a1f31);
-      padding:12px;
-      display:grid;
-      gap:6px;
-      min-height:108px;
-      box-shadow:0 16px 32px -28px #000;
-    }
-    .intel-cockpit-card .k{
-      font:.68rem 'JetBrains Mono',monospace;
-      color:#9fc2de;
-      text-transform:uppercase;
-      letter-spacing:.04em;
-    }
-    .intel-cockpit-card .v{
-      font:700 1.08rem 'Sora',sans-serif;
-      color:#f2faff;
-      word-break:break-word;
-    }
-    .intel-cockpit-card .mut{margin:0}
-    .intel-cockpit-card.actions{
-      grid-column:span 2;
-      align-content:start;
-    }
-    .intel-quick-grid{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-    }
-    .intel-quick-grid .btn{width:auto}
-    .intel-workspace-nav{
-      position:sticky;
-      top:calc(var(--sticky-header-offset) + 8px);
-      z-index:17;
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin:0 0 12px;
-      padding:10px;
-      border:1px solid #315a7f;
-      border-radius:13px;
-      background:linear-gradient(155deg,rgba(14,36,55,.94),rgba(10,27,43,.94));
-      backdrop-filter:blur(14px);
-      box-shadow:0 16px 38px -34px #000;
-    }
-    .intel-workspace-nav .btn{
-      width:auto;
-      min-width:0;
-      padding:8px 12px;
-      border-radius:999px;
-    }
-    .intel-workspace-nav .btn.active{
-      border-color:#4de09f99;
-      background:#154159;
-      color:#effff7;
-    }
-    .intel-section-head{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-bottom:10px;
-    }
-    .intel-section-head h3{margin:0}
-    .intel-section-head p{margin:4px 0 0}
-    .intel-section-kicker{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding:4px 9px;
-      border:1px solid #3d6b93;
-      border-radius:999px;
-      background:#12314a;
-      color:#d5eeff;
-      font:.68rem 'JetBrains Mono',monospace;
-      text-transform:uppercase;
-      letter-spacing:.04em;
-    }
     .intel-list{
       display:flex;
       flex-direction:column;
@@ -5014,209 +2866,13 @@ ob_start();
       padding:10px;
       margin-bottom:10px;
     }
-    [data-intel-section]{scroll-margin-top:calc(var(--sticky-header-offset) + 110px)}
     .intel-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
     .intel-grid-full{grid-column:1 / -1}
     .intel-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
     .intel-toolbar button{width:auto}
-    .intel-workbench-panel{
-      display:grid;
-      gap:12px;
-      margin:14px 0 18px;
-      padding:12px;
-      border:1px solid #2f5579;
-      border-radius:14px;
-      background:linear-gradient(160deg,#0d243a,#0b1d2f);
-    }
-    .intel-workbench-grid{
-      display:grid;
-      grid-template-columns:minmax(0,1.3fr) minmax(260px,.9fr);
-      gap:12px;
-      align-items:start;
-    }
-    .intel-workbench-side{display:grid;gap:8px}
-    .intel-workbench-note{
-      margin:0;
-      color:#b6d2eb;
-      font-size:.78rem;
-      line-height:1.45;
-    }
-    .intel-workbench-provider-list{display:flex;flex-wrap:wrap;gap:8px}
-    .intel-workbench-provider-list label{
-      gap:6px;
-      padding:7px 10px;
-      border-radius:10px;
-      border:1px solid #335d83;
-      background:#102741;
-      font:.72rem 'JetBrains Mono',monospace;
-      color:#d3e9ff;
-    }
-    .intel-workbench-provider-list input[type=checkbox]{accent-color:#5fd8ff}
-    .intel-workbench-kpis{
-      display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:8px;
-    }
-    .intel-workbench-kpi{
-      padding:8px 9px;
-      border:1px solid #30577b;
-      border-radius:11px;
-      background:#0f2740;
-      min-height:72px;
-    }
-    .intel-workbench-kpi b{
-      display:block;
-      margin-bottom:5px;
-      font:.66rem 'JetBrains Mono',monospace;
-      color:#a8c6e4;
-      text-transform:uppercase;
-      letter-spacing:.05em;
-    }
-    .intel-workbench-kpi span{
-      display:block;
-      font:700 1.05rem 'Sora',sans-serif;
-      color:#edf7ff;
-    }
-    .intel-artifact-grid,
-    .intel-batch-grid,
-    .intel-decode-grid{display:grid;gap:8px}
-    .intel-artifact-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
-    .intel-artifact-card,
-    .intel-batch-card,
-    .intel-decode-card{
-      border:1px solid #30577b;
-      border-radius:12px;
-      background:#0f2740;
-      padding:10px;
-      display:grid;
-      gap:6px;
-    }
-    .intel-artifact-type{
-      display:inline-flex;
-      align-items:center;
-      width:max-content;
-      padding:2px 8px;
-      border-radius:999px;
-      border:1px solid #47719a;
-      background:#14324d;
-      font:.66rem 'JetBrains Mono',monospace;
-      color:#d3ebff;
-      text-transform:uppercase;
-    }
-    .intel-artifact-value{
-      margin:0;
-      color:#f3fbff;
-      font:600 .8rem 'JetBrains Mono',monospace;
-      word-break:break-word;
-    }
-    .intel-decode-card pre,
-    .intel-batch-card pre{
-      margin:0;
-      padding:8px;
-      border-radius:10px;
-      border:1px solid #284a69;
-      background:#091a2a;
-      max-height:180px;
-      overflow:auto;
-      white-space:pre-wrap;
-      font:.72rem 'JetBrains Mono',monospace;
-    }
-    .intel-batch-head{
-      display:flex;
-      justify-content:space-between;
-      gap:8px;
-      align-items:flex-start;
-      flex-wrap:wrap;
-    }
-    .intel-batch-status{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding:3px 8px;
-      border-radius:999px;
-      border:1px solid #3b6e96;
-      background:#13304a;
-      font:.67rem 'JetBrains Mono',monospace;
-      color:#d9efff;
-    }
-    .intel-batch-status.ok{border-color:#3f7d66;background:#17392f;color:#cbffea}
-    .intel-batch-status.ko{border-color:#8e3f51;background:#3a1d28;color:#ffd7dd}
-    .intel-map-shell{display:grid;gap:10px}
-    .intel-map-toolbar{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-      padding:8px 10px;
-      border:1px solid #315c82;
-      border-radius:11px;
-      background:linear-gradient(155deg,#0d253a,#102e49);
-    }
-    .intel-map-toolbar-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .intel-map-toolbar label{margin:0;font:.72rem 'JetBrains Mono',monospace;color:#bddcff}
-    .intel-map-toolbar select{width:auto;min-width:180px;max-width:240px}
-    .intel-map-toolbar button{width:auto;min-width:0}
-    .intel-map-toolbar .map-stat{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding:5px 10px;
-      border-radius:999px;
-      border:1px solid #3e6e98;
-      background:#12314a;
-      color:#d5eeff;
-      font:.7rem 'JetBrains Mono',monospace;
-    }
-    .intel-canvas-wrap{position:relative;height:470px;border:1px solid #2f577f;border-radius:11px;background:radial-gradient(circle at 18% 12%,#214865 0,#0d2438 42%,#091728 100%);overflow:hidden;touch-action:none}
+    .intel-canvas-wrap{position:relative;height:470px;border:1px solid #2f577f;border-radius:11px;background:radial-gradient(circle at 18% 12%,#214865 0,#0d2438 42%,#091728 100%);overflow:hidden}
     .intel-canvas-wrap svg{position:absolute;inset:0;width:100%;height:100%}
-    .intel-node-layer{position:absolute;inset:0;transform-origin:0 0}
-    .intel-canvas-wrap.is-panning{cursor:grabbing}
-    .intel-canvas-wrap.is-fullscreen{
-      height:100vh;
-      border-radius:0;
-      border-color:#4a7aa1;
-    }
-    .intel-canvas-dock{
-      position:absolute;
-      right:14px;
-      bottom:14px;
-      z-index:6;
-      display:grid;
-      gap:8px;
-      width:min(100%,420px);
-      padding:10px;
-      border:1px solid #335d83;
-      border-radius:14px;
-      background:linear-gradient(160deg,rgba(9,23,36,.9),rgba(13,36,56,.88));
-      backdrop-filter:blur(14px);
-      box-shadow:0 20px 44px -30px #000;
-    }
-    .intel-canvas-dock-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .intel-canvas-dock-title{
-      display:grid;
-      gap:3px;
-    }
-    .intel-canvas-dock-title b{font-size:.9rem}
-    .intel-canvas-dock-title span{font:.68rem 'JetBrains Mono',monospace;color:#b9d9ee}
-    .intel-canvas-dock-actions,
-    .intel-canvas-dock-tools{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    .intel-canvas-dock .btn{
-      width:auto;
-      min-width:0;
-      padding:8px 11px;
-    }
+    .intel-node-layer{position:absolute;inset:0}
     .intel-node{position:absolute;transform:translate(-50%,-50%);min-width:96px;max-width:180px;padding:8px 10px;border-radius:12px;color:#fff;font:700 .74rem 'Manrope',sans-serif;border:1px solid #ffffff55;cursor:move;user-select:none;box-shadow:0 8px 18px -12px #000a;word-break:break-word}
     .intel-node.active{outline:2px solid #ffd266;z-index:3}
     .intel-edge-label{position:absolute;transform:translate(-50%,-50%);font:.68rem 'JetBrains Mono',monospace;color:#d6ebf8;background:#10314a;border:1px solid #3d6991;padding:2px 5px;border-radius:6px;pointer-events:none}
@@ -5226,47 +2882,6 @@ ob_start();
     .intel-side .card-box button{margin-top:6px}
     .intel-share{margin-top:10px;padding:8px;border:1px solid #2ea579;border-radius:10px;background:#103b3f}
     .intel-share a{color:#9de9ff;word-break:break-all}
-    .intel-api-map-insights{
-      border:1px solid #2e557c;
-      border-radius:10px;
-      background:linear-gradient(155deg,#102940,#0c2438);
-      padding:8px;
-      margin:6px 0 10px;
-      display:grid;
-      gap:7px;
-    }
-    .intel-api-map-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:8px;
-      flex-wrap:wrap;
-      font:.72rem 'JetBrains Mono',monospace;
-      color:#cbe7ff;
-    }
-    .intel-api-keywords{
-      display:flex;
-      gap:6px;
-      flex-wrap:wrap;
-      align-items:center;
-      min-height:28px;
-    }
-    .intel-api-keyword-chip{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      border:1px solid #44729b;
-      border-radius:999px;
-      padding:3px 10px;
-      background:#12314a;
-      color:#dcf2ff;
-      font:.68rem 'JetBrains Mono',monospace;
-      line-height:1;
-    }
-    .intel-api-keyword-chip b{
-      font:700 .67rem 'JetBrains Mono',monospace;
-      color:#ffd98e;
-    }
     .api-key-row-form{
       display:flex;
       gap:6px;
@@ -5551,50 +3166,6 @@ ob_start();
       z-index:2;
       background:linear-gradient(120deg,rgba(24,49,75,.95),rgba(17,34,54,.95));
     }
-    .exposure-grid{
-      display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
-      gap:8px;
-      margin-top:8px;
-    }
-    .exposure-kpi-grid{
-      grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
-    }
-    .exposure-note{
-      margin:6px 0 0;
-      color:#a9c8e6;
-      font:.74rem 'JetBrains Mono',monospace;
-      line-height:1.45;
-    }
-    .exposure-flag-wrap{
-      display:flex;
-      flex-wrap:wrap;
-      gap:5px;
-    }
-    .exposure-flag{
-      display:inline-flex;
-      align-items:center;
-      gap:4px;
-      padding:2px 8px;
-      border-radius:999px;
-      border:1px solid #40688e;
-      background:#102842;
-      color:#dcefff;
-      font:.66rem 'JetBrains Mono',monospace;
-      text-transform:uppercase;
-      letter-spacing:.03em;
-    }
-    .exposure-flag.referrer_match{border-color:#7d5df6;color:#eadfff;background:#211642}
-    .exposure-flag.direct_ip_overlap{border-color:#c95f5f;color:#ffd8d8;background:#3a171e}
-    .exposure-flag.network_overlap{border-color:#d49a43;color:#ffe9bf;background:#3a2a14}
-    .exposure-flag.proxy,.exposure-flag.hosting{border-color:#b04f6a;color:#ffd8e4;background:#391524}
-    .exposure-flag.mobile{border-color:#3d7db4;color:#d2edff;background:#10293f}
-    .exposure-domains{
-      font:.68rem 'JetBrains Mono',monospace;
-      color:#bcdced;
-      line-height:1.4;
-      word-break:break-word;
-    }
     .compact-table th,.compact-table td{padding:5px 7px;font-size:.74rem}
     .chart-card .chart-title{margin:0 0 6px;font:.72rem 'JetBrains Mono',monospace;color:#bcd8f2}
     .chart-canvas{width:100%;height:180px;display:block;border-radius:8px;background:#0a1d30}
@@ -5604,8 +3175,6 @@ ob_start();
     .profile-shell{display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:10px}
     .profile-card{padding:12px;border:1px solid #355a82;border-radius:12px;background:#0c253d}
     .profile-avatar{width:78px;height:78px;border-radius:999px;display:grid;place-items:center;font:800 1.5rem 'Sora',sans-serif;background:linear-gradient(145deg,#63d9ff,#57f0be);color:#032640;margin-bottom:10px}
-    .profile-avatar.has-image{background:#0d2036;padding:0;overflow:hidden}
-    .profile-avatar.has-image img{width:100%;height:100%;object-fit:cover;display:block}
     .profile-name{margin:0;font-size:1.15rem}
     .profile-nick{font:.8rem 'JetBrains Mono',monospace;color:#9cc6e5}
     .profile-meta{display:grid;gap:6px;margin-top:10px}
@@ -5615,7 +3184,6 @@ ob_start();
     .profile-tab.active{border-color:#58dcaf;background:#12483d;color:#d9fff3}
     hr{border:none;border-top:1px solid #2a4b6d;margin:10px 0}
     pre{white-space:pre-wrap;word-break:break-word}
-    input,select,textarea,button{max-width:100%}
     @media(min-width:1700px){
       .grid{grid-template-columns:repeat(8,minmax(0,1fr))}
       .kpi{min-height:84px}
@@ -5625,594 +3193,133 @@ ob_start();
       .workspace{grid-template-columns:1fr}
       .side-column{position:static}
     }
-    @media(max-width:920px){
-      .wrap{
-        width:min(100%,99vw);
-        padding:
-          calc(8px + env(safe-area-inset-top))
-          max(6px, env(safe-area-inset-right))
-          calc(16px + env(safe-area-inset-bottom))
-          max(6px, env(safe-area-inset-left));
-      }
-      .top{
-        top:max(6px, env(safe-area-inset-top));
-        padding:12px;
-      }
-      .app-header-main{
-        gap:10px;
-        align-items:center;
-      }
-      .app-header-brand,
-      .top-status{
-        min-width:0;
-        width:100%;
-        flex-basis:100%;
-      }
-      .app-header-brand{
-        gap:4px;
-      }
-      .app-header-title{
-        gap:8px;
-      }
-      .app-header-title b{
-        font-size:.96rem;
-      }
-      .app-header-subline{
-        display:none;
-      }
-      .top-status{
-        justify-content:flex-start;
-        flex-wrap:nowrap;
-        overflow-x:auto;
-        -webkit-overflow-scrolling:touch;
-        scrollbar-width:none;
-        padding-bottom:2px;
-      }
-      .top-status::-webkit-scrollbar{
-        display:none;
-      }
-      .status-chip,
-      .module-chip{
-        flex:0 0 auto;
-        white-space:nowrap;
-      }
-      .nav-toggle{
-        display:inline-flex;
-        margin-left:auto;
-      }
-      .app-header-navrow{
-        display:none;
-        width:100%;
-        padding-top:8px;
-        margin-top:2px;
-        max-height:calc(100dvh - 132px - env(safe-area-inset-top));
-        overflow:auto;
-        -webkit-overflow-scrolling:touch;
-      }
-      .top.is-nav-open .app-header-navrow{
-        display:grid;
-        gap:10px;
-      }
-      .header-nav{
-        overflow:visible;
-        flex:0 1 auto;
-        width:100%;
-        display:grid;
-        grid-template-columns:repeat(2,minmax(0,1fr));
-        gap:8px;
-        padding-bottom:0;
-      }
-      .header-nav a,
-      .nav-actions .nav-btn,
-      .module-chip,
-      .status-chip{
-        min-height:44px;
-      }
-      .header-nav a{
-        width:100%;
-        justify-content:center;
-      }
-      .nav-actions{
-        width:100%;
-        justify-content:flex-start;
-        display:grid;
-        grid-template-columns:repeat(2,minmax(0,1fr));
-        gap:8px;
-      }
-      .nav-actions form{
-        margin:0;
-        display:contents;
-      }
-      .nav-actions .nav-btn{
-        width:100%;
-        justify-content:center;
-      }
-      input,
-      select,
-      textarea,
-      button{
-        font-size:16px;
-        min-height:44px;
-      }
-      textarea{min-height:110px}
-      .hero-main,
-      .hero-side,
-      .card,
-      .side-card,
-      .intel-editor-section,
-      .intel-selector-shell{
-        padding-left:10px;
-        padding-right:10px;
-      }
-      .geo-map{
-        height:300px !important;
-      }
-      .chart-canvas{
-        height:200px;
-      }
-    }
     @media(max-width:1140px){
       .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-      .hero,.row,.split,.event-workbench,.event-columns,.event-grid,.intel-layout,.intel-grid,.intel-side,.intel-public-meta,.rbac,.viz-grid,.profile-shell,.chart-stack,.analytics-kpi-grid,.intel-kpi-grid,.intel-stage-bar,.intel-selector-grid,.intel-cockpit,.intel-workbench-grid,.intel-workbench-kpis{grid-template-columns:1fr}
-      .app-header-navrow{align-items:flex-start}
-      .nav-actions{width:100%;justify-content:flex-start}
-      .intel-focus-hero{grid-template-columns:1fr}
+      .hero,.row,.split,.event-workbench,.event-columns,.event-grid,.intel-layout,.intel-grid,.intel-side,.intel-public-meta,.rbac,.viz-grid,.profile-shell,.chart-stack,.analytics-kpi-grid,.intel-kpi-grid,.intel-stage-bar{grid-template-columns:1fr}
+      nav{top:72px}
+      .nav-spacer{display:none}
+      .nav-actions{width:100%;justify-content:flex-end}
     }
     @media(max-width:700px){
-      .wrap{
-        width:min(100%,98vw);
-        padding:
-          max(8px, env(safe-area-inset-top))
-          max(4px, env(safe-area-inset-right))
-          calc(18px + env(safe-area-inset-bottom))
-          max(4px, env(safe-area-inset-left));
-      }
-      body{overflow-x:hidden}
-      .top{
-        top:max(6px, env(safe-area-inset-top));
-        padding:12px;
-      }
+      .wrap{width:min(100%,98vw)}
+      .top{position:static}
+      nav{position:static}
       .grid{grid-template-columns:1fr}
       .top-status{justify-content:flex-start}
       .nav-actions{justify-content:flex-start}
-      .top,
-      .card,
-      .profile-card,
-      .intel-editor-section,
-      .event-detail-shell,
-      .intel-editor,
-      .intel-selector-shell,
-      .intel-cockpit-card,
-      .intel-topbar,
-      .intel-list,
-      .analytics-table-wrap{
-        border-radius:14px;
-      }
-      .intel-focus-tabs{gap:6px}
-      .intel-tab{flex:1 1 100%;text-align:center}
-      .intel-focus-meta{padding:10px}
-      .top,
-      .card{
-        padding-left:10px;
-        padding-right:10px;
-      }
-      .app-header-navrow{
-        gap:6px;
-      }
-      .header-nav{
-        grid-template-columns:1fr;
-      }
-      .header-nav a,
-      .nav-actions .nav-btn{
-        min-height:44px;
-      }
-      .intel-focus-bar,
-      .intel-workspace-nav{
-        position:static;
-        top:auto;
-      }
-      .nav-actions{
-        width:100%;
-        gap:6px;
-        grid-template-columns:1fr;
-      }
-      .nav-actions .nav-btn,
-      .bulk-review-toolbar .bulk-review-actions button,
-      .intel-toolbar button,
-      .intel-toolbar .btn,
-      .intel-map-toolbar button,
-      .intel-focus-actions .btn,
-      .intel-canvas-dock .btn{
-        min-height:44px;
-      }
-      input,
-      select,
-      textarea,
-      button{
-        font-size:16px;
-        min-height:44px;
-      }
-      textarea{min-height:110px}
-      .app-header-title b{font-size:.92rem}
-      .module-chip,
-      .status-chip,
-      .badge,
-      .event-chip,
-      .intel-chip{
-        font-size:.68rem;
-      }
-      table{
-        display:block;
-        width:100%;
-        max-width:100%;
-        overflow-x:auto;
-        -webkit-overflow-scrolling:touch;
-      }
-      table thead,
-      table tbody{
-        width:max-content;
-        min-width:100%;
-      }
-      th,
-      td{
-        white-space:nowrap;
-        vertical-align:top;
-      }
-      td .btn,
-      td button,
-      td select,
-      td input[type="text"],
-      td input[type="number"],
-      td input[type="file"]{
-        width:100%;
-        min-width:0;
-      }
-      td pre,
-      td .mono,
-      td .mut-mini,
-      .event-context pre,
-      .api-result pre{
-        white-space:pre-wrap;
-        word-break:break-word;
-      }
-      .event-feed{
-        max-height:none;
-        padding-right:0;
-      }
-      .event-feed-item,
-      .intel-item{
-        padding:10px;
-      }
-      .event-grid,
-      .event-columns,
-      .intel-grid,
-      .intel-side,
-      .profile-meta,
-      .intel-kpi-grid,
-      .intel-workbench-kpis,
-      .side-metrics,
-      .vt-stat-grid,
-      .intel-selector-grid,
-      .intel-cockpit{
-        grid-template-columns:1fr;
-      }
-      .workspace,
-      .row,
-      .split,
-      .event-workbench,
-      .intel-layout,
-      .intel-workbench-grid,
-      .profile-shell,
-      .chart-stack,
-      .intel-selector-grid,
-      .intel-cockpit{
-        gap:10px;
-      }
-      .event-detail-shell,
-      .intel-editor,
-      .intel-editor-section,
-      .profile-card{
-        overflow:hidden;
-      }
-      .intel-focus-bar,
-      .intel-map-toolbar,
-      .intel-selector-head,
-      .intel-section-head,
-      .bulk-review-toolbar,
-      .vt-summary-head,
-      .event-topline,
-      .event-related-head{
-        align-items:stretch;
-      }
-      .intel-map-toolbar-group,
-      .intel-focus-actions,
-      .intel-picker-actions,
-      .intel-quick-grid,
-      .intel-canvas-dock-actions,
-      .intel-canvas-dock-tools,
-      .bulk-review-toolbar .bulk-review-actions{
-        width:100%;
-      }
-      .intel-map-toolbar select,
-      .intel-map-toolbar button,
-      .intel-focus-actions .btn,
-      .intel-picker-actions .btn,
-      .intel-quick-grid .btn,
-      .intel-workspace-nav .btn,
-      .intel-canvas-dock .btn,
-      .intel-toolbar form,
-      .intel-toolbar a,
-      .event-quick-form,
-      td form,
-      .api-key-row-form,
-      .api-key-row-form input[type="password"],
-      .api-key-row-form input[type="text"]{
-        width:100%;
-        min-width:0;
-      }
-      .event-quick-form,
-      td form,
-      form[style*="display:flex"]{
-        display:flex !important;
-        flex-direction:column !important;
-        align-items:stretch !important;
-        gap:8px !important;
-      }
-      .event-quick-form > *,
-      td form > *,
-      form[style*="display:flex"] > *{
-        width:100% !important;
-        min-width:0 !important;
-      }
-      .intel-canvas-dock{
-        left:10px;
-        right:10px;
-        bottom:10px;
-        width:auto;
-        max-height:min(42vh, 360px);
-        overflow:auto;
-      }
-      .api-key-row-form{
-        flex-direction:column;
-        align-items:stretch;
-      }
-      .intel-canvas-wrap{
-        height:58vh;
-        min-height:320px;
-        max-height:520px;
-      }
-      .geo-map{
-        height:320px !important;
-      }
-      .chart-canvas{
-        height:210px;
-      }
-      .profile-avatar{
-        width:64px;
-        height:64px;
-      }
-      .announcement-aside summary{
-        align-items:center;
-      }
-    }
-    @media(max-width:520px){
-      .wrap{width:100%}
-      .top{
-        padding:10px;
-        gap:10px;
-      }
-      .app-header-main,
-      .app-header-navrow{
-        gap:10px;
-      }
-      .top-status,
-      .top .mut{
-        width:100%;
-      }
-      .side-card,
-      .profile-card,
-      .intel-editor-section,
-      .intel-selector-shell{
-        padding:9px;
-      }
-      .intel-cockpit-card.actions{
-        grid-column:auto;
-      }
-      .event-feed-host,
-      .event-kv span,
-      .intel-kpi span,
-      .profile-name{
-        word-break:break-word;
-      }
-      .intel-canvas-wrap{
-        height:52vh;
-        min-height:280px;
-      }
-      .intel-canvas-dock{
-        max-height:min(48vh, 340px);
-      }
-      .geo-map{
-        height:280px !important;
-      }
-      .compact-table th,
-      .compact-table td{
-        padding:6px;
-        font-size:.72rem;
-      }
-      .chart-legend span,
-      .mut,
-      .event-feed-meta,
-      .event-related-note{
-        font-size:.72rem;
-      }
     }
   </style>
 </head>
-<body class="<?= clickfix_h($bodyClass); ?>">
+<body>
   <div class="wrap">
-    <header class="top" id="app-header">
-      <div class="app-header-main">
-        <div class="app-header-brand">
-          <div class="app-header-title">
-            <b>ClickFix Unified Operations Center</b>
-            <div class="module-chip"><?= clickfix_h(cft('label_module')); ?>: <?= clickfix_h($currentPageLabel); ?></div>
-          </div>
-          <div class="app-header-subline">
-            <span>telemetry intelligence</span>
-            <span class="sep">|</span>
-            <span>investigation workspace</span>
-            <span class="sep">|</span>
-            <span>secure operations</span>
-          </div>
-        </div>
-        <div class="top-status">
-          <span class="status-chip">records: <?= (int) ($metrics['total_alerts'] ?? 0); ?></span>
-          <span class="status-chip">module: <?= clickfix_h($currentPageLabel); ?></span>
-          <?php if ($loggedIn): ?><span class="status-chip">operator: <a class="user-link" href="<?= clickfix_h(cfprofileurl((int) ($user['id'] ?? 0), [], false)); ?>"><?= clickfix_h((string) $user['username']); ?></a></span><?php endif; ?>
-          <span class="status-chip">
-            <?= clickfix_h(cft('lang_label')); ?>:
-            <a href="<?= clickfix_h(cfurl($page, !$loggedIn, ['lang' => 'es'])); ?>">ES</a> |
-            <a href="<?= clickfix_h(cfurl($page, !$loggedIn, ['lang' => 'en'])); ?>">EN</a> |
-            <a href="<?= clickfix_h(cfurl($page, !$loggedIn, ['lang' => 'ca'])); ?>">CA</a> |
-            <a href="<?= clickfix_h(cfurl($page, !$loggedIn, ['lang' => 'de'])); ?>">DE</a> |
-            <a href="<?= clickfix_h(cfurl($page, !$loggedIn, ['lang' => 'fr'])); ?>">FR</a> |
-            <a href="<?= clickfix_h(cfurl($page, !$loggedIn, ['lang' => 'it'])); ?>">IT</a>
-          </span>
-        </div>
-        <button class="nav-toggle" type="button" id="nav-toggle" aria-expanded="false" aria-controls="app-header-navrow">
-          <span class="nav-toggle-lines" aria-hidden="true"><span></span><span></span><span></span></span>
-          <span>Menu</span>
-        </button>
+    <header class="top">
+      <div>
+        <b>ClickFix Unified Operations Center</b>
+        <div class="mut mono">fusion build | telemetry intelligence | secure workflows</div>
+        <div class="module-chip"><?= clickfix_h(cft('label_module')); ?>: <?= clickfix_h($currentPageLabel); ?></div>
       </div>
-      <div class="app-header-navrow" id="app-header-navrow">
-        <nav class="header-nav" aria-label="Primary">
-          <a class="<?= $page === 'home' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('home', true)); ?>"><?= clickfix_h(cft('nav_home')); ?></a>
-          <a class="<?= $page === 'search' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('search', true)); ?>"><?= clickfix_h(cft('nav_search')); ?></a>
-          <a class="<?= $page === 'coverage' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('coverage', true)); ?>"><?= clickfix_h(cft('nav_coverage')); ?></a>
-          <a class="<?= $page === 'about' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('about', true)); ?>"><?= clickfix_h(cft('nav_about')); ?></a>
-          <?php if ($loggedIn): ?>
-            <a class="<?= $page === 'profile' ? 'active' : ''; ?>" href="<?= clickfix_h(cfprofileurl((int) ($user['id'] ?? 0), [], false)); ?>"><?= clickfix_h(cft('nav_profile')); ?></a>
-            <a class="<?= $page === 'settings' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('settings')); ?>"><?= clickfix_h(cft('nav_settings')); ?></a>
-            <a class="<?= $page === 'ops' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('ops')); ?>"><?= clickfix_h(cft('nav_ops')); ?></a>
-            <a class="<?= $page === 'analytics' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('analytics')); ?>"><?= clickfix_h(cft('nav_graphs')); ?></a>
-            <a class="<?= $page === 'intel_stats' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('intel_stats')); ?>"><?= clickfix_h(cft('nav_intel_stats')); ?></a>
-            <a class="<?= ($page === 'intel' || $page === 'investigation') ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('intel')); ?>"><?= clickfix_h(cft('nav_investigation')); ?></a>
-            <a class="<?= $page === 'community' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('community')); ?>"><?= clickfix_h(cft('nav_community')); ?></a>
-            <?php if (cfcan($user, 'analyst_sr')): ?>
-              <a class="<?= $page === 'extensions' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('extensions')); ?>"><?= clickfix_h(cft('nav_extensions')); ?></a>
-              <a class="<?= $page === 'lists' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('lists')); ?>"><?= clickfix_h(cft('nav_lists')); ?></a>
-              <a class="<?= $page === 'requests' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('requests')); ?>"><?= clickfix_h(cft('nav_requests')); ?></a>
-              <a class="<?= $page === 'messaging' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('messaging')); ?>"><?= clickfix_h(cft('nav_messaging')); ?></a>
-              <a class="<?= $page === 'data_center' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('data_center')); ?>"><?= clickfix_h(cft('nav_data_center')); ?></a>
-            <?php endif; ?>
-            <?php if (cfcan($user, 'admin')): ?>
-              <a class="<?= $page === 'configs' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('configs')); ?>"><?= clickfix_h(cft('nav_score_config')); ?></a>
-              <a class="<?= $page === 'reports' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('reports')); ?>"><?= clickfix_h(cft('nav_reports')); ?></a>
-              <a class="<?= $page === 'users' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('users')); ?>"><?= clickfix_h(cft('nav_users')); ?></a>
-            <?php endif; ?>
-          <?php endif; ?>
-        </nav>
-        <div class="nav-actions">
-          <a class="nav-btn" href="/">⌂ /</a>
-          <a class="nav-btn<?= $page === 'access' ? ' active' : ''; ?>" href="<?= clickfix_h(cfurl('access', true)); ?>"><?= clickfix_h(cft('nav_access')); ?></a>
-          <?php if ($loggedIn): ?>
-            <form method="post">
-              <input type="hidden" name="action" value="logout">
-              <button type="submit" class="nav-btn logout">Cerrar sesion</button>
-            </form>
-          <?php endif; ?>
-        </div>
+      <div class="top-status">
+        <span class="status-chip">event stream: protected</span>
+        <span class="status-chip">records: <?= (int) ($metrics['total_alerts'] ?? 0); ?></span>
+        <?php if ($loggedIn): ?><span class="status-chip">operator: <a class="user-link" href="<?= clickfix_h(cfprofileurl((int) ($user['id'] ?? 0), [], false)); ?>"><?= clickfix_h((string) $user['username']); ?></a> | workspace: authenticated</span><?php endif; ?>
+        <span class="status-chip">
+          <?= clickfix_h(cft('lang_label')); ?>:
+          <a href="<?= clickfix_h(cfurl($page, !$loggedIn, ['lang' => 'es'])); ?>">ES</a> |
+          <a href="<?= clickfix_h(cfurl($page, !$loggedIn, ['lang' => 'en'])); ?>">EN</a>
+        </span>
       </div>
     </header>
+    <nav>
+      <a class="<?= $page === 'home' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('home', true)); ?>"><?= clickfix_h(cft('nav_home')); ?></a>
+      <a class="<?= $page === 'search' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('search', true)); ?>"><?= clickfix_h(cft('nav_search')); ?></a>
+      <a class="<?= $page === 'coverage' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('coverage', true)); ?>"><?= clickfix_h(cft('nav_coverage')); ?></a>
+      <a class="<?= $page === 'about' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('about', true)); ?>"><?= clickfix_h(cft('nav_about')); ?></a>
+      <?php if ($loggedIn): ?>
+        <a class="<?= $page === 'profile' ? 'active' : ''; ?>" href="<?= clickfix_h(cfprofileurl((int) ($user['id'] ?? 0), [], false)); ?>"><?= clickfix_h(cft('nav_profile')); ?></a>
+      <?php endif; ?>
+      <?php if ($loggedIn): ?>
+        <a class="<?= $page === 'ops' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('ops')); ?>"><?= clickfix_h(cft('nav_ops')); ?></a>
+        <a class="<?= $page === 'analytics' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('analytics')); ?>"><?= clickfix_h(cft('nav_graphs')); ?></a>
+        <a class="<?= ($page === 'intel' || $page === 'investigation') ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('intel')); ?>"><?= clickfix_h(cft('nav_investigation')); ?></a>
+        <a class="<?= $page === 'community' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('community')); ?>"><?= clickfix_h(cft('nav_community')); ?></a>
+        <?php if (cfcan($user, 'analyst_sr')): ?>
+          <a class="<?= $page === 'extensions' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('extensions')); ?>"><?= clickfix_h(cft('nav_extensions')); ?></a>
+          <a class="<?= $page === 'lists' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('lists')); ?>"><?= clickfix_h(cft('nav_lists')); ?></a>
+          <a class="<?= $page === 'requests' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('requests')); ?>"><?= clickfix_h(cft('nav_requests')); ?></a>
+          <a class="<?= $page === 'messaging' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('messaging')); ?>"><?= clickfix_h(cft('nav_messaging')); ?></a>
+          <a class="<?= $page === 'data_center' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('data_center')); ?>"><?= clickfix_h(cft('nav_data_center')); ?></a>
+        <?php endif; ?>
+        <?php if (cfcan($user, 'admin')): ?>
+          <a class="<?= $page === 'configs' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('configs')); ?>"><?= clickfix_h(cft('nav_score_config')); ?></a>
+          <a class="<?= $page === 'reports' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('reports')); ?>"><?= clickfix_h(cft('nav_reports')); ?></a>
+          <a class="<?= $page === 'users' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('users')); ?>"><?= clickfix_h(cft('nav_users')); ?></a>
+        <?php endif; ?>
+      <?php endif; ?>
+      <span class="nav-spacer"></span>
+      <div class="nav-actions">
+        <a class="nav-btn<?= $page === 'access' ? ' active' : ''; ?>" href="<?= clickfix_h(cfurl('access', true)); ?>"><?= clickfix_h(cft('nav_access')); ?></a>
+        <?php if ($loggedIn): ?>
+          <form method="post">
+            <input type="hidden" name="action" value="logout">
+            <button type="submit" class="nav-btn logout">Cerrar sesion</button>
+          </form>
+        <?php endif; ?>
+      </div>
+    </nav>
     <div class="workspace">
       <main class="main-column">
 
     
     <?php if ($flash): ?><div class="flash"><?= clickfix_h($flash); ?></div><?php endif; ?>
 
-    <?php if ($page === 'home'): ?>
-      <section class="hero">
-        <article class="card hero-main">
-          <span class="hero-kicker">ClickFix Command Center</span>
-          <h1>Deteccion, explicabilidad y respuesta en una sola superficie de control.</h1>
-          <p>Fusion entre la version anterior y la actual: inteligencia publica, operaciones privadas, investigacion en grafo, listas de control y mensajeria con la extension.</p>
-          <div class="rbac">
-            <div class="item"><b>Busqueda forense</b><span>Filtra por dominio, comando, fecha y score para detectar patrones.</span></div>
-            <div class="item"><b>Operaciones</b><span>Actualiza revision, bloquea dominios y manda casos a investigacion.</span></div>
-            <div class="item"><b>Investigacion</b><span>Construye grafos con nodos, relaciones, notas y evidencias compartibles.</span></div>
-            <div class="item"><b>Cobertura</b><span>Revisa fuentes de inteligencia, listas y configuracion de scoring.</span></div>
-          </div>
-        </article>
-        <article class="card hero-side">
-          <div class="mut mono" style="margin-bottom:6px">Inicio rapido</div>
-          <div class="role-chip<?= $loggedIn ? '' : ' guest'; ?>"><?= clickfix_h($loggedIn ? 'Workspace autenticado' : 'Vista publica'); ?></div>
-          <p class="mut" style="margin:10px 0 0;">
-            <?php if ($loggedIn): ?>
-              Empieza en Inicio para metricas y mapas, sigue en Operaciones para triage y termina en Investigacion para documentar el caso.
-            <?php else: ?>
-              Vista publica activa. Puedes consultar cobertura y buscar eventos; inicia sesion para ejecutar acciones operativas.
-            <?php endif; ?>
-          </p>
-          <ul class="mut" style="margin:10px 0 0 16px;">
-            <li>1) Revisa KPIs y alertas recientes.</li>
-            <li>2) Filtra dominios/comandos sospechosos.</li>
-            <li>3) Ejecuta bloqueo o abre investigacion.</li>
-          </ul>
-        </article>
-      </section>
-    <?php endif; ?>
+    <section class="hero">
+      <article class="card hero-main">
+        <span class="hero-kicker">ClickFix Command Center</span>
+        <h1>Deteccion, explicabilidad y respuesta en una sola superficie de control.</h1>
+        <p>Fusion entre la version anterior y la actual: inteligencia publica, operaciones privadas, investigacion en grafo, listas de control y mensajeria con la extension.</p>
+        <div class="rbac">
+          <div class="item"><b>Busqueda forense</b><span>Filtra por dominio, comando, fecha y score para detectar patrones.</span></div>
+          <div class="item"><b>Operaciones</b><span>Actualiza revision, bloquea dominios y manda casos a investigacion.</span></div>
+          <div class="item"><b>Investigacion</b><span>Construye grafos con nodos, relaciones, notas y evidencias compartibles.</span></div>
+          <div class="item"><b>Cobertura</b><span>Revisa fuentes de inteligencia, listas y configuracion de scoring.</span></div>
+        </div>
+      </article>
+      <article class="card hero-side">
+        <div class="mut mono" style="margin-bottom:6px">Inicio rapido</div>
+        <div class="role-chip<?= $loggedIn ? '' : ' guest'; ?>"><?= clickfix_h($loggedIn ? 'Workspace autenticado' : 'Vista publica'); ?></div>
+        <p class="mut" style="margin:10px 0 0;">
+          <?php if ($loggedIn): ?>
+            Empieza en Inicio para metricas y mapas, sigue en Operaciones para triage y termina en Investigacion para documentar el caso.
+          <?php else: ?>
+            Vista publica activa. Puedes consultar cobertura y buscar eventos; inicia sesion para ejecutar acciones operativas.
+          <?php endif; ?>
+        </p>
+        <ul class="mut" style="margin:10px 0 0 16px;">
+          <li>1) Revisa KPIs y alertas recientes.</li>
+          <li>2) Filtra dominios/comandos sospechosos.</li>
+          <li>3) Ejecuta bloqueo o abre investigacion.</li>
+        </ul>
+      </article>
+    </section>
 
-    <?php if ($page === 'home'): ?>
     <section class="grid">
       <article class="card kpi"><div class="kpi-top"><div class="mut mono">alertas totales</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0z"/></svg></span></div><b data-live-metric="total_alerts"><?= (int) $metrics['total_alerts']; ?></b></article>
       <article class="card kpi"><div class="kpi-top"><div class="mut mono">bloqueos totales</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8a5 5 0 0 1 10 0v3"/></svg></span></div><b data-live-metric="total_blocks"><?= (int) $metrics['total_blocks']; ?></b></article>
       <article class="card kpi"><div class="kpi-top"><div class="mut mono">dominios unicos</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg></span></div><b data-live-metric="unique_hosts"><?= (int) $metrics['unique_hosts']; ?></b></article>
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">regiones monitorizadas</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/><circle cx="12" cy="12" r="9"/></svg></span></div><b data-live-metric="countries_count"><?= (int) ($metrics['countries_count'] ?? 0); ?></b></article>
+      <article class="card kpi"><div class="kpi-top"><div class="mut mono">usuarios 24h</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2"/><path d="M15 20a5 5 0 0 1 6 0"/></svg></span></div><b data-live-metric="unique_users"><?= (int) $metrics['unique_users']; ?></b></article>
       <article class="card kpi"><div class="kpi-top"><div class="mut mono">alertas 24h</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M3 12h5l2-4 4 8 2-4h5"/></svg></span></div><b data-live-metric="alerts_24h"><?= (int) $metrics['alerts_24h']; ?></b></article>
       <article class="card kpi"><div class="kpi-top"><div class="mut mono">bloqueos 24h</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg></span></div><b data-live-metric="blocks_24h"><?= (int) $metrics['blocks_24h']; ?></b></article>
       <article class="card kpi"><div class="kpi-top"><div class="mut mono">ratio bloqueo 24h</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20v-3"/></svg></span></div><b data-live-metric="block_rate_24h"><?= number_format((float) ($metrics['block_rate_24h'] ?? 0.0), 2); ?>%</b></article>
       <article class="card kpi"><div class="kpi-top"><div class="mut mono">alto riesgo 24h</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M12 2v8"/><path d="M12 14v8"/><path d="m4.9 4.9 5.7 5.7"/><path d="m13.4 13.4 5.7 5.7"/><path d="M2 12h8"/><path d="M14 12h8"/><path d="m4.9 19.1 5.7-5.7"/><path d="m13.4 10.6 5.7-5.7"/></svg></span></div><b data-live-metric="high_risk_24h"><?= (int) ($metrics['high_risk_24h'] ?? 0); ?></b></article>
       <article class="card kpi"><div class="kpi-top"><div class="mut mono">nuevos dominios 24h</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M3 12h18"/><path d="M4 7h16"/><path d="M4 17h16"/></svg></span></div><b data-live-metric="new_domains_24h"><?= (int) ($metrics['new_domains_24h'] ?? 0); ?></b></article>
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">pend. fuera listas</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M4 12h10"/><path d="M4 17h8"/><circle cx="18" cy="17" r="3"/></svg></span></div><b data-live-metric="pending_domains_outside_lists"><?= (int) ($metrics['pending_domains_outside_lists'] ?? 0); ?></b></article>
+      <article class="card kpi"><div class="kpi-top"><div class="mut mono">clientes ext 24h</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8"/><path d="M10 17v3"/><path d="M14 17v3"/></svg></span></div><b data-live-metric="active_extension_clients_24h"><?= (int) ($metrics['active_extension_clients_24h'] ?? 0); ?></b></article>
       <article class="card kpi"><div class="kpi-top"><div class="mut mono">revisadas</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/><path d="M3 3h18v18H3z"/></svg></span></div><b data-live-metric="reviewed_total"><?= (int) ($metrics['reviewed_total'] ?? 0); ?></b></article>
       <article class="card kpi"><div class="kpi-top"><div class="mut mono">cobertura revision</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 12 19 5"/></svg></span></div><b data-live-metric="review_coverage_pct"><?= number_format((float) ($metrics['review_coverage_pct'] ?? 0.0), 2); ?>%</b></article>
       <article class="card kpi"><div class="kpi-top"><div class="mut mono">sitios manuales</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg></span></div><b data-live-metric="manual_sites_count"><?= (int) $metrics['manual_sites_count']; ?></b></article>
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">pend. revision</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span></div><b data-live-metric="pending_review_total"><?= (int) ($metrics['pending_review_total'] ?? 0); ?></b></article>
+      <article class="card kpi"><div class="kpi-top"><div class="mut mono">pendientes</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span></div><b data-live-metric="pending_review"><?= (int) $metrics['pending_review']; ?></b></article>
     </section>
 
     <?php if ($loggedIn): ?>
-      <section class="card" style="margin-bottom:8px">
-        <h2>Pendientes de revision (todas las alertas)</h2>
-        <p class="mut">Incluye alertas que ya estan en listas (allow/block). Los pendientes fuera de listas son un subconjunto para triage rapido.</p>
-        <div class="analytics-kpi-grid" style="margin-bottom:10px">
-          <div class="analytics-kpi"><div class="k">pendientes revision</div><div class="v"><?= (int) ($metrics['pending_review_total'] ?? 0); ?></div></div>
-          <div class="analytics-kpi"><div class="k">pendientes fuera de listas</div><div class="v"><?= (int) ($pendingOutsideSummary['alerts'] ?? 0); ?></div></div>
-        </div>
-        <?php if (empty($pendingReviewRows)): ?>
-          <p class="mut">No hay alertas pendientes de revision en este momento.</p>
-        <?php else: ?>
-          <div class="analytics-table-wrap">
-            <table class="compact-table">
-              <thead><tr><th>ID</th><th>Fecha</th><th>Dominio</th><th>Score</th><th>Tipo</th><th>Bloqueado</th><th>Accion</th></tr></thead>
-              <tbody>
-                <?php foreach (array_slice($pendingReviewRows, 0, 20) as $pendingRow): ?>
-                  <?php $pendingReportId = (int) ($pendingRow['id'] ?? 0); ?>
-                  <tr>
-                    <td class="mono"><?= $pendingReportId; ?></td>
-                    <td class="mono"><?= clickfix_h((string) ($pendingRow['received_at'] ?? '')); ?></td>
-                    <td class="mono"><?= clickfix_h((string) ($pendingRow['hostname'] ?? '')); ?></td>
-                    <td class="mono"><?= (int) ($pendingRow['score_total'] ?? 0); ?></td>
-                    <td class="mono"><?= clickfix_h((string) ($pendingRow['event_type'] ?? 'clickfix_alert')); ?></td>
-                    <td class="mono"><?= !empty($pendingRow['blocked']) ? 'yes' : 'no'; ?></td>
-                    <td><a class="btn" href="<?= clickfix_h(cfurl('ops', false, ['report_id' => (string) $pendingReportId])); ?>">Abrir</a></td>
-                  </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-          </div>
-        <?php endif; ?>
-      </section>
-
       <section class="card" style="margin-bottom:8px">
         <h2>Pendientes reales (fuera de allowlist/blocklist)</h2>
         <p class="mut">Pendientes que siguen sin clasificar en listas, para priorizar triage operativo.</p>
@@ -6279,7 +3386,7 @@ ob_start();
                 <p class="mut mono">estado: <?= clickfix_h($assetStatus); ?></p>
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
                   <button class="btn" type="button" data-scan-inline-src="<?= clickfix_h($adminPreviewUrl); ?>" data-scan-inline-target="<?= clickfix_h($inlineTarget); ?>">Ver aqui (manual)</button>
-                  <a class="btn" href="<?= clickfix_h($adminPreviewUrl); ?>" target="_blank" rel="noopener noreferrer">Abrir pestaña</a>
+                  <a class="btn" href="<?= clickfix_h($adminPreviewUrl); ?>" target="_blank" rel="noopener noreferrer">Abrir pestaÃ±a</a>
                   <a class="btn" href="<?= clickfix_h($adminDownloadUrl); ?>">Descargar</a>
                   <button class="btn" type="button" data-copy-text="<?= clickfix_h($adminPreviewUrl); ?>">Copiar URL admin</button>
                   <?php if ($publicApprovedUrl !== ''): ?>
@@ -6320,15 +3427,6 @@ ob_start();
                   <input type="hidden" name="return_page" value="home">
                   <button class="btn" type="submit">Eliminar captura</button>
                 </form>
-                <form method="post" style="margin-top:8px">
-                  <input type="hidden" name="action" value="scan_image_assign">
-                  <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                  <input type="hidden" name="scan_report_id" value="<?= $scanReportId; ?>">
-                  <input type="hidden" name="scan_source_kind" value="<?= clickfix_h($scanKind); ?>">
-                  <input type="hidden" name="scan_target_kind" value="<?= $scanKind === 'before' ? 'after' : 'before'; ?>">
-                  <input type="hidden" name="return_page" value="home">
-                  <button class="btn" type="submit">Usar esta como <?= $scanKind === 'before' ? 'AFTER' : 'BEFORE'; ?></button>
-                </form>
                 <p class="mut" style="margin-top:6px">Cuando una captura queda en <b>approved</b>, se puede reutilizar en dashboard/index publico.</p>
               <?php else: ?>
                 <p class="mut">Sin capturas disponibles.</p>
@@ -6339,61 +3437,7 @@ ob_start();
       <?php endif; ?>
     </section>
 
-    <section class="card" style="margin-bottom:8px">
-      <h2>Investigaciones destacadas en Inicio</h2>
-      <p class="mut">Las define admin desde Investigacion. En la portada publica solo salen si tambien estan compartidas en publico.</p>
-      <?php if (empty($featuredHomeInvestigations)): ?>
-        <p class="mut">Sin investigaciones destacadas en este momento.</p>
-      <?php else: ?>
-        <?php foreach ($featuredHomeInvestigations as $featuredGraph): ?>
-          <?php
-            $featuredGraphId = (int) ($featuredGraph['id'] ?? 0);
-            $featuredDomain = (string) ($featuredGraph['site_domain'] ?? '-');
-            $featuredSourceReportId = (int) ($featuredGraph['source_report_id'] ?? 0);
-            $featuredAssets = is_array($featuredGraph['scan_assets'] ?? null) ? $featuredGraph['scan_assets'] : ['before' => null, 'after' => null];
-            $featuredSummary = trim((string) ($featuredGraph['summary'] ?? ''));
-            if ($featuredSummary === '') {
-                $featuredSummary = 'Sin resumen todavia.';
-            }
-          ?>
-          <article class="card" style="margin-top:12px;padding:14px;border:1px solid #5dc8ff22;background:#07111a">
-            <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start">
-              <div style="flex:1 1 320px;min-width:280px">
-                <h3 style="margin:0 0 6px 0"><?= clickfix_h((string) ($featuredGraph['title'] ?? ('Investigacion #' . $featuredGraphId))); ?></h3>
-                <p class="mono" style="margin:0 0 8px 0">graph #<?= $featuredGraphId; ?> | dominio: <?= clickfix_h($featuredDomain); ?> | verdict: <?= clickfix_h((string) ($featuredGraph['verdict'] ?? 'unknown')); ?> | report_id: <?= $featuredSourceReportId > 0 ? $featuredSourceReportId : '-'; ?> | posicion: <?= (int) ($featuredGraph['home_position'] ?? 0); ?></p>
-                <div style="margin:0 0 10px 0;white-space:pre-line"><?= nl2br(clickfix_h(substr($featuredSummary, 0, 900))); ?></div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap">
-                  <a class="btn" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $featuredGraphId])); ?>">Abrir investigacion</a>
-                  <?php if (!empty($featuredGraph['is_public']) && !empty($featuredGraph['share_token'])): ?>
-                    <a class="btn" href="<?= clickfix_h('dashboard.php?page=investigation&share=' . urlencode((string) $featuredGraph['share_token'])); ?>" target="_blank" rel="noreferrer">Abrir version publica</a>
-                  <?php else: ?>
-                    <span class="mono mut">Aun no es publica.</span>
-                  <?php endif; ?>
-                </div>
-              </div>
-              <div style="flex:1 1 360px;min-width:280px">
-                <div class="split">
-                  <?php foreach (['before' => 'Antes', 'after' => 'Despues'] as $featuredKind => $featuredLabel): ?>
-                    <div>
-                      <h3 class="mono"><?= clickfix_h($featuredLabel); ?></h3>
-                      <?php if (!empty($featuredAssets[$featuredKind])): ?>
-                        <img src="<?= clickfix_h((string) $featuredAssets[$featuredKind]); ?>" alt="<?= clickfix_h($featuredLabel . ' investigacion'); ?>" loading="lazy" style="max-width:100%;border-radius:10px;border:1px solid #5dc8ff33">
-                      <?php else: ?>
-                        <p class="mut">Sin captura aprobada <?= strtolower($featuredLabel); ?>.</p>
-                      <?php endif; ?>
-                    </div>
-                  <?php endforeach; ?>
-                </div>
-              </div>
-            </div>
-          </article>
-        <?php endforeach; ?>
-      <?php endif; ?>
-    </section>
-
-    <?php endif; ?>
-
-    <?php if ($enableHomeGeoPanels && $page === 'home'): ?>
+    <?php if ($enableHomeGeoPanels): ?>
       <?php
         $homeLabels = is_array($analyticsOverview['labels'] ?? null) ? $analyticsOverview['labels'] : [];
         $homeAlerts = is_array($analyticsOverview['alerts'] ?? null) ? $analyticsOverview['alerts'] : [];
@@ -6434,116 +3478,6 @@ ob_start();
           </div>
         </article>
       </section>
-      <?php if ($pageNeedsProjectExposure): ?>
-        <?php
-          $exposureSummary = is_array($projectExposureOverview['summary'] ?? null) ? $projectExposureOverview['summary'] : [];
-          $exposureReferrers = is_array($projectExposureOverview['top_referrers'] ?? null) ? $projectExposureOverview['top_referrers'] : [];
-          $exposureNetworks = is_array($projectExposureOverview['top_networks'] ?? null) ? $projectExposureOverview['top_networks'] : [];
-          $exposureEvents = is_array($projectExposureOverview['events'] ?? null) ? $projectExposureOverview['events'] : [];
-        ?>
-        <section class="card">
-          <h2>Exposicion del proyecto y cruces de infraestructura</h2>
-          <p class="exposure-note">Senales inferidas a partir de visitas publicas al proyecto, referrers externos y solapamientos con dominios reportados o su infraestructura. Esto sirve como triage, no como atribucion definitiva.</p>
-          <div class="analytics-kpi-grid exposure-kpi-grid">
-            <div class="analytics-kpi"><div class="k">Hits publicos</div><div class="v"><?= (int) ($exposureSummary['hits_total'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">IPs unicas</div><div class="v"><?= (int) ($exposureSummary['unique_ips'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">Referrers externos</div><div class="v"><?= (int) ($exposureSummary['external_referrer_hits'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">Solapes referrer</div><div class="v"><?= (int) ($exposureSummary['referrer_overlap_hits'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">Solapes infra</div><div class="v"><?= (int) ($exposureSummary['infra_overlap_hits'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">Red sospechosa</div><div class="v"><?= (int) ($exposureSummary['suspicious_hits'] ?? 0); ?></div></div>
-          </div>
-        </section>
-        <section class="exposure-grid">
-          <article class="card">
-            <h2>Top referrers</h2>
-            <?php if (empty($exposureReferrers)): ?>
-              <p class="mut">Sin referrers externos relevantes en la ventana actual.</p>
-            <?php else: ?>
-              <div class="analytics-table-wrap">
-                <table class="compact-table">
-                  <thead><tr><th>Host</th><th>Hits</th><th>Reportes</th><th>Overlap</th><th>Ultimo</th></tr></thead>
-                  <tbody>
-                    <?php foreach ($exposureReferrers as $refRow): ?>
-                      <tr>
-                        <td class="mono"><?= clickfix_h((string) ($refRow['host'] ?? '-')); ?></td>
-                        <td class="mono"><?= (int) ($refRow['hits'] ?? 0); ?></td>
-                        <td class="mono"><?= (int) ($refRow['reported_hits'] ?? 0); ?></td>
-                        <td><?= !empty($refRow['overlap']) ? 'si' : 'no'; ?></td>
-                        <td class="mono"><?= clickfix_h((string) ($refRow['last_seen'] ?? '-')); ?></td>
-                      </tr>
-                    <?php endforeach; ?>
-                  </tbody>
-                </table>
-              </div>
-            <?php endif; ?>
-          </article>
-          <article class="card">
-            <h2>Top redes / ASN</h2>
-            <?php if (empty($exposureNetworks)): ?>
-              <p class="mut">Sin redes destacables en la ventana actual.</p>
-            <?php else: ?>
-              <div class="analytics-table-wrap">
-                <table class="compact-table">
-                  <thead><tr><th>Red</th><th>Hits</th><th>IPs</th><th>Overlap</th><th>Sospechosos</th></tr></thead>
-                  <tbody>
-                    <?php foreach ($exposureNetworks as $networkRow): ?>
-                      <tr>
-                        <td><?= clickfix_h((string) ($networkRow['network'] ?? '-')); ?></td>
-                        <td class="mono"><?= (int) ($networkRow['hits'] ?? 0); ?></td>
-                        <td class="mono"><?= (int) ($networkRow['unique_ips'] ?? 0); ?></td>
-                        <td class="mono"><?= (int) ($networkRow['overlap_hits'] ?? 0); ?></td>
-                        <td class="mono"><?= (int) ($networkRow['suspicious_hits'] ?? 0); ?></td>
-                      </tr>
-                    <?php endforeach; ?>
-                  </tbody>
-                </table>
-              </div>
-            <?php endif; ?>
-          </article>
-        </section>
-        <section class="card">
-          <h2>Eventos de exposicion investigables</h2>
-          <?php if (empty($exposureEvents)): ?>
-            <p class="mut">No hay cruces suficientes para mostrar eventos investigables.</p>
-          <?php else: ?>
-            <div class="analytics-table-wrap">
-              <table class="compact-table">
-                <thead><tr><th>Fecha</th><th>Path</th><th>IP</th><th>Ubicacion</th><th>Red</th><th>Referrer</th><th>Flags</th><th>Dominios relacionados</th></tr></thead>
-                <tbody>
-                  <?php foreach ($exposureEvents as $eventRow): ?>
-                    <?php
-                      $locationParts = array_values(array_filter([
-                          (string) ($eventRow['city'] ?? ''),
-                          (string) ($eventRow['region_name'] ?? ''),
-                          (string) ($eventRow['country_code'] ?? ''),
-                      ]));
-                      $locationLabel = $locationParts ? implode(', ', $locationParts) : ((string) ($eventRow['country_name'] ?? '-'));
-                      $flagList = is_array($eventRow['flags'] ?? null) ? $eventRow['flags'] : [];
-                      $domainsList = is_array($eventRow['matched_domains'] ?? null) ? $eventRow['matched_domains'] : [];
-                    ?>
-                    <tr>
-                      <td class="mono"><?= clickfix_h((string) ($eventRow['created_at'] ?? '-')); ?></td>
-                      <td class="mono"><?= clickfix_h((string) ($eventRow['path'] ?? '/')); ?></td>
-                      <td class="mono"><?= clickfix_h((string) ($eventRow['ip'] ?? '-')); ?></td>
-                      <td><?= clickfix_h($locationLabel); ?></td>
-                      <td><?= clickfix_h((string) ($eventRow['network'] ?? '-')); ?></td>
-                      <td class="mono"><?= clickfix_h((string) ($eventRow['referrer_host'] ?? '-')); ?></td>
-                      <td>
-                        <div class="exposure-flag-wrap">
-                          <?php foreach ($flagList as $flag): ?>
-                            <span class="exposure-flag <?= clickfix_h((string) $flag); ?>"><?= clickfix_h((string) $flag); ?></span>
-                          <?php endforeach; ?>
-                        </div>
-                      </td>
-                      <td><div class="exposure-domains"><?= clickfix_h(implode(', ', $domainsList)); ?></div></td>
-                    </tr>
-                  <?php endforeach; ?>
-                </tbody>
-              </table>
-            </div>
-          <?php endif; ?>
-        </section>
-      <?php endif; ?>
       <section class="card">
         <h2>Graficos globales (14 dias)</h2>
         <p class="mut-mini">Vista resumida de alertas y bloqueos diarios para Inicio.</p>
@@ -6768,7 +3702,7 @@ ob_start();
       <section class="row">
         <article class="card">
           <h2>Acceso y login</h2>
-          <form method="post"><input type="hidden" name="action" value="request_access"><input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>"><input type="url" name="access_linkedin" required placeholder="https://www.linkedin.com/in/..."><input type="url" name="company_website" placeholder="https://company.com"><input type="email" name="access_email" required placeholder="email"><select name="request_lang"><option value="en" selected>en</option><option value="es">es</option><option value="ca">ca</option><option value="fr">fr</option><option value="de">de</option></select><button class="btn" type="submit">Solicitar acceso</button></form>
+          <form method="post"><input type="hidden" name="action" value="request_access"><input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>"><input type="email" name="access_email" required placeholder="email"><select name="request_lang"><option value="en" selected>en</option><option value="es">es</option><option value="fr">fr</option><option value="de">de</option></select><button class="btn" type="submit">Solicitar acceso</button></form>
           <hr>
           <form method="post"><input type="hidden" name="action" value="login"><input type="text" name="username" required placeholder="usuario"><input type="password" name="password" required placeholder="password"><button class="btn" type="submit">Entrar</button></form>
           <?php if ($loggedIn): ?><form method="post" style="margin-top:8px"><input type="hidden" name="action" value="logout"><button class="btn" type="submit">Cerrar sesion</button></form><?php endif; ?>
@@ -6780,7 +3714,7 @@ ob_start();
         <?php if ($loggedIn): ?>
           <article class="card">
             <h2>Mi cuenta</h2>
-            <p class="mut">Los ajustes de cuenta estan separados para mantener el acceso limpio y rapido.</p>
+            <p class="mut">Gestiona tu idioma por defecto y tu contrasena (solo tu cuenta).</p>
             <div class="rbac">
               <div class="item"><b>Usuario</b><span class="mono"><a class="user-link" href="<?= clickfix_h(cfprofileurl((int) ($user['id'] ?? 0), [], false)); ?>"><?= clickfix_h((string) ($user['username'] ?? '')); ?></a></span></div>
               <div class="item"><b>Email</b><span class="mono"><?= clickfix_h((string) ($user['email'] ?? '-')); ?></span></div>
@@ -6788,10 +3722,25 @@ ob_start();
               <div class="item"><b>REP</b><span class="mono"><?= (int) ($user['reputation'] ?? 0); ?></span></div>
             </div>
             <hr>
-            <div class="split">
-              <a class="btn" href="<?= clickfix_h(cfprofileurl((int) ($user['id'] ?? 0), [], false)); ?>">Abrir perfil</a>
-              <a class="btn" href="<?= clickfix_h(cfurl('settings')); ?>">Abrir settings</a>
-            </div>
+            <form method="post">
+              <input type="hidden" name="action" value="user_self_update_lang">
+              <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+              <label for="self-lang">Idioma por defecto</label>
+              <?php $selfLang = clickfix_normalize_user_language((string) ($user['preferred_lang'] ?? 'en')); ?>
+              <select id="self-lang" name="self_lang">
+                <option value="en"<?= $selfLang === 'en' ? ' selected' : ''; ?>>en</option>
+                <option value="es"<?= $selfLang === 'es' ? ' selected' : ''; ?>>es</option>
+              </select>
+              <button class="btn" type="submit">Guardar idioma</button>
+            </form>
+            <hr>
+            <form method="post">
+              <input type="hidden" name="action" value="user_self_change_password">
+              <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+              <input type="password" name="self_current_password" required placeholder="Contrasena actual">
+              <input type="password" name="self_new_password" minlength="10" required placeholder="Nueva contrasena (min 10 chars)">
+              <button class="btn" type="submit">Cambiar mi contrasena</button>
+            </form>
           </article>
         <?php endif; ?>
       </section>
@@ -6803,27 +3752,18 @@ ob_start();
         <?php else: ?>
           <?php
             $avatarSeed = strtoupper(substr((string) ($profileUser['username'] ?? 'U'), 0, 1));
-            $profileAvatarUrl = (string) ($profileUser['profile_avatar_url'] ?? '');
             $tabInvestigationUrl = cfprofileurl((int) ($profileUser['id'] ?? 0), ['tab' => 'investigations']);
             $tabReportsUrl = cfprofileurl((int) ($profileUser['id'] ?? 0), ['tab' => 'reports']);
-            $tabSessionsUrl = cfprofileurl((int) ($profileUser['id'] ?? 0), ['tab' => 'sessions']);
           ?>
           <div class="profile-shell">
             <aside class="profile-card">
-              <div class="profile-avatar<?= $profileAvatarUrl !== '' ? ' has-image' : ''; ?>">
-                <?php if ($profileAvatarUrl !== ''): ?>
-                  <img src="<?= clickfix_h($profileAvatarUrl); ?>" alt="avatar">
-                <?php else: ?>
-                  <?= clickfix_h($avatarSeed); ?>
-                <?php endif; ?>
-              </div>
+              <div class="profile-avatar"><?= clickfix_h($avatarSeed); ?></div>
               <h3 class="profile-name"><?= clickfix_h((string) ($profileUser['display_name'] ?? '')); ?></h3>
               <div class="profile-nick">@<?= clickfix_h((string) ($profileUser['username'] ?? '')); ?></div>
               <div class="profile-meta">
                 <div class="rowx"><span>Rol</span><b><?= clickfix_h((string) ($profileUser['role_label'] ?? '-')); ?></b></div>
                 <div class="rowx"><span>REP</span><b class="mono"><?= (int) ($profileUser['reputation'] ?? 0); ?></b></div>
                 <div class="rowx"><span>Idioma</span><b class="mono"><?= clickfix_h((string) ($profileUser['preferred_lang'] ?? 'en')); ?></b></div>
-                <div class="rowx"><span>Theme</span><b class="mono"><?= clickfix_h((string) ($profileUser['profile_theme'] ?? 'default')); ?></b></div>
                 <div class="rowx"><span>Email</span><b class="mono"><?= clickfix_h((string) ($profileUser['email_visible'] !== '' ? $profileUser['email_visible'] : 'private')); ?></b></div>
                 <div class="rowx"><span>Threat.rip</span><b class="mono"><?php if (!empty($profileUser['account_threatrip']['visible'])): ?><a class="user-link" target="_blank" rel="noreferrer" href="<?= clickfix_h((string) ($profileUser['account_threatrip']['url'] ?? '')); ?>">#<?= clickfix_h((string) ($profileUser['account_threatrip']['id'] ?? '')); ?></a><?php else: ?>private<?php endif; ?></b></div>
                 <div class="rowx"><span>VirusTotal</span><b class="mono"><?php if (!empty($profileUser['account_virustotal']['visible'])): ?><a class="user-link" target="_blank" rel="noreferrer" href="<?= clickfix_h((string) ($profileUser['account_virustotal']['url'] ?? '')); ?>"><?= clickfix_h((string) ($profileUser['account_virustotal']['handle'] ?? '')); ?></a><?php else: ?>private<?php endif; ?></b></div>
@@ -6835,15 +3775,11 @@ ob_start();
               <div class="profile-tabs">
                 <a class="profile-tab<?= $profileTab === 'investigations' ? ' active' : ''; ?>" href="<?= clickfix_h($tabInvestigationUrl); ?>">Investigaciones (<?= count($profileInvestigations); ?>)</a>
                 <a class="profile-tab<?= $profileTab === 'reports' ? ' active' : ''; ?>" href="<?= clickfix_h($tabReportsUrl); ?>">Reportes (<?= count($profileReports); ?>)</a>
-                <a class="profile-tab<?= $profileTab === 'sessions' ? ' active' : ''; ?>" href="<?= clickfix_h($tabSessionsUrl); ?>">Sesiones (<?= count($profileSessionHistory); ?>)</a>
-                <?php if ($profileCanEdit): ?>
-                  <a class="profile-tab" href="<?= clickfix_h(cfurl('settings')); ?>">Ir a settings</a>
-                <?php endif; ?>
               </div>
               <?php if ($profileCanEdit): ?>
                 <article class="profile-card" style="margin-bottom:10px">
                   <h3 style="margin-top:0">Editar perfil</h3>
-                  <p class="mut">Controla que informacion de contacto/cuentas se muestra publicamente. El tema, idioma, foto y contraseña se gestionan en Settings.</p>
+                  <p class="mut">Controla que informacion de contacto/cuentas se muestra publicamente.</p>
                   <form method="post">
                     <input type="hidden" name="action" value="user_self_profile_update">
                     <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
@@ -6870,32 +3806,7 @@ ob_start();
                 </article>
               <?php endif; ?>
               <article class="card">
-                <?php if ($profileTab === 'sessions'): ?>
-                  <h2>Historial de sesiones del usuario</h2>
-                  <?php if (!$profileCanViewPrivate): ?>
-                    <p class="mut">El historial de sesiones es privado.</p>
-                  <?php else: ?>
-                    <table>
-                      <thead><tr><th>Fecha</th><th>Evento</th><th>IP</th><th>Sesion</th><th>User-Agent</th></tr></thead>
-                      <tbody>
-                        <?php foreach ($profileSessionHistory as $sessionEvent): ?>
-                          <?php
-                            $sessionAction = strtolower((string) ($sessionEvent['event_type'] ?? 'unknown'));
-                            $sessionActionLabel = $sessionAction === 'login' ? 'login' : ($sessionAction === 'logout' ? 'logout' : $sessionAction);
-                          ?>
-                          <tr>
-                            <td class="mono"><?= clickfix_h((string) ($sessionEvent['created_at'] ?? '')); ?></td>
-                            <td class="mono"><?= clickfix_h($sessionActionLabel); ?></td>
-                            <td class="mono"><?= clickfix_h((string) ($sessionEvent['ip'] ?? '-')); ?></td>
-                            <td class="mono"><?= clickfix_h((string) ($sessionEvent['session_id'] ?? '-')); ?></td>
-                            <td><?= clickfix_h((string) ($sessionEvent['user_agent'] ?? '')); ?></td>
-                          </tr>
-                        <?php endforeach; ?>
-                        <?php if (empty($profileSessionHistory)): ?><tr><td colspan="5" class="mut">Sin sesiones registradas.</td></tr><?php endif; ?>
-                      </tbody>
-                    </table>
-                  <?php endif; ?>
-                <?php elseif ($profileTab === 'reports'): ?>
+                <?php if ($profileTab === 'reports'): ?>
                   <h2>Reportes del usuario</h2>
                   <?php if (!$profileCanViewPrivate): ?>
                     <p class="mut">Los reportes del usuario son privados.</p>
@@ -6943,282 +3854,6 @@ ob_start();
           </div>
         <?php endif; ?>
       </section>
-    <?php elseif ($page === 'settings' && $loggedIn): ?>
-      <?php
-        $selfLang = clickfix_normalize_user_language((string) ($user['preferred_lang'] ?? 'en'));
-        $selfTheme = clickfix_profile_normalize_theme((string) ($user['profile_theme'] ?? 'default'));
-        $selfAvatarUrl = (string) ($user['profile_avatar_url'] ?? '');
-        $settingsLookupProviderDefault = (string) ($intelApiLookupResult['provider'] ?? 'virustotal');
-        $settingsLookupTargetDefault = trim((string) ($intelApiLookupResult['target'] ?? ''));
-      ?>
-      <section class="row">
-        <article class="card">
-          <h2>Settings de cuenta</h2>
-          <p class="mut">Gestiona idioma, theme y foto de usuario para tu cuenta.</p>
-          <form method="post">
-            <input type="hidden" name="action" value="user_self_update_account">
-            <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-            <label for="self-lang">Idioma por defecto</label>
-            <select id="self-lang" name="self_lang">
-              <option value="en"<?= $selfLang === 'en' ? ' selected' : ''; ?>>en</option>
-              <option value="es"<?= $selfLang === 'es' ? ' selected' : ''; ?>>es</option>
-              <option value="ca"<?= $selfLang === 'ca' ? ' selected' : ''; ?>>ca</option>
-              <option value="de"<?= $selfLang === 'de' ? ' selected' : ''; ?>>de</option>
-              <option value="fr"<?= $selfLang === 'fr' ? ' selected' : ''; ?>>fr</option>
-            </select>
-            <label for="self-theme">Theme</label>
-            <select id="self-theme" name="self_theme">
-              <option value="default"<?= $selfTheme === 'default' ? ' selected' : ''; ?>>default</option>
-              <option value="teal"<?= $selfTheme === 'teal' ? ' selected' : ''; ?>>teal</option>
-              <option value="sunset"<?= $selfTheme === 'sunset' ? ' selected' : ''; ?>>sunset</option>
-              <option value="mono"<?= $selfTheme === 'mono' ? ' selected' : ''; ?>>mono</option>
-            </select>
-            <label for="self-avatar-url">Foto de usuario (URL)</label>
-            <input type="url" id="self-avatar-url" name="self_avatar_url" maxlength="420" value="<?= clickfix_h($selfAvatarUrl); ?>" placeholder="https://example.com/avatar.png">
-            <button class="btn" type="submit">Guardar ajustes</button>
-          </form>
-        </article>
-        <article class="card">
-          <h2>Seguridad</h2>
-          <p class="mut">Cambio de contraseña para tu cuenta.</p>
-          <form method="post">
-            <input type="hidden" name="action" value="user_self_change_password">
-            <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-            <input type="password" name="self_current_password" required placeholder="Contraseña actual">
-            <input type="password" name="self_new_password" minlength="10" required placeholder="Nueva contraseña (min 10 chars)">
-            <button class="btn" type="submit">Cambiar contraseña</button>
-          </form>
-        </article>
-      </section>
-      <?php if ($showApiUi): ?>
-      <section class="card">
-        <h2>APIs de investigacion y plataforma</h2>
-        <p class="mut">Las API keys son por usuario: solo tu puedes verlas, cambiarlas y usarlas.</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Proveedor</th>
-              <th>API key</th>
-              <th><?= clickfix_h(cft('intel_api_key_masked')); ?></th>
-              <th><?= clickfix_h(cft('intel_api_key_updated')); ?></th>
-              <th>Accion</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($intelUserApiKeys as $apiRow): ?>
-              <?php
-                $providerKey = (string) ($apiRow['provider'] ?? '');
-                $providerLabel = (string) ($apiRow['label'] ?? $providerKey);
-                $providerHelp = (string) ($apiRow['help'] ?? '');
-                $providerInputId = 'settings-api-key-' . preg_replace('/[^a-z0-9_]/', '_', strtolower($providerKey));
-                $providerMasked = (string) ($apiRow['masked'] ?? '');
-                $providerPlain = (string) ($apiRow['api_key'] ?? '');
-              ?>
-              <tr>
-                <td>
-                  <b><?= clickfix_h($providerLabel); ?></b>
-                  <?php if ($providerHelp !== ''): ?><div class="mut-mini"><?= clickfix_h($providerHelp); ?></div><?php endif; ?>
-                </td>
-                <td>
-                  <form method="post" class="api-key-row-form">
-                    <input type="hidden" name="action" value="investigation_api_key_save">
-                    <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                    <input type="hidden" name="return_page" value="settings">
-                    <input type="hidden" name="graph_id" value="0">
-                    <input type="hidden" name="provider" value="<?= clickfix_h($providerKey); ?>">
-                    <input
-                      type="text"
-                      id="<?= clickfix_h($providerInputId); ?>"
-                      name="api_key"
-                      value="<?= clickfix_h($providerMasked); ?>"
-                      data-api-key-masked="<?= clickfix_h($providerMasked); ?>"
-                      data-api-key-plain="<?= clickfix_h($providerPlain); ?>"
-                      data-api-key-revealed="0"
-                      maxlength="600"
-                      autocomplete="off"
-                      placeholder="API key"
-                    >
-                    <button type="button" class="api-key-toggle" data-toggle-api-key="<?= clickfix_h($providerInputId); ?>">ver</button>
-                    <button class="btn" type="submit"><?= clickfix_h(cft('intel_api_key_save')); ?></button>
-                  </form>
-                </td>
-                <td class="mono"><?= !empty($apiRow['has_key']) ? clickfix_h((string) ($apiRow['masked'] ?? '')) : '-'; ?></td>
-                <td class="mono"><?= clickfix_h((string) ($apiRow['updated_at'] ?? '')); ?></td>
-                <td class="mono">
-                  <?php if (!empty($apiRow['has_key'])): ?>
-                    <form method="post" class="api-key-delete-form" onsubmit="return confirm('Eliminar API key de este proveedor?');">
-                      <input type="hidden" name="action" value="investigation_api_key_delete">
-                      <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                      <input type="hidden" name="return_page" value="settings">
-                      <input type="hidden" name="graph_id" value="0">
-                      <input type="hidden" name="provider" value="<?= clickfix_h($providerKey); ?>">
-                      <button type="submit"><?= clickfix_h(cft('intel_api_key_delete')); ?></button>
-                    </form>
-                  <?php else: ?>
-                    <span class="mut">-</span>
-                  <?php endif; ?>
-                </td>
-              </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
-
-        <h3 style="margin-top:14px">API de plataforma</h3>
-        <p class="mut">Genera y revoca API keys para integraciones externas (OpenCTI, Mitaka, Sputnik, etc).</p>
-
-        <?php if (is_array($platformApiKeyJustCreated) && !empty($platformApiKeyJustCreated['api_key'])): ?>
-          <div class="api-result">
-            <b>API key nueva (se muestra una sola vez)</b>
-            <div class="mut">Copiala ahora y guardala en un vault seguro.</div>
-            <pre><?= clickfix_h((string) ($platformApiKeyJustCreated['api_key'] ?? '')); ?></pre>
-          </div>
-        <?php endif; ?>
-
-        <form method="post" style="margin-top:8px">
-          <input type="hidden" name="action" value="platform_api_key_create">
-          <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-          <input type="hidden" name="return_page" value="settings">
-          <input type="hidden" name="graph_id" value="0">
-          <div class="intel-grid">
-            <div>
-              <label>Etiqueta</label>
-              <input type="text" name="platform_api_label" maxlength="80" placeholder="opencti-main">
-            </div>
-            <div>
-              <label>Expira en dias (1-365)</label>
-              <input type="number" name="platform_api_expires_days" min="1" max="365" value="90">
-            </div>
-            <div>
-              <label>Rate limit RPM (30-2000)</label>
-              <input type="number" name="platform_api_max_rpm" min="30" max="2000" value="120">
-            </div>
-          </div>
-          <div class="intel-toolbar">
-            <button class="btn" type="submit">Generar API key segura</button>
-          </div>
-        </form>
-
-        <div style="margin-top:10px;overflow:auto">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Etiqueta</th>
-                <th>Prefijo</th>
-                <th>Scopes</th>
-                <th>RPM</th>
-                <th>Ultimo uso</th>
-                <th>Expira</th>
-                <th>Estado</th>
-                <th>Accion</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php if (!empty($platformApiKeys)): ?>
-                <?php foreach ($platformApiKeys as $platformKeyRow): ?>
-                  <?php
-                    $pkId = (int) ($platformKeyRow['id'] ?? 0);
-                    $pkStatus = !empty($platformKeyRow['is_active']) ? 'active' : (!empty($platformKeyRow['is_revoked']) ? 'revoked' : 'expired');
-                    $pkPrefix = (string) ($platformKeyRow['key_prefix'] ?? '');
-                  ?>
-                  <tr>
-                    <td class="mono"><?= $pkId; ?></td>
-                    <td><?= clickfix_h((string) ($platformKeyRow['label'] ?? '')); ?></td>
-                    <td class="mono"><?= clickfix_h($pkPrefix !== '' ? ($pkPrefix . '***') : '-'); ?></td>
-                    <td class="mono"><?= clickfix_h((string) ($platformKeyRow['scopes'] ?? '')); ?></td>
-                    <td class="mono"><?= (int) ($platformKeyRow['max_rpm'] ?? 120); ?></td>
-                    <td class="mono"><?= clickfix_h((string) ($platformKeyRow['last_used_at'] ?? '')); ?></td>
-                    <td class="mono"><?= clickfix_h((string) ($platformKeyRow['expires_at'] ?? '')); ?></td>
-                    <td class="mono"><?= clickfix_h($pkStatus); ?></td>
-                    <td class="mono">
-                      <?php if (!empty($platformKeyRow['is_active'])): ?>
-                        <form method="post" onsubmit="return confirm('Revocar esta API key?');">
-                          <input type="hidden" name="action" value="platform_api_key_revoke">
-                          <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                          <input type="hidden" name="return_page" value="settings">
-                          <input type="hidden" name="graph_id" value="0">
-                          <input type="hidden" name="platform_api_key_id" value="<?= $pkId; ?>">
-                          <button type="submit">Revocar</button>
-                        </form>
-                      <?php else: ?>
-                        <span class="mut">-</span>
-                      <?php endif; ?>
-                    </td>
-                  </tr>
-                <?php endforeach; ?>
-              <?php else: ?>
-                <tr><td colspan="9" class="mut">No hay API keys de plataforma creadas.</td></tr>
-              <?php endif; ?>
-            </tbody>
-          </table>
-        </div>
-      </section>
-      <section class="card">
-        <h2>Consulta IOC (con tus APIs)</h2>
-        <form method="post">
-          <input type="hidden" name="action" value="investigation_api_lookup">
-          <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-          <input type="hidden" name="return_page" value="settings">
-          <input type="hidden" name="graph_id" value="0">
-          <div class="intel-grid">
-            <div>
-              <label>Proveedor</label>
-              <select name="provider">
-                <?php foreach ($intelUserApiKeys as $apiRow): ?>
-                  <?php
-                    $providerKey = (string) ($apiRow['provider'] ?? '');
-                    $providerLabel = (string) ($apiRow['label'] ?? $providerKey);
-                  ?>
-                  <option value="<?= clickfix_h($providerKey); ?>"<?= $settingsLookupProviderDefault === $providerKey ? ' selected' : ''; ?>><?= clickfix_h($providerLabel); ?></option>
-                <?php endforeach; ?>
-              </select>
-            </div>
-            <div>
-              <label>Indicador (dominio, IP o URL)</label>
-              <input type="text" name="lookup_target" maxlength="500" value="<?= clickfix_h($settingsLookupTargetDefault); ?>" placeholder="example.com | 1.2.3.4 | https://example.com/path">
-            </div>
-          </div>
-          <div class="intel-toolbar">
-            <button class="btn" type="submit">Consultar</button>
-          </div>
-        </form>
-        <?php if (is_array($intelApiLookupResult)): ?>
-          <div class="api-result">
-            <b>Ultimo resultado</b>
-            <div class="mono">provider: <?= clickfix_h((string) ($intelApiLookupResult['provider'] ?? '-')); ?> | status: <?= (int) ($intelApiLookupResult['status'] ?? 0); ?> | target: <?= clickfix_h((string) ($intelApiLookupResult['target'] ?? '')); ?> | at: <?= clickfix_h((string) ($intelApiLookupResult['captured_at'] ?? '')); ?></div>
-            <?php if (!empty($intelApiLookupResult['error'])): ?>
-              <div class="mut">error: <?= clickfix_h((string) ($intelApiLookupResult['error'] ?? '')); ?></div>
-            <?php endif; ?>
-            <pre><?= clickfix_h((string) ($intelApiLookupResult['response_json'] ?? '')); ?></pre>
-          </div>
-        <?php endif; ?>
-        <?php if (!empty($intelApiLookupHistory)): ?>
-          <h3>Historial reciente</h3>
-          <table>
-            <thead><tr><th>Fecha</th><th>Proveedor</th><th>Target</th><th>Status</th><th>OK</th></tr></thead>
-            <tbody>
-              <?php foreach ($intelApiLookupHistory as $historyRow): ?>
-                <tr>
-                  <td class="mono"><?= clickfix_h((string) ($historyRow['created_at'] ?? '')); ?></td>
-                  <td class="mono"><?= clickfix_h((string) ($historyRow['provider'] ?? '')); ?></td>
-                  <td class="mono"><?= clickfix_h((string) ($historyRow['target'] ?? '')); ?></td>
-                  <td class="mono"><?= (int) ($historyRow['status'] ?? 0); ?></td>
-                  <td class="mono"><?= !empty($historyRow['ok']) ? 'yes' : 'no'; ?></td>
-                </tr>
-              <?php endforeach; ?>
-            </tbody>
-          </table>
-        <?php endif; ?>
-      </section>
-      <?php else: ?>
-      <section class="card">
-        <h2>Integraciones de inteligencia</h2>
-        <p class="mut">
-          La gestion de credenciales e integraciones avanzadas esta oculta en esta interfaz.
-          Los proveedores (por ejemplo VirusTotal, AbuseIPDB y URLScan) siguen operativos desde backend.
-        </p>
-      </section>
-      <?php endif; ?>
     <?php elseif ($page === 'investigation'): ?>
       <section class="intel-public">
         <?php if ($sharedGraph === null): ?>
@@ -7251,32 +3886,9 @@ ob_start();
           </article>
           <article class="card">
             <h2>Grafo de investigacion</h2>
-            <div class="intel-map-shell">
-              <div class="intel-map-toolbar">
-                <div class="intel-map-toolbar-group">
-                  <label for="shared-layout-mode">Layout</label>
-                  <select id="shared-layout-mode">
-                    <option value="tree-vertical">Arbol vertical</option>
-                    <option value="tree-horizontal">Arbol horizontal</option>
-                    <option value="cascade">Cascada</option>
-                    <option value="radial">Radial</option>
-                    <option value="grid">Grid</option>
-                  </select>
-                  <button type="button" class="btn" id="shared-layout-apply">Autoordenar</button>
-                  <button type="button" class="btn" id="shared-fit-graph">Encajar</button>
-                </div>
-                <div class="intel-map-toolbar-group">
-                  <span class="map-stat" id="shared-zoom-status">zoom 100%</span>
-                  <button type="button" class="btn" id="shared-zoom-out">-</button>
-                  <button type="button" class="btn" id="shared-zoom-reset">100%</button>
-                  <button type="button" class="btn" id="shared-zoom-in">+</button>
-                  <button type="button" class="btn" id="shared-fullscreen">Pantalla completa</button>
-                </div>
-              </div>
-              <div class="intel-canvas-wrap" id="shared-canvas-wrap">
-                <svg id="shared-svg"></svg>
-                <div id="shared-node-layer" class="intel-node-layer"></div>
-              </div>
+            <div class="intel-canvas-wrap" id="shared-canvas-wrap">
+              <svg id="shared-svg"></svg>
+              <div id="shared-node-layer" class="intel-node-layer"></div>
             </div>
             <div class="intel-side" style="margin-top:10px">
               <div class="card-box" style="grid-column:1 / -1">
@@ -7306,286 +3918,68 @@ ob_start();
         if (!empty($selectedInvestigation['is_public']) && !empty($selectedInvestigation['share_token'])) {
             $shareUrl = 'dashboard.php?page=investigation&share=' . urlencode((string) $selectedInvestigation['share_token']);
         }
-        $selectedInvestigationSourceReportId = (int) ($selectedInvestigation['source_report_id'] ?? 0);
       ?>
       <?php
         $activeGraphData = is_array($selectedInvestigation['graph'] ?? null) ? $selectedInvestigation['graph'] : ['nodes' => [], 'edges' => []];
         $activeNodeCount = count(is_array($activeGraphData['nodes'] ?? null) ? $activeGraphData['nodes'] : []);
         $activeEdgeCount = count(is_array($activeGraphData['edges'] ?? null) ? $activeGraphData['edges'] : []);
         $activeWorkflowStatus = clickfix_investigation_workflow_status((string) ($selectedInvestigation['workflow_status'] ?? 'draft'));
-        $intelFocusLabel = $activeGraphId > 0 ? ('Investigacion #' . $activeGraphId) : 'Nueva investigacion';
-        $intelFocusDomain = trim((string) ($selectedInvestigation['site_domain'] ?? ''));
       ?>
       <section class="card intel-shell">
-        <?php if (!$intelWorkspaceActive): ?>
-          <div class="intel-selector-shell intel-selector-v2" data-intel-focus="1">
-            <div class="intel-focus-hero">
-              <div class="intel-focus-copy">
-                <div class="intel-focus-eyebrow">Workspace de investigacion</div>
-                <h3>Selecciona el foco antes de investigar</h3>
-                <p class="mut">Primero elige una investigacion existente, una alerta para abrir un caso nuevo o un lienzo vacio. Hasta que no escojas foco no se cargan datos de otras investigaciones dentro del workspace.</p>
-                <div class="intel-focus-steps">
-                  <span class="intel-step active">1. Elegir foco</span>
-                  <span class="intel-step">2. Enriquecer datos</span>
-                  <span class="intel-step">3. Publicar o compartir</span>
-                </div>
-              </div>
-              <div class="intel-focus-meta">
-                <div class="intel-stat">
-                  <div class="k">Investigaciones</div>
-                  <div class="v"><?= count($investigations); ?></div>
-                </div>
-                <div class="intel-stat">
-                  <div class="k">Alertas listas</div>
-                  <div class="v"><?= count($intelSelectionReports); ?></div>
-                </div>
-                <label class="intel-focus-search">
-                  <span class="mut">Buscar</span>
-                  <input id="intel-focus-search" type="search" placeholder="Dominio, titulo, alerta, veredicto..." autocomplete="off">
-                </label>
-              </div>
+        <div class="intel-topbar">
+          <div class="intel-topline">
+            <div class="intel-title-wrap">
+              <h2>Investigaciones de sitios</h2>
+              <p class="mut">Workspace de analisis centrado en entidades, relaciones y evidencia trazable.</p>
             </div>
-            <div class="intel-focus-tabs" role="tablist" aria-label="Seleccion de foco">
-              <button type="button" class="intel-tab is-active" data-intel-tab="investigations" aria-selected="true">Continuar investigacion</button>
-              <button type="button" class="intel-tab" data-intel-tab="alerts" aria-selected="false">Crear desde alerta</button>
-              <button type="button" class="intel-tab" data-intel-tab="new" aria-selected="false">Empezar desde cero</button>
-            </div>
-            <div class="intel-focus-panels">
-              <section class="intel-focus-panel" data-intel-panel="investigations">
-                <div class="intel-panel-head">
-                  <div>
-                    <h4>Continuar investigacion</h4>
-                    <p class="mut">Retoma un caso existente y entra directamente en su workspace aislado.</p>
-                  </div>
-                  <div class="intel-panel-chip">Mostrando <?= min(12, count($investigations)); ?> recientes</div>
-                </div>
-                <div class="intel-focus-list">
-                  <?php if (!empty($investigations)): ?>
-                    <?php foreach (array_slice($investigations, 0, 12) as $graphRow): ?>
-                      <?php
-                        $graphRowId = (int) ($graphRow['id'] ?? 0);
-                        $graphTitle = (string) ($graphRow['title'] ?? 'Investigacion');
-                        $graphDomain = (string) ($graphRow['site_domain'] ?? '-');
-                        $graphVerdict = (string) ($graphRow['verdict'] ?? 'unknown');
-                        $graphWorkflow = (string) ($graphRow['workflow_status'] ?? 'draft');
-                        $graphSummary = (string) ($graphRow['summary'] ?? 'Sin resumen todavia.');
-                        $graphSearch = strtolower(trim($graphTitle . ' ' . $graphDomain . ' ' . $graphVerdict . ' ' . $graphWorkflow . ' ' . $graphSummary));
-                      ?>
-                      <article class="intel-focus-card" data-search="<?= clickfix_h($graphSearch); ?>">
-                        <div class="intel-focus-main">
-                          <strong><?= clickfix_h($graphTitle); ?></strong>
-                          <div class="intel-meta-row">
-                            <span class="mono"><?= clickfix_h($graphDomain); ?></span>
-                            <span class="intel-badge"><?= clickfix_h($graphVerdict); ?></span>
-                            <span class="intel-badge soft"><?= clickfix_h(cfworkflowlabel($graphWorkflow, $lang)); ?></span>
-                            <?php if (!empty($graphRow['submitted_to_community'])): ?>
-                              <span class="intel-badge critical">community</span>
-                            <?php endif; ?>
-                          </div>
-                        </div>
-                        <div class="intel-focus-summary">
-                          <div class="summary"><?= clickfix_h($graphSummary); ?></div>
-                          <details class="intel-summary-details">
-                            <summary>Ver resumen completo</summary>
-                            <div class="mut"><?= clickfix_h($graphSummary); ?></div>
-                          </details>
-                        </div>
-                        <div class="intel-focus-actions">
-                          <a class="btn" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $graphRowId])); ?>">Abrir workspace</a>
-                        </div>
-                      </article>
-                    <?php endforeach; ?>
-                  <?php else: ?>
-                    <div class="intel-empty-state">No tienes investigaciones guardadas todavia.</div>
-                  <?php endif; ?>
-                </div>
-              </section>
-              <section class="intel-focus-panel" data-intel-panel="alerts" hidden>
-                <div class="intel-panel-head">
-                  <div>
-                    <h4>Crear desde alerta</h4>
-                    <p class="mut">Convierte una alerta reciente en una investigacion con contexto inicial y grafo base.</p>
-                  </div>
-                  <div class="intel-panel-chip">Alertas listas: <?= count($intelSelectionReports); ?></div>
-                </div>
-                <div class="intel-focus-list">
-                  <?php if (!empty($intelSelectionReports)): ?>
-                    <?php foreach ($intelSelectionReports as $reportRow): ?>
-                      <?php
-                        $reportId = (int) ($reportRow['id'] ?? 0);
-                        $reportHost = trim((string) ($reportRow['hostname'] ?? ''));
-                        $reportUrl = trim((string) ($reportRow['url'] ?? ''));
-                        $reportPreview = trim((string) ($reportRow['message'] ?? ''));
-                        $reportScore = (int) ($reportRow['score_total'] ?? 0);
-                        $reportSearch = strtolower(trim($reportId . ' ' . $reportHost . ' ' . $reportUrl . ' ' . $reportPreview));
-                      ?>
-                      <article class="intel-focus-card" data-search="<?= clickfix_h($reportSearch); ?>">
-                        <div class="intel-focus-main">
-                          <strong>Alerta #<?= $reportId; ?></strong>
-                          <div class="intel-meta-row">
-                            <span class="mono"><?= clickfix_h($reportHost !== '' ? $reportHost : ($reportUrl !== '' ? $reportUrl : 'sin host')); ?></span>
-                            <span class="intel-badge score">score <?= $reportScore; ?>/100</span>
-                            <span class="intel-badge soft"><?= clickfix_h((string) ($reportRow['received_at'] ?? '')); ?></span>
-                          </div>
-                        </div>
-                        <div class="intel-focus-summary">
-                          <div class="summary"><?= clickfix_h($reportPreview !== '' ? $reportPreview : 'Sin mensaje resumido disponible.'); ?></div>
-                          <?php if ($reportPreview !== ''): ?>
-                            <details class="intel-summary-details">
-                              <summary>Ver mensaje completo</summary>
-                              <div class="mut"><?= clickfix_h($reportPreview); ?></div>
-                            </details>
-                          <?php endif; ?>
-                        </div>
-                        <div class="intel-focus-actions">
-                          <form method="post">
-                            <input type="hidden" name="action" value="report_quick_action">
-                            <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                            <input type="hidden" name="return_page" value="intel">
-                            <input type="hidden" name="report_id" value="<?= $reportId; ?>">
-                            <input type="hidden" name="quick_mode" value="create_investigation">
-                            <button class="btn" type="submit">Crear caso</button>
-                          </form>
-                        </div>
-                      </article>
-                    <?php endforeach; ?>
-                  <?php else: ?>
-                    <div class="intel-empty-state">No hay alertas recientes pendientes listas para abrir un caso desde aqui.</div>
-                  <?php endif; ?>
-                </div>
-              </section>
-              <section class="intel-focus-panel" data-intel-panel="new" hidden>
-                <div class="intel-panel-head">
-                  <div>
-                    <h4>Empezar desde cero</h4>
-                    <p class="mut">Abre un lienzo vacio cuando quieras modelar una investigacion sin depender de una alerta previa.</p>
-                  </div>
-                </div>
-                <article class="intel-focus-card hero">
-                  <div class="intel-focus-main">
-                    <strong>Investigacion vacia</strong>
-                    <div class="intel-meta-row">
-                      <span class="intel-badge soft">workspace limpio</span>
-                      <span class="intel-badge soft">sin timeline</span>
-                      <span class="intel-badge soft">sin datos heredados</span>
-                    </div>
-                  </div>
-                  <div class="intel-focus-summary">
-                    <div class="summary">El editor se abre sin historial ni lookups cruzados para que construyas el caso desde cero.</div>
-                  </div>
-                  <div class="intel-focus-actions">
-                    <a class="btn" href="<?= clickfix_h(cfurl('intel', false, ['compose' => 1])); ?>">Abrir lienzo</a>
-                  </div>
-                </article>
-              </section>
-            </div>
-          </div>
-        <?php else: ?>
-          <div class="intel-topbar">
-            <div class="intel-topline">
-              <div class="intel-title-wrap">
-                <h2>Investigaciones de sitios</h2>
-                <p class="mut">Workspace de analisis centrado en un unico caso, entidades, relaciones y evidencia trazable.</p>
-              </div>
-              <div class="intel-chip-row">
-                <span class="intel-chip<?= $activeGraphId > 0 ? ' ok' : ''; ?>"><?= clickfix_h($intelFocusLabel); ?></span>
-                <span class="intel-chip warn"><?= clickfix_h(cfworkflowlabel($activeWorkflowStatus, $lang)); ?></span>
-                <?php if ($selectedInvestigationSourceReportId > 0): ?>
-                  <span class="intel-chip">alerta origen #<?= $selectedInvestigationSourceReportId; ?></span>
-                <?php endif; ?>
-                <?php if (!empty($selectedInvestigation['submitted_to_community'])): ?>
-                  <span class="intel-chip critical">community</span>
-                <?php endif; ?>
-              </div>
-            </div>
-            <div class="intel-kpi-grid">
-              <div class="intel-kpi"><b>Dominio foco</b><span class="mono"><?= clickfix_h($intelFocusDomain !== '' ? $intelFocusDomain : '-'); ?></span></div>
-              <div class="intel-kpi"><b>Nodos</b><span><?= $activeNodeCount; ?></span></div>
-              <div class="intel-kpi"><b>Conexiones</b><span><?= $activeEdgeCount; ?></span></div>
-              <div class="intel-kpi"><b>Eventos timeline</b><span><?= count($investigationEvents); ?></span></div>
-            </div>
-            <div class="intel-stage-bar">
-              <div class="intel-stage<?= $activeWorkflowStatus === 'draft' ? ' active' : ''; ?>">draft</div>
-              <div class="intel-stage<?= $activeWorkflowStatus === 'mid_verified' ? ' active' : ''; ?>">mid verified</div>
-              <div class="intel-stage<?= $activeWorkflowStatus === 'sr_review' ? ' active' : ''; ?>">sr review</div>
-              <div class="intel-stage<?= $activeWorkflowStatus === 'verified_public' ? ' active' : ''; ?>">verified public</div>
-              <div class="intel-stage<?= in_array($activeWorkflowStatus, ['verified_internal', 'rejected'], true) ? ' active' : ''; ?>"><?= $activeWorkflowStatus === 'rejected' ? 'rejected' : 'verified internal'; ?></div>
-            </div>
-          </div>
-          <div class="intel-focus-bar">
-            <div class="intel-focus-main">
-              <strong><?= clickfix_h((string) ($selectedInvestigation['title'] ?? 'Nueva investigacion')); ?></strong>
-              <span><?= clickfix_h($intelFocusDomain !== '' ? $intelFocusDomain : 'Sin dominio principal definido'); ?><?php if ($activeGraphId > 0): ?> | grafo #<?= $activeGraphId; ?><?php endif; ?></span>
-            </div>
-            <div class="intel-focus-actions">
-              <a class="btn" href="<?= clickfix_h(cfurl('intel')); ?>">Cambiar foco</a>
-              <button class="btn" type="submit" form="intel-save-form">Guardar</button>
-              <button class="btn" type="button" id="intel-workspace-fullscreen">Pantalla completa</button>
-              <?php if ($activeGraphId > 0): ?>
-                <a class="btn" id="intel-export-json-link" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $activeGraphId, 'export_iocs' => 'json'])); ?>">Export IOCs JSON</a>
+            <div class="intel-chip-row">
+              <span class="intel-chip">casos: <?= count($investigations); ?></span>
+              <span class="intel-chip<?= $activeGraphId > 0 ? ' ok' : ''; ?>">activo: <?= $activeGraphId > 0 ? ('#' . $activeGraphId) : 'nuevo'; ?></span>
+              <span class="intel-chip warn"><?= clickfix_h(cfworkflowlabel($activeWorkflowStatus, $lang)); ?></span>
+              <?php if (!empty($selectedInvestigation['submitted_to_community'])): ?>
+                <span class="intel-chip critical">community</span>
               <?php endif; ?>
             </div>
           </div>
-          <div class="intel-cockpit">
-            <article class="intel-cockpit-card">
-              <div class="k">Caso activo</div>
-              <div class="v"><?= clickfix_h($intelFocusLabel); ?></div>
-              <p class="mut"><?= clickfix_h((string) ($selectedInvestigation['title'] ?? 'Sin titulo')); ?></p>
-            </article>
-            <article class="intel-cockpit-card">
-              <div class="k">Workflow</div>
-              <div class="v"><?= clickfix_h(cfworkflowlabel($activeWorkflowStatus, $lang)); ?></div>
-              <p class="mut">Veredicto: <?= clickfix_h((string) ($selectedInvestigation['verdict'] ?? 'unknown')); ?></p>
-            </article>
-            <article class="intel-cockpit-card">
-              <div class="k">Enrichment</div>
-              <div class="v"><?= count($intelApiLookupHistory); ?> consultas</div>
-              <p class="mut"><?= count($investigationQuickTargets); ?> IOCs listos para pivote</p>
-            </article>
-            <article class="intel-cockpit-card">
-              <div class="k">Grafo</div>
-              <div class="v"><?= $activeNodeCount; ?> nodos / <?= $activeEdgeCount; ?> enlaces</div>
-              <p class="mut"><?= count($investigationEvents); ?> eventos en timeline</p>
-            </article>
-            <article class="intel-cockpit-card">
-              <div class="k">Origen</div>
-              <div class="v"><?= $selectedInvestigationSourceReportId > 0 ? ('Alerta #' . $selectedInvestigationSourceReportId) : 'Manual'; ?></div>
-              <p class="mut">Actualizado: <?= clickfix_h((string) ($selectedInvestigation['updated_at'] ?? '')); ?></p>
-            </article>
-            <article class="intel-cockpit-card actions">
-              <div class="k">Acciones rapidas</div>
-              <div class="v">Cockpit operativo</div>
-              <div class="intel-quick-grid">
-                <button type="button" class="btn" data-scroll-target="intel-section-briefing">Briefing</button>
-                <button type="button" class="btn" data-scroll-target="intel-section-enrichment">Enrichment</button>
-                <button type="button" class="btn" data-scroll-target="intel-section-graph">Grafo</button>
-                <button type="button" class="btn" data-scroll-target="intel-section-actions">Acciones</button>
-                <?php if ($activeGraphId > 0): ?>
-                  <button type="button" class="btn" data-scroll-target="intel-section-timeline">Timeline</button>
-                <?php endif; ?>
-              </div>
-            </article>
+          <div class="intel-kpi-grid">
+            <div class="intel-kpi"><b>Dominio foco</b><span class="mono"><?= clickfix_h((string) ($selectedInvestigation['site_domain'] ?? '-')); ?></span></div>
+            <div class="intel-kpi"><b>Nodos</b><span><?= $activeNodeCount; ?></span></div>
+            <div class="intel-kpi"><b>Conexiones</b><span><?= $activeEdgeCount; ?></span></div>
+            <div class="intel-kpi"><b>Eventos timeline</b><span><?= count($investigationEvents); ?></span></div>
           </div>
-          <div class="intel-workspace-nav" id="intel-workspace-nav">
-            <button type="button" class="btn" data-scroll-target="intel-section-briefing">Briefing</button>
-            <button type="button" class="btn" data-scroll-target="intel-section-enrichment">Enrichment</button>
-            <button type="button" class="btn" data-scroll-target="intel-section-graph">Mapa relacional</button>
-            <button type="button" class="btn" data-scroll-target="intel-section-entities">Entidades</button>
-            <button type="button" class="btn" data-scroll-target="intel-section-actions">Distribucion</button>
-            <?php if ($activeGraphId > 0): ?>
-              <button type="button" class="btn" data-scroll-target="intel-section-timeline">Timeline</button>
-            <?php endif; ?>
+          <div class="intel-stage-bar">
+            <div class="intel-stage<?= $activeWorkflowStatus === 'draft' ? ' active' : ''; ?>">draft</div>
+            <div class="intel-stage<?= $activeWorkflowStatus === 'mid_verified' ? ' active' : ''; ?>">mid verified</div>
+            <div class="intel-stage<?= $activeWorkflowStatus === 'sr_review' ? ' active' : ''; ?>">sr review</div>
+            <div class="intel-stage<?= $activeWorkflowStatus === 'verified_public' ? ' active' : ''; ?>">verified public</div>
+            <div class="intel-stage<?= in_array($activeWorkflowStatus, ['verified_internal', 'rejected'], true) ? ' active' : ''; ?>"><?= $activeWorkflowStatus === 'rejected' ? 'rejected' : 'verified internal'; ?></div>
           </div>
-          <div class="intel-layout workspace-only">
-            <section class="intel-editor">
-            <div class="intel-editor-section" id="intel-section-briefing" data-intel-section="intel-section-briefing">
-              <div class="intel-section-head">
-                <div>
-                  <span class="intel-section-kicker">Briefing</span>
-                  <h3>Contexto principal del caso</h3>
-                  <p class="mut">Define el foco, la narrativa analitica y los datos clave antes de enriquecer o compartir.</p>
-                </div>
-              </div>
+        </div>
+        <div class="intel-layout">
+          <aside class="intel-list">
+            <div class="intel-list-head">
+              <b>Case queue</b>
+              <span>Prioriza por dominio, veredicto y estado de workflow.</span>
+            </div>
+            <a class="intel-item<?= $activeGraphId === 0 ? ' active' : ''; ?>" href="<?= clickfix_h(cfurl('intel')); ?>">
+              <b>Nueva investigacion</b>
+              <div class="meta mono">grafo vacio</div>
+              <div class="summary">Empieza desde cero y guarda cuando tengas la narrativa.</div>
+            </a>
+            <?php foreach ($investigations as $graphRow): ?>
+              <?php $graphRowId = (int) ($graphRow['id'] ?? 0); ?>
+              <a class="intel-item<?= $graphRowId === $activeGraphId ? ' active' : ''; ?>" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $graphRowId])); ?>">
+                <b><?= clickfix_h((string) ($graphRow['title'] ?? 'Investigacion')); ?></b>
+                <div class="meta mono"><?= clickfix_h((string) ($graphRow['site_domain'] ?? '-')); ?> | <?= clickfix_h((string) ($graphRow['verdict'] ?? 'unknown')); ?></div>
+                <div class="meta mono"><?= clickfix_h(cfworkflowlabel((string) ($graphRow['workflow_status'] ?? 'draft'), $lang)); ?><?php if (!empty($graphRow['submitted_to_community'])): ?> | community<?php endif; ?></div>
+                <div class="meta mono">creada: <?= clickfix_h((string) ($graphRow['created_at'] ?? '')); ?></div>
+                <div class="meta mono">actualizada: <?= clickfix_h((string) ($graphRow['updated_at'] ?? '')); ?><?php if (!empty($graphRow['username'])): ?> | <a class="user-link" href="<?= clickfix_h(cfprofileurl((int) ($graphRow['user_id'] ?? 0))); ?>"><?= clickfix_h((string) $graphRow['username']); ?></a><?php endif; ?></div>
+                <div class="summary"><?= clickfix_h((string) ($graphRow['summary'] ?? '')); ?></div>
+              </a>
+            <?php endforeach; ?>
+          </aside>
+          <section class="intel-editor">
+            <div class="intel-editor-section">
               <form id="intel-save-form" method="post">
                 <input type="hidden" name="action" value="investigation_save">
                 <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
@@ -7611,20 +4005,10 @@ ob_start();
               </form>
             </div>
 
-            <div class="intel-editor-section" id="intel-section-enrichment" data-intel-section="intel-section-enrichment">
-              <div class="intel-section-head">
-                <div>
-                  <span class="intel-section-kicker">Enrichment</span>
-                  <h3>Fuentes de investigacion</h3>
-                  <p class="mut"><?= $showApiUi ? 'Gestion de credenciales personales, pivotes y consultas historicas de enrichment.' : 'Consulta proveedores de inteligencia sin exponer credenciales en interfaz.'; ?></p>
-                </div>
-                <div class="intel-chip-row">
-                  <span class="intel-chip">lookups: <?= count($intelApiLookupHistory); ?></span>
-                  <span class="intel-chip">iocs: <?= count($investigationQuickTargets); ?></span>
-                </div>
-              </div>
+            <div class="intel-editor-section">
+              <h3>Fuentes de investigacion</h3>
+              <p class="mut">Gestion de API keys personales y consultas historicas de enrichment.</p>
               <div class="card-box" style="margin-bottom:10px">
-              <?php if ($showApiUi): ?>
                 <h3><?= clickfix_h(cft('intel_api_keys_title')); ?></h3>
                 <p class="mut"><?= clickfix_h(cft('intel_api_keys_sub')); ?></p>
                 <table>
@@ -7793,230 +4177,14 @@ ob_start();
                     </table>
                   </div>
                 </div>
-              <?php else: ?>
-                <div class="mut" style="margin-bottom:10px">
-                  La gestion manual de credenciales y la API de plataforma estan ocultas en esta vista.
-                </div>
-              <?php endif; ?>
-
-                <?php
-                  $workbenchArtifactCounts = is_array($intelWorkbenchResult['artifact_counts'] ?? null) ? $intelWorkbenchResult['artifact_counts'] : [];
-                  $workbenchArtifacts = is_array($intelWorkbenchResult['artifacts'] ?? null) ? $intelWorkbenchResult['artifacts'] : [];
-                  $workbenchDecoded = is_array($intelWorkbenchResult['decoded'] ?? null) ? $intelWorkbenchResult['decoded'] : [];
-                  $workbenchBatchResults = is_array($intelWorkbenchResult['batch_results'] ?? null) ? $intelWorkbenchResult['batch_results'] : [];
-                  $workbenchInputDefault = trim((string) ($intelWorkbenchResult['input'] ?? ''));
-                  if ($workbenchInputDefault === '') {
-                      $workbenchInputDefault = trim(implode("\n", array_filter([
-                          (string) ($selectedInvestigation['site_domain'] ?? ''),
-                          (string) ($selectedInvestigation['summary'] ?? ''),
-                      ])));
-                  }
-                ?>
-                <div class="intel-workbench-panel">
-                  <div class="intel-section-head" style="margin-bottom:0">
-                    <div>
-                      <span class="intel-section-kicker">IOC intake</span>
-                      <h3>Intake, normalizacion y triage batch</h3>
-                      <p class="mut">Pega texto libre, HTML, logs, URLs defang, hashes o comandos. El panel refang, extrae artefactos, intenta decodificar y puede lanzar pivotes batch sin exponer otra marca ni otra herramienta.</p>
-                    </div>
-                    <?php if (is_array($intelWorkbenchResult)): ?>
-                      <div class="intel-chip-row">
-                        <span class="intel-chip ok">capturado: <?= clickfix_h((string) ($intelWorkbenchResult['captured_at'] ?? '')); ?></span>
-                        <span class="intel-chip">artefactos: <?= array_sum(array_map('intval', $workbenchArtifactCounts)); ?></span>
-                        <span class="intel-chip warn">batch: <?= count($workbenchBatchResults); ?></span>
-                      </div>
-                    <?php endif; ?>
-                  </div>
-                  <form method="post">
-                    <input type="hidden" name="action" value="investigation_ioc_workbench">
-                    <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                    <input type="hidden" name="return_page" value="intel">
-                    <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
-                    <div class="intel-workbench-grid">
-                      <div>
-                        <label>Texto fuente / HTML / comandos / IOCs</label>
-                        <textarea name="ioc_intake_text" maxlength="40000" placeholder="Pega aqui texto libre, HTML, logs, URLs hxxp://, dominios con [.] o artefactos ofuscados."><?= clickfix_h($workbenchInputDefault); ?></textarea>
-                      </div>
-                      <div class="intel-workbench-side">
-                        <label>Proveedores para triage batch</label>
-                        <div class="intel-workbench-provider-list">
-                          <?php foreach ($intelUserApiKeys as $apiRow): ?>
-                            <?php
-                              $providerKey = (string) ($apiRow['provider'] ?? '');
-                              $providerLabel = (string) ($apiRow['label'] ?? $providerKey);
-                            ?>
-                            <label>
-                              <input type="checkbox" name="batch_providers[]" value="<?= clickfix_h($providerKey); ?>"<?= in_array($providerKey, ['virustotal', 'abuseipdb'], true) ? ' checked' : ''; ?>>
-                              <span><?= clickfix_h($providerLabel); ?></span>
-                            </label>
-                          <?php endforeach; ?>
-                        </div>
-                        <p class="intel-workbench-note">El batch se limita a 15 IOCs reutilizables por ejecucion y solo usa proveedores compatibles con cada tipo. Los resultados se guardan tambien en tu historial de enrichment.</p>
-                        <div class="intel-toolbar" style="margin-top:auto">
-                          <button class="btn" type="submit">Procesar intake</button>
-                        </div>
-                      </div>
-                    </div>
-                  </form>
-
-                  <?php if (is_array($intelWorkbenchResult)): ?>
-                    <div class="intel-workbench-kpis">
-                      <?php foreach (['url' => 'URLs', 'domain' => 'Dominios', 'ip' => 'IPs', 'sha256' => 'SHA256'] as $kpiType => $kpiLabel): ?>
-                        <article class="intel-workbench-kpi">
-                          <b><?= clickfix_h($kpiLabel); ?></b>
-                          <span><?= (int) ($workbenchArtifactCounts[$kpiType] ?? 0); ?></span>
-                        </article>
-                      <?php endforeach; ?>
-                    </div>
-
-                    <?php if (trim((string) ($intelWorkbenchResult['refanged'] ?? '')) !== '' && trim((string) ($intelWorkbenchResult['refanged'] ?? '')) !== trim((string) ($intelWorkbenchResult['input'] ?? ''))): ?>
-                      <div class="api-result">
-                        <b>Texto normalizado / refang</b>
-                        <pre><?= clickfix_h((string) ($intelWorkbenchResult['refanged'] ?? '')); ?></pre>
-                      </div>
-                    <?php endif; ?>
-
-                    <div>
-                      <h3>Artefactos extraidos</h3>
-                      <?php if (empty($workbenchArtifacts)): ?>
-                        <div class="mut">No se detectaron artefactos reutilizables en el intake actual.</div>
-                      <?php else: ?>
-                        <div class="intel-artifact-grid">
-                          <?php foreach ($workbenchArtifacts as $artifactRow): ?>
-                            <article class="intel-artifact-card">
-                              <span class="intel-artifact-type"><?= clickfix_h((string) ($artifactRow['type'] ?? 'unknown')); ?></span>
-                              <p class="intel-artifact-value"><?= clickfix_h((string) ($artifactRow['value'] ?? '')); ?></p>
-                            </article>
-                          <?php endforeach; ?>
-                        </div>
-                      <?php endif; ?>
-                    </div>
-
-                    <div>
-                      <h3>Decodificaciones candidatas</h3>
-                      <?php if (empty($workbenchDecoded)): ?>
-                        <div class="mut">No aparecieron cadenas con una decodificacion suficientemente util en este intake.</div>
-                      <?php else: ?>
-                        <div class="intel-decode-grid">
-                          <?php foreach ($workbenchDecoded as $decodeRow): ?>
-                            <article class="intel-decode-card">
-                              <div class="mono" style="font-size:12px;color:#d7ecff"><?= clickfix_h((string) ($decodeRow['input'] ?? '')); ?></div>
-                              <?php foreach ((array) ($decodeRow['decoded'] ?? []) as $decodeType => $decodeValue): ?>
-                                <div>
-                                  <span class="intel-artifact-type"><?= clickfix_h((string) $decodeType); ?></span>
-                                  <pre><?= clickfix_h(is_array($decodeValue) ? (json_encode($decodeValue, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '{}') : (string) $decodeValue); ?></pre>
-                                </div>
-                              <?php endforeach; ?>
-                            </article>
-                          <?php endforeach; ?>
-                        </div>
-                      <?php endif; ?>
-                    </div>
-
-                    <div>
-                      <h3>Triage batch</h3>
-                      <?php if (empty($workbenchBatchResults)): ?>
-                        <div class="mut">No se ejecutaron consultas batch en esta pasada o no habia IOCs compatibles con los proveedores seleccionados.</div>
-                      <?php else: ?>
-                        <div class="intel-batch-grid">
-                          <?php foreach ($workbenchBatchResults as $batchRow): ?>
-                            <?php
-                              $batchProvider = strtolower(trim((string) ($batchRow['provider'] ?? 'unknown')));
-                              $batchSummary = is_array($batchRow['summary'] ?? null) ? $batchRow['summary'] : [];
-                              $batchVtSummary = $batchProvider === 'virustotal' ? cfintel_virustotal_summary($batchSummary) : [];
-                              $batchStatusOk = !empty($batchRow['ok']);
-                            ?>
-                            <article class="intel-batch-card">
-                              <div class="intel-batch-head">
-                                <div>
-                                  <div class="mono" style="font-size:12px"><?= clickfix_h((string) ($batchRow['target'] ?? '')); ?></div>
-                                  <div class="mut mono" style="font-size:11px"><?= clickfix_h((string) ($batchRow['target_type'] ?? 'unknown')); ?> | <?= clickfix_h($batchProvider); ?></div>
-                                </div>
-                                <span class="intel-batch-status<?= $batchStatusOk ? ' ok' : ' ko'; ?>">
-                                  <?= $batchStatusOk ? 'ok' : 'error'; ?> | <?= (int) ($batchRow['status'] ?? 0); ?>
-                                </span>
-                              </div>
-                              <?php if (!empty($batchVtSummary)): ?>
-                                <div class="vt-stat-grid">
-                                  <div class="vt-stat-chip vt-stat-malicious"><span>malicious</span><b><?= (int) ($batchVtSummary['malicious'] ?? 0); ?></b></div>
-                                  <div class="vt-stat-chip vt-stat-suspicious"><span>suspicious</span><b><?= (int) ($batchVtSummary['suspicious'] ?? 0); ?></b></div>
-                                  <div class="vt-stat-chip vt-stat-harmless"><span>harmless</span><b><?= (int) ($batchVtSummary['harmless'] ?? 0); ?></b></div>
-                                  <div class="vt-stat-chip vt-stat-undetected"><span>undetected</span><b><?= (int) ($batchVtSummary['undetected'] ?? 0); ?></b></div>
-                                </div>
-                              <?php elseif (!empty($batchSummary)): ?>
-                                <pre><?= clickfix_h(json_encode($batchSummary, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '{}'); ?></pre>
-                              <?php endif; ?>
-                              <?php if (!$batchStatusOk && trim((string) ($batchRow['error'] ?? '')) !== ''): ?>
-                                <div class="mut"><?= clickfix_h((string) ($batchRow['error'] ?? '')); ?></div>
-                              <?php endif; ?>
-                            </article>
-                          <?php endforeach; ?>
-                        </div>
-                      <?php endif; ?>
-                    </div>
-                  <?php endif; ?>
-                </div>
 
                 <?php
                   $lookupProviderDefault = (string) ($intelApiLookupResult['provider'] ?? 'virustotal');
                   $lookupTargetDefault = trim((string) ($intelApiLookupResult['target'] ?? (string) ($selectedInvestigation['site_domain'] ?? '')));
                 ?>
                 <div style="margin-top:10px">
-                  <h3>IOCs detectados en esta investigacion</h3>
-                  <p class="mut">IPs, dominios y URLs extraidos del dominio principal, resumen, nodos, tags y notas. Puedes lanzarlos directamente a proveedores sin copiar/pegar.</p>
-                  <?php if (empty($investigationQuickTargets)): ?>
-                    <div class="mut" style="margin-bottom:12px">No se han detectado IOCs reutilizables todavia dentro del grafo actual.</div>
-                  <?php else: ?>
-                    <div style="display:grid;gap:8px;margin-bottom:14px">
-                      <?php foreach ($investigationQuickTargets as $iocRow): ?>
-                        <?php
-                          $iocValue = (string) ($iocRow['value'] ?? '');
-                          $iocType = (string) ($iocRow['type'] ?? 'unknown');
-                          $iocSource = (string) ($iocRow['source'] ?? '');
-                          $abuseAllowed = in_array($iocType, ['domain', 'ip'], true);
-                        ?>
-                        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;border:1px solid #284968;border-radius:12px;background:#0a1926">
-                          <div style="min-width:240px;flex:1 1 320px">
-                            <div class="mono" style="font-size:13px"><?= clickfix_h($iocValue); ?></div>
-                            <div class="mut mono" style="font-size:11px"><?= clickfix_h($iocType); ?><?php if ($iocSource !== ''): ?> | origen: <?= clickfix_h($iocSource); ?><?php endif; ?></div>
-                          </div>
-                          <div style="display:flex;gap:8px;flex-wrap:wrap">
-                            <form method="post" style="display:inline-flex;gap:6px;align-items:center">
-                              <input type="hidden" name="action" value="investigation_api_lookup">
-                              <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                              <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
-                              <input type="hidden" name="provider" value="virustotal">
-                              <input type="hidden" name="lookup_target" value="<?= clickfix_h($iocValue); ?>">
-                              <button class="btn" type="submit">VT</button>
-                            </form>
-                            <?php if ($abuseAllowed): ?>
-                              <form method="post" style="display:inline-flex;gap:6px;align-items:center">
-                                <input type="hidden" name="action" value="investigation_api_lookup">
-                                <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                                <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
-                                <input type="hidden" name="provider" value="abuseipdb">
-                                <input type="hidden" name="lookup_target" value="<?= clickfix_h($iocValue); ?>">
-                                <button class="btn" type="submit">AbuseIPDB</button>
-                              </form>
-                            <?php endif; ?>
-                            <?php if ($iocType === 'url' || $iocType === 'domain'): ?>
-                              <form method="post" style="display:inline-flex;gap:6px;align-items:center">
-                                <input type="hidden" name="action" value="investigation_api_lookup">
-                                <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                                <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
-                                <input type="hidden" name="provider" value="urlscan">
-                                <input type="hidden" name="lookup_target" value="<?= clickfix_h($iocValue); ?>">
-                                <button class="btn" type="submit">urlscan</button>
-                              </form>
-                            <?php endif; ?>
-                          </div>
-                        </div>
-                      <?php endforeach; ?>
-                    </div>
-                  <?php endif; ?>
-
-                  <h3><?= $showApiUi ? clickfix_h(cft('intel_api_lookup_title')) : 'Consulta de proveedores de inteligencia'; ?></h3>
-                  <p class="mut"><?= $showApiUi ? clickfix_h(cft('intel_api_lookup_sub')) : 'Selecciona proveedor e indicador (dominio, IP o URL).'; ?></p>
+                  <h3><?= clickfix_h(cft('intel_api_lookup_title')); ?></h3>
+                  <p class="mut"><?= clickfix_h(cft('intel_api_lookup_sub')); ?></p>
                   <form method="post">
                     <input type="hidden" name="action" value="investigation_api_lookup">
                     <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
@@ -8056,10 +4224,8 @@ ob_start();
                     $vtTotal = !empty($vtSummary) ? array_sum(array_map('intval', $vtSummary)) : 0;
                   ?>
                   <div class="api-result">
-                    <b><?= $showApiUi ? clickfix_h(cft('intel_api_lookup_result')) : 'Resultado de consulta'; ?></b>
-                    <?php if ($showApiUi): ?>
-                      <div class="mono">provider: <?= clickfix_h((string) ($intelApiLookupResult['provider'] ?? '-')); ?> | status: <?= (int) ($intelApiLookupResult['status'] ?? 0); ?> | target: <?= clickfix_h((string) ($intelApiLookupResult['target'] ?? '')); ?> | at: <?= clickfix_h((string) ($intelApiLookupResult['captured_at'] ?? '')); ?></div>
-                    <?php endif; ?>
+                    <b><?= clickfix_h(cft('intel_api_lookup_result')); ?></b>
+                    <div class="mono">provider: <?= clickfix_h((string) ($intelApiLookupResult['provider'] ?? '-')); ?> | status: <?= (int) ($intelApiLookupResult['status'] ?? 0); ?> | target: <?= clickfix_h((string) ($intelApiLookupResult['target'] ?? '')); ?> | at: <?= clickfix_h((string) ($intelApiLookupResult['captured_at'] ?? '')); ?></div>
                     <?php if (!empty($vtSummary)): ?>
                       <div class="vt-summary">
                         <div class="vt-summary-head">
@@ -8087,16 +4253,15 @@ ob_start();
                     <?php if (!empty($intelApiLookupResult['error'])): ?>
                       <div class="mut" style="margin-top:6px"><?= clickfix_h((string) $intelApiLookupResult['error']); ?></div>
                     <?php endif; ?>
-                    <?php if ($showApiUi && !empty($lookupSummary)): ?>
+                    <?php if (!empty($lookupSummary)): ?>
                       <pre><?= clickfix_h(json_encode($lookupSummary, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '{}'); ?></pre>
                     <?php endif; ?>
-                    <?php if ($showApiUi && trim((string) ($intelApiLookupResult['response_json'] ?? '')) !== ''): ?>
+                    <?php if (trim((string) ($intelApiLookupResult['response_json'] ?? '')) !== ''): ?>
                       <pre><?= clickfix_h((string) ($intelApiLookupResult['response_json'] ?? '')); ?></pre>
                     <?php endif; ?>
                   </div>
                 <?php endif; ?>
 
-                <?php if ($showApiUi): ?>
                 <div class="api-lookup-history">
                   <h4>Historial de consultas API (guardado automatico)</h4>
                   <?php if (!empty($intelApiLookupHistory)): ?>
@@ -8172,7 +4337,6 @@ ob_start();
                     <div class="mut">Sin historial todavia para esta investigacion.</div>
                   <?php endif; ?>
                 </div>
-                <?php endif; ?>
 
                 <?php
                   $vtStats = is_array($vtReportedStats) ? $vtReportedStats : [];
@@ -8249,88 +4413,17 @@ ob_start();
               </div>
             </div>
 
-            <div class="intel-editor-section" id="intel-section-graph" data-intel-section="intel-section-graph">
-              <div class="intel-section-head">
-                <div>
-                  <span class="intel-section-kicker">Graph</span>
-                  <h3>Mapa relacional</h3>
-                  <p class="mut">Visualiza la cadena de ataque, mueve entidades y modela el contexto operativo.</p>
-                </div>
-                <div class="intel-chip-row">
-                  <span class="intel-chip">nodos: <?= $activeNodeCount; ?></span>
-                  <span class="intel-chip">enlaces: <?= $activeEdgeCount; ?></span>
-                </div>
-              </div>
-              <div class="intel-api-map-insights">
-                <div class="intel-api-map-head">
-                  <b>Resultados de proveedores en el mapa</b>
-                  <span class="mono mut" id="intel-api-map-meta">Sin consultas recientes de proveedores para esta investigacion.</span>
-                </div>
-                <div class="intel-api-keywords" id="intel-api-keywords">
-                  <span class="mut">Sin keywords comunes detectadas.</span>
-                </div>
-              </div>
-              <div class="intel-map-shell">
-                <div class="intel-map-toolbar">
-                  <div class="intel-map-toolbar-group">
-                    <label for="intel-layout-mode">Layout</label>
-                    <select id="intel-layout-mode">
-                      <option value="tree-vertical">Arbol vertical</option>
-                      <option value="tree-horizontal">Arbol horizontal</option>
-                      <option value="cascade">Cascada</option>
-                      <option value="radial">Radial</option>
-                      <option value="grid">Grid</option>
-                    </select>
-                    <button type="button" class="btn" id="intel-layout-apply">Autoordenar</button>
-                    <button type="button" class="btn" id="intel-fit-graph">Encajar</button>
-                  </div>
-                  <div class="intel-map-toolbar-group">
-                    <span class="map-stat" id="intel-zoom-status">zoom 100%</span>
-                    <button type="button" class="btn" id="intel-zoom-out">-</button>
-                    <button type="button" class="btn" id="intel-zoom-reset">100%</button>
-                    <button type="button" class="btn" id="intel-zoom-in">+</button>
-                    <button type="button" class="btn" id="intel-fullscreen">Pantalla completa</button>
-                  </div>
-                </div>
-                <div class="intel-canvas-wrap" id="intel-canvas-wrap">
-                  <svg id="intel-svg"></svg>
-                  <div id="intel-node-layer" class="intel-node-layer"></div>
-                  <div class="intel-canvas-dock" id="intel-canvas-dock">
-                    <div class="intel-canvas-dock-head">
-                      <div class="intel-canvas-dock-title">
-                        <b>Acciones del workspace</b>
-                        <span>Siguen visibles tambien en pantalla completa.</span>
-                      </div>
-                      <span class="map-stat" id="intel-dock-zoom-status">zoom 100%</span>
-                    </div>
-                    <div class="intel-canvas-dock-actions">
-                      <a class="btn" href="<?= clickfix_h(cfurl('intel')); ?>">Cambiar foco</a>
-                      <button class="btn" type="submit" form="intel-save-form">Guardar</button>
-                      <?php if ($activeGraphId > 0): ?>
-                        <a class="btn" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $activeGraphId, 'export_iocs' => 'json'])); ?>">Export JSON</a>
-                      <?php endif; ?>
-                    </div>
-                    <div class="intel-canvas-dock-tools">
-                      <button type="button" class="btn" id="intel-layout-cycle">Cambiar layout</button>
-                      <button type="button" class="btn" id="intel-dock-fit">Encajar</button>
-                      <button type="button" class="btn" id="intel-dock-zoom-out">-</button>
-                      <button type="button" class="btn" id="intel-dock-zoom-reset">100%</button>
-                      <button type="button" class="btn" id="intel-dock-zoom-in">+</button>
-                      <button type="button" class="btn" id="intel-dock-fullscreen">Pantalla completa</button>
-                    </div>
-                  </div>
-                </div>
+            <div class="intel-editor-section">
+              <h3>Mapa relacional</h3>
+              <p class="mut">Visualiza la cadena de ataque, mueve entidades y modela el contexto operativo.</p>
+              <div class="intel-canvas-wrap" id="intel-canvas-wrap">
+                <svg id="intel-svg"></svg>
+                <div id="intel-node-layer" class="intel-node-layer"></div>
               </div>
             </div>
 
-            <div class="intel-editor-section" id="intel-section-entities" data-intel-section="intel-section-entities">
-              <div class="intel-section-head">
-                <div>
-                  <span class="intel-section-kicker">Entities</span>
-                  <h3>Editor de entidades y relaciones</h3>
-                  <p class="mut">Edita nodos, relaciones y notas sin salir del mismo caso.</p>
-                </div>
-              </div>
+            <div class="intel-editor-section">
+              <h3>Editor de entidades y relaciones</h3>
               <div class="intel-side">
                 <div class="card-box">
                 <h3>Nodos</h3>
@@ -8361,14 +4454,7 @@ ob_start();
             </div>
 
             <?php if ($activeGraphId > 0): ?>
-              <div class="intel-editor-section" id="intel-section-actions" data-intel-section="intel-section-actions">
-                <div class="intel-section-head">
-                  <div>
-                    <span class="intel-section-kicker">Distribution</span>
-                    <h3>Acciones, sharing y export</h3>
-                    <p class="mut">Publica, comparte, exporta y promociona el caso sin salir del cockpit.</p>
-                  </div>
-                </div>
+              <div class="intel-editor-section">
                 <div class="intel-share">
                   <?php if ($shareUrl !== ''): ?>
                     <div><b>Enlace publico:</b> <a href="<?= clickfix_h($shareUrl); ?>" target="_blank" rel="noreferrer"><?= clickfix_h($shareUrl); ?></a></div>
@@ -8402,45 +4488,14 @@ ob_start();
                       <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
                       <button type="submit">Eliminar investigacion</button>
                     </form>
-                    <?php if ($canAdminViewer): ?>
-                      <form method="post" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:auto;">
-                        <input type="hidden" name="action" value="investigation_home_feature">
-                        <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                        <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
-                        <input type="hidden" name="show_on_home" value="0">
-                        <label class="mono" style="display:flex;gap:6px;align-items:center">
-                          <input type="checkbox" name="show_on_home" value="1"<?= !empty($selectedInvestigation['show_on_home']) ? ' checked' : ''; ?>>
-                          Mostrar en Inicio
-                        </label>
-                        <input type="number" name="home_position" min="0" max="9999" value="<?= (int) ($selectedInvestigation['home_position'] ?? 0); ?>" placeholder="posicion" style="width:96px">
-                        <input type="number" name="source_report_id" min="0" value="<?= $selectedInvestigationSourceReportId; ?>" placeholder="report_id capturas" style="width:148px">
-                        <button type="submit">Guardar Inicio</button>
-                      </form>
-                    <?php endif; ?>
                   </div>
-                  <div class="intel-toolbar" style="margin-top:8px">
-                    <a class="btn" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $activeGraphId, 'export_iocs' => 'txt'])); ?>">Export IOCs TXT</a>
-                    <a class="btn" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $activeGraphId, 'export_iocs' => 'csv'])); ?>">Export IOCs CSV</a>
-                    <a class="btn" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $activeGraphId, 'export_iocs' => 'json'])); ?>">Export IOCs JSON</a>
-                    <a class="btn" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $activeGraphId, 'export_iocs' => 'misp'])); ?>">Export MISP JSON</a>
-                  </div>
-                  <div class="mut mono" style="margin-top:8px">Exporta los IOCs deduplicados del caso actual en TXT, CSV, JSON o evento MISP listo para importar.</div>
-                  <?php if ($canAdminViewer): ?>
-                    <div class="mut mono" style="margin-top:8px">Inicio reutiliza las capturas aprobadas del `source_report_id`. Si la investigacion no esta compartida en publico, solo se vera en el dashboard interno.</div>
-                  <?php endif; ?>
                 </div>
               </div>
             <?php endif; ?>
 
             <?php if ($activeGraphId > 0): ?>
-              <div class="intel-timeline" id="intel-section-timeline" data-intel-section="intel-section-timeline">
-                <div class="intel-section-head">
-                  <div>
-                    <span class="intel-section-kicker">Timeline</span>
-                    <h3>Timeline de investigacion (que y cuando)</h3>
-                    <p class="mut">Seguimiento cronologico de cambios, revisiones y decisiones sobre este caso.</p>
-                  </div>
-                </div>
+              <div class="intel-timeline">
+                <h3>Timeline de investigacion (que y cuando)</h3>
                 <div class="intel-timeline-list">
                   <?php foreach ($investigationEvents as $event): ?>
                     <?php
@@ -8498,7 +4553,6 @@ ob_start();
             <?php endif; ?>
           </section>
         </div>
-        <?php endif; ?>
       </section>
     <?php endif; ?>
 
@@ -8695,17 +4749,13 @@ ob_start();
                     $scoreValue = isset($eventRow['score_total']) && is_numeric($eventRow['score_total']) ? (int) $eventRow['score_total'] : 0;
                     $severityClass = cfseverityclass($scoreValue);
                     $firstReason = !empty($eventRow['reason_list']) ? (string) $eventRow['reason_list'][0] : (string) ($eventRow['message'] ?? '');
-                    $eventBlockedFeed = !empty($eventRow['blocked']) || !empty($eventRow['host_blocked_before']) || ($canSrViewer && !empty($eventRow['ip_blocked_before']));
                   ?>
-                  <button type="button" class="event-feed-item<?= $eventIndex === 0 ? ' is-active' : ''; ?><?= $eventBlockedFeed ? ' is-blocked' : ''; ?>" data-event-index="<?= (int) $eventIndex; ?>">
+                  <button type="button" class="event-feed-item<?= $eventIndex === 0 ? ' is-active' : ''; ?>" data-event-index="<?= (int) $eventIndex; ?>">
                     <span class="event-feed-sev <?= clickfix_h($severityClass); ?>"></span>
                     <span class="event-feed-main">
                       <span class="event-feed-host"><?= clickfix_h((string) ($eventRow['hostname'] ?: '-')); ?></span>
                       <span class="event-feed-meta"><?= clickfix_h((string) ($eventRow['activity_at'] ?? $eventRow['received_at'] ?? '')); ?> | <?= $scoreValue; ?>/100</span>
                       <span class="event-feed-reason"><?= clickfix_h($firstReason); ?></span>
-                      <?php if ($eventBlockedFeed): ?>
-                        <span class="event-feed-flag">BLOQUEADO</span>
-                      <?php endif; ?>
                       <?php if (!empty($eventRow['host_blocked_before']) || (!empty($eventRow['ip_blocked_before']) && $canSrViewer)): ?>
                         <?php
                           $feedFlags = [];
@@ -8742,18 +4792,6 @@ ob_start();
                     <div class="event-kv"><b>IP ya bloqueada</b><span id="event-ip-history"></span></div>
                   <?php endif; ?>
                 </div>
-                <?php if ($loggedIn): ?>
-                  <div class="event-ioc" id="event-ioc" hidden>
-                    <h3>IOC del archivo</h3>
-                    <div class="event-grid">
-                      <div class="event-kv"><b>SHA256</b><span id="event-ioc-hash"></span></div>
-                      <div class="event-kv"><b>Nombre</b><span id="event-ioc-name"></span></div>
-                      <div class="event-kv"><b>Ruta</b><span id="event-ioc-path"></span></div>
-                      <div class="event-kv"><b>Sitio descarga</b><span id="event-ioc-site"></span></div>
-                    </div>
-                    <div class="mut" style="margin-top:6px;font-size:.78rem">Fecha de deteccion: <span id="event-ioc-date"></span></div>
-                  </div>
-                <?php endif; ?>
                 <div class="event-columns">
                   <div>
                     <h3>Motivos detectados</h3>
@@ -8778,7 +4816,7 @@ ob_start();
                             <th>ID</th>
                             <th>Fecha</th>
                             <th>Host</th>
-                            <th>IP web</th>
+                            <th>IP</th>
                             <th>Score</th>
                             <th>Estado</th>
                             <th>Relacion</th>
@@ -8911,15 +4949,6 @@ ob_start();
                       <input type="hidden" name="return_page" value="ops">
                       <button class="btn" type="submit">Eliminar captura before</button>
                     </form>
-                    <form method="post" style="margin-top:8px">
-                      <input type="hidden" name="action" value="scan_image_assign">
-                      <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                      <input type="hidden" name="scan_report_id" value="<?= $opsScanId; ?>">
-                      <input type="hidden" name="scan_source_kind" value="before">
-                      <input type="hidden" name="scan_target_kind" value="after">
-                      <input type="hidden" name="return_page" value="ops">
-                      <button class="btn" type="submit">Usar este BEFORE como AFTER</button>
-                    </form>
                   <?php endif; ?>
                   <?php if ($canAdminViewer && $opsScanId > 0): ?>
                     <form method="post" enctype="multipart/form-data" style="margin-top:8px">
@@ -8953,15 +4982,6 @@ ob_start();
                       <input type="hidden" name="scan_kind" value="after">
                       <input type="hidden" name="return_page" value="ops">
                       <button class="btn" type="submit">Eliminar captura after</button>
-                    </form>
-                    <form method="post" style="margin-top:8px">
-                      <input type="hidden" name="action" value="scan_image_assign">
-                      <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                      <input type="hidden" name="scan_report_id" value="<?= $opsScanId; ?>">
-                      <input type="hidden" name="scan_source_kind" value="after">
-                      <input type="hidden" name="scan_target_kind" value="before">
-                      <input type="hidden" name="return_page" value="ops">
-                      <button class="btn" type="submit">Usar este AFTER como BEFORE</button>
                     </form>
                   <?php endif; ?>
                   <?php if ($canAdminViewer && $opsScanId > 0): ?>
@@ -9115,216 +5135,6 @@ ob_start();
           </details>
         </article>
         <article class="card"><h2>Resumen</h2><p class="mono">last_update: <?= clickfix_h((string) $metrics['last_update']); ?></p><p class="mono">alerts_24h: <?= (int) $metrics['alerts_24h']; ?></p><p class="mono">blocks_24h: <?= (int) $metrics['blocks_24h']; ?></p><p class="mono">countries: <?= count($metrics['countries']); ?></p></article>
-      </section>
-    <?php endif; ?>
-
-    <?php if ($loggedIn && $page === 'intel_stats'): ?>
-      <?php
-        $corrJobs = is_array($intelCorrelationStats['jobs'] ?? null) ? $intelCorrelationStats['jobs'] : [];
-        $corrArtifacts = is_array($intelCorrelationStats['artifacts'] ?? null) ? $intelCorrelationStats['artifacts'] : [];
-        $corrAlerts = is_array($intelCorrelationStats['alerts'] ?? null) ? $intelCorrelationStats['alerts'] : [];
-        $corrInvestigations = is_array($intelCorrelationStats['investigations'] ?? null) ? $intelCorrelationStats['investigations'] : [];
-        $corrStages = is_array($intelCorrelationStats['stages'] ?? null) ? $intelCorrelationStats['stages'] : [];
-        $corrStageDistribution = is_array($corrStages['distribution'] ?? null) ? $corrStages['distribution'] : [];
-        $corrTopChains = is_array($corrStages['top_chains'] ?? null) ? $corrStages['top_chains'] : [];
-        $corrMalwareTypes = is_array($intelCorrelationStats['malware_types'] ?? null) ? $intelCorrelationStats['malware_types'] : [];
-        $corrArtifactTypes = is_array($intelCorrelationStats['artifact_types'] ?? null) ? $intelCorrelationStats['artifact_types'] : [];
-        $corrTopCommands = is_array($intelCorrelationStats['top_commands'] ?? null) ? $intelCorrelationStats['top_commands'] : [];
-        $corrRecentJobs = is_array($intelCorrelationStats['recent_jobs'] ?? null) ? $intelCorrelationStats['recent_jobs'] : [];
-        $corrMalwareMax = 1;
-        foreach ($corrMalwareTypes as $row) {
-            $corrMalwareMax = max($corrMalwareMax, (int) ($row['total'] ?? 0));
-        }
-        $corrArtifactTypeMax = 1;
-        foreach ($corrArtifactTypes as $row) {
-            $corrArtifactTypeMax = max($corrArtifactTypeMax, (int) ($row['total'] ?? 0));
-        }
-        $corrCommandMax = 1;
-        foreach ($corrTopCommands as $row) {
-            $corrCommandMax = max($corrCommandMax, (int) ($row['total'] ?? 0));
-        }
-        $corrStageMax = 1;
-        foreach ($corrStageDistribution as $row) {
-            $corrStageMax = max($corrStageMax, (int) ($row['investigations'] ?? 0));
-        }
-      ?>
-      <section class="row" style="margin-bottom:8px">
-        <article class="card">
-          <h2>Correlation / Investigation Stats</h2>
-          <p class="mut">Vista consolidada del pipeline de correlacion: veredictos, familias, artefactos, stages y ejecucion de jobs.</p>
-          <div class="analytics-kpi-grid">
-            <div class="analytics-kpi"><div class="k">jobs totales</div><div class="v"><?= (int) ($corrJobs['total'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">jobs completados</div><div class="v"><?= (int) ($corrJobs['completed'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">artefactos</div><div class="v"><?= (int) ($corrArtifacts['total'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">payloads descargados</div><div class="v"><?= (int) ($corrArtifacts['fetched_payloads'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">investigaciones con pipeline</div><div class="v"><?= (int) ($corrInvestigations['with_pipeline'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">media stages</div><div class="v"><?= number_format((float) ($corrStages['avg'] ?? 0), 2); ?></div></div>
-            <div class="analytics-kpi"><div class="k">max stages</div><div class="v"><?= (int) ($corrStages['max'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">analisis hechos</div><div class="v"><?= (int) ($corrArtifacts['analysis_done'] ?? 0); ?></div></div>
-          </div>
-        </article>
-      </section>
-
-      <section class="row" style="margin-bottom:8px">
-        <article class="card">
-          <h2>Veredictos de alertas</h2>
-          <div class="mini-chart">
-            <?php foreach ([
-                ['label' => 'accepted', 'value' => (int) ($corrAlerts['accepted'] ?? 0)],
-                ['label' => 'rejected', 'value' => (int) ($corrAlerts['rejected'] ?? 0)],
-                ['label' => 'pending', 'value' => (int) ($corrAlerts['pending'] ?? 0)],
-                ['label' => 'blocked', 'value' => (int) ($corrAlerts['blocked'] ?? 0)],
-            ] as $distRow): ?>
-              <?php $distWidth = max(2, (int) round(((int) ($distRow['value'] ?? 0) / max(1, (int) max($corrAlerts ?: [1]))) * 100)); ?>
-              <div class="mini-row">
-                <div class="mono"><?= clickfix_h((string) ($distRow['label'] ?? '')); ?></div>
-                <div class="mini-bar"><span style="width:<?= $distWidth; ?>%"></span></div>
-                <div class="mini-score"><?= (int) ($distRow['value'] ?? 0); ?></div>
-              </div>
-            <?php endforeach; ?>
-          </div>
-          <p class="mut mono" style="margin-top:8px">accepted: <?= (int) ($corrAlerts['accepted'] ?? 0); ?> | rejected: <?= (int) ($corrAlerts['rejected'] ?? 0); ?> | pending: <?= (int) ($corrAlerts['pending'] ?? 0); ?></p>
-        </article>
-        <article class="card">
-          <h2>Veredictos de investigaciones</h2>
-          <div class="mini-chart">
-            <?php foreach ([
-                ['label' => 'malicious', 'value' => (int) ($corrInvestigations['malicious'] ?? 0)],
-                ['label' => 'suspicious', 'value' => (int) ($corrInvestigations['suspicious'] ?? 0)],
-                ['label' => 'investigating', 'value' => (int) ($corrInvestigations['investigating'] ?? 0)],
-                ['label' => 'clean', 'value' => (int) ($corrInvestigations['clean'] ?? 0)],
-                ['label' => 'unknown', 'value' => (int) ($corrInvestigations['unknown'] ?? 0)],
-            ] as $distRow): ?>
-              <?php $distWidth = max(2, (int) round(((int) ($distRow['value'] ?? 0) / max(1, (int) max($corrInvestigations ?: [1]))) * 100)); ?>
-              <div class="mini-row">
-                <div class="mono"><?= clickfix_h((string) ($distRow['label'] ?? '')); ?></div>
-                <div class="mini-bar"><span style="width:<?= $distWidth; ?>%"></span></div>
-                <div class="mini-score"><?= (int) ($distRow['value'] ?? 0); ?></div>
-              </div>
-            <?php endforeach; ?>
-          </div>
-          <p class="mut mono" style="margin-top:8px">with_pipeline: <?= (int) ($corrInvestigations['with_pipeline'] ?? 0); ?></p>
-        </article>
-      </section>
-
-      <section class="row" style="margin-bottom:8px">
-        <article class="card">
-          <h2>Tipos de malware / tags</h2>
-          <div class="mini-chart">
-            <?php foreach ($corrMalwareTypes as $row): ?>
-              <?php $width = max(2, (int) round(((int) ($row['total'] ?? 0) / $corrMalwareMax) * 100)); ?>
-              <div class="mini-row">
-                <div class="mono"><?= clickfix_h((string) ($row['tag'] ?? '')); ?></div>
-                <div class="mini-bar"><span style="width:<?= $width; ?>%"></span></div>
-                <div class="mini-score"><?= (int) ($row['total'] ?? 0); ?></div>
-              </div>
-            <?php endforeach; ?>
-            <?php if (empty($corrMalwareTypes)): ?>
-              <p class="mut">Sin tags de malware todavia.</p>
-            <?php endif; ?>
-          </div>
-        </article>
-        <article class="card">
-          <h2>Tipos de artefacto</h2>
-          <div class="mini-chart">
-            <?php foreach ($corrArtifactTypes as $row): ?>
-              <?php $width = max(2, (int) round(((int) ($row['total'] ?? 0) / $corrArtifactTypeMax) * 100)); ?>
-              <div class="mini-row">
-                <div class="mono"><?= clickfix_h((string) ($row['kind'] ?? 'unknown')); ?></div>
-                <div class="mini-bar"><span style="width:<?= $width; ?>%"></span></div>
-                <div class="mini-score"><?= (int) ($row['total'] ?? 0); ?></div>
-              </div>
-            <?php endforeach; ?>
-          </div>
-        </article>
-      </section>
-
-      <section class="row" style="margin-bottom:8px">
-        <article class="card">
-          <h2>Distribucion de stages</h2>
-          <div class="mini-chart">
-            <?php foreach ($corrStageDistribution as $row): ?>
-              <?php $width = max(2, (int) round(((int) ($row['investigations'] ?? 0) / $corrStageMax) * 100)); ?>
-              <div class="mini-row">
-                <div class="mono"><?= (int) ($row['stage_count'] ?? 1); ?> stages</div>
-                <div class="mini-bar"><span style="width:<?= $width; ?>%"></span></div>
-                <div class="mini-score"><?= (int) ($row['investigations'] ?? 0); ?></div>
-              </div>
-            <?php endforeach; ?>
-            <?php if (empty($corrStageDistribution)): ?>
-              <p class="mut">Sin datos de stages todavia.</p>
-            <?php endif; ?>
-          </div>
-        </article>
-        <article class="card">
-          <h2>Comandos mas repetidos</h2>
-          <div class="mini-chart">
-            <?php foreach ($corrTopCommands as $row): ?>
-              <?php $width = max(2, (int) round(((int) ($row['total'] ?? 0) / $corrCommandMax) * 100)); ?>
-              <div class="mini-row">
-                <div class="mono"><?= clickfix_h(substr((string) ($row['label'] ?? ''), 0, 42)); ?></div>
-                <div class="mini-bar"><span style="width:<?= $width; ?>%"></span></div>
-                <div class="mini-score"><?= (int) ($row['total'] ?? 0); ?></div>
-              </div>
-            <?php endforeach; ?>
-            <?php if (empty($corrTopCommands)): ?>
-              <p class="mut">Sin comandos correlacionados todavia.</p>
-            <?php endif; ?>
-          </div>
-        </article>
-      </section>
-
-      <section class="row" style="margin-bottom:8px">
-        <article class="card">
-          <h2>Top cadenas por numero de stages</h2>
-          <div class="analytics-table-wrap">
-            <table class="compact-table">
-              <thead><tr><th>Graph</th><th>Titulo</th><th>Dominio</th><th>Stages</th><th>Artefactos</th><th>Accion</th></tr></thead>
-              <tbody>
-                <?php foreach ($corrTopChains as $row): ?>
-                  <tr>
-                    <td class="mono">#<?= (int) ($row['graph_id'] ?? 0); ?></td>
-                    <td><?= clickfix_h((string) ($row['title'] ?? 'Investigation')); ?></td>
-                    <td class="mono"><?= clickfix_h((string) ($row['site_domain'] ?? '')); ?></td>
-                    <td class="mono"><?= (int) ($row['stages'] ?? 0); ?></td>
-                    <td class="mono"><?= (int) ($row['artifact_total'] ?? 0); ?></td>
-                    <td><a class="btn" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => (int) ($row['graph_id'] ?? 0)])); ?>">Abrir</a></td>
-                  </tr>
-                <?php endforeach; ?>
-                <?php if (empty($corrTopChains)): ?>
-                  <tr><td colspan="6" class="mut">Sin cadenas calculadas todavia.</td></tr>
-                <?php endif; ?>
-              </tbody>
-            </table>
-          </div>
-        </article>
-      </section>
-
-      <section class="row">
-        <article class="card">
-          <h2>Jobs recientes del pipeline</h2>
-          <div class="analytics-table-wrap">
-            <table class="compact-table">
-              <thead><tr><th>Job</th><th>Graph</th><th>Estado</th><th>Modo</th><th>Procesados</th><th>Actualizado</th><th>Error</th></tr></thead>
-              <tbody>
-                <?php foreach ($corrRecentJobs as $row): ?>
-                  <tr>
-                    <td class="mono">#<?= (int) ($row['id'] ?? 0); ?></td>
-                    <td class="mono"><a href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => (int) ($row['graph_id'] ?? 0)])); ?>">#<?= (int) ($row['graph_id'] ?? 0); ?></a></td>
-                    <td class="mono"><?= clickfix_h((string) ($row['status'] ?? 'queued')); ?></td>
-                    <td class="mono"><?= clickfix_h((string) ($row['mode'] ?? 'alert_correlation')); ?></td>
-                    <td class="mono"><?= (int) ($row['processed_artifacts'] ?? 0); ?></td>
-                    <td class="mono"><?= clickfix_h((string) ($row['updated_at'] ?? '')); ?></td>
-                    <td><?= clickfix_h((string) ($row['last_error'] ?? '')); ?></td>
-                  </tr>
-                <?php endforeach; ?>
-                <?php if (empty($corrRecentJobs)): ?>
-                  <tr><td colspan="7" class="mut">Sin jobs recientes.</td></tr>
-                <?php endif; ?>
-              </tbody>
-            </table>
-          </div>
-        </article>
       </section>
     <?php endif; ?>
 
@@ -9843,7 +5653,7 @@ ob_start();
                     <p class="mut mono">estado: <?= clickfix_h($assetStatus); ?></p>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
                       <button class="btn" type="button" data-scan-inline-src="<?= clickfix_h($adminPreviewUrl); ?>" data-scan-inline-target="<?= clickfix_h($inlineTarget); ?>">Ver aqui (manual)</button>
-                      <a class="btn" href="<?= clickfix_h($adminPreviewUrl); ?>" target="_blank" rel="noopener noreferrer">Abrir pestaña</a>
+                      <a class="btn" href="<?= clickfix_h($adminPreviewUrl); ?>" target="_blank" rel="noopener noreferrer">Abrir pestaÃ±a</a>
                       <a class="btn" href="<?= clickfix_h($adminDownloadUrl); ?>">Descargar</a>
                       <button class="btn" type="button" data-copy-text="<?= clickfix_h($adminPreviewUrl); ?>">Copiar URL admin</button>
                       <?php if ($publicApprovedUrl !== ''): ?>
@@ -9883,15 +5693,6 @@ ob_start();
                       <input type="hidden" name="scan_kind" value="<?= clickfix_h($scanKind); ?>">
                       <input type="hidden" name="return_page" value="analytics">
                       <button class="btn" type="submit">Eliminar captura</button>
-                    </form>
-                    <form method="post" style="margin-top:8px">
-                      <input type="hidden" name="action" value="scan_image_assign">
-                      <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                      <input type="hidden" name="scan_report_id" value="<?= $scanReportId; ?>">
-                      <input type="hidden" name="scan_source_kind" value="<?= clickfix_h($scanKind); ?>">
-                      <input type="hidden" name="scan_target_kind" value="<?= $scanKind === 'before' ? 'after' : 'before'; ?>">
-                      <input type="hidden" name="return_page" value="analytics">
-                      <button class="btn" type="submit">Usar esta como <?= $scanKind === 'before' ? 'AFTER' : 'BEFORE'; ?></button>
                     </form>
                     <p class="mut" style="margin-top:6px">Cuando una captura queda en <b>approved</b>, se puede reutilizar en dashboard/index publico.</p>
                   <?php else: ?>
@@ -10483,124 +6284,6 @@ ob_start();
           </form>
         </article>
       </section>
-      <section class="row">
-        <article class="card">
-          <h2>Politica global de anuncios internos</h2>
-          <p class="mut">Controla si los anuncios se muestran en index/dashboard y a que perfiles se les permite verlos. Por defecto: guest, junior y mid si; senior y admin no.</p>
-          <form method="post">
-            <input type="hidden" name="action" value="internal_ad_settings_save">
-            <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-            <label><input type="checkbox" name="ads_enabled_global" value="1"<?= !empty($internalAdSettings['enabled_global']) ? ' checked' : ''; ?>> Activar anuncios internos</label><br>
-            <label><input type="checkbox" name="ads_show_guest" value="1"<?= !empty($internalAdSettings['show_guest']) ? ' checked' : ''; ?>> Mostrar a guest</label><br>
-            <label><input type="checkbox" name="ads_show_analyst_jr" value="1"<?= !empty($internalAdSettings['show_analyst_jr']) ? ' checked' : ''; ?>> Mostrar a analyst_jr</label><br>
-            <label><input type="checkbox" name="ads_show_analyst_mid" value="1"<?= !empty($internalAdSettings['show_analyst_mid']) ? ' checked' : ''; ?>> Mostrar a analyst_mid</label><br>
-            <label><input type="checkbox" name="ads_show_analyst_sr" value="1"<?= !empty($internalAdSettings['show_analyst_sr']) ? ' checked' : ''; ?>> Mostrar a analyst_sr</label><br>
-            <label><input type="checkbox" name="ads_show_admin" value="1"<?= !empty($internalAdSettings['show_admin']) ? ' checked' : ''; ?>> Mostrar a admin</label><br>
-            <button class="btn" type="submit">Guardar politica</button>
-          </form>
-        </article>
-        <article class="card">
-          <h2>Crear anuncio interno</h2>
-          <p class="mut">Crea slots de prueba o anuncios reales con placement y targeting por rol. No depende de terceros.</p>
-          <form method="post">
-            <input type="hidden" name="action" value="internal_ad_save">
-            <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-            <input type="text" name="ad_title" maxlength="180" required placeholder="Titulo del anuncio">
-            <textarea name="ad_body" maxlength="2000" required placeholder="Texto del anuncio"></textarea>
-            <div class="split">
-              <select name="ad_placement">
-                <option value="both">both</option>
-                <option value="index">index</option>
-                <option value="dashboard">dashboard</option>
-              </select>
-              <select name="ad_theme">
-                <option value="cyan">cyan</option>
-                <option value="lime">lime</option>
-                <option value="amber">amber</option>
-                <option value="fuchsia">fuchsia</option>
-              </select>
-              <input type="number" name="ad_priority" value="100" min="0" max="10000" placeholder="priority">
-            </div>
-            <div class="split">
-              <input type="text" name="ad_cta_label" maxlength="80" placeholder="CTA label">
-              <input type="url" name="ad_cta_url" maxlength="500" placeholder="https://...">
-              <select name="ad_active">
-                <option value="1">activo</option>
-                <option value="0">inactivo</option>
-              </select>
-            </div>
-            <div class="split">
-              <input type="datetime-local" name="ad_starts_at" placeholder="Inicio">
-              <input type="datetime-local" name="ad_expires_at" placeholder="Fin">
-              <div></div>
-            </div>
-            <div class="rbac" style="grid-template-columns:repeat(5,minmax(0,1fr))">
-              <label class="item"><b><input type="checkbox" name="ad_target_guest" value="1" checked> guest</b><span>Index y publico</span></label>
-              <label class="item"><b><input type="checkbox" name="ad_target_analyst_jr" value="1" checked> analyst_jr</b><span>Junior</span></label>
-              <label class="item"><b><input type="checkbox" name="ad_target_analyst_mid" value="1" checked> analyst_mid</b><span>Mid</span></label>
-              <label class="item"><b><input type="checkbox" name="ad_target_analyst_sr" value="1"> analyst_sr</b><span>Senior</span></label>
-              <label class="item"><b><input type="checkbox" name="ad_target_admin" value="1"> admin</b><span>Administrador</span></label>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-              <button class="btn" type="submit">Guardar anuncio</button>
-            </div>
-          </form>
-          <form method="post" style="margin-top:10px">
-            <input type="hidden" name="action" value="internal_ads_seed_test">
-            <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-            <button class="btn" type="submit">Generar anuncios de test</button>
-          </form>
-        </article>
-      </section>
-      <section class="card">
-        <h2>Inventario de anuncios internos</h2>
-        <table>
-          <thead><tr><th>ID</th><th>Titulo</th><th>Placement</th><th>Targets</th><th>Priority</th><th>Ventana</th><th>Activo</th><th>By</th><th>Acciones</th></tr></thead>
-          <tbody>
-            <?php foreach ($internalAdsAdminList as $adRow): ?>
-              <?php
-                $targets = [];
-                if (!empty($adRow['target_guest'])) { $targets[] = 'guest'; }
-                if (!empty($adRow['target_analyst_jr'])) { $targets[] = 'jr'; }
-                if (!empty($adRow['target_analyst_mid'])) { $targets[] = 'mid'; }
-                if (!empty($adRow['target_analyst_sr'])) { $targets[] = 'sr'; }
-                if (!empty($adRow['target_admin'])) { $targets[] = 'admin'; }
-              ?>
-              <tr>
-                <td class="mono"><?= (int) ($adRow['id'] ?? 0); ?></td>
-                <td>
-                  <div><b><?= clickfix_h((string) ($adRow['title'] ?? '')); ?></b></div>
-                  <div class="mut"><?= clickfix_h((string) ($adRow['body'] ?? '')); ?></div>
-                </td>
-                <td class="mono"><?= clickfix_h((string) ($adRow['placement'] ?? 'both')); ?></td>
-                <td class="mono"><?= clickfix_h(implode(', ', $targets)); ?></td>
-                <td class="mono"><?= (int) ($adRow['priority'] ?? 0); ?></td>
-                <td class="mono"><?= clickfix_h(trim((string) ($adRow['starts_at'] ?? '')) . ' -> ' . trim((string) ($adRow['expires_at'] ?? ''))); ?></td>
-                <td class="mono"><?= !empty($adRow['active']) ? '1' : '0'; ?></td>
-                <td class="mono"><?= clickfix_h((string) ($adRow['created_by_username'] ?? '-')); ?></td>
-                <td class="mono">
-                  <form method="post" style="display:inline-block;margin-bottom:6px">
-                    <input type="hidden" name="action" value="internal_ad_toggle">
-                    <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                    <input type="hidden" name="ad_id" value="<?= (int) ($adRow['id'] ?? 0); ?>">
-                    <input type="hidden" name="ad_active" value="<?= !empty($adRow['active']) ? '0' : '1'; ?>">
-                    <button class="btn" type="submit"><?= !empty($adRow['active']) ? 'Desactivar' : 'Activar'; ?></button>
-                  </form>
-                  <form method="post" style="display:inline-block" onsubmit="return confirm('Eliminar anuncio interno?');">
-                    <input type="hidden" name="action" value="internal_ad_delete">
-                    <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                    <input type="hidden" name="ad_id" value="<?= (int) ($adRow['id'] ?? 0); ?>">
-                    <button class="btn" type="submit">Eliminar</button>
-                  </form>
-                </td>
-              </tr>
-            <?php endforeach; ?>
-            <?php if (empty($internalAdsAdminList)): ?>
-              <tr><td colspan="9" class="mut">Sin anuncios internos.</td></tr>
-            <?php endif; ?>
-          </tbody>
-        </table>
-      </section>
     <?php endif; ?>
 
     <?php if ($loggedIn && $page === 'reports' && cfcan($user, 'admin')): ?>
@@ -10689,7 +6372,7 @@ ob_start();
     <?php if ($loggedIn && $page === 'requests' && cfcan($user, 'analyst_sr')): ?>
       <section class="row">
         <article class="card"><h2>Desistimientos</h2><table><thead><tr><th>Fecha</th><th>Dominio</th><th>Estado</th><th>Accion</th></tr></thead><tbody><?php foreach ($appeals as $ap): ?><tr><td class="mono"><?= clickfix_h((string) ($ap['created_at'] ?? '')); ?></td><td class="mono"><?= clickfix_h((string) ($ap['domain'] ?? '')); ?></td><td><?= clickfix_h((string) ($ap['status'] ?? 'pending')); ?></td><td><form method="post"><input type="hidden" name="action" value="appeal_status"><input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>"><input type="hidden" name="appeal_id" value="<?= (int) ($ap['id'] ?? 0); ?>"><select name="status"><option>pending</option><option>approved</option><option>rejected</option></select><button class="btn" type="submit">OK</button></form></td></tr><?php endforeach; ?></tbody></table></article>
-        <article class="card"><h2>Solicitudes de acceso</h2><table><thead><tr><th>Email</th><th>LinkedIn</th><th>Veces</th><th>Ultima</th></tr></thead><tbody><?php foreach ($requests as $rq): ?><tr><td class="mono"><?= clickfix_h((string) ($rq['email'] ?? '')); ?></td><td class="mono"><?= clickfix_h((string) ($rq['linkedin_url'] ?? '')); ?></td><td class="mono"><?= (int) ($rq['request_count'] ?? 1); ?></td><td class="mono"><?= clickfix_h((string) ($rq['last_seen_at'] ?? '')); ?></td></tr><?php endforeach; ?></tbody></table></article>
+        <article class="card"><h2>Solicitudes de acceso</h2><table><thead><tr><th>Email</th><th>Veces</th><th>Ultima</th></tr></thead><tbody><?php foreach ($requests as $rq): ?><tr><td class="mono"><?= clickfix_h((string) ($rq['email'] ?? '')); ?></td><td class="mono"><?= (int) ($rq['request_count'] ?? 1); ?></td><td class="mono"><?= clickfix_h((string) ($rq['last_seen_at'] ?? '')); ?></td></tr><?php endforeach; ?></tbody></table></article>
       </section>
     <?php endif; ?>
 
@@ -10777,9 +6460,6 @@ ob_start();
                     <select name="edit_lang">
                       <option value="en"<?= $editLang === 'en' ? ' selected' : ''; ?>>en</option>
                       <option value="es"<?= $editLang === 'es' ? ' selected' : ''; ?>>es</option>
-                      <option value="ca"<?= $editLang === 'ca' ? ' selected' : ''; ?>>ca</option>
-                      <option value="de"<?= $editLang === 'de' ? ' selected' : ''; ?>>de</option>
-                      <option value="fr"<?= $editLang === 'fr' ? ' selected' : ''; ?>>fr</option>
                     </select>
                     <input type="number" name="edit_reputation" value="<?= (int) ($u['reputation'] ?? 0); ?>" min="-1000" max="100000" placeholder="REP">
                     <input type="email" name="edit_email" maxlength="190" value="<?= clickfix_h((string) ($u['email'] ?? '')); ?>" placeholder="email">
@@ -10796,13 +6476,11 @@ ob_start();
         <h2>Solicitudes de acceso desde index.php (Trabaja con nosotros)</h2>
         <p class="mut">Estas solicitudes no crean usuarios automaticamente. Solo Admin crea cuenta y rol desde el panel superior.</p>
         <table>
-          <thead><tr><th>Email</th><th>LinkedIn</th><th>Web</th><th>Veces</th><th>Primera</th><th>Ultima</th><th>Idioma</th><th>IP</th></tr></thead>
+          <thead><tr><th>Email</th><th>Veces</th><th>Primera</th><th>Ultima</th><th>Idioma</th><th>IP</th></tr></thead>
           <tbody>
             <?php foreach ($requests as $rq): ?>
               <tr>
                 <td class="mono"><?= clickfix_h((string) ($rq['email'] ?? '')); ?></td>
-                <td class="mono"><?= clickfix_h((string) ($rq['linkedin_url'] ?? '')); ?></td>
-                <td class="mono"><?= clickfix_h((string) ($rq['company_website'] ?? '')); ?></td>
                 <td class="mono"><?= (int) ($rq['request_count'] ?? 1); ?></td>
                 <td class="mono"><?= clickfix_h((string) ($rq['first_seen_at'] ?? '')); ?></td>
                 <td class="mono"><?= clickfix_h((string) ($rq['last_seen_at'] ?? '')); ?></td>
@@ -10822,7 +6500,7 @@ ob_start();
             <div class="side-metric"><span>alertas 24h</span><b data-live-metric="alerts_24h"><?= (int) ($metrics['alerts_24h'] ?? 0); ?></b></div>
             <div class="side-metric"><span>bloqueos 24h</span><b data-live-metric="blocks_24h"><?= (int) ($metrics['blocks_24h'] ?? 0); ?></b></div>
             <div class="side-metric"><span>dominios unicos</span><b data-live-metric="unique_hosts"><?= (int) ($metrics['unique_hosts'] ?? 0); ?></b></div>
-            <div class="side-metric"><span>pend. revision</span><b data-live-metric="pending_review_total"><?= (int) ($metrics['pending_review_total'] ?? 0); ?></b></div>
+            <div class="side-metric"><span>pendientes</span><b data-live-metric="pending_review"><?= (int) ($metrics['pending_review'] ?? 0); ?></b></div>
           </div>
         </section>
         <?php if ($showAnnouncementAside): ?>
@@ -10927,7 +6605,6 @@ ob_start();
             <a href="<?= clickfix_h(cfurl('coverage', true)); ?>"><?= clickfix_h(cft('nav_coverage')); ?></a>
             <?php if ($loggedIn): ?>
               <a href="<?= clickfix_h(cfprofileurl((int) ($user['id'] ?? 0), [], false)); ?>"><?= clickfix_h(cft('nav_profile')); ?></a>
-              <a href="<?= clickfix_h(cfurl('settings')); ?>"><?= clickfix_h(cft('nav_settings')); ?></a>
               <a href="<?= clickfix_h(cfurl('ops')); ?>"><?= clickfix_h(cft('nav_ops')); ?></a>
               <a href="<?= clickfix_h(cfurl('analytics')); ?>"><?= clickfix_h(cft('nav_graphs')); ?></a>
               <a href="<?= clickfix_h(cfurl('intel')); ?>"><?= clickfix_h(cft('nav_investigation')); ?></a>
@@ -10961,31 +6638,6 @@ ob_start();
               <li><span>activas</span><span class="mono"><?= (int) $enabledSchedules; ?></span></li>
               <li><span>preview</span><span class="mono"><?= clickfix_h($reportPeriodPreview); ?></span></li>
             </ul>
-          </section>
-        <?php endif; ?>
-        <?php if ($showInternalDashboardAdsPanel): ?>
-          <section class="card side-card">
-            <h3>Espacios patrocinados</h3>
-            <div class="internal-ads-stack">
-              <?php foreach ($internalDashboardAds as $adRow): ?>
-                <?php
-                  $adTheme = clickfix_internal_ad_theme((string) ($adRow['theme'] ?? 'cyan'));
-                  $adUrl = clickfix_sanitize_http_url((string) ($adRow['cta_url'] ?? ''));
-                  $adLabel = trim((string) ($adRow['cta_label'] ?? ''));
-                  if ($adLabel === '') {
-                      $adLabel = 'Abrir';
-                  }
-                ?>
-                <article class="internal-ad-card <?= clickfix_h($adTheme); ?>">
-                  <span class="internal-ad-kicker">test ad | dashboard</span>
-                  <b><?= clickfix_h((string) ($adRow['title'] ?? 'Sponsored slot')); ?></b>
-                  <p><?= nl2br(clickfix_h((string) ($adRow['body'] ?? ''))); ?></p>
-                  <?php if ($adUrl !== ''): ?>
-                    <a class="btn" href="<?= clickfix_h($adUrl); ?>" target="_blank" rel="noopener noreferrer"><?= clickfix_h($adLabel); ?></a>
-                  <?php endif; ?>
-                </article>
-              <?php endforeach; ?>
-            </div>
           </section>
         <?php endif; ?>
         <?php if ($showMonetizationPanel): ?>
@@ -11038,86 +6690,9 @@ ob_start();
   <?php endif; ?>
 
   <script>
-    const appHeader = document.getElementById('app-header');
-    const navToggle = document.getElementById('nav-toggle');
-    const headerNavRow = document.getElementById('app-header-navrow');
-
-    function syncStickyHeaderOffset() {
-      if (!appHeader) {
-        return;
-      }
-      const rect = appHeader.getBoundingClientRect();
-      const computed = window.getComputedStyle(appHeader);
-      const marginBottom = parseFloat(computed.marginBottom || '0') || 0;
-      const offset = Math.ceil(rect.height + marginBottom + 20);
-      document.documentElement.style.setProperty('--sticky-header-offset', `${offset}px`);
-    }
-
-    syncStickyHeaderOffset();
-    window.addEventListener('resize', syncStickyHeaderOffset);
-    window.addEventListener('load', syncStickyHeaderOffset);
-
-    function syncMobileHeaderState(forceOpen = null) {
-      if (!appHeader || !navToggle || !headerNavRow) {
-        return;
-      }
-      if (window.innerWidth > 920) {
-        appHeader.classList.remove('is-nav-open');
-        document.body.classList.remove('nav-open-mobile');
-        navToggle.setAttribute('aria-expanded', 'false');
-        syncStickyHeaderOffset();
-        return;
-      }
-      const nextOpen = typeof forceOpen === 'boolean'
-        ? forceOpen
-        : !appHeader.classList.contains('is-nav-open');
-      appHeader.classList.toggle('is-nav-open', nextOpen);
-      document.body.classList.toggle('nav-open-mobile', nextOpen);
-      navToggle.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
-      syncStickyHeaderOffset();
-    }
-
-    if (navToggle) {
-      navToggle.addEventListener('click', () => {
-        syncMobileHeaderState();
-      });
-    }
-    if (headerNavRow) {
-      headerNavRow.querySelectorAll('a, button').forEach((node) => {
-        node.addEventListener('click', () => {
-          if (window.innerWidth <= 920) {
-            syncMobileHeaderState(false);
-          }
-        });
-      });
-    }
-    window.addEventListener('resize', () => {
-      if (window.innerWidth > 920) {
-        syncMobileHeaderState(false);
-      } else {
-        syncStickyHeaderOffset();
-      }
-    });
-    document.addEventListener('click', (event) => {
-      if (window.innerWidth > 920 || !appHeader || !appHeader.classList.contains('is-nav-open')) {
-        return;
-      }
-      const target = event.target;
-      if (target instanceof Node && !appHeader.contains(target)) {
-        syncMobileHeaderState(false);
-      }
-    });
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && window.innerWidth <= 920) {
-        syncMobileHeaderState(false);
-      }
-    });
-
     const selectedInvestigation = <?= $selectedInvestigationJson; ?>;
     const sharedInvestigation = <?= $sharedGraphJson; ?>;
     const eventWorkbenchData = <?= $eventWorkbenchJson; ?>;
-    const intelApiLookupMapRows = <?= $intelApiLookupMapRowsJson; ?>;
-    const intelApiCommonKeywords = <?= $intelApiCommonKeywordsJson; ?>;
     const eventFeed = document.getElementById('event-feed');
     const eventItems = eventFeed ? Array.from(eventFeed.querySelectorAll('.event-feed-item')) : [];
     const eventEmpty = document.getElementById('event-empty');
@@ -11132,12 +6707,6 @@ ob_start();
     const eventExtension = document.getElementById('event-extension');
     const eventDomainHistory = document.getElementById('event-domain-history');
     const eventIpHistory = document.getElementById('event-ip-history');
-    const eventIoc = document.getElementById('event-ioc');
-    const eventIocHash = document.getElementById('event-ioc-hash');
-    const eventIocName = document.getElementById('event-ioc-name');
-    const eventIocPath = document.getElementById('event-ioc-path');
-    const eventIocSite = document.getElementById('event-ioc-site');
-    const eventIocDate = document.getElementById('event-ioc-date');
     const eventReasons = document.getElementById('event-reasons');
     const eventSnippets = document.getElementById('event-snippets');
     const eventContextTitle = document.getElementById('event-context-title');
@@ -11158,9 +6727,7 @@ ob_start();
     const msgUserIds = document.getElementById('msg-user-ids');
     const homeLeafletCssUrl = <?= json_encode($leafletCssUrl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
     const homeLeafletJsUrl = <?= json_encode($leafletJsUrl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-    const homeLeafletWorldGeoJsonUrl = <?= json_encode($leafletWorldGeoJsonUrl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
     let leafletEnsurePromise = null;
-    let localWorldGeoPromise = null;
 
     const syncMessagingScope = () => {
       if (!msgScope) {
@@ -11500,55 +7067,6 @@ ob_start();
       });
     });
 
-    const intelNavButtons = Array.from(document.querySelectorAll('[data-scroll-target]'));
-    const intelSections = Array.from(document.querySelectorAll('[data-intel-section]'));
-
-    function setActiveIntelSection(sectionId) {
-      intelNavButtons.forEach((button) => {
-        const target = String(button.getAttribute('data-scroll-target') || '');
-        button.classList.toggle('active', target !== '' && target === sectionId);
-      });
-    }
-
-    intelNavButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        const targetId = String(button.getAttribute('data-scroll-target') || '');
-        if (!targetId) {
-          return;
-        }
-        const target = document.getElementById(targetId);
-        if (!target) {
-          return;
-        }
-        setActiveIntelSection(targetId);
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    });
-
-    if (intelSections.length) {
-      const observer = new IntersectionObserver((entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (!visible) {
-          return;
-        }
-        const sectionId = String(visible.target.getAttribute('data-intel-section') || visible.target.id || '');
-        if (sectionId) {
-          setActiveIntelSection(sectionId);
-        }
-      }, {
-        root: null,
-        threshold: [0.25, 0.45, 0.7],
-        rootMargin: '-110px 0px -40% 0px'
-      });
-      intelSections.forEach((section) => observer.observe(section));
-      const initialSection = String(intelSections[0].getAttribute('data-intel-section') || intelSections[0].id || '');
-      if (initialSection) {
-        setActiveIntelSection(initialSection);
-      }
-    }
-
     document.querySelectorAll('[data-scan-inline-src][data-scan-inline-target]').forEach((button) => {
       button.addEventListener('click', () => {
         const src = String(button.getAttribute('data-scan-inline-src') || '');
@@ -11624,35 +7142,14 @@ ob_start();
       return { nodes: cleanedNodes, edges: cleanedEdges };
     }
 
-    function makeGraphRenderer({ wrap, svg, nodeLayer, graph, readOnly, onSelectNode, edgeListSelect, edgeFromSelect, edgeToSelect, nodeListSelect, controls = {} }) {
+    function makeGraphRenderer({ wrap, svg, nodeLayer, graph, readOnly, onSelectNode, edgeListSelect, edgeFromSelect, edgeToSelect, nodeListSelect }) {
       if (!wrap || !svg || !nodeLayer) {
         return null;
       }
       const state = {
         graph: normalizeGraphPayload(graph),
         selectedNodeId: null,
-        drag: null,
-        lastInteractionMoved: false,
-        camera: {
-          x: 40,
-          y: 40,
-          scale: 1,
-          minScale: 0.35,
-          maxScale: 2.6
-        }
-      };
-
-      const controlRefs = {
-        layoutSelect: controls.layoutSelect || null,
-        layoutApplyButton: controls.layoutApplyButton || null,
-        fitButton: controls.fitButton || null,
-        zoomInButton: controls.zoomInButton || null,
-        zoomOutButton: controls.zoomOutButton || null,
-        zoomResetButton: controls.zoomResetButton || null,
-        fullscreenButton: controls.fullscreenButton || null,
-        fullscreenButtonAlt: controls.fullscreenButtonAlt || null,
-        zoomStatus: controls.zoomStatus || null,
-        zoomStatusAlt: controls.zoomStatusAlt || null
+        drag: null
       };
 
       function nodeById(id) {
@@ -11716,273 +7213,6 @@ ob_start();
         }
       }
 
-      function nodeBounds() {
-        if (!state.graph.nodes.length) {
-          return { minX: 0, maxX: 0, minY: 0, maxY: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
-        }
-        const xs = state.graph.nodes.map((node) => Number(node.x || 0));
-        const ys = state.graph.nodes.map((node) => Number(node.y || 0));
-        const minX = Math.min(...xs);
-        const maxX = Math.max(...xs);
-        const minY = Math.min(...ys);
-        const maxY = Math.max(...ys);
-        return {
-          minX,
-          maxX,
-          minY,
-          maxY,
-          width: Math.max(1, maxX - minX),
-          height: Math.max(1, maxY - minY),
-          centerX: minX + (maxX - minX) / 2,
-          centerY: minY + (maxY - minY) / 2
-        };
-      }
-
-      function syncZoomStatus() {
-        const label = `zoom ${Math.round(state.camera.scale * 100)}%`;
-        [controlRefs.zoomStatus, controlRefs.zoomStatusAlt].forEach((node) => {
-          if (node) {
-            node.textContent = label;
-          }
-        });
-      }
-
-      function centerWorldPoint(worldX, worldY) {
-        const rect = wrap.getBoundingClientRect();
-        state.camera.x = rect.width / 2 - worldX * state.camera.scale;
-        state.camera.y = rect.height / 2 - worldY * state.camera.scale;
-      }
-
-      function fitGraph(padding = 90) {
-        const rect = wrap.getBoundingClientRect();
-        if (!rect.width || !rect.height) return;
-        const bounds = nodeBounds();
-        if (!state.graph.nodes.length) {
-          state.camera.scale = 1;
-          state.camera.x = rect.width / 2;
-          state.camera.y = rect.height / 2;
-          render();
-          return;
-        }
-        const availableWidth = Math.max(120, rect.width - padding * 2);
-        const availableHeight = Math.max(120, rect.height - padding * 2);
-        const scaleX = availableWidth / Math.max(bounds.width, 120);
-        const scaleY = availableHeight / Math.max(bounds.height, 120);
-        state.camera.scale = Math.max(state.camera.minScale, Math.min(state.camera.maxScale, Math.min(scaleX, scaleY, 1.65)));
-        centerWorldPoint(bounds.centerX, bounds.centerY);
-        render();
-      }
-
-      function resetZoom() {
-        const bounds = nodeBounds();
-        state.camera.scale = 1;
-        centerWorldPoint(bounds.centerX, bounds.centerY);
-        render();
-      }
-
-      function clientToWorld(clientX, clientY) {
-        const rect = wrap.getBoundingClientRect();
-        return {
-          x: (clientX - rect.left - state.camera.x) / state.camera.scale,
-          y: (clientY - rect.top - state.camera.y) / state.camera.scale
-        };
-      }
-
-      function setZoom(nextScale, anchorClientX = null, anchorClientY = null) {
-        const rect = wrap.getBoundingClientRect();
-        const clamped = Math.max(state.camera.minScale, Math.min(state.camera.maxScale, nextScale));
-        if (Math.abs(clamped - state.camera.scale) < 0.0001) {
-          syncZoomStatus();
-          return;
-        }
-        const anchorX = anchorClientX ?? (rect.left + rect.width / 2);
-        const anchorY = anchorClientY ?? (rect.top + rect.height / 2);
-        const world = clientToWorld(anchorX, anchorY);
-        state.camera.scale = clamped;
-        state.camera.x = anchorX - rect.left - world.x * state.camera.scale;
-        state.camera.y = anchorY - rect.top - world.y * state.camera.scale;
-        render();
-      }
-
-      function zoomBy(factor) {
-        const rect = wrap.getBoundingClientRect();
-        setZoom(state.camera.scale * factor, rect.left + rect.width / 2, rect.top + rect.height / 2);
-      }
-
-      function orderedNodeIds(rootId) {
-        const adjacency = new Map();
-        const incoming = new Map();
-        state.graph.nodes.forEach((node) => {
-          adjacency.set(node.id, []);
-          incoming.set(node.id, 0);
-        });
-        state.graph.edges.forEach((edge) => {
-          if (!adjacency.has(edge.from) || !adjacency.has(edge.to)) return;
-          adjacency.get(edge.from).push(edge.to);
-          incoming.set(edge.to, Number(incoming.get(edge.to) || 0) + 1);
-        });
-        adjacency.forEach((list) => list.sort());
-        const fallbackRoot = rootId && adjacency.has(rootId)
-          ? rootId
-          : [...incoming.entries()].sort((a, b) => a[1] - b[1] || String(a[0]).localeCompare(String(b[0])))[0]?.[0];
-        const visited = new Set();
-        const queue = fallbackRoot ? [fallbackRoot] : [];
-        const ordered = [];
-        while (queue.length) {
-          const current = queue.shift();
-          if (!current || visited.has(current)) continue;
-          visited.add(current);
-          ordered.push(current);
-          (adjacency.get(current) || []).forEach((nextId) => {
-            if (!visited.has(nextId)) queue.push(nextId);
-          });
-        }
-        state.graph.nodes
-          .map((node) => node.id)
-          .filter((id) => !visited.has(id))
-          .sort()
-          .forEach((id) => ordered.push(id));
-        return { ordered, adjacency, incoming, rootId: fallbackRoot || '' };
-      }
-
-      function shouldAutoLayout() {
-        const total = state.graph.nodes.length;
-        if (!total) return false;
-        let valid = 0;
-        let maxCount = 0;
-        const counts = new Map();
-        state.graph.nodes.forEach((node) => {
-          const x = Number(node.x);
-          const y = Number(node.y);
-          if (!Number.isFinite(x) || !Number.isFinite(y)) {
-            return;
-          }
-          valid += 1;
-          const key = `${Math.round(x)}:${Math.round(y)}`;
-          const next = (counts.get(key) || 0) + 1;
-          counts.set(key, next);
-          if (next > maxCount) {
-            maxCount = next;
-          }
-        });
-        if (valid === 0) return true;
-        return (maxCount / total) >= 0.6;
-      }
-
-      function applyLayout(mode = 'tree-vertical') {
-        if (!state.graph.nodes.length) {
-          render();
-          return;
-        }
-        const { ordered, adjacency, incoming, rootId } = orderedNodeIds(state.selectedNodeId || state.graph.nodes[0]?.id || '');
-        const root = rootId || ordered[0] || '';
-        const levels = new Map();
-        const queue = root ? [{ id: root, depth: 0 }] : [];
-        while (queue.length) {
-          const current = queue.shift();
-          if (!current || levels.has(current.id)) continue;
-          levels.set(current.id, current.depth);
-          (adjacency.get(current.id) || []).forEach((nextId) => {
-            if (!levels.has(nextId)) {
-              queue.push({ id: nextId, depth: current.depth + 1 });
-            }
-          });
-        }
-        ordered.forEach((id, index) => {
-          if (!levels.has(id)) {
-            levels.set(id, Math.max(1, Math.floor(index / 4) + 1));
-          }
-        });
-
-        const layers = new Map();
-        ordered.forEach((id) => {
-          const depth = Number(levels.get(id) || 0);
-          if (!layers.has(depth)) layers.set(depth, []);
-          layers.get(depth).push(id);
-        });
-        layers.forEach((list) => {
-          list.sort((a, b) => {
-            const inDiff = Number(incoming.get(a) || 0) - Number(incoming.get(b) || 0);
-            if (inDiff !== 0) return inDiff;
-            return ordered.indexOf(a) - ordered.indexOf(b);
-          });
-        });
-
-        const startX = 160;
-        const startY = 110;
-        const gapX = 190;
-        const gapY = 110;
-
-        if (mode === 'tree-vertical' || mode === 'tree-horizontal') {
-          [...layers.entries()].sort((a, b) => a[0] - b[0]).forEach(([depth, ids]) => {
-            const count = ids.length;
-            ids.forEach((id, index) => {
-              const node = nodeById(id);
-              if (!node) return;
-              const spread = (index - (count - 1) / 2);
-              if (mode === 'tree-vertical') {
-                node.x = startX + depth * gapX;
-                node.y = startY + spread * gapY + 180;
-              } else {
-                node.x = startX + spread * gapX + 280;
-                node.y = startY + depth * gapY;
-              }
-            });
-          });
-        } else if (mode === 'cascade') {
-          ordered.forEach((id, index) => {
-            const node = nodeById(id);
-            if (!node) return;
-            const row = Math.floor(index / 5);
-            const col = index % 5;
-            node.x = 150 + row * 130 + col * 85;
-            node.y = 100 + row * 74 + col * 56;
-          });
-        } else if (mode === 'radial') {
-          const bounds = nodeBounds();
-          const centerX = bounds.centerX || 420;
-          const centerY = bounds.centerY || 250;
-          const byDepth = [...layers.entries()].sort((a, b) => a[0] - b[0]);
-          byDepth.forEach(([depth, ids]) => {
-            const radius = depth === 0 ? 0 : 120 + (depth - 1) * 105;
-            ids.forEach((id, index) => {
-              const node = nodeById(id);
-              if (!node) return;
-              if (depth === 0) {
-                node.x = centerX;
-                node.y = centerY;
-                return;
-              }
-              const angle = (index / Math.max(1, ids.length)) * Math.PI * 2;
-              node.x = Math.round(centerX + Math.cos(angle) * radius);
-              node.y = Math.round(centerY + Math.sin(angle) * Math.max(70, radius * 0.66));
-            });
-          });
-        } else if (mode === 'grid') {
-          const columns = Math.max(2, Math.ceil(Math.sqrt(state.graph.nodes.length)));
-          ordered.forEach((id, index) => {
-            const node = nodeById(id);
-            if (!node) return;
-            const col = index % columns;
-            const row = Math.floor(index / columns);
-            node.x = 150 + col * 180;
-            node.y = 110 + row * 115;
-          });
-        }
-
-        render();
-        fitGraph(100);
-      }
-
-      function toggleFullscreen() {
-        if (!document.fullscreenEnabled) return;
-        if (document.fullscreenElement === wrap) {
-          document.exitFullscreen().catch(() => {});
-          return;
-        }
-        wrap.requestFullscreen?.().catch(() => {});
-      }
-
       function render() {
         const bounds = wrap.getBoundingClientRect();
         const width = Math.max(200, bounds.width);
@@ -11990,13 +7220,6 @@ ob_start();
         svg.setAttribute('viewBox', `0 0 ${Math.round(width)} ${Math.round(height)}`);
         svg.innerHTML = '';
         nodeLayer.innerHTML = '';
-        nodeLayer.style.transform = `translate(${state.camera.x}px, ${state.camera.y}px) scale(${state.camera.scale})`;
-        nodeLayer.style.transformOrigin = '0 0';
-        syncZoomStatus();
-
-        const scene = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        scene.setAttribute('transform', `translate(${state.camera.x} ${state.camera.y}) scale(${state.camera.scale})`);
-        svg.appendChild(scene);
 
         state.graph.edges.forEach((edge) => {
           const from = nodeById(edge.from);
@@ -12010,7 +7233,7 @@ ob_start();
           line.setAttribute('stroke', edge.color || '#94a3b8');
           line.setAttribute('stroke-width', '2');
           line.setAttribute('stroke-linecap', 'round');
-          scene.appendChild(line);
+          svg.appendChild(line);
           if (edge.label) {
             const tx = (from.x + to.x) / 2;
             const ty = (from.y + to.y) / 2;
@@ -12021,7 +7244,7 @@ ob_start();
             text.setAttribute('font-size', '10');
             text.setAttribute('text-anchor', 'middle');
             text.textContent = edge.label;
-            scene.appendChild(text);
+            svg.appendChild(text);
           }
         });
 
@@ -12038,10 +7261,6 @@ ob_start();
           el.textContent = `${node.label}${hasNotes ? ' *' : ''}`;
           el.title = `${node.label}${tags.length ? `\nTags: ${tags.join(', ')}` : ''}${hasNotes ? `\nNotas: ${String(node.notes).slice(0, 300)}` : ''}`;
           el.addEventListener('click', (ev) => {
-            if (state.drag && state.drag.moved) {
-              ev.preventDefault();
-              return;
-            }
             ev.stopPropagation();
             state.selectedNodeId = node.id;
             render();
@@ -12052,17 +7271,14 @@ ob_start();
           if (!readOnly) {
             el.addEventListener('pointerdown', (ev) => {
               ev.preventDefault();
-              ev.stopPropagation();
               state.selectedNodeId = node.id;
-              const world = clientToWorld(ev.clientX, ev.clientY);
+              const rect = wrap.getBoundingClientRect();
               state.drag = {
-                type: 'node',
                 id: node.id,
-                offsetX: world.x - node.x,
-                offsetY: world.y - node.y,
-                moved: false
+                offsetX: ev.clientX - rect.left - node.x,
+                offsetY: ev.clientY - rect.top - node.y
               };
-              render();
+              el.setPointerCapture(ev.pointerId);
             });
           }
           nodeLayer.appendChild(el);
@@ -12074,98 +7290,30 @@ ob_start();
         fillNodeList();
       }
 
-      wrap.addEventListener('pointerdown', (ev) => {
-        const target = ev.target;
-        const isNode = target instanceof HTMLElement && target.classList.contains('intel-node');
-        if (isNode) {
-          return;
-        }
-        state.drag = {
-          type: 'pan',
-          startClientX: ev.clientX,
-          startClientY: ev.clientY,
-          startX: state.camera.x,
-          startY: state.camera.y,
-          moved: false
-        };
-        wrap.classList.add('is-panning');
-      });
-
-      window.addEventListener('pointermove', (ev) => {
-        if (!state.drag) return;
-        if (state.drag.type === 'node' && !readOnly) {
+      if (!readOnly) {
+        nodeLayer.addEventListener('pointermove', (ev) => {
+          if (!state.drag) return;
           const node = nodeById(state.drag.id);
           if (!node) return;
-          const world = clientToWorld(ev.clientX, ev.clientY);
-          node.x = world.x - state.drag.offsetX;
-          node.y = world.y - state.drag.offsetY;
-          state.drag.moved = true;
+          const rect = wrap.getBoundingClientRect();
+          node.x = Math.max(30, Math.min(rect.width - 30, ev.clientX - rect.left - state.drag.offsetX));
+          node.y = Math.max(24, Math.min(rect.height - 24, ev.clientY - rect.top - state.drag.offsetY));
           render();
-          return;
-        }
-        if (state.drag.type === 'pan') {
-          state.camera.x = state.drag.startX + (ev.clientX - state.drag.startClientX);
-          state.camera.y = state.drag.startY + (ev.clientY - state.drag.startClientY);
-          state.drag.moved = true;
+        });
+        nodeLayer.addEventListener('pointerup', () => {
+          state.drag = null;
+        });
+        wrap.addEventListener('click', () => {
+          state.selectedNodeId = null;
           render();
-        }
-      });
-
-      window.addEventListener('pointerup', () => {
-        state.lastInteractionMoved = Boolean(state.drag && state.drag.moved);
-        wrap.classList.remove('is-panning');
-        state.drag = null;
-      });
-
-      wrap.addEventListener('click', (ev) => {
-        if (state.lastInteractionMoved) {
-          state.lastInteractionMoved = false;
-          return;
-        }
-        const target = ev.target;
-        const isNode = target instanceof HTMLElement && target.classList.contains('intel-node');
-        if (isNode) return;
-        state.selectedNodeId = null;
-        render();
-        if (typeof onSelectNode === 'function') {
-          onSelectNode(null);
-        }
-      });
-
-      wrap.addEventListener('wheel', (ev) => {
-        ev.preventDefault();
-        const factor = ev.deltaY > 0 ? 0.9 : 1.1;
-        setZoom(state.camera.scale * factor, ev.clientX, ev.clientY);
-      }, { passive: false });
-
-      controlRefs.zoomInButton?.addEventListener('click', () => zoomBy(1.18));
-      controlRefs.zoomOutButton?.addEventListener('click', () => zoomBy(0.84));
-      controlRefs.zoomResetButton?.addEventListener('click', () => resetZoom());
-      controlRefs.fitButton?.addEventListener('click', () => fitGraph(90));
-      controlRefs.layoutApplyButton?.addEventListener('click', () => applyLayout(String(controlRefs.layoutSelect?.value || 'tree-vertical')));
-      [controlRefs.fullscreenButton, controlRefs.fullscreenButtonAlt].forEach((buttonRef) => {
-        buttonRef?.addEventListener('click', () => toggleFullscreen());
-      });
-
-      document.addEventListener('fullscreenchange', () => {
-        const isActive = document.fullscreenElement === wrap;
-        wrap.classList.toggle('is-fullscreen', isActive);
-        [controlRefs.fullscreenButton, controlRefs.fullscreenButtonAlt].forEach((buttonRef) => {
-          if (buttonRef) {
-            buttonRef.textContent = isActive ? 'Salir pantalla completa' : 'Pantalla completa';
+          if (typeof onSelectNode === 'function') {
+            onSelectNode(null);
           }
         });
-        render();
-      });
+      }
 
       window.addEventListener('resize', () => render());
-      const initialLayoutMode = String(controlRefs.layoutSelect?.value || 'tree-vertical');
-      if (shouldAutoLayout()) {
-        applyLayout(initialLayoutMode);
-      } else {
-        render();
-        fitGraph(90);
-      }
+      render();
 
       return {
         getGraph() {
@@ -12239,24 +7387,6 @@ ob_start();
             onSelectNode(nodeById(nodeId));
           }
           return true;
-        },
-        fitGraph() {
-          fitGraph(90);
-        },
-        resetZoom() {
-          resetZoom();
-        },
-        zoomIn() {
-          zoomBy(1.18);
-        },
-        zoomOut() {
-          zoomBy(0.84);
-        },
-        applyLayout(mode) {
-          applyLayout(mode);
-        },
-        toggleFullscreen() {
-          toggleFullscreen();
         }
       };
     }
@@ -12435,30 +7565,6 @@ ob_start();
           ? `SI (${ipBlockedCount} bloqueos / ${ipTotalCount} reportes${ipLastBlockedAt ? `, ultimo ${ipLastBlockedAt}` : ''})`
           : `No (${ipTotalCount} reportes)`;
       }
-      if (eventIoc) {
-        const isUnsafeDownload = String(event.event_type || '') === 'unsafe_download';
-        if (isUnsafeDownload) {
-          const ioc = event.download_ioc || {};
-          if (eventIocHash) {
-            eventIocHash.textContent = ioc.hash ? String(ioc.hash) : 'No disponible';
-          }
-          if (eventIocName) {
-            eventIocName.textContent = ioc.filename ? String(ioc.filename) : (event.detected_content || '-');
-          }
-          if (eventIocPath) {
-            eventIocPath.textContent = ioc.path ? String(ioc.path) : '-';
-          }
-          if (eventIocSite) {
-            eventIocSite.textContent = ioc.url || ioc.site || event.url || event.hostname || '-';
-          }
-          if (eventIocDate) {
-            eventIocDate.textContent = event.activity_at || event.received_at || '-';
-          }
-          eventIoc.hidden = false;
-        } else {
-          eventIoc.hidden = true;
-        }
-      }
       if (eventReviewId) {
         eventReviewId.value = event.id || '';
       }
@@ -12566,8 +7672,7 @@ ob_start();
         reasons: event.reason_list,
         snippets: event.snippets,
         signals: event.signals,
-        score_details: event.score_details,
-        download_ioc: event.download_ioc
+        score_details: event.score_details
       };
       eventRaw.textContent = JSON.stringify(rawPayload, null, 2);
 
@@ -12660,62 +7765,9 @@ ob_start();
       renderEventDetail(preferredIndex >= 0 ? preferredIndex : 0);
     }
 
-    const focusShell = document.querySelector('.intel-selector-shell[data-intel-focus="1"]');
-    if (focusShell) {
-      const tabButtons = Array.from(focusShell.querySelectorAll('[data-intel-tab]'));
-      const panels = Array.from(focusShell.querySelectorAll('[data-intel-panel]'));
-      const searchInput = focusShell.querySelector('#intel-focus-search');
-      const cards = Array.from(focusShell.querySelectorAll('.intel-focus-card'));
-
-      const activateTab = (tabId) => {
-        tabButtons.forEach((btn) => {
-          const isActive = btn.dataset.intelTab === tabId;
-          btn.classList.toggle('is-active', isActive);
-          btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
-        });
-        panels.forEach((panel) => {
-          panel.hidden = panel.dataset.intelPanel !== tabId;
-        });
-      };
-
-      tabButtons.forEach((btn) => {
-        btn.addEventListener('click', () => {
-          activateTab(btn.dataset.intelTab || 'investigations');
-        });
-      });
-
-      if (searchInput) {
-        const runFilter = () => {
-          const query = String(searchInput.value || '').trim().toLowerCase();
-          cards.forEach((card) => {
-            const haystack = String(card.dataset.search || '');
-            const match = !query || haystack.includes(query);
-            card.classList.toggle('is-hidden', !match);
-          });
-        };
-        searchInput.addEventListener('input', runFilter);
-      }
-    }
-
     const intelWrap = document.getElementById('intel-canvas-wrap');
     const intelSvg = document.getElementById('intel-svg');
     const intelNodeLayer = document.getElementById('intel-node-layer');
-    const intelLayoutMode = document.getElementById('intel-layout-mode');
-    const intelLayoutApply = document.getElementById('intel-layout-apply');
-    const intelFitGraph = document.getElementById('intel-fit-graph');
-    const intelZoomIn = document.getElementById('intel-zoom-in');
-    const intelZoomOut = document.getElementById('intel-zoom-out');
-    const intelZoomReset = document.getElementById('intel-zoom-reset');
-    const intelZoomStatus = document.getElementById('intel-zoom-status');
-    const intelFullscreen = document.getElementById('intel-fullscreen');
-    const intelWorkspaceFullscreen = document.getElementById('intel-workspace-fullscreen');
-    const intelLayoutCycle = document.getElementById('intel-layout-cycle');
-    const intelDockFit = document.getElementById('intel-dock-fit');
-    const intelDockZoomIn = document.getElementById('intel-dock-zoom-in');
-    const intelDockZoomOut = document.getElementById('intel-dock-zoom-out');
-    const intelDockZoomReset = document.getElementById('intel-dock-zoom-reset');
-    const intelDockZoomStatus = document.getElementById('intel-dock-zoom-status');
-    const intelDockFullscreen = document.getElementById('intel-dock-fullscreen');
     const intelGraphJsonInput = document.getElementById('intel-graph-json');
     const intelSaveForm = document.getElementById('intel-save-form');
     const nodeLabelInput = document.getElementById('node-label');
@@ -12736,8 +7788,6 @@ ob_start();
     const edgeAddButton = document.getElementById('edge-add');
     const edgeListSelect = document.getElementById('edge-list');
     const edgeDeleteButton = document.getElementById('edge-delete');
-    const intelApiMapMeta = document.getElementById('intel-api-map-meta');
-    const intelApiKeywordsWrap = document.getElementById('intel-api-keywords');
 
     function tagsFromInput(value) {
       return String(value || '')
@@ -12755,467 +7805,8 @@ ob_start();
       return `e_${Date.now().toString(36)}_${Math.random().toString(16).slice(2, 7)}`;
     }
 
-    function tinyHash(value) {
-      const raw = String(value || '');
-      if (!raw) return '0';
-      let hash = 0;
-      for (let i = 0; i < raw.length; i += 1) {
-        hash = ((hash << 5) - hash) + raw.charCodeAt(i);
-        hash |= 0;
-      }
-      return Math.abs(hash).toString(16);
-    }
-
-    function makeStableGraphId(prefix, rawValue) {
-      const clean = String(rawValue || '')
-        .toLowerCase()
-        .replace(/[^a-z0-9._-]+/g, '_')
-        .replace(/^_+|_+$/g, '')
-        .slice(0, 34) || 'item';
-      return `${prefix}_${clean}_${tinyHash(rawValue).slice(0, 6)}`;
-    }
-
-    function normalizeDomainValue(value) {
-      const raw = String(value || '').trim();
-      if (!raw) return '';
-      try {
-        const maybeUrl = /^https?:\/\//i.test(raw) ? new URL(raw) : null;
-        if (maybeUrl) {
-          return String(maybeUrl.hostname || '').toLowerCase().replace(/^www\./, '');
-        }
-      } catch (error) {
-        // Ignore URL parse errors.
-      }
-      if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(raw)) {
-        return '';
-      }
-      return raw.toLowerCase().replace(/^www\./, '').replace(/:\d+$/, '');
-    }
-
-    function parseLookupTargetMeta(target, targetType) {
-      const raw = String(target || '').trim();
-      const declaredType = String(targetType || '').toLowerCase();
-      let type = declaredType || 'unknown';
-      let display = raw;
-      let domain = '';
-      if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(raw)) {
-        type = 'ip';
-      } else if (/^https?:\/\//i.test(raw)) {
-        type = 'url';
-        try {
-          const parsed = new URL(raw);
-          domain = normalizeDomainValue(parsed.hostname);
-          display = parsed.toString();
-        } catch (error) {
-          // Keep raw value.
-        }
-      } else {
-        const normalizedDomain = normalizeDomainValue(raw);
-        if (normalizedDomain) {
-          type = 'domain';
-          domain = normalizedDomain;
-          display = normalizedDomain;
-        }
-      }
-      if (!domain && type === 'domain') {
-        domain = normalizeDomainValue(raw);
-      }
-      return { type, display, domain };
-    }
-
-    function providerColor(provider) {
-      const key = String(provider || '').toLowerCase();
-      if (key === 'virustotal') return '#ff9f43';
-      if (key === 'abuseipdb') return '#ff6b6b';
-      if (key === 'urlscan') return '#4fd1c5';
-      if (key === 'threatrip') return '#a78bfa';
-      return '#6cb6ff';
-    }
-
-    function ensureGraphNode(graph, payload) {
-      const existing = graph.nodes.find((node) => String(node.id) === String(payload.id));
-      if (existing) {
-        return existing;
-      }
-      const node = {
-        id: String(payload.id),
-        label: String(payload.label || 'node').slice(0, 120),
-        color: /^#[0-9a-fA-F]{6}$/.test(String(payload.color || '')) ? String(payload.color) : '#5dc8ff',
-        x: Number.isFinite(Number(payload.x)) ? Number(payload.x) : 120,
-        y: Number.isFinite(Number(payload.y)) ? Number(payload.y) : 120,
-        tags: Array.isArray(payload.tags) ? payload.tags.map((tag) => String(tag).slice(0, 40)).filter(Boolean) : [],
-        notes: String(payload.notes || '').slice(0, 400)
-      };
-      graph.nodes.push(node);
-      return node;
-    }
-
-    function ensureGraphEdge(graph, payload) {
-      const from = String(payload.from || '');
-      const to = String(payload.to || '');
-      const label = String(payload.label || '').slice(0, 120);
-      if (!from || !to || from === to) return;
-      const dup = graph.edges.some((edge) =>
-        String(edge.from) === from && String(edge.to) === to && String(edge.label || '') === label
-      );
-      if (dup) return;
-      graph.edges.push({
-        id: String(payload.id || makeEdgeId()),
-        from,
-        to,
-        label,
-        color: /^#[0-9a-fA-F]{6}$/.test(String(payload.color || '')) ? String(payload.color) : '#94a3b8'
-      });
-    }
-
-    function summarizeLookup(lookup, meta) {
-      const provider = String(lookup?.provider || 'unknown');
-      const status = Number(lookup?.status || 0);
-      const createdAt = String(lookup?.created_at || '');
-      const summary = (lookup && typeof lookup.summary === 'object' && lookup.summary) ? lookup.summary : {};
-      const details = (lookup && typeof lookup.details === 'object' && lookup.details) ? lookup.details : {};
-      const summaryParts = Object.entries(summary)
-        .slice(0, 6)
-        .map(([key, value]) => `${key}: ${String(value)}`);
-      const lines = [
-        `provider=${provider}`,
-        `target=${String(meta.display || lookup?.target || '')}`,
-        `type=${String(meta.type || lookup?.target_type || 'unknown')}`,
-        `status=${status}`,
-      ];
-      if (createdAt) {
-        lines.push(`at=${createdAt}`);
-      }
-      if (summaryParts.length) {
-        lines.push(summaryParts.join(' | '));
-      }
-      const detailParts = [];
-      if (details.related_ip) detailParts.push(`ip=${String(details.related_ip)}`);
-      if (details.related_domain) detailParts.push(`domain=${String(details.related_domain)}`);
-      if (details.country_code || details.country_name) {
-        detailParts.push(`country=${String(details.country_name || details.country_code)}`);
-      }
-      if (details.abuse_score) detailParts.push(`abuse_score=${Number(details.abuse_score)}`);
-      if (details.total_reports) detailParts.push(`reports=${Number(details.total_reports)}`);
-      if (details.vt_reputation) detailParts.push(`vt_reputation=${Number(details.vt_reputation)}`);
-      if (details.vt_registrar) detailParts.push(`registrar=${String(details.vt_registrar)}`);
-      if (details.vt_cert_issuer) detailParts.push(`issuer=${String(details.vt_cert_issuer)}`);
-      if (Array.isArray(details.vt_malicious_labels) && details.vt_malicious_labels.length) {
-        detailParts.push(`labels=${details.vt_malicious_labels.slice(0, 4).join(',')}`);
-      }
-      if (Array.isArray(details.vt_malicious_engines) && details.vt_malicious_engines.length) {
-        detailParts.push(`engines=${details.vt_malicious_engines.slice(0, 4).join(',')}`);
-      }
-      if (detailParts.length) {
-        lines.push(detailParts.join(' | '));
-      }
-      return lines.join('\n').slice(0, 390);
-    }
-
-    function renderIntelApiInsights(lookupRows, keywordRows) {
-      const lookups = Array.isArray(lookupRows) ? lookupRows : [];
-      const keywords = Array.isArray(keywordRows) ? keywordRows : [];
-      if (intelApiMapMeta) {
-        if (!lookups.length) {
-          intelApiMapMeta.textContent = 'Sin consultas recientes de proveedores para esta investigacion.';
-        } else {
-          const providers = {};
-          let highRisk = 0;
-          lookups.forEach((row) => {
-            const provider = String(row?.provider || 'unknown').toLowerCase();
-            providers[provider] = (providers[provider] || 0) + 1;
-            const mal = Number(row?.summary?.malicious || 0);
-            const sus = Number(row?.summary?.suspicious || 0);
-            const abuse = Number(row?.details?.abuse_score || 0);
-            if (mal > 0 || sus > 0 || abuse >= 40) {
-              highRisk += 1;
-            }
-          });
-          const providerLabel = Object.entries(providers)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3)
-            .map(([provider, hits]) => `${provider}:${hits}`)
-            .join(' | ');
-          intelApiMapMeta.textContent = `${lookups.length} consultas | high-risk:${highRisk} | ${keywords.length} keywords | ${providerLabel || 'sin proveedor'}`;
-        }
-      }
-      if (!intelApiKeywordsWrap) return;
-      intelApiKeywordsWrap.innerHTML = '';
-      if (!keywords.length) {
-        const empty = document.createElement('span');
-        empty.className = 'mut';
-        empty.textContent = lookups.length ? 'No hay keywords frecuentes en los resultados de proveedores.' : 'Sin keywords comunes detectadas.';
-        intelApiKeywordsWrap.appendChild(empty);
-        return;
-      }
-      keywords.slice(0, 12).forEach((row) => {
-        const chip = document.createElement('span');
-        chip.className = 'intel-api-keyword-chip';
-        const keywordLabel = String(row?.keyword || '-').replace(/_/g, ' ');
-        chip.textContent = keywordLabel;
-        const hits = document.createElement('b');
-        hits.textContent = `x${Number(row?.hits || 0)}`;
-        chip.appendChild(hits);
-        intelApiKeywordsWrap.appendChild(chip);
-      });
-    }
-
-    function enrichGraphWithApiResults(baseGraph, lookupRows, keywordRows) {
-      const graph = normalizeGraphPayload(baseGraph || { nodes: [], edges: [] });
-      const lookups = Array.isArray(lookupRows) ? lookupRows.filter((row) => row && typeof row === 'object') : [];
-      const keywords = Array.isArray(keywordRows) ? keywordRows.filter((row) => row && typeof row === 'object') : [];
-      if (!lookups.length) {
-        return graph;
-      }
-
-      const investigationDomain = normalizeDomainValue(
-        selectedInvestigation?.site_domain || selectedInvestigation?.hostname || selectedInvestigation?.title || ''
-      );
-      let rootNode = graph.nodes.find((node) => {
-        const labelDomain = normalizeDomainValue(node?.label || '');
-        const tags = Array.isArray(node?.tags) ? node.tags : [];
-        return (investigationDomain && labelDomain === investigationDomain)
-          || tags.some((tag) => normalizeDomainValue(tag) === investigationDomain);
-      }) || null;
-
-      if (!rootNode) {
-        const centerX = Number(intelWrap?.clientWidth || 920) * 0.5;
-        const centerY = Number(intelWrap?.clientHeight || 470) * 0.46;
-        rootNode = ensureGraphNode(graph, {
-          id: makeStableGraphId('root', investigationDomain || selectedInvestigation?.title || 'investigation'),
-          label: investigationDomain || String(selectedInvestigation?.title || 'Investigacion'),
-          color: '#5dc8ff',
-          x: Math.round(centerX),
-          y: Math.round(centerY),
-          tags: ['investigation', investigationDomain || 'scope'],
-          notes: 'Nodo raiz de investigacion (contexto de proveedores)'
-        });
-      }
-
-      const providerNodeMap = new Map();
-      const baseRadius = 165;
-      lookups.slice(0, 30).forEach((lookup, index) => {
-        const provider = String(lookup?.provider || 'unknown').toLowerCase();
-        const target = String(lookup?.target || '').trim();
-        if (!target) return;
-        const meta = parseLookupTargetMeta(target, lookup?.target_type || '');
-        const angle = (index / Math.max(1, Math.min(lookups.length, 30))) * Math.PI * 2;
-        const radius = baseRadius + (index % 4) * 20;
-        const indicatorX = Math.round(Number(rootNode.x || 450) + Math.cos(angle) * radius);
-        const indicatorY = Math.round(Number(rootNode.y || 235) + Math.sin(angle) * (radius * 0.65));
-
-        const summary = (lookup && typeof lookup.summary === 'object' && lookup.summary) ? lookup.summary : {};
-        const details = (lookup && typeof lookup.details === 'object' && lookup.details) ? lookup.details : {};
-        const tags = ['api', provider, String(meta.type || 'unknown')];
-        if (Number(summary.malicious || 0) > 0) tags.push('malicious');
-        if (Number(summary.suspicious || 0) > 0) tags.push('suspicious');
-        if (Number(summary.abuseConfidenceScore || 0) >= 40) tags.push('abuse-high');
-        if (Number(details.abuse_score || 0) >= 40) tags.push('abuse-high');
-        if (Number(details.vt_reputation || 0) < 0) tags.push('negative-reputation');
-        if (Array.isArray(details.vt_malicious_labels)) {
-          details.vt_malicious_labels.slice(0, 2).forEach((label) => {
-            const normalized = String(label || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-            if (normalized) {
-              tags.push(`label:${normalized}`);
-            }
-          });
-        }
-        if (!lookup?.ok) tags.push('error');
-
-        const indicatorNode = ensureGraphNode(graph, {
-          id: makeStableGraphId('api_i', `${provider}:${meta.display || target}`),
-          label: String(meta.display || target).slice(0, 72),
-          color: providerColor(provider),
-          x: indicatorX,
-          y: indicatorY,
-          tags,
-          notes: summarizeLookup(lookup, meta)
-        });
-
-        ensureGraphEdge(graph, {
-          id: makeStableGraphId('api_e', `${rootNode.id}>${indicatorNode.id}>lookup`),
-          from: rootNode.id,
-          to: indicatorNode.id,
-          label: `lookup:${provider}`,
-          color: '#7eb6de'
-        });
-
-        if (!providerNodeMap.has(provider)) {
-          const providerIndex = providerNodeMap.size;
-          const providerNode = ensureGraphNode(graph, {
-            id: makeStableGraphId('api_p', provider),
-            label: provider,
-            color: providerColor(provider),
-            x: Math.round(Number(rootNode.x || 450) - 210 + providerIndex * 95),
-            y: Math.round(Number(rootNode.y || 235) - 150),
-            tags: ['api-provider', provider],
-            notes: `Proveedor: ${provider}`
-          });
-          providerNodeMap.set(provider, providerNode);
-        }
-        const providerNode = providerNodeMap.get(provider);
-        if (providerNode) {
-          ensureGraphEdge(graph, {
-            id: makeStableGraphId('api_ep', `${providerNode.id}>${indicatorNode.id}`),
-            from: providerNode.id,
-            to: indicatorNode.id,
-            label: `status:${Number(lookup?.status || 0)}`,
-            color: '#8ba9be'
-          });
-        }
-
-        if (meta.domain && meta.domain !== investigationDomain) {
-          const domainNode = ensureGraphNode(graph, {
-            id: makeStableGraphId('api_d', meta.domain),
-            label: meta.domain,
-            color: '#7ab8ff',
-            x: Math.round(indicatorX + 54),
-            y: Math.round(indicatorY + 42),
-            tags: ['domain', 'resolved-domain'],
-            notes: `Dominio asociado por consulta de proveedor: ${meta.domain}`
-          });
-          ensureGraphEdge(graph, {
-            id: makeStableGraphId('api_ed', `${indicatorNode.id}>${domainNode.id}`),
-            from: indicatorNode.id,
-            to: domainNode.id,
-            label: 'resolved-domain',
-            color: '#7fa4c2'
-          });
-        }
-
-        const detailDomain = normalizeDomainValue(String(details.related_domain || ''));
-        if (detailDomain && detailDomain !== investigationDomain && detailDomain !== meta.domain) {
-          const relatedDomainNode = ensureGraphNode(graph, {
-            id: makeStableGraphId('api_rd', detailDomain),
-            label: detailDomain,
-            color: '#82c2ff',
-            x: Math.round(indicatorX - 56),
-            y: Math.round(indicatorY + 54),
-            tags: ['domain', 'api-derived'],
-            notes: `Dominio derivado de ${provider}`
-          });
-          ensureGraphEdge(graph, {
-            id: makeStableGraphId('api_erd', `${indicatorNode.id}>${relatedDomainNode.id}`),
-            from: indicatorNode.id,
-            to: relatedDomainNode.id,
-            label: 'related-domain',
-            color: '#7fa4c2'
-          });
-        }
-
-        const detailIp = String(details.related_ip || '').trim();
-        if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(detailIp) && detailIp !== target) {
-          const ipNode = ensureGraphNode(graph, {
-            id: makeStableGraphId('api_ip', detailIp),
-            label: detailIp,
-            color: '#9aa8ff',
-            x: Math.round(indicatorX + 72),
-            y: Math.round(indicatorY - 48),
-            tags: ['ip', 'api-derived'],
-            notes: `IP relacionada por ${provider}`
-          });
-          ensureGraphEdge(graph, {
-            id: makeStableGraphId('api_eip', `${indicatorNode.id}>${ipNode.id}`),
-            from: indicatorNode.id,
-            to: ipNode.id,
-            label: 'related-ip',
-            color: '#8b95cd'
-          });
-        }
-
-        const countryCode = String(details.country_code || '').trim().toUpperCase();
-        const countryName = String(details.country_name || '').trim();
-        if (countryCode || countryName) {
-          const countryLabel = countryName ? `${countryName}${countryCode ? ` (${countryCode})` : ''}` : countryCode;
-          const countryNode = ensureGraphNode(graph, {
-            id: makeStableGraphId('api_cc', countryLabel),
-            label: countryLabel,
-            color: '#7ac6bf',
-            x: Math.round(indicatorX - 78),
-            y: Math.round(indicatorY - 52),
-            tags: ['geo', 'api-derived'],
-            notes: `Geolocalizacion detectada por ${provider}`
-          });
-          ensureGraphEdge(graph, {
-            id: makeStableGraphId('api_ec', `${indicatorNode.id}>${countryNode.id}`),
-            from: indicatorNode.id,
-            to: countryNode.id,
-            label: 'country',
-            color: '#7ea4b1'
-          });
-        }
-
-        const hostnames = Array.isArray(details.hostnames) ? details.hostnames : [];
-        hostnames.slice(0, 3).forEach((hostname, hostIndex) => {
-          const hostLabel = normalizeDomainValue(String(hostname || ''));
-          if (!hostLabel) return;
-          const hostNode = ensureGraphNode(graph, {
-            id: makeStableGraphId('api_hn', hostLabel),
-            label: hostLabel,
-            color: '#95b7ff',
-            x: Math.round(indicatorX + 36 + hostIndex * 24),
-            y: Math.round(indicatorY + 78 + hostIndex * 18),
-            tags: ['hostname', 'api-derived'],
-            notes: `Hostname asociado (${provider})`
-          });
-          ensureGraphEdge(graph, {
-            id: makeStableGraphId('api_eh', `${indicatorNode.id}>${hostNode.id}`),
-            from: indicatorNode.id,
-            to: hostNode.id,
-            label: 'hostname',
-            color: '#8ba9be'
-          });
-        });
-      });
-
-      if (keywords.length) {
-        const keywordHub = ensureGraphNode(graph, {
-          id: makeStableGraphId('api_kw', `${rootNode.id}:hub`),
-          label: 'api-keywords',
-          color: '#7ac6bf',
-          x: Math.round(Number(rootNode.x || 450)),
-          y: Math.round(Number(rootNode.y || 235) + 170),
-          tags: ['keywords', 'api'],
-          notes: 'Keywords comunes detectadas en resultados de proveedores'
-        });
-        ensureGraphEdge(graph, {
-          id: makeStableGraphId('api_kw_e', `${rootNode.id}>${keywordHub.id}`),
-          from: rootNode.id,
-          to: keywordHub.id,
-          label: 'api-keywords',
-          color: '#7eb6de'
-        });
-        keywords.slice(0, 8).forEach((row, index) => {
-          const keyword = String(row?.keyword || '').trim();
-          if (!keyword) return;
-          const hits = Number(row?.hits || 0);
-          const angle = (index / Math.max(1, Math.min(keywords.length, 8))) * Math.PI * 2;
-          const keywordNode = ensureGraphNode(graph, {
-            id: makeStableGraphId('kw', keyword),
-            label: `#${keyword}`.slice(0, 58),
-            color: '#58bfa7',
-            x: Math.round(Number(keywordHub.x || 450) + Math.cos(angle) * 130),
-            y: Math.round(Number(keywordHub.y || 360) + Math.sin(angle) * 62),
-            tags: ['keyword', 'api'],
-            notes: `Apariciones en consultas de proveedores: ${hits}`
-          });
-          ensureGraphEdge(graph, {
-            id: makeStableGraphId('kw_e', `${keywordHub.id}>${keywordNode.id}`),
-            from: keywordHub.id,
-            to: keywordNode.id,
-            label: `hits:${hits}`,
-            color: '#7fa4c2'
-          });
-        });
-      }
-
-      return graph;
-    }
-
     if (intelWrap && intelSvg && intelNodeLayer) {
-      renderIntelApiInsights(intelApiLookupMapRows, intelApiCommonKeywords);
-      const baseGraph = selectedInvestigation?.graph || { nodes: [], edges: [] };
-      const initialGraph = enrichGraphWithApiResults(baseGraph, intelApiLookupMapRows, intelApiCommonKeywords);
+      const initialGraph = selectedInvestigation?.graph || { nodes: [], edges: [] };
       const editor = makeGraphRenderer({
         wrap: intelWrap,
         svg: intelSvg,
@@ -13223,18 +7814,6 @@ ob_start();
         graph: initialGraph,
         readOnly: false,
         nodeListSelect,
-        controls: {
-          layoutSelect: intelLayoutMode,
-          layoutApplyButton: intelLayoutApply,
-          fitButton: intelFitGraph,
-          zoomInButton: intelZoomIn,
-          zoomOutButton: intelZoomOut,
-          zoomResetButton: intelZoomReset,
-          fullscreenButton: intelFullscreen,
-          fullscreenButtonAlt: intelDockFullscreen || intelWorkspaceFullscreen,
-          zoomStatus: intelZoomStatus,
-          zoomStatusAlt: intelDockZoomStatus
-        },
         onSelectNode(node) {
           if (!node) {
             if (nodeLabelInput) nodeLabelInput.value = '';
@@ -13334,50 +7913,11 @@ ob_start();
         if (!editor || !intelGraphJsonInput) return;
         intelGraphJsonInput.value = JSON.stringify(editor.getGraph());
       });
-
-      const proxyClick = (targetButton, triggerButton) => {
-        triggerButton?.addEventListener('click', () => {
-          targetButton?.click();
-        });
-      };
-      proxyClick(intelFitGraph, intelDockFit);
-      proxyClick(intelZoomIn, intelDockZoomIn);
-      proxyClick(intelZoomOut, intelDockZoomOut);
-      proxyClick(intelZoomReset, intelDockZoomReset);
-      proxyClick(intelFullscreen, intelWorkspaceFullscreen);
-
-      intelLayoutCycle?.addEventListener('click', () => {
-        if (!(intelLayoutMode instanceof HTMLSelectElement)) {
-          return;
-        }
-        const optionCount = intelLayoutMode.options.length;
-        if (!optionCount) {
-          return;
-        }
-        intelLayoutMode.selectedIndex = (intelLayoutMode.selectedIndex + 1) % optionCount;
-        intelLayoutApply?.click();
-      });
-
-      document.addEventListener('fullscreenchange', () => {
-        if (!intelWorkspaceFullscreen || !intelWrap) {
-          return;
-        }
-        const isActive = document.fullscreenElement === intelWrap;
-        intelWorkspaceFullscreen.textContent = isActive ? 'Salir pantalla completa' : 'Pantalla completa';
-      });
     }
 
     const sharedWrap = document.getElementById('shared-canvas-wrap');
     const sharedSvg = document.getElementById('shared-svg');
     const sharedNodeLayer = document.getElementById('shared-node-layer');
-    const sharedLayoutMode = document.getElementById('shared-layout-mode');
-    const sharedLayoutApply = document.getElementById('shared-layout-apply');
-    const sharedFitGraph = document.getElementById('shared-fit-graph');
-    const sharedZoomIn = document.getElementById('shared-zoom-in');
-    const sharedZoomOut = document.getElementById('shared-zoom-out');
-    const sharedZoomReset = document.getElementById('shared-zoom-reset');
-    const sharedZoomStatus = document.getElementById('shared-zoom-status');
-    const sharedFullscreen = document.getElementById('shared-fullscreen');
     const sharedNodeLabel = document.getElementById('shared-node-label');
     const sharedNodeTags = document.getElementById('shared-node-tags');
     const sharedNodeNotes = document.getElementById('shared-node-notes');
@@ -13388,16 +7928,6 @@ ob_start();
         nodeLayer: sharedNodeLayer,
         graph: sharedInvestigation.graph,
         readOnly: true,
-        controls: {
-          layoutSelect: sharedLayoutMode,
-          layoutApplyButton: sharedLayoutApply,
-          fitButton: sharedFitGraph,
-          zoomInButton: sharedZoomIn,
-          zoomOutButton: sharedZoomOut,
-          zoomResetButton: sharedZoomReset,
-          fullscreenButton: sharedFullscreen,
-          zoomStatus: sharedZoomStatus
-        },
         onSelectNode(node) {
           if (!node) {
             if (sharedNodeLabel) sharedNodeLabel.textContent = 'Sin nodo seleccionado.';
@@ -13794,58 +8324,6 @@ ob_start();
       return fallback;
     }
 
-    async function loadLocalWorldGeoJson() {
-      if (localWorldGeoPromise) {
-        return localWorldGeoPromise;
-      }
-      localWorldGeoPromise = (async () => {
-        const candidates = [
-          homeLeafletWorldGeoJsonUrl,
-          'assets/vendor/leaflet/data/world-countries.geo.json',
-          '/assets/vendor/leaflet/data/world-countries.geo.json'
-        ];
-        for (const candidate of candidates) {
-          try {
-            const response = await fetch(candidate, { cache: 'force-cache' });
-            if (!response.ok) {
-              continue;
-            }
-            const json = await response.json();
-            if (json && String(json.type || '') === 'FeatureCollection' && Array.isArray(json.features)) {
-              return json;
-            }
-          } catch (error) {
-            // Ignore and try next candidate.
-          }
-        }
-        return null;
-      })();
-      return localWorldGeoPromise;
-    }
-
-    function createOfflineCountriesLayer() {
-      const group = L.layerGroup();
-      loadLocalWorldGeoJson().then((geojson) => {
-        if (!geojson) {
-          return;
-        }
-        L.geoJSON(geojson, {
-          interactive: false,
-          attribution: 'Countries: Natural Earth (local cache)',
-          style: () => ({
-            color: '#33577a',
-            weight: 0.8,
-            opacity: 0.95,
-            fillColor: '#10263b',
-            fillOpacity: 0.9
-          })
-        }).addTo(group);
-      }).catch(() => {
-        // Keep map available even if local geojson could not be loaded.
-      });
-      return group;
-    }
-
     function makeLeafletMap(targetEl, center = [20, 0], zoom = 2) {
       if (!targetEl || !window.L) return null;
       const map = L.map(targetEl, {
@@ -13857,10 +8335,22 @@ ob_start();
         worldCopyJump: true
       });
       const baseLayers = {
-        'Offline Countries (local)': createOfflineCountriesLayer(),
-        'Offline Grid': createOfflineTileLayer()
+        'Offline Grid': createOfflineTileLayer(),
+        'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
+          maxNativeZoom: 19
+        }),
+        'Carto Light': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+          subdomains: 'abcd',
+          maxNativeZoom: 20
+        }),
+        'OpenTopoMap': L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors, SRTM | map style: OpenTopoMap (CC-BY-SA)',
+          maxNativeZoom: 17
+        })
       };
-      baseLayers['Offline Countries (local)'].addTo(map);
+      baseLayers['Offline Grid'].addTo(map);
       L.control.layers(baseLayers, null, { position: 'topright', collapsed: true }).addTo(map);
       return map;
     }
@@ -14033,7 +8523,4 @@ ob_start();
   </script>
 </body>
 </html>
-<?php
-$dashboardOutput = ob_get_clean();
-echo cfdashboardtranslateoutput($dashboardOutput, (string) $lang);
 

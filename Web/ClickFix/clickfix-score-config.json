@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "updated_at": "2026-02-28T00:00:00Z",
+  "scoreConfig": {
+    "weights": {
+      "signals": 0.5,
+      "clipboard": 0.35,
+      "context": 0.15
+    },
+    "contextBaseScore": 50,
+    "rules": {
+      "signals": {
+        "commandMatch": 20,
+        "shellHint": 14,
+        "evasionHint": 12,
+        "mismatch": 8,
+        "clipboardWarning": 6,
+        "winRHint": 6,
+        "winXHint": 4,
+        "pasteSequenceHint": 6,
+        "consoleHint": 5,
+        "fileExplorerHint": 4,
+        "copyTriggerHint": 4,
+        "browserErrorHint": 4,
+        "fixActionHint": 4,
+        "captchaHint": 3
+      },
+      "clipboard": {
+        "hasCommand": 22,
+        "hasExecutionHint": 18,
+        "hasUrl": 12,
+        "hasBase64": 12,
+        "hasHighEntropy": 10,
+        "hasShellMeta": 6,
+        "isLong": 5,
+        "hasLeadingWhitespace": 5,
+        "looksLikeCommand": 10
+      },
+      "context": {
+        "isAllowlisted": -25,
+        "isTrustedHost": -15,
+        "isCodeContext": -10,
+        "isIframe": 5,
+        "opaqueIframes": 5,
+        "opaqueIframesHigh": 10
+      }
+    }
+  }
+}

@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Terms & Conditions - ClickFix Mitigator</title>
+  <meta name="description" content="ClickFix Mitigator terms and conditions for the extension and web platform." />
+  <style>
+    :root{
+      --bg:#0b0f14; --card:#111827; --text:#e5e7eb; --muted:#9ca3af;
+      --accent:#60a5fa; --border:rgba(255,255,255,.10);
+      --shadow:0 12px 40px rgba(0,0,0,.35);
+      --radius:16px; --max: 920px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; padding:48px 18px;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: radial-gradient(1200px 600px at 20% 0%, rgba(96,165,250,.18), transparent 55%),
+                  radial-gradient(900px 500px at 80% 10%, rgba(34,197,94,.10), transparent 50%),
+                  var(--bg);
+      color:var(--text);
+      line-height:1.6;
+    }
+    a{color:var(--accent); text-decoration:none}
+    a:hover{text-decoration:underline}
+    .wrap{max-width:var(--max); margin:0 auto}
+    header{
+      padding:28px 26px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+    h1{margin:0 0 10px; font-size:clamp(26px, 3.2vw, 38px); letter-spacing:-.02em}
+    .sub{margin:0; color:var(--muted)}
+    main{
+      margin-top:18px;
+      background: rgba(17,24,39,.65);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    nav{
+      padding:14px 18px;
+      border-bottom:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      display:flex; flex-wrap:wrap; gap:10px;
+    }
+    .legal-nav{
+      border-bottom:1px solid rgba(96,165,250,.14);
+      background: rgba(96,165,250,.05);
+    }
+    nav a{
+      font-size:14px; color:var(--muted);
+      padding:8px 10px; border:1px solid rgba(255,255,255,.08);
+      border-radius:999px;
+      background: rgba(0,0,0,.12);
+    }
+    nav a:hover{color:var(--text); border-color:rgba(96,165,250,.35)}
+    .legal-nav a.is-active{
+      color:var(--text);
+      border-color:rgba(96,165,250,.42);
+      background: rgba(96,165,250,.14);
+    }
+    section{padding:22px 26px; border-bottom:1px solid rgba(255,255,255,.06)}
+    section:last-child{border-bottom:0}
+    h2{margin:0 0 10px; font-size:18px; letter-spacing:-.01em}
+    p{margin:0 0 12px}
+    ul{margin:0 0 12px 18px; padding:0}
+    li{margin:6px 0}
+    .note{
+      padding:12px 14px;
+      border-left:4px solid rgba(96,165,250,.65);
+      background: rgba(96,165,250,.10);
+      border-radius:12px;
+    }
+    footer{margin-top:18px; color:var(--muted); font-size:14px; text-align:center}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Terms & Conditions</h1>
+      <p class="sub">
+        <strong>ClickFix Mitigator</strong> · Last updated: <time datetime="2026-03-15">March 15, 2026</time>
+      </p>
+    </header>
+
+    <main>
+      <nav class="legal-nav" aria-label="Legal">
+        <a href="/">Home /</a>
+        <a href="PrivacyPolicy.html">Privacy Policy</a>
+        <a href="TermsAndConditions.html" class="is-active">Terms &amp; Conditions</a>
+        <a href="about.php">About</a>
+      </nav>
+      <nav aria-label="Index">
+        <a href="#acceptance">1. Acceptance</a>
+        <a href="#scope">2. Scope</a>
+        <a href="#responsible-use">3. Responsible use</a>
+        <a href="#availability">4. Availability</a>
+        <a href="#evidence">5. Evidence and reports</a>
+        <a href="#accounts">6. Accounts and access</a>
+        <a href="#liability">7. Liability</a>
+        <a href="#changes">8. Changes</a>
+        <a href="#contact">9. Contact</a>
+      </nav>
+
+      <section id="acceptance">
+        <h2>1. Acceptance of terms</h2>
+        <p>By using the ClickFix Mitigator extension, web platform, demos, or related documentation, you agree to these terms and conditions.</p>
+      </section>
+
+      <section id="scope">
+        <h2>2. Scope of the service</h2>
+        <p>ClickFix Mitigator is a defensive security project focused on prevention, visibility, triage, investigation, and evidence handling around ClickFix-style social-engineering activity.</p>
+        <p>The service is intended for defensive, analytical, educational, and operational security use.</p>
+      </section>
+
+      <section id="responsible-use">
+        <h2>3. Responsible use</h2>
+        <ul>
+          <li>You must not use the platform to facilitate unauthorized access, offensive intrusion, malware deployment, or unlawful surveillance.</li>
+          <li>You are responsible for configuring policies, allowlists, blocklists, and operational workflows in line with your environment and legal obligations.</li>
+          <li>You must review detections, enrichments, and investigations before taking business or security action with external impact.</li>
+        </ul>
+        <p class="note">Security signals, enrichment results, and analytics are operational aids. They are not automatic attribution or legal conclusions.</p>
+      </section>
+
+      <section id="availability">
+        <h2>4. Availability and changes</h2>
+        <p>The project may evolve continuously. Features, workflows, interfaces, or integrations may be modified, improved, limited, or removed to improve security, reliability, or operational value.</p>
+      </section>
+
+      <section id="evidence">
+        <h2>5. Evidence, reports, and public content</h2>
+        <p>Reports, screenshots, investigation summaries, and public featured investigations may contain defensive security context. Public sharing should only be enabled by authorized administrators after review.</p>
+        <p>You remain responsible for ensuring that any data you publish or distribute through the platform is lawful, proportionate, and appropriate.</p>
+      </section>
+
+      <section id="accounts">
+        <h2>6. Accounts and access control</h2>
+        <p>Access to authenticated areas may be restricted by role. You are responsible for keeping your credentials secure and for actions performed under your account.</p>
+        <p>Administrative capabilities must only be granted to trusted operators.</p>
+      </section>
+
+      <section id="liability">
+        <h2>7. Liability and warranties</h2>
+        <p>The project is provided on an as-available basis. No guarantee is made that the platform will detect every malicious flow, classify every event correctly, or remain continuously available without interruption.</p>
+        <p>Operational decisions remain the responsibility of the user or organization deploying the platform.</p>
+      </section>
+
+      <section id="changes">
+        <h2>8. Changes to these terms</h2>
+        <p>These terms may be updated over time. The latest published version in this document should be treated as the current reference.</p>
+      </section>
+
+      <section id="contact">
+        <h2>9. Contact</h2>
+        <p>Official site: <a href="https://jordiserrano.me" rel="noopener noreferrer" target="_blank">jordiserrano.me</a></p>
+      </section>
+    </main>
+
+    <footer>ClickFix Mitigator · Terms &amp; Conditions</footer>
+  </div>
+</body>
+</html>

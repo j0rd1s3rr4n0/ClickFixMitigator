@@ -1,15 +1,13 @@
 <?php
 declare(strict_types=1);
 
-ini_set('display_errors', '0');
-header('Content-Type: application/json; charset=utf-8');
-header('X-Content-Type-Options: nosniff');
-header('Cache-Control: no-store');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+require_once __DIR__ . '/src/clickfix_core.php';
 
-$dbPath = __DIR__ . '/data/clickfix.sqlite';
+ini_set('display_errors', '0');
+clickfix_apply_api_headers('POST, OPTIONS', 'Content-Type, Authorization');
+header('Content-Type: application/json; charset=utf-8');
+
+$dbPath = clickfix_resolve_db_path();
 $schemaPath = null;
 $preferredSchema = __DIR__ . '/data/clickfix.sql';
 if (is_readable($preferredSchema)) {
@@ -45,11 +43,18 @@ CREATE TABLE IF NOT EXISTS reports (
     client_id TEXT,
     score_total INTEGER,
     score_details_json TEXT,
+    reason_entries_json TEXT,
+    matched_snippets_json TEXT,
     duplicate_count INTEGER DEFAULT 1,
     last_seen TEXT,
     user_agent TEXT,
     ip TEXT,
-    country TEXT
+    country TEXT,
+    event_type TEXT DEFAULT 'clickfix_alert',
+    runtime_verdict_json TEXT,
+    server_score_total INTEGER,
+    server_verdict TEXT,
+    trusted_signal_source INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS stats (
@@ -103,9 +108,47 @@ CREATE TABLE IF NOT EXISTS list_suggestions (
     reason TEXT NOT NULL,
     status TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS api_clients (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    label TEXT,
+    license_key_hash TEXT NOT NULL UNIQUE,
+    tier TEXT NOT NULL DEFAULT 'basic',
+    max_rpm INTEGER NOT NULL DEFAULT 120,
+    active INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS api_refresh_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    client_id INTEGER NOT NULL,
+    device_id TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    last_used_at TEXT,
+    revoked_at TEXT,
+    last_ip TEXT
+);
+
+CREATE TABLE IF NOT EXISTS api_rate_limits (
+    bucket_key TEXT PRIMARY KEY,
+    window_start INTEGER NOT NULL,
+    request_count INTEGER NOT NULL
+);
 SQL;
 
-$logFile = __DIR__ . '/clickfix-report.log';
+function clickfix_report_log_dir(): string
+{
+    $dir = __DIR__ . '/data/logs';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+    return $dir;
+}
+
+$logDir = clickfix_report_log_dir();
+$logFile = $logDir . '/clickfix-report.log';
 
 function writeDebugLog(string $debugFile, array $entry): void
 {
@@ -115,6 +158,202 @@ function writeDebugLog(string $debugFile, array $entry): void
         json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL,
         FILE_APPEND | LOCK_EX
     );
+}
+
+function clickfix_decode_data_url_image(string $raw, int $maxBytes): ?array
+{
+    $value = trim($raw);
+    if ($value === '') {
+        return null;
+    }
+    if (!preg_match('#^data:image/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=]+)$#i', $value, $matches)) {
+        return null;
+    }
+    $mime = strtolower((string) $matches[1]);
+    $base64 = (string) $matches[2];
+    if ($base64 === '') {
+        return null;
+    }
+    $decoded = base64_decode($base64, true);
+    if (!is_string($decoded) || $decoded === '') {
+        return null;
+    }
+    if (strlen($decoded) > $maxBytes) {
+        return null;
+    }
+    $extension = $mime === 'jpeg' || $mime === 'jpg' ? 'jpg' : ($mime === 'webp' ? 'webp' : 'png');
+    return [
+        'mime' => $mime,
+        'extension' => $extension,
+        'binary' => $decoded,
+    ];
+}
+
+function clickfix_store_scan_image(int $reportId, string $kind, array $decodedImage): ?string
+{
+    if ($reportId <= 0) {
+        return null;
+    }
+    if (!in_array($kind, ['before', 'after'], true)) {
+        return null;
+    }
+    $extension = (string) ($decodedImage['extension'] ?? '');
+    $binary = $decodedImage['binary'] ?? null;
+    if (!in_array($extension, ['png', 'jpg', 'webp'], true) || !is_string($binary) || $binary === '') {
+        return null;
+    }
+
+    $scanDir = __DIR__ . '/data/scans';
+    if (!is_dir($scanDir)) {
+        @mkdir($scanDir, 0775, true);
+    }
+    if (!is_dir($scanDir) || !is_writable($scanDir)) {
+        return null;
+    }
+
+    foreach (['png', 'jpg', 'webp'] as $existingExt) {
+        $existingPath = $scanDir . '/' . $reportId . '-' . $kind . '.' . $existingExt;
+        if (is_file($existingPath)) {
+            @unlink($existingPath);
+        }
+    }
+
+    $targetPath = $scanDir . '/' . $reportId . '-' . $kind . '.' . $extension;
+    $written = @file_put_contents($targetPath, $binary, LOCK_EX);
+    if ($written === false) {
+        return null;
+    }
+    return $targetPath;
+}
+
+function clickfix_siteshot_api_key(): string
+{
+    $key = trim((string) clickfix_env('CLICKFIX_SITESHOT_API_KEY', ''));
+    return substr($key, 0, 200);
+}
+
+function clickfix_detect_binary_image_extension(string $binary): string
+{
+    if ($binary === '') {
+        return '';
+    }
+    if (strncmp($binary, "\x89PNG\x0D\x0A\x1A\x0A", 8) === 0) {
+        return 'png';
+    }
+    if (strncmp($binary, "\xFF\xD8\xFF", 3) === 0) {
+        return 'jpg';
+    }
+    if (strncmp($binary, 'RIFF', 4) === 0 && substr($binary, 8, 4) === 'WEBP') {
+        return 'webp';
+    }
+    return '';
+}
+
+function clickfix_capture_before_image_with_siteshot(string $targetUrl, int $maxBytes, string $debugFile): ?array
+{
+    $targetUrl = trim($targetUrl);
+    if ($targetUrl === '' || filter_var($targetUrl, FILTER_VALIDATE_URL) === false) {
+        return null;
+    }
+    $parts = parse_url($targetUrl);
+    $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+    $host = (string) ($parts['host'] ?? '');
+    if (!in_array($scheme, ['http', 'https'], true) || $host === '') {
+        return null;
+    }
+    if (function_exists('clickfix_ml_url_allowed') && !clickfix_ml_url_allowed($targetUrl)) {
+        writeDebugLog($debugFile, [
+            'status' => 'siteshot_skip_non_public_url',
+            'url' => $targetUrl,
+        ]);
+        return null;
+    }
+
+    $apiKey = clickfix_siteshot_api_key();
+    if ($apiKey === '') {
+        writeDebugLog($debugFile, ['status' => 'siteshot_missing_api_key']);
+        return null;
+    }
+
+    $query = http_build_query([
+        'url' => $targetUrl,
+        'userkey' => $apiKey,
+        'response_type' => 'json',
+        'format' => 'png',
+        'full_size' => 1,
+        'max_height' => 16000,
+        'width' => 1366,
+        'height' => 768,
+        'delay_time' => 1200,
+        'timeout' => 35000,
+    ], '', '&', PHP_QUERY_RFC3986);
+    $endpoint = 'https://api.site-shot.com/?' . $query;
+
+    $response = clickfix_http_request(
+        $endpoint,
+        'GET',
+        ['Accept' => 'application/json,image/png,image/jpeg,image/webp,*/*;q=0.1'],
+        null,
+        20
+    );
+    $status = (int) ($response['status'] ?? 0);
+    $body = (string) ($response['body'] ?? '');
+    if (empty($response['ok']) || $status < 200 || $status >= 300 || $body === '') {
+        writeDebugLog($debugFile, [
+            'status' => 'siteshot_request_failed',
+            'http_status' => $status,
+            'url' => $targetUrl,
+        ]);
+        return null;
+    }
+
+    $decoded = json_decode($body, true);
+    if (is_array($decoded)) {
+        if (!empty($decoded['error'])) {
+            writeDebugLog($debugFile, [
+                'status' => 'siteshot_api_error',
+                'error' => substr((string) $decoded['error'], 0, 300),
+                'url' => $targetUrl,
+            ]);
+            return null;
+        }
+        $imageRaw = trim((string) ($decoded['image'] ?? ''));
+        if ($imageRaw !== '') {
+            $commaPos = strpos($imageRaw, ',');
+            if ($commaPos !== false && stripos(substr($imageRaw, 0, $commaPos), 'base64') !== false) {
+                $imageRaw = substr($imageRaw, $commaPos + 1);
+            }
+            $binary = base64_decode($imageRaw, true);
+            if (is_string($binary) && $binary !== '' && strlen($binary) <= $maxBytes) {
+                return [
+                    'mime' => 'png',
+                    'extension' => 'png',
+                    'binary' => $binary,
+                ];
+            }
+        }
+    }
+
+    $fallbackExt = clickfix_detect_binary_image_extension($body);
+    if ($fallbackExt === '' || strlen($body) > $maxBytes) {
+        writeDebugLog($debugFile, [
+            'status' => 'siteshot_invalid_image',
+            'http_status' => $status,
+            'url' => $targetUrl,
+        ]);
+        return null;
+    }
+
+    return [
+        'mime' => $fallbackExt === 'jpg' ? 'jpeg' : $fallbackExt,
+        'extension' => $fallbackExt,
+        'binary' => $body,
+    ];
+}
+
+function startsWithHashComment(string $line): bool
+{
+    return substr($line, 0, 1) === '#';
 }
 
 function respondWithError(int $statusCode, string $message, string $debugFile, array $context = []): void
@@ -176,11 +415,32 @@ function ensureReportsSchema(PDO $pdo, string $debugFile): void
     if (!isset($existing['score_details_json'])) {
         $updates[] = 'ALTER TABLE reports ADD COLUMN score_details_json TEXT';
     }
+    if (!isset($existing['reason_entries_json'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN reason_entries_json TEXT';
+    }
+    if (!isset($existing['matched_snippets_json'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN matched_snippets_json TEXT';
+    }
     if (!isset($existing['duplicate_count'])) {
         $updates[] = 'ALTER TABLE reports ADD COLUMN duplicate_count INTEGER DEFAULT 1';
     }
     if (!isset($existing['last_seen'])) {
         $updates[] = 'ALTER TABLE reports ADD COLUMN last_seen TEXT';
+    }
+    if (!isset($existing['event_type'])) {
+        $updates[] = "ALTER TABLE reports ADD COLUMN event_type TEXT DEFAULT 'clickfix_alert'";
+    }
+    if (!isset($existing['runtime_verdict_json'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN runtime_verdict_json TEXT';
+    }
+    if (!isset($existing['server_score_total'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN server_score_total INTEGER';
+    }
+    if (!isset($existing['server_verdict'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN server_verdict TEXT';
+    }
+    if (!isset($existing['trusted_signal_source'])) {
+        $updates[] = 'ALTER TABLE reports ADD COLUMN trusted_signal_source INTEGER DEFAULT 0';
     }
 
     foreach ($updates as $statement) {
@@ -320,6 +580,70 @@ function ensureStatsSchema(PDO $pdo, string $debugFile): void
     }
 }
 
+function computeServerVerdict(array $signals, string $message, array $reasons, array $snippets, string $eventType): array
+{
+    $score = 0;
+    $boolSignals = [
+        'commandMatch' => 24,
+        'shellHint' => 18,
+        'evasionHint' => 16,
+        'mismatch' => 10,
+        'clipboardWarning' => 10,
+        'winRHint' => 9,
+        'winXHint' => 6,
+        'consoleHint' => 8,
+        'pasteSequenceHint' => 8,
+        'copyTriggerHint' => 7,
+        'fileExplorerHint' => 5,
+        'browserErrorHint' => 5,
+        'fixActionHint' => 5,
+        'captchaHint' => 5
+    ];
+    foreach ($boolSignals as $key => $points) {
+        if (!empty($signals[$key])) {
+            $score += $points;
+        }
+    }
+
+    $messageLower = strtolower($message);
+    if (preg_match('/powershell|cmd\s+\/c|bash\s+-c|curl\s+|wget\s+|invoke-webrequest|encodedcommand/', $messageLower)) {
+        $score += 14;
+    }
+    if (preg_match('/captcha|verification|fix|error|console|terminal/', $messageLower)) {
+        $score += 6;
+    }
+
+    $reasonCount = count($reasons);
+    if ($reasonCount >= 6) {
+        $score += 10;
+    } elseif ($reasonCount >= 3) {
+        $score += 5;
+    }
+
+    $snippetCount = count($snippets);
+    if ($snippetCount >= 4) {
+        $score += 8;
+    } elseif ($snippetCount >= 2) {
+        $score += 4;
+    }
+
+    if ($eventType === 'unsafe_download') {
+        $score += 18;
+    } elseif ($eventType === 'shadow_ai') {
+        $score += 6;
+    }
+
+    $score = max(0, min(100, $score));
+    $verdict = 'low';
+    if ($score >= 65) {
+        $verdict = 'unsafe';
+    } elseif ($score >= 40) {
+        $verdict = 'suspicious';
+    }
+
+    return ['score' => $score, 'verdict' => $verdict];
+}
+
 function openDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFallback, string $debugFile): ?PDO
 {
     $dataDir = dirname($dbPath);
@@ -352,6 +676,7 @@ function openDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFall
     try {
         $pdo = new PDO('sqlite:' . $dbPath);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        clickfix_run_migrations($pdo);
     } catch (Throwable $exception) {
         writeDebugLog($debugFile, ['status' => 'db_error', 'error' => $exception->getMessage(), 'db_path' => $dbPath]);
         return null;
@@ -363,7 +688,7 @@ function openDatabase(string $dbPath, ?string $schemaPath, string $schemaSqlFall
     return $pdo;
 }
 
-$debugFile = __DIR__ . '/clickfix-debug.log';
+$debugFile = $logDir . '/clickfix-debug.log';
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -373,8 +698,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respondWithError(405, 'Method not allowed', $debugFile, ['method' => $_SERVER['REQUEST_METHOD'] ?? '']);
 }
+if (!clickfix_is_request_origin_allowed(true)) {
+    respondWithError(403, 'Origin not allowed', $debugFile, ['origin' => clickfix_request_origin()]);
+}
 
-$maxBytes = 32768;
+$maxBytes = (int) clickfix_env('CLICKFIX_REPORT_MAX_BYTES', '786432');
+$maxBytes = max(32768, min(2097152, $maxBytes));
 $rawBody = file_get_contents('php://input', false, null, 0, $maxBytes + 1);
 if ($rawBody === false || strlen($rawBody) > $maxBytes) {
     respondWithError(413, 'Payload too large', $debugFile, ['bytes' => $rawBody === false ? null : strlen($rawBody)]);
@@ -407,6 +736,10 @@ $message = isset($payload['message']) ? trim((string) $payload['message']) : '';
 $reason = isset($payload['reason']) ? trim((string) $payload['reason']) : '';
 $timestamp = isset($payload['timestamp']) ? (string) $payload['timestamp'] : '';
 $signals = isset($payload['signals']) && is_array($payload['signals']) ? $payload['signals'] : [];
+$reasonEntriesRaw = isset($payload['reason_entries']) && is_array($payload['reason_entries'])
+    ? $payload['reason_entries']
+    : (isset($payload['reasonEntries']) && is_array($payload['reasonEntries']) ? $payload['reasonEntries'] : []);
+$matchedSnippetsRaw = isset($payload['snippets']) && is_array($payload['snippets']) ? $payload['snippets'] : [];
 $detectedContent = isset($payload['detectedContent'])
     ? trim((string) $payload['detectedContent'])
     : '';
@@ -416,6 +749,17 @@ $fullContext = isset($payload['full_context'])
 $statsData = isset($payload['data']) && is_array($payload['data']) ? $payload['data'] : [];
 $clientIdRaw = isset($payload['client_id']) ? (string) $payload['client_id'] : (string) ($statsData['clientId'] ?? '');
 $clientId = substr(preg_replace('/[^a-zA-Z0-9_-]/', '', trim($clientIdRaw)), 0, 64);
+$eventType = strtolower(trim((string) ($payload['event_type'] ?? 'clickfix_alert')));
+$runtimeVerdictRaw = $payload['runtime_verdict'] ?? null;
+$runtimeVerdictJson = null;
+if (is_array($runtimeVerdictRaw)) {
+    $runtimeVerdictJson = json_encode($runtimeVerdictRaw, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+} elseif (is_string($runtimeVerdictRaw) && $runtimeVerdictRaw !== '') {
+    $runtimeVerdictJson = $runtimeVerdictRaw;
+}
+if (is_string($runtimeVerdictJson)) {
+    $runtimeVerdictJson = substr($runtimeVerdictJson, 0, 4000);
+}
 $manualReport = filter_var($payload['manualReport'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
 $blocked = filter_var($payload['blocked'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
 $scoreTotalRaw = $payload['score_total'] ?? $payload['scoreTotal'] ?? ($signals['confidenceScore'] ?? null);
@@ -434,6 +778,10 @@ if (is_array($scoreDetailsRaw)) {
 if (is_string($scoreDetailsJson)) {
     $scoreDetailsJson = substr($scoreDetailsJson, 0, 20000);
 }
+$scanAfterImageRaw = isset($payload['scan_after_image']) ? (string) $payload['scan_after_image'] : '';
+$scanMaxImageBytes = 260 * 1024;
+$scanServerMaxImageBytes = 1200 * 1024;
+$decodedAfterImage = clickfix_decode_data_url_image($scanAfterImageRaw, $scanMaxImageBytes);
 
 $url = substr($url, 0, 2048);
 $previousUrl = substr($previousUrl, 0, 2048);
@@ -442,6 +790,7 @@ $message = substr($message !== '' ? $message : $reason, 0, 2000);
 $timestamp = substr($timestamp, 0, 100);
 $detectedContent = substr($detectedContent, 0, 4000);
 $fullContext = substr($fullContext, 0, 50000);
+$eventType = substr($eventType, 0, 60);
 
 $message = preg_replace('/[\x00-\x1F\x7F]/', ' ', (string) $message);
 $message = trim(strip_tags((string) $message));
@@ -505,6 +854,12 @@ if ($previousUrl !== '' && filter_var($previousUrl, FILTER_VALIDATE_URL) === fal
 
 if ($hostname !== '' && !preg_match('/^[a-z0-9.-]+$/i', $hostname)) {
     respondWithError(400, 'Invalid hostname', $debugFile, ['hostname' => $hostname]);
+}
+if ($eventType === '' || !preg_match('/^[a-z0-9_-]+$/', $eventType)) {
+    $eventType = 'clickfix_alert';
+}
+if ($type === 'alert' && $manualReport) {
+    $eventType = 'manual_report';
 }
 
 if ($type === 'alert' && $url === '' && $hostname === '' && $message === '') {
@@ -570,11 +925,69 @@ foreach ($signals as $key => $value) {
     $normalizedSignals[$key] = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
 }
 
+$normalizedReasonEntries = [];
+foreach (array_slice($reasonEntriesRaw, 0, 60) as $entry) {
+    if (!is_array($entry)) {
+        continue;
+    }
+    $key = substr(trim((string) ($entry['key'] ?? '')), 0, 80);
+    if ($key === '' || !preg_match('/^[a-zA-Z0-9_-]+$/', $key)) {
+        continue;
+    }
+    $value = $entry['value'] ?? null;
+    if ($value === null || $value === '') {
+        $normalizedReasonEntries[] = ['key' => $key];
+        continue;
+    }
+    $normalizedReasonEntries[] = [
+        'key' => $key,
+        'value' => substr(trim((string) $value), 0, 260),
+    ];
+}
+
+$normalizedSnippets = [];
+foreach (array_slice($matchedSnippetsRaw, 0, 40) as $snippet) {
+    $snippet = substr(trim((string) $snippet), 0, 260);
+    if ($snippet !== '') {
+        $normalizedSnippets[] = $snippet;
+    }
+}
+
 $country = $_SERVER['HTTP_CF_IPCOUNTRY']
     ?? $_SERVER['HTTP_X_COUNTRY']
     ?? $_SERVER['HTTP_GEOIP_COUNTRY_CODE']
     ?? '';
 $country = substr(preg_replace('/[^A-Z]/', '', (string) $country), 0, 2);
+$ipAddress = clickfix_client_ip();
+
+$pdo = openDatabase($dbPath, $schemaPath, $defaultSchemaSql, $debugFile);
+if (!($pdo instanceof PDO)) {
+    respondWithError(500, 'Database unavailable', $debugFile, ['db_path' => $dbPath]);
+}
+
+if (!clickfix_api_rate_limit($pdo, 'report:ip:' . $ipAddress, 240, 60)) {
+    respondWithError(429, 'Rate limited', $debugFile, ['ip' => $ipAddress]);
+}
+
+$requireAuth = in_array(
+    strtolower(trim((string) clickfix_env('CLICKFIX_REPORT_REQUIRE_AUTH', '1'))),
+    ['1', 'true', 'yes', 'on'],
+    true
+);
+$apiClaims = clickfix_authenticate_api_request($pdo, ['report:write']);
+$trustedSignalSource = is_array($apiClaims) ? 1 : 0;
+if ($requireAuth && !is_array($apiClaims)) {
+    respondWithError(401, 'Unauthorized', $debugFile, ['ip' => $ipAddress]);
+}
+if (is_array($apiClaims)) {
+    $tokenClient = (string) ($apiClaims['sub'] ?? '');
+    $tokenRpm = (int) ($apiClaims['rpm'] ?? 120);
+    if (!clickfix_api_rate_limit($pdo, 'report:token:' . $tokenClient, max(30, min(2000, $tokenRpm)), 60)) {
+        respondWithError(429, 'Rate limited', $debugFile, ['token_client' => $tokenClient]);
+    }
+}
+
+$serverVerdict = computeServerVerdict($normalizedSignals, $message, $normalizedReasonEntries, $normalizedSnippets, $eventType);
 
 $entry = [
     'type' => $type,
@@ -585,6 +998,8 @@ $entry = [
     'message' => $message,
     'timestamp' => $timestamp,
     'signals' => $normalizedSignals,
+    'reason_entries' => $normalizedReasonEntries,
+    'matched_snippets' => $normalizedSnippets,
     'detected_content' => $detectedContent,
     'full_context' => $fullContext,
     'blocked' => $blocked ? 1 : 0,
@@ -592,15 +1007,20 @@ $entry = [
     'client_id' => $clientId,
     'score_total' => $scoreTotal,
     'score_details' => $scoreDetailsJson,
+    'event_type' => $eventType,
+    'runtime_verdict_json' => $runtimeVerdictJson,
+    'server_score_total' => (int) ($serverVerdict['score'] ?? 0),
+    'server_verdict' => (string) ($serverVerdict['verdict'] ?? 'low'),
+    'trusted_signal_source' => $trustedSignalSource,
     'user_agent' => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512),
-    'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+    'ip' => $ipAddress,
     'country' => $type === 'stats' && $normalizedStats['country'] !== '' ? $normalizedStats['country'] : $country
 ];
 $logLine = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;
 
-$pdo = openDatabase($dbPath, $schemaPath, $defaultSchemaSql, $debugFile);
 $inserted = false;
 $skipLogWrite = false;
+$targetReportId = 0;
 if ($pdo instanceof PDO) {
     try {
         if ($type === 'stats') {
@@ -653,11 +1073,18 @@ if ($pdo instanceof PDO) {
                 $updateStatement = $pdo->prepare(
                     'UPDATE reports
                      SET duplicate_count = :count,
-                         last_seen = :last_seen,
-                         user_agent = :user_agent,
-                         country = :country,
-                         score_total = COALESCE(:score_total, score_total),
-                         score_details_json = COALESCE(:score_details, score_details_json)
+                          last_seen = :last_seen,
+                          user_agent = :user_agent,
+                          country = :country,
+                          event_type = :event_type,
+                          runtime_verdict_json = COALESCE(:runtime_verdict_json, runtime_verdict_json),
+                          score_total = COALESCE(:score_total, score_total),
+                          server_score_total = COALESCE(:server_score_total, server_score_total),
+                          server_verdict = COALESCE(:server_verdict, server_verdict),
+                          trusted_signal_source = CASE WHEN :trusted_signal_source = 1 THEN 1 ELSE trusted_signal_source END,
+                          score_details_json = COALESCE(:score_details, score_details_json),
+                          reason_entries_json = COALESCE(:reason_entries, reason_entries_json),
+                          matched_snippets_json = COALESCE(:matched_snippets, matched_snippets_json)
                      WHERE id = :id'
                 );
                 $updateStatement->execute([
@@ -665,16 +1092,24 @@ if ($pdo instanceof PDO) {
                     ':last_seen' => $entry['received_at'],
                     ':user_agent' => $entry['user_agent'],
                     ':country' => $entry['country'],
+                    ':event_type' => $entry['event_type'],
+                    ':runtime_verdict_json' => $entry['runtime_verdict_json'],
                     ':score_total' => $entry['score_total'],
+                    ':server_score_total' => $entry['server_score_total'],
+                    ':server_verdict' => $entry['server_verdict'],
+                    ':trusted_signal_source' => $entry['trusted_signal_source'],
                     ':score_details' => $entry['score_details'],
+                    ':reason_entries' => json_encode($entry['reason_entries'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                    ':matched_snippets' => json_encode($entry['matched_snippets'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
                     ':id' => (int) ($dedupeRow['id'] ?? 0)
                 ]);
+                $targetReportId = (int) ($dedupeRow['id'] ?? 0);
                 $inserted = true;
                 $skipLogWrite = true;
             } else {
                 $statement = $pdo->prepare(
-                    'INSERT INTO reports (received_at, url, previous_url, hostname, message, detected_content, full_context, signals_json, blocked, client_id, score_total, score_details_json, duplicate_count, last_seen, user_agent, ip, country)
-                     VALUES (:received_at, :url, :previous_url, :hostname, :message, :detected_content, :full_context, :signals_json, :blocked, :client_id, :score_total, :score_details, :duplicate_count, :last_seen, :user_agent, :ip, :country)'
+                    'INSERT INTO reports (received_at, url, previous_url, hostname, message, detected_content, full_context, signals_json, blocked, client_id, score_total, score_details_json, reason_entries_json, matched_snippets_json, duplicate_count, last_seen, user_agent, ip, country, event_type, runtime_verdict_json, server_score_total, server_verdict, trusted_signal_source)
+                     VALUES (:received_at, :url, :previous_url, :hostname, :message, :detected_content, :full_context, :signals_json, :blocked, :client_id, :score_total, :score_details, :reason_entries, :matched_snippets, :duplicate_count, :last_seen, :user_agent, :ip, :country, :event_type, :runtime_verdict_json, :server_score_total, :server_verdict, :trusted_signal_source)'
                 );
                 $statement->execute([
                     ':received_at' => $entry['received_at'],
@@ -689,12 +1124,20 @@ if ($pdo instanceof PDO) {
                     ':client_id' => $clientId,
                     ':score_total' => $entry['score_total'],
                     ':score_details' => $entry['score_details'],
+                    ':reason_entries' => json_encode($entry['reason_entries'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                    ':matched_snippets' => json_encode($entry['matched_snippets'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
                     ':duplicate_count' => 1,
                     ':last_seen' => $entry['received_at'],
                     ':user_agent' => $entry['user_agent'],
                     ':ip' => $entry['ip'],
-                    ':country' => $entry['country']
+                    ':country' => $entry['country'],
+                    ':event_type' => $entry['event_type'],
+                    ':runtime_verdict_json' => $entry['runtime_verdict_json'],
+                    ':server_score_total' => $entry['server_score_total'],
+                    ':server_verdict' => $entry['server_verdict'],
+                    ':trusted_signal_source' => $entry['trusted_signal_source']
                 ]);
+                $targetReportId = (int) $pdo->lastInsertId();
             }
         }
         $inserted = true;
@@ -707,14 +1150,62 @@ if (!$skipLogWrite && file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_E
     respondWithError(500, 'Failed to write report', $debugFile, ['log_file' => $logFile]);
 }
 
-if ($manualReport && $hostname !== '') {
+if ($type === 'alert' && $targetReportId > 0) {
+    $afterStored = false;
+    if (is_array($decodedAfterImage)) {
+        $storedAfter = clickfix_store_scan_image($targetReportId, 'after', $decodedAfterImage);
+        if ($storedAfter === null) {
+            writeDebugLog($debugFile, [
+                'status' => 'scan_store_warning',
+                'report_id' => $targetReportId,
+                'kind' => 'after'
+            ]);
+        } elseif (!clickfix_scan_image_mark_pending($pdo, $targetReportId, 'after')) {
+            writeDebugLog($debugFile, [
+                'status' => 'scan_review_queue_warning',
+                'report_id' => $targetReportId,
+                'kind' => 'after'
+            ]);
+            $afterStored = true;
+        } else {
+            $afterStored = true;
+        }
+    }
+    if ($afterStored && $entry['url'] !== '') {
+        $serverBefore = clickfix_capture_before_image_with_siteshot($entry['url'], $scanServerMaxImageBytes, $debugFile);
+        if (is_array($serverBefore)) {
+            $storedBefore = clickfix_store_scan_image($targetReportId, 'before', $serverBefore);
+            if ($storedBefore === null) {
+                writeDebugLog($debugFile, [
+                    'status' => 'scan_store_warning',
+                    'report_id' => $targetReportId,
+                    'kind' => 'before'
+                ]);
+            } elseif (!clickfix_scan_image_mark_pending($pdo, $targetReportId, 'before')) {
+                writeDebugLog($debugFile, [
+                    'status' => 'scan_review_queue_warning',
+                    'report_id' => $targetReportId,
+                    'kind' => 'before'
+                ]);
+            }
+        } else {
+            writeDebugLog($debugFile, [
+                'status' => 'siteshot_before_not_available',
+                'report_id' => $targetReportId,
+                'url' => $entry['url'],
+            ]);
+        }
+    }
+}
+
+if ($manualReport && $hostname !== '' && $trustedSignalSource === 1) {
     $listFile = __DIR__ . '/clickfixlist';
     $existing = [];
     if (is_readable($listFile)) {
         $lines = file($listFile, FILE_IGNORE_NEW_LINES) ?: [];
         foreach ($lines as $line) {
             $line = trim((string) $line);
-            if ($line === '' || str_starts_with($line, '#')) {
+            if ($line === '' || startsWithHashComment($line)) {
                 continue;
             }
             $existing[strtolower($line)] = true;
@@ -732,14 +1223,14 @@ if ($manualReport && $hostname !== '') {
     }
 }
 
-if ($type === 'stats' && !empty($normalizedStats['alert_sites'])) {
+if ($type === 'stats' && !empty($normalizedStats['alert_sites']) && $trustedSignalSource === 1) {
     $listFile = __DIR__ . '/alertsites';
     $existing = [];
     if (is_readable($listFile)) {
         $lines = file($listFile, FILE_IGNORE_NEW_LINES) ?: [];
         foreach ($lines as $line) {
             $line = trim((string) $line);
-            if ($line === '' || str_starts_with($line, '#')) {
+            if ($line === '' || startsWithHashComment($line)) {
                 continue;
             }
             $existing[strtolower($line)] = true;
