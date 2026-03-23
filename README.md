@@ -159,6 +159,7 @@ ClickFix Mitigator is designed to reduce accidental execution, improve evidence 
 
 - Repository: https://github.com/j0rd1s3rr4n0/ClickFixMitigator
 - Chrome Web Store: https://chromewebstore.google.com/detail/clickfix-mitigator/nmldafmgfcfopjoigbmmlmcnininifaa
+- Firefox package: `browser-extension/build-firefox.ps1`
 - Analyst access: https://clickfix.jordiserrano.me
 - Privacy policy: `PrivacyPolicy.md`
 
@@ -168,6 +169,10 @@ ClickFix Mitigator is designed to reduce accidental execution, improve evidence 
 1. Open `chrome://extensions`.
 2. Enable `Developer mode`.
 3. Load `browser-extension/`.
+
+Firefox local package:
+1. Open `about:debugging#/runtime/this-firefox`.
+2. Load `browser-extension/dist/firefox/manifest.json` after running `browser-extension/build-firefox.ps1`.
 
 For distribution or store packaging, see:
 - `browser-extension/README.md`

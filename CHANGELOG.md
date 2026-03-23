@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## Unreleased - 2026-03-22
+
+### Windows Agent GUI hardening
+- `windows-agent/agent.py`: Promoted the agent GUI to the primary alert surface, added panel-driven alert delivery, settings toggles for GUI behavior, and bumped the runtime version to `agent-2026-03-22-gui-alerts`.
+- `windows-agent/control_panel.py`: Rebuilt the desktop panel into a real console with live alert banner, in-panel alert feed, custom popup alerts, and direct exit/minimize/operator actions.
+- `windows-agent/config.json`: Added GUI behavior flags for panel-on-alert, optional Windows toasts, and tray-first close behavior.
+- `windows-agent/README.md` + `windows-agent/CHANGELOG.md`: Updated the Windows Agent docs and release notes for the new GUI-first workflow.
+
+### Firefox extension packaging
+- `browser-extension/manifest.json`: Version bump to `0.4.10`.
+- `browser-extension/manifest.firefox.json`: Added a Firefox-specific MV3 manifest using `background.scripts` plus `browser_specific_settings.gecko` metadata.
+- `browser-extension/build-firefox.ps1`: Added a local build script that stages a Firefox package and emits a `.xpi`.
+- `browser-extension/README.md`: Added Firefox build/install/store packaging instructions.
+
 ## Unreleased - 2026-03-15
 
 ### Windows Agent uplift
