@@ -24,12 +24,7 @@ Web/ClickFix/clickfix-score-config-premium.json
 botanalyzer/done.txt
 botanalyzer/urls.txt
 /botanalyzer/chrome-profile/
-# /botanalyzer/chrome-profile/Default/
-/botanalyzer/chrome-profile/Default/Cache/
-/botanalyzer/chrome-profile/Default/Cache/Cache_Data/
-/botanalyzer/chrome-profile/Default/File System/
-/botanalyzer/chrome-profile/Default/Code Cache/js
-/botanalyzer/chrome-profile/AutofillStates/
+
 
 # General
 .vscode
@@ -37,3 +32,4 @@ botanalyzer/urls.txt
 *.sql
 *.zip
 *.sqlite
+/botanalyzer/__pycache__
