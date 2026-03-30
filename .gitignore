@@ -1,4 +1,5 @@
 browser-extension/ClickFixMitigator.zip
+browser-extension/dist/
 
 # Snyk Security Extension - AI Rules (auto-generated)
 .github/instructions/snyk_rules.instructions.md
@@ -18,6 +19,21 @@ Web/ClickFix/clickfixallowlist
 Web/ClickFix/clickfix-report.log
 *.log
 Web/ClickFix/alertsites
+Web/ClickFix/.env.security
+Web/ClickFix/keys/clickfix_sign_private.pem
+Web/ClickFix/keys/clickfix_sign_public.pem
+Web/ClickFix/clickfix-score-config-premium.json
 botanalyzer/done.txt
 botanalyzer/urls.txt
 botanalyzer/urls.txt
+/Web/_legacy_v2_extract/var/www/jordiserrano/ClickFix/data/sessions
+*.sql
+*.zip
+*.sqlite
+/Web/_legacy_v2_extract
+/Web/ClickFix/data/sessions
+/botanalyzer/chrome-profile/Default
+/botanalyzer/chrome-profile/Default/Cache
+/botanalyzer/chrome-profile/Default/Cache/Cache_Data
+/botanalyzer/chrome-profile/Default/File System
+/botanalyzer/chrome-profile
