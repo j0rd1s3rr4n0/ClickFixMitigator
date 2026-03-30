@@ -3,37 +3,37 @@ browser-extension/dist/
 
 # Snyk Security Extension - AI Rules (auto-generated)
 .github/instructions/snyk_rules.instructions.md
-Web/ClickFix/data/sessions/sess_of108nhrjjsh3g0gphpj4hfu3s
+
+# ClickFix data
+Web/ClickFix/data/sessions/
 Web/ClickFix/data/clickfix.sqlite
-ClickFix Mitigator v0.2.9.zip
 Web/ClickFix/data/intel-cache.json
-/botanalyzer/chrome-profile/Default/Code Cache/js
-/botanalyzer/chrome-profile/Default/Code Cache/js
-/.vscode
-/botanalyzer
-/botanalyzer
-/botanalyzer/chrome-profile/AutofillStates
-/botanalyzer/chrome-profile/AutofillStates/2025.6.13.84507
-Web/ClickFix/clickfixallowlist
 Web/ClickFix/clickfixallowlist
 Web/ClickFix/clickfix-report.log
-*.log
 Web/ClickFix/alertsites
 Web/ClickFix/.env.security
 Web/ClickFix/keys/clickfix_sign_private.pem
 Web/ClickFix/keys/clickfix_sign_public.pem
 Web/ClickFix/clickfix-score-config-premium.json
+
+# Legacy
+/Web/_legacy_v2_extract/
+/Web/_legacy_v2_extract/var/www/jordiserrano/ClickFix/data/sessions
+
+# Botanalyzer
 botanalyzer/done.txt
 botanalyzer/urls.txt
-botanalyzer/urls.txt
-/Web/_legacy_v2_extract/var/www/jordiserrano/ClickFix/data/sessions
+/botanalyzer/chrome-profile/
+# /botanalyzer/chrome-profile/Default/
+/botanalyzer/chrome-profile/Default/Cache/
+/botanalyzer/chrome-profile/Default/Cache/Cache_Data/
+/botanalyzer/chrome-profile/Default/File System/
+/botanalyzer/chrome-profile/Default/Code Cache/js
+/botanalyzer/chrome-profile/AutofillStates/
+
+# General
+.vscode
+*.log
 *.sql
 *.zip
 *.sqlite
-/Web/_legacy_v2_extract
-/Web/ClickFix/data/sessions
-/botanalyzer/chrome-profile/Default
-/botanalyzer/chrome-profile/Default/Cache
-/botanalyzer/chrome-profile/Default/Cache/Cache_Data
-/botanalyzer/chrome-profile/Default/File System
-/botanalyzer/chrome-profile
