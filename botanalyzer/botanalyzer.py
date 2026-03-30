@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import time
 import threading
 import subprocess
@@ -9,6 +10,7 @@ import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 import shutil
 from dataclasses import dataclass
 from queue import Queue, Empty
@@ -44,6 +46,10 @@ DEFAULT_BUTTON_TIMEOUT = 10.0
 DEFAULT_POST_LOAD_WAIT = 10.5
 DEFAULT_MAX_FRAME_DEPTH = 5
 DEFAULT_MAX_DIV_CLICKS = 1000
+DEFAULT_MAX_URL_SECONDS = 90
+DEFAULT_MAX_CLICKS = 160
+DEFAULT_BLOCKED_OUTPUT = "blocked.txt"
+RUNTIME_MAX_DIV_CLICKS = DEFAULT_MAX_DIV_CLICKS
 
 BUTTON_SELECTORS = [
     (By.TAG_NAME, "button"),
@@ -61,6 +67,10 @@ EXCLUDED_SNAPSHOT_DIRS = {"venv", "chrome-profile", "__pycache__"}
 DEFAULT_PRECHECK_TIMEOUT = 8
 DEFAULT_PRECHECK_WORKERS = 60
 DEFAULT_PRECHECK_MAX_WORKERS = 256
+DEFAULT_THREATFOX_DAYS = 7
+DEFAULT_THREATFOX_LIMIT = 400
+DEFAULT_THREATFOX_TIMEOUT = 12
+DEFAULT_THREATFOX_TAG = "clickfix, IClickFix, stealer, ErrTraffic, ClearFake, ClickChain"
 BLOCKED_SOCIAL_HOSTS = {
     "facebook.com",
     "www.facebook.com",
@@ -90,6 +100,20 @@ def load_urls(path: Path) -> list[str]:
     return urls
 
 
+def load_done_urls(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+    done: set[str] = set()
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        normalized = normalize_url(line)
+        if normalized:
+            done.add(normalized)
+    return done
+
+
 def is_http_url(value: str) -> bool:
     try:
         parsed = urlparse(value)
@@ -105,6 +129,99 @@ def normalize_url(value: str) -> str:
     if "://" not in line:
         line = f"https://{line}"
     return line
+
+
+def parse_threatfox_tags(raw: str | None) -> list[str]:
+    if not raw:
+        return []
+    parts = []
+    for chunk in str(raw).replace(";", ",").replace("\n", ",").split(","):
+        tag = chunk.strip()
+        if not tag:
+            continue
+        if tag not in parts:
+            parts.append(tag)
+    return parts
+
+
+def fetch_threatfox_iocs(auth_key: str, days: int, limit: int, timeout: int, tag: str | None) -> list[str]:
+    auth_key = auth_key.strip()
+    if not auth_key:
+        return []
+    days = max(1, min(int(days), 30))
+    limit = max(1, min(int(limit), 5000))
+    timeout = max(3, min(int(timeout), 30))
+    tag_values = parse_threatfox_tags(tag)
+    payloads: list[tuple[str, bytes]] = []
+    if tag_values:
+        per_tag = max(1, min(limit, max(1, int(limit / max(1, len(tag_values))))))
+        for tag_value in tag_values:
+            payloads.append((tag_value, json.dumps({"query": "taginfo", "tag": tag_value, "limit": per_tag}).encode("utf-8")))
+    else:
+        payloads.append(("", json.dumps({"query": "get_iocs", "days": days}).encode("utf-8")))
+
+    results: list[str] = []
+    seen: set[str] = set()
+    for tag_label, payload in payloads:
+        req = Request(
+            "https://threatfox-api.abuse.ch/api/v1/",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Auth-Key": auth_key,
+                "User-Agent": "botanalyzer/1.0",
+            },
+            method="POST",
+        )
+        try:
+            with urlopen(req, timeout=timeout) as resp:
+                data = resp.read().decode("utf-8", errors="replace")
+        except Exception:
+            continue
+
+        try:
+            payload_json = json.loads(data)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(payload_json, dict):
+            continue
+        query_status = str(payload_json.get("query_status", ""))
+        if query_status not in {"ok", "no_results"}:
+            continue
+
+        rows = payload_json.get("data", [])
+        if not isinstance(rows, list):
+            continue
+
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            ioc_type = str(row.get("ioc_type", "")).lower()
+            ioc = str(row.get("ioc", "")).strip()
+            if not ioc:
+                continue
+
+            url_value = ""
+            if ioc_type in {"url", "uri"}:
+                url_value = ioc
+            elif ioc_type in {"domain", "hostname"}:
+                url_value = f"https://{ioc}"
+            else:
+                continue
+
+            normalized = normalize_url(url_value)
+            if not normalized:
+                continue
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            results.append(normalized)
+            if len(results) >= limit:
+                break
+        if len(results) >= limit:
+            break
+
+    return results
 
 
 def is_blocked_social_url(value: str) -> bool:
@@ -494,7 +611,7 @@ def collect_clickables(driver: webdriver.Chrome) -> list:
             elements.extend(driver.find_elements(by, selector))
         except WebDriverException:
             continue
-    elements.extend(collect_div_clickables(driver))
+    elements.extend(collect_div_clickables(driver, RUNTIME_MAX_DIV_CLICKS))
     return elements
 
 
@@ -542,12 +659,12 @@ def count_clickables_in_frames(
     return total
 
 
-def wait_for_buttons(driver: webdriver.Chrome, timeout: float) -> int:
+def wait_for_buttons(driver: webdriver.Chrome, timeout: float, max_depth: int) -> int:
     deadline = time.time() + timeout
     last_count = 0
     while time.time() < deadline:
         try:
-            last_count = count_clickables_in_frames(driver)
+            last_count = count_clickables_in_frames(driver, max_depth=max_depth)
             if last_count:
                 return last_count
         except WebDriverException:
@@ -556,11 +673,15 @@ def wait_for_buttons(driver: webdriver.Chrome, timeout: float) -> int:
     return last_count
 
 
-def click_clickables(driver: webdriver.Chrome, delay: float) -> int:
+def click_clickables(driver: webdriver.Chrome, delay: float, max_clicks: int, deadline: float | None) -> int:
     elements = collect_clickables(driver)
     clicked = 0
     seen = set()
     for element in elements:
+        if deadline and time.time() >= deadline:
+            break
+        if clicked >= max(1, int(max_clicks)):
+            break
         try:
             if element in seen:
                 continue
@@ -583,6 +704,8 @@ def click_clickables(driver: webdriver.Chrome, delay: float) -> int:
 def click_clickables_in_frames(
     driver: webdriver.Chrome,
     delay: float,
+    max_clicks: int,
+    deadline: float | None,
     depth: int = 0,
     max_depth: int = DEFAULT_MAX_FRAME_DEPTH,
 ) -> int:
@@ -590,17 +713,21 @@ def click_clickables_in_frames(
         return 0
     clicked = 0
     try:
-        clicked += click_clickables(driver, delay)
+        clicked += click_clickables(driver, delay, max_clicks, deadline)
         frames = driver.find_elements(By.CSS_SELECTOR, "iframe, frame")
     except WebDriverException:
         return clicked
     for frame in frames:
+        if deadline and time.time() >= deadline:
+            break
+        if clicked >= max(1, int(max_clicks)):
+            break
         try:
             driver.switch_to.frame(frame)
         except WebDriverException:
             continue
         try:
-            clicked += click_clickables_in_frames(driver, delay, depth + 1, max_depth)
+            clicked += click_clickables_in_frames(driver, delay, max_clicks, deadline, depth + 1, max_depth)
         finally:
             try:
                 driver.switch_to.parent_frame()
@@ -621,6 +748,35 @@ def wait_for_close(driver: webdriver.Chrome, wait_seconds: float) -> bool:
             return True
         time.sleep(0.2)
     return False
+
+
+def detect_access_block(driver: webdriver.Chrome) -> str:
+    try:
+        current_url = (driver.current_url or "").lower()
+    except WebDriverException:
+        current_url = ""
+    try:
+        title = (driver.title or "").lower()
+    except WebDriverException:
+        title = ""
+    if current_url.startswith(("chrome-error://", "edge://", "about:neterror")):
+        return "browser_error"
+    tokens = [
+        "access denied",
+        "site is blocked",
+        "this site is blocked",
+        "blocked",
+        "denied",
+        "denegado",
+        "acceso denegado",
+        "no se puede acceder",
+        "err_access_denied",
+        "err_blocked_by_client",
+    ]
+    for token in tokens:
+        if token in title:
+            return token
+    return ""
 
 
 def close_blocked_social_tabs(
@@ -802,15 +958,26 @@ def process_url(
 ) -> None:
     label = f"W{state.worker_id}"
     print(f"[{label}] [OPEN] {url}")
+    start = time.time()
+    deadline = start + max(10, int(args.max_url_seconds))
     try:
         try:
             try:
                 state.driver.get(url)
             except WebDriverException:
                 print(f"[{label}] [TIMEOUT] {url}")
+            if time.time() >= deadline:
+                print(f"[{label}] [ABORT] Max URL time reached (after load)")
+                return
             wait_for_dom_ready(state.driver, args.page_timeout)
+            if time.time() >= deadline:
+                print(f"[{label}] [ABORT] Max URL time reached (after dom)")
+                return
             if args.post_load_wait:
                 time.sleep(args.post_load_wait)
+            if time.time() >= deadline:
+                print(f"[{label}] [ABORT] Max URL time reached (post-load)")
+                return
             if maybe_allow_clickfix_session(state.driver, label, ALLOW_SESSION_SCORE_THRESHOLD):
                 time.sleep(2.0)
                 wait_for_dom_ready(state.driver, args.page_timeout)
@@ -818,6 +985,12 @@ def process_url(
                 current_url = state.driver.current_url or ""
             except WebDriverException:
                 current_url = ""
+            block_reason = detect_access_block(state.driver)
+            if block_reason:
+                print(f"[{label}] [BLOCKED] Access blocked ({block_reason}) -> {current_url or url}")
+                if args.blocked:
+                    append_line(Path(args.blocked), url)
+                return
             loop_key = normalize_loop_url(current_url)
             if loop_key:
                 state.loop_counts[loop_key] = state.loop_counts.get(loop_key, 0) + 1
@@ -829,13 +1002,25 @@ def process_url(
                 state.main_window = close_blocked_social_tabs(state.driver, state.main_window, label)
                 print(f"[{label}] [SKIP] Social site blocked: {current_url}")
                 return
-            found = wait_for_buttons(state.driver, args.button_timeout)
+            if time.time() >= deadline:
+                print(f"[{label}] [ABORT] Max URL time reached (pre-click)")
+                return
+            found = wait_for_buttons(state.driver, args.button_timeout, args.max_frame_depth)
             if found:
                 print(f"[{label}] [BUTTONS] {found} detected after JS load")
-            clicked = click_clickables_in_frames(state.driver, args.between_clicks)
+            clicked = click_clickables_in_frames(
+                state.driver,
+                args.between_clicks,
+                args.max_clicks,
+                deadline,
+                max_depth=args.max_frame_depth,
+            )
             print(f"[{label}] [CLICKED] {clicked} buttons")
             state.main_window = close_blocked_social_tabs(state.driver, state.main_window, label)
             state.main_window = close_duplicate_tabs(state.driver, state.main_window, label)
+            if time.time() >= deadline:
+                print(f"[{label}] [ABORT] Max URL time reached (post-click)")
+                return
             closed = wait_for_close(state.driver, args.wait_close)
             if closed:
                 try:
@@ -1001,6 +1186,10 @@ def main() -> int:
     parser.add_argument("--between-clicks", type=float, default=DEFAULT_BETWEEN_CLICKS)
     parser.add_argument("--button-timeout", type=float, default=DEFAULT_BUTTON_TIMEOUT)
     parser.add_argument("--post-load-wait", type=float, default=DEFAULT_POST_LOAD_WAIT)
+    parser.add_argument("--max-url-seconds", type=int, default=DEFAULT_MAX_URL_SECONDS)
+    parser.add_argument("--max-clicks", type=int, default=DEFAULT_MAX_CLICKS)
+    parser.add_argument("--max-frame-depth", type=int, default=DEFAULT_MAX_FRAME_DEPTH)
+    parser.add_argument("--max-div-clicks", type=int, default=DEFAULT_MAX_DIV_CLICKS)
     parser.add_argument(
         "--profile-dir",
         default=str(Path(__file__).resolve().parent / "chrome-profile"),
@@ -1041,14 +1230,43 @@ def main() -> int:
     parser.add_argument("--precheck-timeout", type=int, default=DEFAULT_PRECHECK_TIMEOUT)
     parser.add_argument("--precheck-workers", type=int, default=DEFAULT_PRECHECK_WORKERS)
     parser.add_argument("--dead", default="dead.txt", help="Path to dead URLs output file")
+    parser.add_argument("--blocked", default=DEFAULT_BLOCKED_OUTPUT, help="Path to blocked URLs output file")
     parser.add_argument("--lang", help="Chrome UI language, e.g. es-ES")
     parser.add_argument("--accept-languages", help="Chrome accept_languages list, e.g. es-ES,es,en")
+    parser.add_argument("--auto", action="store_true", help="Enable automatic defaults (ThreatFox + precheck + safe limits).")
+    parser.add_argument("--threatfox", action="store_true", help="Pull fresh IOCs from ThreatFox")
+    parser.add_argument(
+        "--threatfox-key",
+        default=os.environ.get("THREATFOX_AUTH_KEY", ""),
+        help="ThreatFox Auth-Key (or set THREATFOX_AUTH_KEY env var)",
+    )
+    parser.add_argument("--threatfox-days", type=int, default=DEFAULT_THREATFOX_DAYS)
+    parser.add_argument("--threatfox-limit", type=int, default=DEFAULT_THREATFOX_LIMIT)
+    parser.add_argument("--threatfox-timeout", type=int, default=DEFAULT_THREATFOX_TIMEOUT)
+    parser.add_argument(
+        "--threatfox-tag",
+        default=DEFAULT_THREATFOX_TAG,
+        help="ThreatFox tag to query (empty to use recent IOCs instead).",
+    )
     # Running without arguments should only show available options and examples.
     if len(sys.argv) == 1:
         parser.print_help()
         return 0
 
     args = parser.parse_args()
+    if args.auto:
+        args.threatfox = True
+        args.precheck = True
+        args.no_precheck = False
+        if args.max_url_seconds < DEFAULT_MAX_URL_SECONDS:
+            args.max_url_seconds = DEFAULT_MAX_URL_SECONDS
+        if args.max_clicks < DEFAULT_MAX_CLICKS:
+            args.max_clicks = DEFAULT_MAX_CLICKS
+        if args.max_div_clicks < DEFAULT_MAX_DIV_CLICKS:
+            args.max_div_clicks = DEFAULT_MAX_DIV_CLICKS
+    args.max_url_seconds = max(10, min(int(args.max_url_seconds), 600))
+    args.max_clicks = max(10, min(int(args.max_clicks), 3000))
+    args.max_frame_depth = max(1, min(int(args.max_frame_depth), 12))
 
     if SELENIUM_IMPORT_ERROR is not None:
         print(
@@ -1064,7 +1282,55 @@ def main() -> int:
         default_extension = Path(__file__).resolve().parent.parent / "browser-extension"
         if default_extension.exists():
             args.extension.append(str(default_extension))
+    global RUNTIME_MAX_DIV_CLICKS
+    RUNTIME_MAX_DIV_CLICKS = max(50, min(int(args.max_div_clicks), 5000))
     source_urls = load_urls(urls_path)
+    done_urls = load_done_urls(done_path)
+    if done_urls:
+        source_urls = [u for u in source_urls if normalize_url(u) not in done_urls]
+
+    if args.threatfox:
+        auth_key = str(args.threatfox_key or "").strip()
+        if not auth_key:
+            print("[THREATFOX] Missing Auth-Key. Set THREATFOX_AUTH_KEY or pass --threatfox-key.")
+        else:
+            tf_urls = fetch_threatfox_iocs(
+                auth_key=auth_key,
+                days=args.threatfox_days,
+                limit=args.threatfox_limit,
+                timeout=args.threatfox_timeout,
+                tag=args.threatfox_tag,
+            )
+            if tf_urls:
+                merged: list[str] = []
+                seen = set(done_urls)
+                for url in source_urls:
+                    norm = normalize_url(url)
+                    if not norm or norm in seen:
+                        continue
+                    seen.add(norm)
+                    merged.append(norm)
+                added = 0
+                added_urls: list[str] = []
+                for url in tf_urls:
+                    norm = normalize_url(url)
+                    if not norm or norm in seen:
+                        continue
+                    seen.add(norm)
+                    merged.append(norm)
+                    added_urls.append(norm)
+                    added += 1
+                source_urls = merged
+                if added_urls:
+                    for url in added_urls:
+                        append_line(urls_path, url)
+                tag_value = str(args.threatfox_tag or "").strip()
+                if tag_value:
+                    print(f"[THREATFOX] Added {added} URLs (tags={tag_value}).")
+                else:
+                    print(f"[THREATFOX] Added {added} URLs (days={args.threatfox_days}).")
+            else:
+                print("[THREATFOX] No URLs returned or request failed.")
     if not source_urls:
         print(f"No URLs found in {args.urls}")
         return 1

@@ -33,3 +33,87 @@ botanalyzer/urls.txt
 *.zip
 *.sqlite
 /botanalyzer/__pycache__
+botanalyzer/chrome-profile/Local State
+botanalyzer/chrome-profile/Default/DIPS
+botanalyzer/chrome-profile/Last Version
+botanalyzer/chrome-profile/Default/History
+botanalyzer/chrome-profile/Default/Favicons
+botanalyzer/chrome-profile/Default/Web Data
+botanalyzer/chrome-profile/Default/Shortcuts
+botanalyzer/chrome-profile/Default/Top Sites
+botanalyzer/chrome-profile/ShaderCache/data_1
+botanalyzer/chrome-profile/Default/Preferences
+botanalyzer/chrome-profile/first_party_sets.db
+botanalyzer/chrome-profile/GrShaderCache/data_0
+botanalyzer/chrome-profile/GrShaderCache/data_1
+botanalyzer/chrome-profile/GrShaderCache/data_3
+botanalyzer/chrome-profile/Default/GCM Store/LOG
+botanalyzer/chrome-profile/Default/GPUCache/data_0
+botanalyzer/chrome-profile/Default/GPUCache/data_1
+botanalyzer/chrome-profile/Default/GPUCache/data_2
+botanalyzer/chrome-profile/Default/Network/Cookies
+botanalyzer/chrome-profile/GraphiteDawnCache/data_1
+botanalyzer/chrome-profile/Default/GCM Store/LOG.old
+botanalyzer/chrome-profile/Default/Secure Preferences
+botanalyzer/chrome-profile/Default/BrowsingTopicsState
+botanalyzer/chrome-profile/Default/Extension Rules/LOG
+botanalyzer/chrome-profile/Default/Extension State/LOG
+botanalyzer/chrome-profile/Default/Session Storage/LOG
+botanalyzer/chrome-profile/Default/shared_proto_db/LOG
+botanalyzer/chrome-profile/Default/GCM Store/000003.log
+botanalyzer/chrome-profile/segmentation_platform/ukm_db
+botanalyzer/chrome-profile/Default/Extension Scripts/LOG
+botanalyzer/chrome-profile/Default/passkey_enclave_state
+botanalyzer/chrome-profile/Default/Sync Data/LevelDB/LOG
+botanalyzer/chrome-profile/Default/DawnWebGPUCache/data_1
+botanalyzer/chrome-profile/Default/Cache/Cache_Data/data_0
+botanalyzer/chrome-profile/Default/Cache/Cache_Data/data_1
+botanalyzer/chrome-profile/Default/Cache/Cache_Data/data_2
+botanalyzer/chrome-profile/Default/Cache/Cache_Data/data_3
+botanalyzer/chrome-profile/Default/Extension Rules/LOG.old
+botanalyzer/chrome-profile/Default/Extension State/LOG.old
+botanalyzer/chrome-profile/Default/File System/Origins/LOG
+botanalyzer/chrome-profile/Default/Session Storage/LOG.old
+botanalyzer/chrome-profile/Default/shared_proto_db/LOG.old
+botanalyzer/chrome-profile/Default/WebStorage/QuotaManager
+botanalyzer/chrome-profile/Default/DawnGraphiteCache/data_1
+botanalyzer/chrome-profile/Default/Network Action Predictor
+botanalyzer/chrome-profile/component_crx_cache/metadata.json
+botanalyzer/chrome-profile/Default/Extension Scripts/LOG.old
+botanalyzer/chrome-profile/Default/Local Storage/leveldb/LOG
+botanalyzer/chrome-profile/Default/Network/Reporting and NEL
+botanalyzer/chrome-profile/Default/Network/TransportSecurity
+botanalyzer/chrome-profile/Default/Sync Data/LevelDB/LOG.old
+botanalyzer/chrome-profile/Default/Extension Rules/000003.log
+botanalyzer/chrome-profile/Default/Platform Notifications/LOG
+botanalyzer/chrome-profile/Default/File System/Origins/LOG.old
+botanalyzer/chrome-profile/Default/Service Worker/Database/LOG
+botanalyzer/chrome-profile/Default/Extension Scripts/000003.log
+botanalyzer/chrome-profile/Default/shared_proto_db/metadata/LOG
+botanalyzer/chrome-profile/Default/Local Storage/leveldb/LOG.old
+botanalyzer/chrome-profile/Default/Platform Notifications/LOG.old
+botanalyzer/chrome-profile/Default/Service Worker/Database/LOG.old
+botanalyzer/chrome-profile/Default/Network/Network Persistent State
+botanalyzer/chrome-profile/Default/shared_proto_db/metadata/LOG.old
+botanalyzer/chrome-profile/Default/Site Characteristics Database/LOG
+botanalyzer/chrome-profile/Default/Service Worker/Database/000003.log
+botanalyzer/chrome-profile/Default/shared_proto_db/metadata/000003.log
+botanalyzer/chrome-profile/Default/Site Characteristics Database/LOG.old
+botanalyzer/chrome-profile/Default/Code Cache/js/index-dir/the-real-index
+botanalyzer/chrome-profile/Default/Site Characteristics Database/000003.log
+botanalyzer/chrome-profile/Default/Service Worker/ScriptCache/index-dir/the-real-index
+botanalyzer/chrome-profile/OnDeviceHeadSuggestModel/20251024.824731831.14/manifest.json
+botanalyzer/chrome-profile/Default/Local Extension Settings/lbnlkjbjhfmffbmdgdcfjekciidcdmlg/LOG
+botanalyzer/chrome-profile/Default/Local Extension Settings/nmldafmgfcfopjoigbmmlmcnininifaa/LOG
+botanalyzer/chrome-profile/Default/Local Extension Settings/lbnlkjbjhfmffbmdgdcfjekciidcdmlg/LOG.old
+botanalyzer/chrome-profile/Default/Local Extension Settings/nmldafmgfcfopjoigbmmlmcnininifaa/LOG.old
+botanalyzer/chrome-profile/Default/Local Extension Settings/nmldafmgfcfopjoigbmmlmcnininifaa/000003.log
+botanalyzer/chrome-profile/OnDeviceHeadSuggestModel/20251024.824731831.14/_metadata/verified_contents.json
+botanalyzer/chrome-profile/Default/Local Extension Settings/lbnlkjbjhfmffbmdgdcfjekciidcdmlg/MANIFEST-000001
+/botanalyzer/downloads
+*.sqlite-wal
+*.sqlite-shm
+Web/ClickFix_BackUp_30_03_2026.rar
+/Web/ClickFix/data/reports
+/Web/templateDashbaord
+botanalyzer/settings.json
