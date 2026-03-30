@@ -117,3 +117,48 @@ Web/ClickFix_BackUp_30_03_2026.rar
 /Web/ClickFix/data/reports
 /Web/templateDashbaord
 botanalyzer/settings.json
+
+# --- Chrome profile (datos sensibles) ---
+/botanalyzer/chrome-profile/
+
+# Específicos críticos (por si alguna vez relajas la regla global)
+# Cookies y sesiones
+/botanalyzer/chrome-profile/**/Cookies
+/botanalyzer/chrome-profile/**/Cookies-journal
+
+# Contraseñas (cifradas pero igualmente sensibles)
+/botanalyzer/chrome-profile/**/Login Data
+/botanalyzer/chrome-profile/**/Login Data-journal
+
+# Tokens / sesiones persistentes
+/botanalyzer/chrome-profile/**/Web Data
+/botanalyzer/chrome-profile/**/Network Action Predictor
+
+# Historial
+/botanalyzer/chrome-profile/**/History
+/botanalyzer/chrome-profile/**/History-journal
+/botanalyzer/chrome-profile/**/Visited Links
+
+# Autofill (datos personales)
+/botanalyzer/chrome-profile/**/AutofillStates
+/botanalyzer/chrome-profile/**/Web Data
+
+# Local storage / IndexedDB (tokens, sesiones web, etc.)
+/botanalyzer/chrome-profile/**/Local Storage/
+/botanalyzer/chrome-profile/**/IndexedDB/
+/botanalyzer/chrome-profile/**/Session Storage/
+
+# Service workers (cache + sesiones)
+/botanalyzer/chrome-profile/**/Service Worker/
+
+# Extensiones (pueden contener tokens/API keys)
+/botanalyzer/chrome-profile/**/Extensions/
+
+# Cache general (menos crítico pero ruido)
+/botanalyzer/chrome-profile/**/Cache/
+/botanalyzer/chrome-profile/**/Code Cache/
+/botanalyzer/chrome-profile/**/GPUCache/
+
+# Preferences (puede contener configuración sensible)
+/botanalyzer/chrome-profile/**/Preferences
+/botanalyzer/chrome-profile/**/Secure Preferences
