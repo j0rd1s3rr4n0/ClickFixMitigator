@@ -15,6 +15,12 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     ]);
     session_start();
 }
+if (!headers_sent()) {
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    header('Vary: Cookie');
+}
 require_once __DIR__ . '/src/clickfix_core.php';
 $monetization = clickfix_monetization_config();
 $indexViewer = clickfix_current_user();
@@ -375,10 +381,29 @@ if (!isset($_SESSION[ACCESS_REQUEST_CSRF_KEY]) || !is_string($_SESSION[ACCESS_RE
     }
 }
 $accessRequestCsrfToken = $_SESSION[ACCESS_REQUEST_CSRF_KEY];
+$csrfCookieName = 'clickfix_access_request_csrf';
+$csrfCookieToken = (string) ($_COOKIE[$csrfCookieName] ?? '');
+if ($csrfCookieToken === '' || !hash_equals($csrfCookieToken, $accessRequestCsrfToken)) {
+    $cookieParams = [
+        'expires' => 0,
+        'path' => '/',
+        'domain' => '',
+        'secure' => (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off'),
+        'httponly' => false,
+        'samesite' => 'Lax',
+    ];
+    setcookie($csrfCookieName, $accessRequestCsrfToken, $cookieParams);
+    $_COOKIE[$csrfCookieName] = $accessRequestCsrfToken;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['form_action'] ?? '') === 'request_access') {
     $status = 'error';
+    $errorCode = 'unknown';
     $submittedToken = (string) ($_POST['csrf_token'] ?? '');
+    $cookieToken = (string) ($_COOKIE[$csrfCookieName] ?? '');
+    if ($cookieToken !== '') {
+        $submittedToken = $cookieToken;
+    }
     $honeypot = trim((string) ($_POST['company_website_hp'] ?? ''));
     $submittedEmail = strtolower(trim((string) ($_POST['access_email'] ?? '')));
     $submittedLinkedIn = trim((string) ($_POST['access_linkedin'] ?? ''));
@@ -389,8 +414,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['form_action'] ?? 
 
     if ($honeypot !== '') {
         $status = 'ok';
-    } elseif (!hash_equals($accessRequestCsrfToken, $submittedToken)) {
+    } elseif (
+        !hash_equals($accessRequestCsrfToken, $submittedToken)
+        && ($cookieToken === '' || !hash_equals($cookieToken, $submittedToken))
+    ) {
         $status = 'error';
+        $errorCode = 'invalid_csrf';
     } elseif (($now - $lastSubmit) < ACCESS_REQUEST_RATE_LIMIT_SECONDS) {
         $status = 'rate_limited';
     } elseif (
@@ -399,13 +428,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['form_action'] ?? 
         filter_var($submittedEmail, FILTER_VALIDATE_EMAIL) === false
     ) {
         $status = 'error';
+        $errorCode = 'invalid_email';
     } elseif (persistAccessRequest($submittedEmail, $submittedLanguage, $submittedLinkedIn, $submittedCompanyWebsite)) {
         $_SESSION[ACCESS_REQUEST_LAST_SUBMIT_KEY] = $now;
         $status = 'ok';
     } else {
         $status = 'error';
+        $errorCode = 'store_failed';
     }
 
+    if ($status === 'error') {
+        $status = 'error:' . $errorCode;
+    }
     $_SESSION[ACCESS_REQUEST_FLASH_KEY] = $status;
     header('Location: index.php#dashboard-preview', true, 303);
     exit;
@@ -2531,6 +2565,9 @@ $sourceCodeSchema = [
 
     .scan-preview-item img {
       width: 100%;
+      height: auto;
+      object-fit: contain;
+      aspect-ratio: 16 / 9;
       border-radius: 10px;
       border: 1px solid rgba(24, 229, 255, 0.25);
       background: rgba(0, 0, 0, 0.2);
@@ -3453,6 +3490,10 @@ $sourceCodeSchema = [
           <span class="lang-inline" data-lang="ar">تثبيت الامتداد</span>
           <span class="lang-inline" data-lang="he">התקן תוסף</span>
         </a>
+        <a class="button secondary" href="https://addons.mozilla.org/en-GB/firefox/addon/clickfix-mitigator/" target="_blank" rel="noopener">
+          <span class="lang-inline" data-lang="es">Instalar en Firefox</span>
+          <span class="lang-inline" data-lang="en">Install on Firefox</span>
+        </a>
         <a class="button secondary" href="#components">
           <span class="lang-inline" data-lang="es">Ver Componentes</span>
           <span class="lang-inline" data-lang="en">See Components</span>
@@ -3741,6 +3782,10 @@ $sourceCodeSchema = [
           <div class="quick-action-head"><span class="quick-action-step">1</span><span data-i18n-text="quick_install_title">Install extension</span></div>
           <p class="quick-action-note" data-i18n-text="quick_install_note">Deploy quickly from Chrome Web Store in managed environments.</p>
           <a class="button secondary" href="https://chromewebstore.google.com/detail/clickfix-mitigator/nmldafmgfcfopjoigbmmlmcnininifaa" target="_blank" rel="noopener" data-i18n-text="quick_install_button">Install extension</a>
+          <a class="button secondary" href="https://addons.mozilla.org/en-GB/firefox/addon/clickfix-mitigator/" target="_blank" rel="noopener">
+            <span class="lang-inline" data-lang="es">Instalar en Firefox</span>
+            <span class="lang-inline" data-lang="en">Install on Firefox</span>
+          </a>
         </article>
         <article class="quick-action-card">
           <div class="quick-action-head"><span class="quick-action-step">2</span><span data-i18n-text="quick_access_title">Request access</span></div>
@@ -4222,13 +4267,39 @@ $sourceCodeSchema = [
               </button>
             </div>
           </form>
+          <script>
+            (function () {
+              function getCookie(name) {
+                const needle = name + "=";
+                const parts = String(document.cookie || "").split(";");
+                for (let i = 0; i < parts.length; i++) {
+                  const part = parts[i].trim();
+                  if (part.indexOf(needle) === 0) {
+                    return decodeURIComponent(part.substring(needle.length));
+                  }
+                }
+                return "";
+              }
+              const token = getCookie("clickfix_access_request_csrf");
+              if (!token) return;
+              const form = document.getElementById("dashboard-preview-access");
+              if (!form) return;
+              const input = form.querySelector("input[name='csrf_token']");
+              if (input) {
+                input.value = token;
+              }
+            })();
+          </script>
           <?php if ($accessRequestFlash !== null): ?>
             <?php
               $feedbackClass = 'error';
+              $accessErrorCode = '';
               if ($accessRequestFlash === 'ok') {
                   $feedbackClass = 'success';
               } elseif ($accessRequestFlash === 'rate_limited') {
                   $feedbackClass = 'warn';
+              } elseif (str_starts_with((string) $accessRequestFlash, 'error:')) {
+                  $accessErrorCode = substr((string) $accessRequestFlash, 6);
               }
             ?>
             <div class="access-request-feedback <?= htmlspecialchars($feedbackClass, ENT_QUOTES, 'UTF-8'); ?>">
@@ -4277,6 +4348,10 @@ $sourceCodeSchema = [
                 <span class="lang-inline" data-lang="hi">?????? ???? ???? ?? ???? ???? ?????? ?? ??? ?????? ?????</span>
                 <span class="lang-inline" data-lang="ar">???? ????? ?????. ???? ?? ?????? ????? ?????.</span>
                 <span class="lang-inline" data-lang="he">?? ???? ????? ????. ???? ?? ??????? ???? ???.</span>
+                <?php if ($accessErrorCode !== ''): ?>
+                  <span class="lang-inline" data-lang="es">Codigo: <span class="mono"><?= htmlspecialchars($accessErrorCode, ENT_QUOTES, 'UTF-8'); ?></span></span>
+                  <span class="lang-inline" data-lang="en">Error code: <span class="mono"><?= htmlspecialchars($accessErrorCode, ENT_QUOTES, 'UTF-8'); ?></span></span>
+                <?php endif; ?>
               <?php endif; ?>
             </div>
           <?php endif; ?>

@@ -18,7 +18,7 @@ function clickfix_dashboard_fatal(string $message, string $details = ''): void
   <title>ClickFix - Error de despliegue</title>
   <style>
     body{margin:0;background:#08131d;color:#e6f4ff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-    .wrap{max-width:900px;margin:28px auto;padding:0 16px}
+    .wrap{max-width:none;width:100%;margin:16px auto;padding:0 14px}
     .card{border:1px solid #3f83a955;border-radius:12px;background:#0d2231;padding:18px}
     h1{margin:0 0 10px;font-size:1.3rem}
     p{margin:0 0 8px;color:#b7d3e2}
@@ -169,6 +169,24 @@ $user = clickfix_current_user();
 $loggedIn = $user !== null;
 $viewerRole = $loggedIn ? clickfix_normalize_role((string) ($user['role'] ?? 'analyst_jr')) : 'guest';
 $viewerRoleLabel = $loggedIn ? clickfix_role_label($viewerRole) : 'Invitado';
+$hasActiveSessionColumn = clickfix_has_column($pdo, 'users', 'active_session_id');
+if ($loggedIn && $hasActiveSessionColumn) {
+    $activeSessionStmt = $pdo->prepare('SELECT active_session_id FROM users WHERE id = :id LIMIT 1');
+    $activeSessionStmt->execute([':id' => (int) ($user['id'] ?? 0)]);
+    $activeSessionId = (string) ($activeSessionStmt->fetchColumn() ?: '');
+    $currentSessionId = session_id();
+    if ($activeSessionId !== '' && $currentSessionId !== '' && $activeSessionId !== $currentSessionId) {
+        clickfix_flash('Tu sesion ha sido cerrada porque se inicio en otro dispositivo.');
+        unset($_SESSION['clickfix_user']);
+        unset($_SESSION['clickfix_lang']);
+        unset($_SESSION['clickfix_session_expires_at']);
+        @session_regenerate_id(true);
+        $loggedIn = false;
+        $user = null;
+        $viewerRole = 'guest';
+        $viewerRoleLabel = 'Invitado';
+    }
+}
 $redactSensitiveForViewer = $loggedIn
     && clickfix_user_has_min_role($user, 'analyst_jr')
     && !clickfix_user_has_min_role($user, 'analyst_sr');
@@ -239,6 +257,48 @@ if ($loggedIn && isset($pageAccess[$page]) && !clickfix_user_has_min_role($user,
     clickfix_flash('Tu rol no tiene permisos para esa seccion.');
     $page = 'ops';
 }
+if ($loggedIn && $page === 'access') {
+    $page = 'ops';
+}
+
+$sessionIdleMinutes = max(10, min(240, (int) clickfix_env('CLICKFIX_SESSION_IDLE_MINUTES', '60')));
+$sessionExtendMinutes = max(10, min(240, (int) clickfix_env('CLICKFIX_SESSION_EXTEND_MINUTES', '30')));
+$sessionWarningMinutes = max(2, min(30, (int) clickfix_env('CLICKFIX_SESSION_WARNING_MINUTES', '5')));
+$sessionExpiresAt = 0;
+if ($loggedIn) {
+    if (!isset($_SESSION['clickfix_session_expires_at'])) {
+        $_SESSION['clickfix_session_expires_at'] = time() + ($sessionIdleMinutes * 60);
+    }
+    $sessionExpiresAt = (int) ($_SESSION['clickfix_session_expires_at'] ?? 0);
+    if ($sessionExpiresAt > 0 && time() > $sessionExpiresAt) {
+        $logoutUser = clickfix_current_user();
+        if ($logoutUser !== null) {
+            if ($hasActiveSessionColumn) {
+                $pdo->prepare('UPDATE users SET active_session_id = NULL, active_session_updated_at = :at WHERE id = :id AND active_session_id = :sid')
+                    ->execute([
+                        ':at' => gmdate('c'),
+                        ':id' => (int) ($logoutUser['id'] ?? 0),
+                        ':sid' => session_id(),
+                    ]);
+            }
+            clickfix_log_user_session_event(
+                $pdo,
+                (int) ($logoutUser['id'] ?? 0),
+                (string) ($logoutUser['username'] ?? ''),
+                'logout',
+                clickfix_client_ip(),
+                substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 240),
+                session_id()
+            );
+        }
+        unset($_SESSION['clickfix_user']);
+        unset($_SESSION['clickfix_lang']);
+        unset($_SESSION['clickfix_session_expires_at']);
+        @session_regenerate_id(true);
+        clickfix_flash('Sesion expirada por inactividad.');
+        clickfix_redirect('dashboard.php?page=access&public=1');
+    }
+}
 
 if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
     $action = trim((string) ($_POST['action'] ?? ''));
@@ -258,6 +318,15 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
                 $sessionLang = 'en';
             }
             $_SESSION['clickfix_lang'] = $sessionLang;
+            $_SESSION['clickfix_session_expires_at'] = time() + ($sessionIdleMinutes * 60);
+            if ($hasActiveSessionColumn) {
+                $upd = $pdo->prepare('UPDATE users SET active_session_id = :sid, active_session_updated_at = :at WHERE id = :id');
+                $upd->execute([
+                    ':sid' => session_id(),
+                    ':at' => gmdate('c'),
+                    ':id' => (int) ($auth['id'] ?? 0),
+                ]);
+            }
             clickfix_log_user_session_event(
                 $pdo,
                 (int) ($auth['id'] ?? 0),
@@ -276,6 +345,14 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
     if ($action === 'logout') {
         $logoutUser = clickfix_current_user();
         if ($logoutUser !== null) {
+            if ($hasActiveSessionColumn) {
+                $pdo->prepare('UPDATE users SET active_session_id = NULL, active_session_updated_at = :at WHERE id = :id AND active_session_id = :sid')
+                    ->execute([
+                        ':at' => gmdate('c'),
+                        ':id' => (int) ($logoutUser['id'] ?? 0),
+                        ':sid' => session_id(),
+                    ]);
+            }
             clickfix_log_user_session_event(
                 $pdo,
                 (int) ($logoutUser['id'] ?? 0),
@@ -295,6 +372,22 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
     if (!clickfix_verify_csrf($csrf)) {
         clickfix_flash('CSRF invalido.');
         clickfix_redirect('dashboard.php?page=' . urlencode($page));
+    }
+    if ($action === 'session_extend') {
+        if (!$loggedIn) {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['status' => 'error', 'message' => 'auth_required']);
+            exit;
+        }
+        $newExpires = time() + ($sessionExtendMinutes * 60);
+        $_SESSION['clickfix_session_expires_at'] = $newExpires;
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'status' => 'ok',
+            'expires_at' => $newExpires,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
     }
     if ($action === 'request_access') {
         $ok = clickfix_store_access_request(
@@ -732,6 +825,15 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         clickfix_flash('Estado de desistimiento actualizado.');
         clickfix_redirect('dashboard.php?page=requests');
     }
+    if ($action === 'access_request_status') {
+        if (!$canManageRequests) {
+            clickfix_flash('Permisos insuficientes: requiere Analista Sr o superior.');
+            clickfix_redirect('dashboard.php?page=ops');
+        }
+        clickfix_update_access_request_status($pdo, (int) ($_POST['request_id'] ?? 0), (string) ($_POST['status'] ?? 'pending'));
+        clickfix_flash('Solicitud de acceso actualizada.');
+        clickfix_redirect('dashboard.php?page=requests');
+    }
     if ($action === 'list_action') {
         if (!$canManageLists) {
             clickfix_flash('Permisos insuficientes: requiere Analista Sr o superior.');
@@ -1117,11 +1219,41 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         clickfix_flash('Reportes ejecutados: ' . $ok . '/' . $total);
         clickfix_redirect('dashboard.php?page=reports');
     }
+    if ($action === 'domain_purge') {
+        if (!$canManageReports) {
+            clickfix_flash('Permisos insuficientes: requiere Administrador.');
+            clickfix_redirect('dashboard.php?page=ops');
+        }
+        $domainRaw = (string) ($_POST['purge_domain'] ?? '');
+        $result = clickfix_delete_reports_by_domain($pdo, $domainRaw, [
+            'include_subdomains' => ((string) ($_POST['purge_include_subdomains'] ?? '1')) === '1',
+            'include_url' => ((string) ($_POST['purge_include_url'] ?? '1')) === '1',
+            'include_previous_url' => ((string) ($_POST['purge_include_previous_url'] ?? '1')) === '1',
+            'delete_caches' => ((string) ($_POST['purge_delete_caches'] ?? '1')) === '1',
+            'delete_investigations' => ((string) ($_POST['purge_delete_investigations'] ?? '0')) === '1',
+        ]);
+        if (($result['host'] ?? '') === '') {
+            clickfix_flash('Dominio invalido. Usa un dominio o URL valida.');
+            clickfix_redirect('dashboard.php?page=reports');
+        }
+        $summary = sprintf(
+            'Dominio %s: reportes encontrados %d, borrados %d, fallidos %d, caches %d, investigaciones %d.',
+            $result['host'],
+            (int) ($result['matched'] ?? 0),
+            (int) ($result['deleted'] ?? 0),
+            (int) ($result['failed'] ?? 0),
+            (int) ($result['cache_deleted'] ?? 0),
+            (int) ($result['investigations_deleted'] ?? 0)
+        );
+        clickfix_flash($summary);
+        clickfix_redirect('dashboard.php?page=reports');
+    }
     if ($action === 'investigation_save') {
         if (!clickfix_user_has_min_role($actor, 'analyst_jr')) {
             clickfix_flash('Permisos insuficientes para guardar investigaciones.');
             clickfix_redirect('dashboard.php?page=home&public=1');
         }
+        $autoSave = (string) ($_POST['auto_save'] ?? '') === '1';
         $graphId = (int) ($_POST['graph_id'] ?? 0);
         $existingInvestigation = $graphId > 0 ? clickfix_get_investigation_any($pdo, $graphId) : null;
         $canEditCommunityAsReviewer = is_array($existingInvestigation)
@@ -1145,8 +1277,23 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             clickfix_is_admin() || $canEditCommunityAsReviewer
         );
         if ($savedId !== null) {
+            if ($autoSave) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'status' => 'ok',
+                    'graph_id' => (int) $savedId,
+                    'saved_at' => gmdate('c'),
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                exit;
+            }
             clickfix_flash('Investigacion guardada.');
             clickfix_redirect('dashboard.php?page=intel&graph_id=' . (int) $savedId);
+        }
+        if ($autoSave) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['status' => 'error', 'message' => 'save_failed']);
+            exit;
         }
         clickfix_flash('No se pudo guardar la investigacion.');
         clickfix_redirect('dashboard.php?page=intel');
@@ -1341,6 +1488,122 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         }
         clickfix_redirect($redirect);
     }
+    if ($action === 'investigation_add_ioc') {
+        if (!clickfix_user_has_min_role($actor, 'analyst_jr')) {
+            clickfix_flash('Permisos insuficientes para editar investigaciones.');
+            clickfix_redirect('dashboard.php?page=home&public=1');
+        }
+        $graphId = (int) ($_POST['graph_id'] ?? 0);
+        $rawInput = trim((string) ($_POST['manual_ioc'] ?? ''));
+        $typeOverride = strtolower(trim((string) ($_POST['manual_ioc_type'] ?? 'auto')));
+        if ($rawInput === '') {
+            clickfix_flash('Escribe al menos un IOC (dominio, IP o URL).');
+            clickfix_redirect('dashboard.php?page=intel&graph_id=' . $graphId);
+        }
+        $investigation = $graphId > 0 ? clickfix_get_investigation_any($pdo, $graphId) : null;
+        if (!is_array($investigation)) {
+            clickfix_flash('Investigacion no encontrada.');
+            clickfix_redirect('dashboard.php?page=intel');
+        }
+
+        $graph = is_array($investigation['graph'] ?? null) ? $investigation['graph'] : ['nodes' => [], 'edges' => []];
+        $nodes = is_array($graph['nodes'] ?? null) ? $graph['nodes'] : [];
+        $existingLabels = [];
+        foreach ($nodes as $node) {
+            if (!is_array($node)) {
+                continue;
+            }
+            $label = strtolower(trim((string) ($node['label'] ?? '')));
+            if ($label !== '') {
+                $existingLabels[$label] = true;
+            }
+        }
+
+        $targets = [];
+        if ($typeOverride !== '' && $typeOverride !== 'auto') {
+            $parts = preg_split('/[\r\n,]+/', $rawInput) ?: [];
+            foreach ($parts as $part) {
+                $value = trim((string) $part);
+                if ($value === '') {
+                    continue;
+                }
+                $targets[] = ['value' => $value, 'type' => $typeOverride];
+            }
+        } else {
+            $targets = cfintel_extract_targets_from_text($rawInput);
+        }
+
+        if (empty($targets)) {
+            clickfix_flash('No se detectaron IOCs validos (dominio, IP o URL).');
+            clickfix_redirect('dashboard.php?page=intel&graph_id=' . $graphId);
+        }
+
+        $colorByType = [
+            'domain' => '#2dd4bf',
+            'ip' => '#60a5fa',
+            'url' => '#f59e0b',
+        ];
+        $added = 0;
+        $skipped = 0;
+        $index = count($nodes);
+        foreach ($targets as $target) {
+            $value = trim((string) ($target['value'] ?? ''));
+            $type = trim((string) ($target['type'] ?? 'unknown'));
+            if ($value === '' || !in_array($type, ['domain', 'ip', 'url'], true)) {
+                $skipped++;
+                continue;
+            }
+            $labelKey = strtolower($value);
+            if (isset($existingLabels[$labelKey])) {
+                $skipped++;
+                continue;
+            }
+            $existingLabels[$labelKey] = true;
+            $col = $index % 4;
+            $row = intdiv($index, 4);
+            $nodes[] = [
+                'id' => 'ioc_' . bin2hex(random_bytes(4)),
+                'label' => $value,
+                'color' => $colorByType[$type] ?? '#5dc8ff',
+                'x' => 120 + ($col * 90),
+                'y' => 120 + ($row * 70),
+                'tags' => ['ioc', $type, 'manual'],
+                'notes' => '',
+            ];
+            $index++;
+            $added++;
+        }
+
+        if ($added === 0) {
+            clickfix_flash('No se anadieron IOCs nuevos (duplicados o invalidos).');
+            clickfix_redirect('dashboard.php?page=intel&graph_id=' . $graphId);
+        }
+
+        $graph['nodes'] = $nodes;
+        $tagsText = implode(', ', is_array($investigation['tags'] ?? null) ? $investigation['tags'] : []);
+        $savedId = clickfix_investigation_save(
+            $pdo,
+            $actorId,
+            $graphId,
+            (string) ($investigation['title'] ?? ''),
+            (string) ($investigation['site_domain'] ?? ''),
+            (string) ($investigation['verdict'] ?? 'suspicious'),
+            (string) ($investigation['summary'] ?? ''),
+            $tagsText,
+            $graph,
+            clickfix_is_admin()
+        );
+        if ($savedId !== null) {
+            $summary = 'IOC(s) anadidos: ' . $added;
+            if ($skipped > 0) {
+                $summary .= ' | omitidos: ' . $skipped;
+            }
+            clickfix_flash($summary);
+        } else {
+            clickfix_flash('No se pudo guardar la investigacion con los IOCs nuevos.');
+        }
+        clickfix_redirect('dashboard.php?page=intel&graph_id=' . $graphId);
+    }
     if ($action === 'investigation_ioc_workbench') {
         if (!clickfix_user_has_min_role($actor, 'analyst_jr')) {
             clickfix_flash('Permisos insuficientes para enrichment de investigacion.');
@@ -1375,6 +1638,8 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             }
         }
 
+        $decodeChainRaw = trim((string) ($_POST['decode_chain'] ?? ''));
+        $decodeChains = cfintel_parse_decode_chains($decodeChainRaw);
         $decodeResults = [];
         $decodeSeen = [];
         $decodeCandidates = array_merge(
@@ -1383,6 +1648,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
                 return (string) ($row['value'] ?? '');
             }, $artifacts)
         );
+        $decodeSuggestions = cfintel_decode_suggestions($decodeCandidates);
         foreach ($decodeCandidates as $candidate) {
             $candidate = trim((string) $candidate);
             if ($candidate === '') {
@@ -1394,6 +1660,16 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             }
             $decodeSeen[$decodeKey] = true;
             $decoded = cfintel_decode_value($candidate);
+            foreach ($decodeChains as $chain) {
+                $chainLabel = implode('->', $chain);
+                if ($chainLabel === '') {
+                    continue;
+                }
+                $chainValue = cfintel_decode_chain($candidate, $chain);
+                if ($chainValue !== '' && (!isset($decoded[$chainLabel]) || $decoded[$chainLabel] !== $chainValue)) {
+                    $decoded[$chainLabel] = $chainValue;
+                }
+            }
             if (!empty($decoded)) {
                 $decodeResults[] = [
                     'input' => $candidate,
@@ -1486,6 +1762,8 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             'artifact_counts' => $artifactCounts,
             'artifacts' => $artifacts,
             'decoded' => $decodeResults,
+            'decode_chain' => $decodeChainRaw,
+            'decode_suggestions' => $decodeSuggestions,
             'batch_results' => $batchResults,
         ];
 
@@ -1653,10 +1931,20 @@ if ($format === 'related_reports') {
                     $row[$field] = clickfix_dashboard_redact_sensitive((string) $row[$field]);
                 }
             }
-            if (isset($row['matched_snippets']) && is_array($row['matched_snippets'])) {
-                $row['matched_snippets'] = array_map(static function ($snippet): string {
+            if (isset($row['shared_snippets']) && is_array($row['shared_snippets'])) {
+                $row['shared_snippets'] = array_map(static function ($snippet): string {
                     return clickfix_dashboard_redact_sensitive((string) $snippet);
-                }, $row['matched_snippets']);
+                }, $row['shared_snippets']);
+            }
+            if (isset($row['shared_reasons']) && is_array($row['shared_reasons'])) {
+                $row['shared_reasons'] = array_map(static function ($reason): string {
+                    return clickfix_dashboard_redact_sensitive((string) $reason);
+                }, $row['shared_reasons']);
+            }
+            if (isset($row['shared_signals']) && is_array($row['shared_signals'])) {
+                $row['shared_signals'] = array_map(static function ($signal): string {
+                    return clickfix_dashboard_redact_sensitive((string) $signal);
+                }, $row['shared_signals']);
             }
             return $row;
         }, $relatedRows);
@@ -1678,6 +1966,11 @@ if ($format === 'related_reports') {
             'duplicate_count' => (int) ($row['duplicate_count'] ?? 1),
             'related_by_domain' => !empty($row['related_by_domain']),
             'related_by_ip' => $canSrForRelated && !empty($row['related_by_ip']),
+            'related_by_ttp' => !empty($row['related_by_ttp']),
+            'related_by_snippet' => !empty($row['related_by_snippet']),
+            'shared_reasons' => array_values(array_slice((array) ($row['shared_reasons'] ?? []), 0, 6)),
+            'shared_signals' => array_values(array_slice((array) ($row['shared_signals'] ?? []), 0, 6)),
+            'shared_snippets' => array_values(array_slice((array) ($row['shared_snippets'] ?? []), 0, 4)),
         ];
     }
     header('Content-Type: application/json; charset=utf-8');
@@ -1737,9 +2030,14 @@ if ($pageNeedsFilteredReports) {
         'date_to' => $dateToFilter,
     ], 160);
 }
+$searchResults = ($page === 'search')
+    ? (!empty($filteredReports) ? $filteredReports : $reports)
+    : [];
 
 $appeals = $pageNeedsAppealsData ? clickfix_recent_appeals($pdo, 20) : [];
-$requests = $pageNeedsRequestsData ? clickfix_recent_access_requests($pdo, 30) : [];
+$deleteRequests = $pageNeedsAppealsData ? clickfix_recent_delete_requests($pdo, 30) : [];
+$requestsPending = $pageNeedsRequestsData ? clickfix_recent_access_requests($pdo, 30, 'pending') : [];
+$requestsDenied = $pageNeedsRequestsData ? clickfix_recent_access_requests($pdo, 30, 'denied') : [];
 $actions = $pageNeedsListData ? clickfix_recent_list_actions($pdo, 20) : [];
 $lists = [
     'blocklist' => [],
@@ -1893,6 +2191,32 @@ if (!in_array($reportPeriodPreview, ['daily', 'weekly', 'monthly'], true)) {
     $reportPeriodPreview = 'daily';
 }
 $reportPreview = $pageNeedsReportPreview ? clickfix_generate_period_report($pdo, $reportPeriodPreview) : [];
+$purgeDomainCandidates = [];
+if ($canAdminViewer && $page === 'reports') {
+    $domainStmt = $pdo->prepare(
+        "SELECT LOWER(TRIM(hostname)) AS hostname,
+                COUNT(*) AS hits,
+                MAX(received_at) AS last_seen
+         FROM reports
+         WHERE hostname IS NOT NULL
+           AND TRIM(hostname) != ''
+         GROUP BY LOWER(TRIM(hostname))
+         ORDER BY hits DESC
+         LIMIT 40"
+    );
+    $domainStmt->execute();
+    foreach ($domainStmt->fetchAll() as $domainRow) {
+        $host = clickfix_normalize_domain((string) ($domainRow['hostname'] ?? ''));
+        if ($host === '') {
+            continue;
+        }
+        $purgeDomainCandidates[] = [
+            'hostname' => $host,
+            'hits' => (int) ($domainRow['hits'] ?? 0),
+            'last_seen' => (string) ($domainRow['last_seen'] ?? ''),
+        ];
+    }
+}
 $internalAdSettings = clickfix_internal_ad_settings($pdo);
 $internalAdsAdminList = ($canAdminViewer && $page === 'configs') ? clickfix_internal_ads_recent($pdo, 160) : [];
 $dashboardAdRole = $loggedIn ? $viewerRole : 'guest';
@@ -2335,6 +2659,124 @@ function cfintel_decode_candidate_hex(string $value): string
         return '';
     }
     return $decoded;
+}
+
+function cfintel_decode_suggestions(array $candidates): array
+{
+    $suggestions = [];
+    $seen = [];
+    $push = static function (string $value) use (&$suggestions, &$seen): void {
+        $key = strtolower(trim($value));
+        if ($key === '' || isset($seen[$key])) {
+            return;
+        }
+        $seen[$key] = true;
+        $suggestions[] = $value;
+    };
+
+    foreach ($candidates as $candidate) {
+        $value = trim((string) $candidate);
+        if ($value === '') {
+            continue;
+        }
+        $urlDecoded = rawurldecode($value);
+        if ($urlDecoded !== $value && cfintel_decode_is_useful_text($urlDecoded)) {
+            $push('url');
+            $b64AfterUrl = cfintel_decode_candidate_base64($urlDecoded, false);
+            if ($b64AfterUrl !== '') {
+                $push('url->base64');
+            }
+        }
+        $b64 = cfintel_decode_candidate_base64($value, false);
+        if ($b64 !== '') {
+            $push('base64');
+            $rot13After = str_rot13($b64);
+            if ($rot13After !== $b64 && cfintel_decode_is_useful_text($rot13After)) {
+                $push('base64->rot13');
+            }
+        }
+        $b64Url = cfintel_decode_candidate_base64($value, true);
+        if ($b64Url !== '') {
+            $push('base64url');
+        }
+        $hex = cfintel_decode_candidate_hex($value);
+        if ($hex !== '') {
+            $push('hex');
+        }
+        $rot13 = str_rot13($value);
+        if ($rot13 !== $value && cfintel_decode_is_useful_text($rot13)) {
+            $push('rot13');
+        }
+    }
+    return $suggestions;
+}
+
+function cfintel_parse_decode_chains(string $raw): array
+{
+    $raw = trim($raw);
+    if ($raw === '') {
+        return [];
+    }
+    $chunks = preg_split('/[\r\n;]+/', $raw) ?: [];
+    $chains = [];
+    foreach ($chunks as $chunk) {
+        $chunk = trim((string) $chunk);
+        if ($chunk === '') {
+            continue;
+        }
+        $parts = preg_split('/\s*(?:->|>)\s*/', $chunk) ?: [];
+        $tokens = [];
+        foreach ($parts as $part) {
+            $token = strtolower(trim((string) $part));
+            if ($token === '') {
+                continue;
+            }
+            $tokens[] = $token;
+        }
+        if (!empty($tokens)) {
+            $chains[] = $tokens;
+        }
+    }
+    return $chains;
+}
+
+function cfintel_decode_chain(string $value, array $chain): string
+{
+    $current = trim($value);
+    if ($current === '' || empty($chain)) {
+        return '';
+    }
+    foreach ($chain as $token) {
+        switch ($token) {
+            case 'url':
+            case 'urldecode':
+                $next = rawurldecode($current);
+                break;
+            case 'base64':
+                $next = cfintel_decode_candidate_base64($current, false);
+                break;
+            case 'base64url':
+            case 'b64url':
+                $next = cfintel_decode_candidate_base64($current, true);
+                break;
+            case 'hex':
+                $next = cfintel_decode_candidate_hex($current);
+                break;
+            case 'rot13':
+                $next = str_rot13($current);
+                break;
+            default:
+                return '';
+        }
+        if (!is_string($next) || $next === '') {
+            return '';
+        }
+        $current = $next;
+    }
+    if (!cfintel_decode_is_useful_text($current)) {
+        return '';
+    }
+    return $current;
 }
 
 function cfintel_decode_value(string $value): array
@@ -3046,6 +3488,7 @@ function cft(string $key): string
             'support_stripe' => 'Aportar con Stripe',
             'intel_api_keys_title' => 'API keys privadas',
             'intel_api_keys_sub' => 'Solo tu usuario puede ver, modificar y usar estas claves en investigacion.',
+            'intel_api_keys_in_settings' => 'Las API keys privadas se gestionan en Ajustes.',
             'intel_api_key_save' => 'Guardar clave',
             'intel_api_key_delete' => 'Eliminar clave',
             'intel_api_key_masked' => 'Guardada',
@@ -3055,6 +3498,46 @@ function cft(string $key): string
             'intel_api_lookup_target' => 'Indicador (dominio, IP o URL)',
             'intel_api_lookup_button' => 'Consultar',
             'intel_api_lookup_result' => 'Resultado de consulta',
+            'intel_iocs_title' => 'IOCs detectados en esta investigacion',
+            'intel_iocs_sub' => 'IPs, dominios y URLs extraidos del dominio principal, resumen, nodos, tags y notas. Puedes lanzarlos directamente a proveedores sin copiar/pegar.',
+            'intel_iocs_empty' => 'No se han detectado IOCs reutilizables todavia dentro del grafo actual.',
+            'intel_manual_ioc_title' => 'Anadir IOC manualmente',
+            'intel_manual_ioc_sub' => 'Se guarda como nodo del grafo y aparece en esta lista si es dominio, IP o URL.',
+            'intel_manual_ioc_label' => 'IOC',
+            'intel_manual_ioc_type' => 'Tipo',
+            'intel_manual_ioc_auto' => 'auto-detectar',
+            'intel_manual_ioc_button' => 'Anadir IOC',
+            'intel_lookup_fallback_title' => 'Consulta de proveedores de inteligencia',
+            'intel_lookup_fallback_sub' => 'Selecciona proveedor e indicador (dominio, IP o URL).',
+            'intel_briefing_kicker' => 'Briefing',
+            'intel_briefing_title' => 'Contexto principal del caso',
+            'intel_briefing_sub' => 'Define el foco, la narrativa analitica y los datos clave antes de enriquecer o compartir.',
+            'intel_autosave_label' => 'Autosave:',
+            'intel_briefing_title_label' => 'Titulo',
+            'intel_briefing_domain_label' => 'Dominio principal',
+            'intel_briefing_domain_placeholder' => 'ejemplo.com',
+            'intel_briefing_verdict_label' => 'Veredicto',
+            'intel_briefing_tags_label' => 'Tags globales',
+            'intel_briefing_tags_placeholder' => 'phishing, fake-captcha, powershell',
+            'intel_briefing_summary_label' => 'Resumen de la investigacion',
+            'intel_briefing_summary_placeholder' => 'Explica por que se considera malicioso o no.',
+            'intel_briefing_save' => 'Guardar investigacion',
+            'intel_enrichment_kicker' => 'Enrichment',
+            'intel_enrichment_title' => 'Fuentes de investigacion',
+            'intel_enrichment_sub_full' => 'Gestion de credenciales personales, pivotes y consultas historicas de enrichment.',
+            'intel_enrichment_sub_lite' => 'Consulta proveedores de inteligencia sin exponer credenciales en interfaz.',
+            'intel_platform_api_title' => 'API de plataforma (con API key)',
+            'intel_platform_api_sub_line1' => 'Genera API keys personales para consumir /api/intel.php y /api/lookup.php.',
+            'intel_platform_api_sub_line2' => 'Se guarda solo hash, se puede revocar y tiene expiracion/rate-limit por clave.',
+            'intel_platform_api_sub_line3' => 'Documentacion:',
+            'intel_platform_api_docs' => 'API INTEGRATIONS',
+            'intel_platform_api_new_title' => 'API key nueva (se muestra una sola vez)',
+            'intel_platform_api_new_sub' => 'Copiala ahora y guardala en un vault seguro. No se volvera a mostrar completa.',
+            'intel_platform_api_label' => 'Etiqueta',
+            'intel_platform_api_expires' => 'Expira en dias (1-365)',
+            'intel_platform_api_rpm' => 'Rate limit RPM (30-2000)',
+            'intel_platform_api_generate' => 'Generar API key segura',
+            'intel_platform_api_hidden' => 'La gestion manual de credenciales y la API de plataforma estan ocultas en esta vista.',
             'announce_title' => 'Anuncios operativos',
             'announce_sub' => 'Lateral, discreto y no intrusivo.',
             'announce_focus_note' => 'Modo investigacion activo: el panel se muestra minimizado para mantener el foco.',
@@ -3124,6 +3607,7 @@ function cft(string $key): string
             'support_stripe' => 'Contribute with Stripe',
             'intel_api_keys_title' => 'Private API keys',
             'intel_api_keys_sub' => 'Only your user can view, edit, and use these keys in investigation.',
+            'intel_api_keys_in_settings' => 'Private API keys are managed in Settings.',
             'intel_api_key_save' => 'Save key',
             'intel_api_key_delete' => 'Delete key',
             'intel_api_key_masked' => 'Stored',
@@ -3133,6 +3617,46 @@ function cft(string $key): string
             'intel_api_lookup_target' => 'Indicator (domain, IP, or URL)',
             'intel_api_lookup_button' => 'Lookup',
             'intel_api_lookup_result' => 'Lookup result',
+            'intel_iocs_title' => 'IOCs detected in this investigation',
+            'intel_iocs_sub' => 'IPs, domains, and URLs extracted from the primary domain, summary, nodes, tags, and notes. You can launch them directly to providers without copy/paste.',
+            'intel_iocs_empty' => 'No reusable IOCs detected yet in the current graph.',
+            'intel_manual_ioc_title' => 'Add IOC manually',
+            'intel_manual_ioc_sub' => 'Saved as a graph node and shown here when it is a domain, IP, or URL.',
+            'intel_manual_ioc_label' => 'IOC',
+            'intel_manual_ioc_type' => 'Type',
+            'intel_manual_ioc_auto' => 'auto-detect',
+            'intel_manual_ioc_button' => 'Add IOC',
+            'intel_lookup_fallback_title' => 'Threat intel provider lookup',
+            'intel_lookup_fallback_sub' => 'Select provider and indicator (domain, IP, or URL).',
+            'intel_briefing_kicker' => 'Briefing',
+            'intel_briefing_title' => 'Primary case context',
+            'intel_briefing_sub' => 'Define focus, analytic narrative, and key facts before enrichment or sharing.',
+            'intel_autosave_label' => 'Autosave:',
+            'intel_briefing_title_label' => 'Title',
+            'intel_briefing_domain_label' => 'Primary domain',
+            'intel_briefing_domain_placeholder' => 'example.com',
+            'intel_briefing_verdict_label' => 'Verdict',
+            'intel_briefing_tags_label' => 'Global tags',
+            'intel_briefing_tags_placeholder' => 'phishing, fake-captcha, powershell',
+            'intel_briefing_summary_label' => 'Investigation summary',
+            'intel_briefing_summary_placeholder' => 'Explain why it is considered malicious or not.',
+            'intel_briefing_save' => 'Save investigation',
+            'intel_enrichment_kicker' => 'Enrichment',
+            'intel_enrichment_title' => 'Investigation sources',
+            'intel_enrichment_sub_full' => 'Personal credentials, pivots, and historical enrichment lookups.',
+            'intel_enrichment_sub_lite' => 'Query intel providers without exposing credentials in the UI.',
+            'intel_platform_api_title' => 'Platform API (with API key)',
+            'intel_platform_api_sub_line1' => 'Generate personal API keys to consume /api/intel.php and /api/lookup.php.',
+            'intel_platform_api_sub_line2' => 'Only a hash is stored, it can be revoked, and has per-key expiry/rate limit.',
+            'intel_platform_api_sub_line3' => 'Documentation:',
+            'intel_platform_api_docs' => 'API INTEGRATIONS',
+            'intel_platform_api_new_title' => 'New API key (shown once)',
+            'intel_platform_api_new_sub' => 'Copy it now and store it in a secure vault. It will not be shown again in full.',
+            'intel_platform_api_label' => 'Label',
+            'intel_platform_api_expires' => 'Expires in days (1-365)',
+            'intel_platform_api_rpm' => 'Rate limit RPM (30-2000)',
+            'intel_platform_api_generate' => 'Generate secure API key',
+            'intel_platform_api_hidden' => 'Manual credential management and the platform API are hidden in this view.',
             'announce_title' => 'Operational notices',
             'announce_sub' => 'Sidebar only, low-noise.',
             'announce_focus_note' => 'Investigation mode is active: panel is minimized by default to preserve focus.',
@@ -3184,6 +3708,7 @@ function cft(string $key): string
         'msg_title' => 'Missatgeria per a extensions',
         'support_title' => 'Dona suport al projecte',
         'intel_api_keys_title' => 'API keys privades',
+        'intel_api_keys_in_settings' => 'Les API keys privades es gestionen a Ajustos.',
         'review_legend_title' => 'Guia de revisio',
         'about_project_title' => 'Missio i enfocament',
         'about_owner_title' => 'Direccio del projecte i contacte',
@@ -3218,6 +3743,7 @@ function cft(string $key): string
         'msg_title' => 'Nachrichten fur Erweiterungen',
         'support_title' => 'Projekt unterstutzen',
         'intel_api_keys_title' => 'Private API-Schlussel',
+        'intel_api_keys_in_settings' => 'Private API-Keys werden in Einstellungen verwaltet.',
         'review_legend_title' => 'Prufleitfaden',
         'about_project_title' => 'Mission und Ansatz',
         'about_owner_title' => 'Projektleitung und Kontakt',
@@ -3250,6 +3776,7 @@ function cft(string $key): string
         'msg_title' => 'Messagerie pour extensions',
         'support_title' => 'Soutenir le projet',
         'intel_api_keys_title' => 'Cles API privees',
+        'intel_api_keys_in_settings' => 'Les API keys privees se gerent dans Parametres.',
         'review_legend_title' => 'Guide de revue',
         'about_project_title' => 'Mission et approche',
         'about_owner_title' => 'Direction du projet et contact',
@@ -3585,14 +4112,15 @@ function cfseverityclass($score): string
     return 'low';
 }
 
+$eventWorkbenchSourceReports = $page === 'search' ? $searchResults : $reports;
 $reportBlockedHistory = [
     'hostnames' => [],
     'ips' => [],
 ];
-if (!empty($reports)) {
+if (!empty($eventWorkbenchSourceReports)) {
     $historyHostnames = [];
     $historyIps = [];
-    foreach ($reports as $historyRow) {
+    foreach ($eventWorkbenchSourceReports as $historyRow) {
         $historyHost = trim((string) ($historyRow['hostname'] ?? ''));
         if ($historyHost !== '') {
             $historyHostnames[] = $historyHost;
@@ -3610,7 +4138,7 @@ $blockedHistoryByHostname = is_array($reportBlockedHistory['hostnames'] ?? null)
 $blockedHistoryByIp = is_array($reportBlockedHistory['ips'] ?? null) ? $reportBlockedHistory['ips'] : [];
 
 $eventWorkbenchRows = [];
-foreach ($reports as $reportRow) {
+foreach ($eventWorkbenchSourceReports as $reportRow) {
     $receivedAt = (string) ($reportRow['received_at'] ?? '');
     $lastSeenAt = (string) ($reportRow['last_seen'] ?? '');
     $activityAt = $lastSeenAt !== '' ? $lastSeenAt : $receivedAt;
@@ -3772,7 +4300,16 @@ usort($eventDomainGroups, static function (array $a, array $b): int {
     }
     return strcmp((string) ($a['hostname'] ?? ''), (string) ($b['hostname'] ?? ''));
 });
-$eventWorkbenchJson = json_encode($eventWorkbenchRows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+$eventWorkbenchJson = json_encode(
+    $eventWorkbenchRows,
+    JSON_UNESCAPED_UNICODE
+    | JSON_UNESCAPED_SLASHES
+    | JSON_HEX_TAG
+    | JSON_HEX_AMP
+    | JSON_HEX_APOS
+    | JSON_HEX_QUOT
+    | JSON_INVALID_UTF8_SUBSTITUTE
+);
 if ($eventWorkbenchJson === false) {
     $eventWorkbenchJson = '[]';
 }
@@ -3837,24 +4374,27 @@ ob_start();
   <link rel="stylesheet" href="<?= clickfix_h($leafletCssUrl); ?>">
   <?php endif; ?>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Public+Sans:wght@400;600;700&family=DM+Sans:wght@400;500;700&family=Nunito+Sans:wght@400;600;700&display=swap');
     :root{
-      --bg:#03060d;
-      --bg-layer:#091325;
-      --bg-soft:#10223f;
-      --card:#0d1d34cc;
-      --line:#355a86;
-      --line-soft:#2a4565;
-      --txt:#ecf4ff;
-      --mut:#9eb7d8;
-      --brand:#63d9ff;
-      --brand-2:#57f0be;
-      --warn:#ffd470;
-      --danger:#ff8e9f;
-      --ok:#52dfb0;
-      --shadow:0 22px 56px rgba(2,8,20,.45);
-      --radius:18px;
-      --radius-sm:13px;
+      --bg:#05070f;
+      --bg-layer:#0a1222;
+      --bg-soft:#141f35;
+      --card:#0d1729cc;
+      --line:#2d3f5f;
+      --line-soft:#22334f;
+      --txt:#e9f4ff;
+      --mut:#97afca;
+      --brand:#6ff6ff;
+      --brand-2:#7fffbf;
+      --accent:#9aa4ff;
+      --warn:#ffd070;
+      --danger:#ff6f92;
+      --ok:#59f2b5;
+      --shadow:0 26px 70px rgba(2,8,18,.55);
+      --radius:20px;
+      --radius-sm:12px;
+      --glow:0 0 24px rgba(111,246,255,.18);
+      --font-main:'Manrope',sans-serif;
     }
     body.theme-teal{
       --brand:#56d6c9;
@@ -3889,15 +4429,109 @@ ob_start();
     body{
       margin:0;
       color:var(--txt);
-      font-family:'Manrope',sans-serif;
+      font-family:var(--font-main);
       background:
-        radial-gradient(1100px 500px at 7% -8%,rgba(99,217,255,.22),transparent 62%),
-        radial-gradient(960px 460px at 95% -10%,rgba(87,240,190,.18),transparent 58%),
-        radial-gradient(760px 320px at 52% 108%,rgba(109,129,255,.12),transparent 62%),
-        repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 1px,transparent 1px 92px),
-      linear-gradient(145deg,var(--bg),var(--bg-layer) 45%,#0d1a31 100%);
+        radial-gradient(820px 420px at 12% -8%,rgba(111,246,255,.28),transparent 65%),
+        radial-gradient(880px 420px at 92% -12%,rgba(127,255,191,.18),transparent 60%),
+        radial-gradient(700px 300px at 60% 108%,rgba(154,164,255,.12),transparent 62%),
+        linear-gradient(120deg,rgba(255,255,255,.04) 0 1px,transparent 1px 22px),
+        linear-gradient(145deg,var(--bg),var(--bg-layer) 50%,#0b1628 100%);
       min-height:100vh;
     }
+    body.ui-light{
+      --bg:#f3f7fb;
+      --bg-layer:#e8eef5;
+      --bg-soft:#ffffff;
+      --card:#ffffff;
+      --line:#c8d4e3;
+      --line-soft:#d6e0ec;
+      --txt:#0c1726;
+      --mut:#3e4a5d;
+      --brand:#1a6bff;
+      --brand-2:#06c47a;
+      --accent:#2b5cff;
+      --warn:#b97300;
+      --danger:#b5283f;
+      --ok:#148a64;
+      --shadow:0 18px 40px rgba(7,12,20,.14);
+      --glow:none;
+    }
+    body.ui-light .card,
+    body.ui-light .panel,
+    body.ui-light table{
+      background:rgba(255,255,255,.92);
+      border-color:rgba(140,160,190,.5);
+    }
+    body.ui-light .top,
+    body.ui-light .nav,
+    body.ui-light .intel-workspace-nav{
+      background:rgba(255,255,255,.85);
+      border-color:rgba(140,160,190,.45);
+    }
+    body.ui-contrast{
+      --line:#5c7aa8;
+      --line-soft:#476a97;
+      --mut:#c8ddf4;
+    }
+    body.ui-compact .card{padding:8px}
+    body.ui-compact .grid,
+    body.ui-compact .row,
+    body.ui-compact .viz-grid,
+    body.ui-compact .intel-grid,
+    body.ui-compact .intel-side,
+    body.ui-compact .intel-workbench-grid{
+      gap:6px;
+    }
+    body.ui-compact .intel-workspace-nav{gap:6px}
+    body.ui-reduced-motion *,
+    body.ui-reduced-motion *::before,
+    body.ui-reduced-motion *::after{
+      animation:none !important;
+      transition:none !important;
+      scroll-behavior:auto !important;
+    }
+    body.ui-no-decor{
+      background:linear-gradient(160deg,var(--bg),var(--bg-layer));
+    }
+    body.ui-no-decor .card,
+    body.ui-no-decor .panel,
+    body.ui-no-decor .nav,
+    body.ui-no-decor .top{
+      box-shadow:none !important;
+    }
+    body.ui-accent-blue{--accent:#5b8bff;--brand:#66b5ff}
+    body.ui-accent-green{--accent:#37e3a7;--brand:#37e3a7}
+    body.ui-accent-purple{--accent:#a685ff;--brand:#b59bff}
+    body.ui-accent-amber{--accent:#ffb454;--brand:#ffb454}
+    body.ui-accent-red{--accent:#ff7a86;--brand:#ff7a86}
+    body.ui-accent-cyan{--accent:#5fd8ff;--brand:#5fd8ff}
+    body.ui-font-public{--font-main:'Public Sans',sans-serif}
+    body.ui-font-dm{--font-main:'DM Sans',sans-serif}
+    body.ui-font-nunito{--font-main:'Nunito Sans',sans-serif}
+    body.ui-font-sora{--font-main:'Sora',sans-serif}
+    a{
+      color:#b7f4ff;
+      text-decoration:none;
+      transition:color .2s ease,opacity .2s ease;
+    }
+    a:hover{color:#e9ffff;opacity:.95}
+    code{
+      font-family:'JetBrains Mono',monospace;
+      background:rgba(16,33,55,.7);
+      border:1px solid rgba(68,104,150,.45);
+      border-radius:8px;
+      padding:1px 6px;
+    }
+    pre{
+      background:rgba(9,18,34,.8);
+      border:1px solid rgba(62,96,142,.45);
+      border-radius:12px;
+      padding:10px;
+      color:#d7e8ff;
+      box-shadow:0 12px 28px rgba(3,10,22,.28) inset;
+    }
+    input::placeholder,textarea::placeholder{color:rgba(167,189,214,.75)}
+    ::selection{background:rgba(111,246,255,.28);color:#031321}
     body.nav-open-mobile{
       overflow:hidden;
     }
@@ -3905,21 +4539,23 @@ ob_start();
       --sticky-header-offset:136px;
     }
     .wrap{
-      width:min(1920px,99vw);
+      width:100%;
+      max-width:none;
       margin:auto;
       padding:
         calc(10px + env(safe-area-inset-top))
-        0
+        clamp(8px,1.6vw,18px)
         calc(18px + env(safe-area-inset-bottom))
-        0
+        clamp(8px,1.6vw,18px);
     }
     .workspace{
       display:grid;
-      grid-template-columns:minmax(0,1fr) 350px;
-      gap:8px;
+      grid-template-columns:minmax(0,1fr) clamp(280px,22vw,380px);
+      gap:10px;
       align-items:start;
+      min-height:calc(100vh - var(--sticky-header-offset));
     }
-    .main-column{min-width:0}
+    .main-column{min-width:0;min-height:calc(100vh - var(--sticky-header-offset))}
     .side-column{
       display:flex;
       flex-direction:column;
@@ -3927,6 +4563,8 @@ ob_start();
       position:sticky;
       top:var(--sticky-header-offset);
       align-self:start;
+      max-height:calc(100vh - var(--sticky-header-offset) - 12px);
+      overflow:auto;
     }
     .side-card{padding:10px}
     .side-card h3{margin:0 0 8px;font-size:.86rem}
@@ -4086,11 +4724,13 @@ ob_start();
     }
     .support-note{margin:0 0 8px;color:#bcd6ef;font-size:.8rem;line-height:1.4}
     .top,.card{
-      background:linear-gradient(170deg,rgba(15,37,64,.76),rgba(10,24,45,.78));
-      border:1px solid rgba(84,134,188,.44);
+      background:
+        radial-gradient(circle at top right,rgba(111,246,255,.08),transparent 40%),
+        linear-gradient(165deg,rgba(13,26,44,.92),rgba(9,19,34,.9));
+      border:1px solid rgba(84,126,178,.48);
       border-radius:var(--radius);
       box-shadow:var(--shadow);
-      backdrop-filter:blur(12px);
+      backdrop-filter:blur(14px);
     }
     .top{
       display:grid;
@@ -4101,10 +4741,10 @@ ob_start();
       top:10px;
       z-index:28;
       background:
-        radial-gradient(circle at top right,rgba(93,200,255,.18),transparent 32%),
-        linear-gradient(170deg,rgba(15,37,64,.92),rgba(10,24,45,.94));
-      border-color:rgba(104,155,208,.52);
-      box-shadow:0 22px 48px rgba(3,10,22,.42);
+        radial-gradient(circle at top right,rgba(127,255,191,.18),transparent 34%),
+        linear-gradient(170deg,rgba(13,30,52,.95),rgba(7,15,28,.95));
+      border-color:rgba(104,155,208,.58);
+      box-shadow:0 22px 50px rgba(3,10,22,.5),var(--glow);
     }
     .app-header-main{
       display:flex;
@@ -4266,6 +4906,76 @@ ob_start();
       border-color:#e2879a;
       box-shadow:0 10px 20px rgba(145,42,68,.35);
     }
+    .display-settings-panel{
+      position:fixed;
+      right:18px;
+      top:78px;
+      width:min(360px,92vw);
+      max-height:80vh;
+      overflow:auto;
+      border-radius:20px;
+      border:1px solid rgba(255,255,255,.08);
+      background:linear-gradient(160deg,rgba(12,20,32,.96),rgba(9,15,24,.96));
+      box-shadow:0 28px 70px rgba(0,0,0,.5);
+      padding:14px;
+      z-index:1200;
+      display:none;
+    }
+    .display-settings-panel.open{display:block}
+    .display-settings-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .display-settings-header h4{margin:0;font:700 .9rem 'Sora',sans-serif}
+    .display-settings-grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:10px;
+    }
+    .display-toggle{
+      border:1px solid #1f2f46;
+      border-radius:16px;
+      padding:12px;
+      background:linear-gradient(160deg,#121c2b,#0e1826);
+      display:grid;
+      gap:10px;
+    }
+    .display-toggle .label{font:.75rem 'Manrope',sans-serif;color:#d6e6f7}
+    .switch{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+    }
+    .switch input{display:none}
+    .switch-track{
+      width:42px;height:24px;border-radius:999px;
+      border:1px solid #42597a;background:#101f30;position:relative;
+      transition:background .2s ease,border-color .2s ease;
+    }
+    .switch-thumb{
+      position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;
+      background:#8197b7;transition:transform .2s ease,background .2s ease;
+    }
+    .switch input:checked + .switch-track{background:#17324d;border-color:#66b4ff}
+    .switch input:checked + .switch-track .switch-thumb{transform:translateX(18px);background:#9de2ff}
+    .display-section{margin-top:14px}
+    .display-section h5{margin:0 0 8px;font:.72rem 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.12em;color:#a9c5df}
+    .preset-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .preset-btn{
+      border:1px solid #20354d;border-radius:12px;padding:10px;background:#0c1826;
+      display:flex;align-items:center;justify-content:center;cursor:pointer;
+    }
+    .preset-btn span{display:block;width:26px;height:26px;border-radius:8px}
+    .font-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .font-btn{
+      border:1px solid #20354d;border-radius:14px;padding:10px;background:#0c1826;cursor:pointer;
+      display:grid;gap:4px;text-align:left;
+    }
+    .font-btn b{font-size:.86rem}
+    .font-btn span{font-size:.68rem;color:#9ab3cc}
     .hero{display:grid;grid-template-columns:2fr .9fr;gap:8px;margin-bottom:8px}
     .hero-main,.hero-side{padding:11px}
     .hero-main h1{margin:0 0 6px;font-size:clamp(1.14rem,1.45vw,1.48rem);line-height:1.15}
@@ -4292,7 +5002,7 @@ ob_start();
       color:#bff8df;
     }
     .role-chip.guest{border-color:#927138;background:#3d2f12;color:#ffe8ac}
-    .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:8px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-bottom:8px}
     .card{
       padding:10px;
       position:relative;
@@ -4327,7 +5037,7 @@ ob_start();
     }
     .kpi-icon svg{width:15px;height:15px;stroke:#c8ebff;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
     .kpi b{font-size:1.34rem;font-family:'Sora',sans-serif;font-weight:700;line-height:1.1}
-    .viz-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .viz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px}
     .mini-chart{display:grid;gap:6px}
     .mini-row{display:grid;grid-template-columns:140px 1fr 52px;align-items:center;gap:8px}
     .mini-bar{height:8px;border-radius:999px;background:#183f5d;overflow:hidden}
@@ -4349,10 +5059,20 @@ ob_start();
       box-shadow:0 10px 20px rgba(0,0,0,.2) inset;
     }
     .row{display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-bottom:8px}
-    table{width:100%;border-collapse:separate;border-spacing:0;font-size:.79rem}
+    .stack{display:grid;gap:8px}
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      font-size:.79rem;
+      background:rgba(9,18,32,.45);
+      border:1px solid rgba(55,87,130,.45);
+      border-radius:14px;
+      overflow:hidden;
+    }
     th,td{
       padding:7px 8px;
-      border-bottom:1px solid rgba(58,96,132,.4);
+      border-bottom:1px solid rgba(58,96,132,.3);
       text-align:left;
       vertical-align:top;
     }
@@ -4361,7 +5081,8 @@ ob_start();
       text-transform:uppercase;
       color:#c7ddf4;
       letter-spacing:.28px;
-      background:linear-gradient(120deg,rgba(24,49,75,.52),rgba(17,34,54,.45));
+      background:linear-gradient(120deg,rgba(24,49,75,.75),rgba(12,28,46,.6));
+      border-bottom:1px solid rgba(90,130,178,.55);
     }
     th.sortable{
       cursor:pointer;
@@ -4381,36 +5102,64 @@ ob_start();
     }
     th.sortable.sort-asc::after{content:'â†‘';color:#d8efff}
     th.sortable.sort-desc::after{content:'â†“';color:#d8efff}
-    tr:hover td{background:rgba(14,32,51,.45)}
+    tr:hover td{background:rgba(16,32,55,.58)}
     input,select,textarea,button{
       width:100%;
-      padding:7px 9px;
-      border-radius:11px;
-      border:1px solid #3a5f88;
-      background:linear-gradient(150deg,#102742,#0d2137);
+      padding:9px 11px;
+      border-radius:12px;
+      border:1px solid rgba(70,104,150,.7);
+      background:
+        linear-gradient(150deg,rgba(20,39,64,.95),rgba(10,24,42,.95));
       color:var(--txt);
-      font:500 .84rem 'Manrope',sans-serif;
-      transition:border-color .2s ease,box-shadow .2s ease,transform .18s ease;
+      font:600 .84rem 'Manrope',sans-serif;
+      transition:border-color .2s ease,box-shadow .2s ease,transform .18s ease,background .2s ease;
+      box-shadow:0 6px 16px rgba(3,10,22,.2);
     }
+    select{
+      appearance:none;
+      background-image:
+        linear-gradient(45deg,transparent 50%,rgba(180,210,255,.9) 50%),
+        linear-gradient(135deg,rgba(180,210,255,.9) 50%,transparent 50%),
+        linear-gradient(to right,transparent,transparent);
+      background-position:
+        calc(100% - 16px) calc(50% - 2px),
+        calc(100% - 10px) calc(50% - 2px),
+        calc(100% - 26px) 0.55rem;
+      background-size:6px 6px,6px 6px,1px 1.4rem;
+      background-repeat:no-repeat;
+      padding-right:30px;
+    }
+    select:focus{background-image:
+        linear-gradient(45deg,transparent 50%,rgba(255,255,255,.95) 50%),
+        linear-gradient(135deg,rgba(255,255,255,.95) 50%,transparent 50%),
+        linear-gradient(to right,transparent,transparent);}
     input[type=checkbox],input[type=radio]{width:auto;padding:0;transform:translateY(1px)}
     label{display:flex;gap:8px;align-items:center}
     input:focus,select:focus,textarea:focus{
       outline:none;
-      border-color:#8be4ff;
-      box-shadow:0 0 0 3px rgba(99,217,255,.2);
+      border-color:#9af1ff;
+      box-shadow:0 0 0 3px rgba(111,246,255,.18),0 10px 24px rgba(3,12,22,.25);
+      background:linear-gradient(160deg,rgba(24,49,78,.95),rgba(10,24,42,.95));
     }
     textarea{min-height:76px}
     .btn{
-      background:linear-gradient(120deg,var(--brand),var(--brand-2));
+      background:
+        linear-gradient(120deg,var(--brand),var(--brand-2));
       border:none;
-      color:#032037;
-      font-weight:700;
-      letter-spacing:.1px;
+      color:#041322;
+      font-weight:800;
+      letter-spacing:.2px;
+      text-transform:uppercase;
+      font-size:.73rem;
       cursor:pointer;
-      box-shadow:0 12px 22px rgba(83,198,255,.24);
+      box-shadow:0 14px 30px rgba(86,210,255,.3),var(--glow);
       transition:.2s ease;
     }
-    .btn:hover{transform:translateY(-1px);box-shadow:0 16px 30px rgba(83,198,255,.34)}
+    .btn:hover{
+      transform:translateY(-1px);
+      box-shadow:0 18px 36px rgba(86,210,255,.4),0 0 20px rgba(127,255,191,.25);
+    }
+    .btn:active{transform:translateY(0);box-shadow:0 10px 20px rgba(86,210,255,.26)}
     .split{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
     .badge{padding:4px 8px;border-radius:999px;border:1px solid #5b7f9f;font:.68rem 'JetBrains Mono',monospace}
     .pending{color:var(--warn)}.accepted{color:var(--ok)}.rejected{color:var(--danger)}
@@ -4538,8 +5287,22 @@ ob_start();
     .event-context mark{background:#ffd26666;color:#fff;border-radius:3px;padding:0 2px}
     .event-raw{margin-top:8px}
     .event-raw pre{margin:6px 0 0;padding:8px;border:1px solid #2d5377;border-radius:10px;max-height:220px;overflow:auto;background:#081929;font:.73rem 'JetBrains Mono',monospace;white-space:pre-wrap}
+    .session-timeout-modal{position:fixed;inset:0;background:rgba(5,12,22,.78);display:flex;align-items:center;justify-content:center;z-index:9999}
+    .session-timeout-modal[hidden]{display:none}
+    .session-timeout-card{max-width:420px;width:92%;border-radius:14px;padding:16px;border:1px solid #2d557a;background:linear-gradient(160deg,#0c2236,#0b1c2c);box-shadow:0 20px 50px rgba(0,0,0,.45)}
+    .session-timeout-card h3{margin:0 0 6px 0}
+    .session-timeout-card .mut{font-size:.86rem}
     .legacy-events{margin-top:8px}
     .legacy-events summary{cursor:pointer;color:#cbeefd}
+    .mitre-blueprint{margin-top:8px;border:1px solid #2d557a;border-radius:12px;padding:10px;background:linear-gradient(160deg,#0c2236,#0b1c2c)}
+    .mitre-blueprint h4{margin:0 0 6px 0;font-size:.9rem}
+    .mitre-blueprint-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+    .mitre-tactic{border:1px solid #2a4b69;border-radius:10px;padding:8px;background:#0e2337;display:grid;gap:6px}
+    .mitre-tactic-title{font:.7rem 'JetBrains Mono',monospace;color:#9dc3e1;text-transform:uppercase;letter-spacing:.12em}
+    .mitre-tech-list{display:flex;flex-wrap:wrap;gap:6px}
+    .mitre-tech{padding:4px 6px;border-radius:8px;border:1px solid #3c6a8f;background:#10304b;font:.7rem 'JetBrains Mono',monospace;color:#d7ecff}
+    .mitre-tech b{display:block;font-size:.68rem;color:#87c7ff}
+    .mitre-empty{color:var(--mut);font-size:.8rem}
     .intel-shell{display:grid;gap:12px}
     .intel-topbar{
       border:1px solid #2b5378;
@@ -5052,6 +5815,29 @@ ob_start();
       color:#d3e9ff;
     }
     .intel-workbench-provider-list input[type=checkbox]{accent-color:#5fd8ff}
+    .intel-workbench-decode{
+      border:1px solid #2f5579;
+      border-radius:10px;
+      background:#0d2237;
+      padding:8px;
+      display:grid;
+      gap:8px;
+    }
+    .intel-workbench-decode summary{
+      list-style:none;
+      cursor:pointer;
+      font:700 .82rem 'Manrope',sans-serif;
+      color:#d8ecff;
+    }
+    .intel-workbench-decode summary::-webkit-details-marker{display:none}
+    .intel-workbench-decode[open] summary{
+      border-bottom:1px solid #2f5579;
+      padding-bottom:6px;
+    }
+    .intel-workbench-suggestions{
+      display:grid;
+      gap:6px;
+    }
     .intel-workbench-kpis{
       display:grid;
       grid-template-columns:repeat(4,minmax(0,1fr));
@@ -5217,8 +6003,16 @@ ob_start();
       min-width:0;
       padding:8px 11px;
     }
-    .intel-node{position:absolute;transform:translate(-50%,-50%);min-width:96px;max-width:180px;padding:8px 10px;border-radius:12px;color:#fff;font:700 .74rem 'Manrope',sans-serif;border:1px solid #ffffff55;cursor:move;user-select:none;box-shadow:0 8px 18px -12px #000a;word-break:break-word}
+    .intel-node{position:absolute;transform:translate(-50%,-50%);min-width:96px;max-width:200px;padding:8px 10px;border-radius:12px;color:#fff;font:700 .74rem 'Manrope',sans-serif;border:1px solid #ffffff55;cursor:move;user-select:none;box-shadow:0 8px 18px -12px #000a;word-break:break-word}
     .intel-node.active{outline:2px solid #ffd266;z-index:3}
+    .intel-node .intel-node-label{font:700 .74rem 'Manrope',sans-serif}
+    .intel-node .intel-node-meta{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+    .intel-node .node-chip{font:.56rem 'JetBrains Mono',monospace;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:999px;border:1px solid #ffffff44;background:#10263b;color:#d7e7fb}
+    .intel-node .node-chip.source{border-color:#7bb9ff;background:#0f2b47;color:#cfe4ff}
+    .intel-node .node-chip.hash{border-color:#d9b45a;background:#2d2412;color:#ffe7b6}
+    .intel-node .node-chip.ioc{border-color:#6fe0a6;background:#103427;color:#d4ffe8}
+    .intel-node .node-chip.artifact{border-color:#ff9f6b;background:#3a1d10;color:#ffe0cf}
+    .intel-node .node-chip.vt{border-color:#ff9f43;background:#3a2412;color:#ffe2c2}
     .intel-edge-label{position:absolute;transform:translate(-50%,-50%);font:.68rem 'JetBrains Mono',monospace;color:#d6ebf8;background:#10314a;border:1px solid #3d6991;padding:2px 5px;border-radius:6px;pointer-events:none}
     .intel-side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
     .intel-side h3{margin:.2rem 0}
@@ -5349,14 +6143,23 @@ ob_start();
       border:1px solid #2f5579;
       border-radius:10px;
       background:#0d2237;
-      padding:8px;
       display:grid;
       gap:8px;
     }
-    .api-lookup-history h4{
+    .api-lookup-history summary{
+      list-style:none;
+      cursor:pointer;
       margin:0;
+      padding:8px;
       font:700 .86rem 'Manrope',sans-serif;
       color:#d8ecff;
+    }
+    .api-lookup-history summary::-webkit-details-marker{display:none}
+    .api-lookup-history[open] summary{
+      border-bottom:1px solid #2f5579;
+    }
+    .api-lookup-history > *:not(summary){
+      padding:0 8px 8px 8px;
     }
     .api-lookup-item{
       border:1px solid #2f5579;
@@ -5396,6 +6199,23 @@ ob_start();
       font:.72rem 'JetBrains Mono',monospace;
       white-space:pre-wrap;
       word-break:break-word;
+    }
+    .intel-accordion{
+      border:1px solid #284968;
+      border-radius:12px;
+      background:#0a1926;
+      padding:8px 12px;
+      margin-top:10px;
+    }
+    .intel-accordion > summary{
+      cursor:pointer;
+      font:700 .8rem 'Manrope',sans-serif;
+      color:#dcecff;
+      list-style:none;
+    }
+    .intel-accordion > summary::-webkit-details-marker{display:none}
+    .intel-accordion[open]{
+      box-shadow:0 10px 24px -18px #000a;
     }
     .vt-reported-wrap{
       margin-top:10px;
@@ -5493,7 +6313,7 @@ ob_start();
       white-space:pre-wrap;
       word-break:break-word;
     }
-    .intel-public{max-width:1280px;margin:18px auto;padding:0 12px}
+    .intel-public{max-width:1760px;margin:18px auto;padding:0 12px}
     .intel-public .card{margin-bottom:10px}
     .intel-public-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
     .intel-public-meta .m{padding:8px;border:1px solid #2e5378;border-radius:9px;background:#102842}
@@ -5617,9 +6437,12 @@ ob_start();
     pre{white-space:pre-wrap;word-break:break-word}
     input,select,textarea,button{max-width:100%}
     @media(min-width:1700px){
-      .grid{grid-template-columns:repeat(8,minmax(0,1fr))}
+      .grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
       .kpi{min-height:84px}
       .kpi .mut{font-size:.67rem}
+    }
+    @media(min-width:1900px){
+      .workspace{grid-template-columns:minmax(0,1fr) clamp(320px,18vw,420px)}
     }
     @media(max-width:1320px){
       .workspace{grid-template-columns:1fr}
@@ -5759,6 +6582,7 @@ ob_start();
       .intel-focus-hero{grid-template-columns:1fr}
     }
     @media(max-width:700px){
+      :root{--sticky-header-offset:12px}
       .wrap{
         width:min(100%,98vw);
         padding:
@@ -5771,6 +6595,10 @@ ob_start();
       .top{
         top:max(6px, env(safe-area-inset-top));
         padding:12px;
+        position:static;
+      }
+      .side-column{
+        position:static;
       }
       .grid{grid-template-columns:1fr}
       .top-status{justify-content:flex-start}
@@ -6114,6 +6942,7 @@ ob_start();
         </nav>
         <div class="nav-actions">
           <a class="nav-btn" href="/">⌂ /</a>
+          <button class="nav-btn" type="button" id="display-settings-toggle">Display</button>
           <a class="nav-btn<?= $page === 'access' ? ' active' : ''; ?>" href="<?= clickfix_h(cfurl('access', true)); ?>"><?= clickfix_h(cft('nav_access')); ?></a>
           <?php if ($loggedIn): ?>
             <form method="post">
@@ -6124,6 +6953,69 @@ ob_start();
         </div>
       </div>
     </header>
+    <div class="display-settings-panel" id="display-settings-panel" aria-hidden="true">
+      <div class="display-settings-header">
+        <h4>Display Settings</h4>
+        <button class="nav-btn" type="button" id="display-settings-close">×</button>
+      </div>
+      <div class="display-settings-grid">
+        <div class="display-toggle">
+          <div class="label">Dark mode</div>
+          <label class="switch">
+            <input type="checkbox" data-setting="dark">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+        </div>
+        <div class="display-toggle">
+          <div class="label">Contrast</div>
+          <label class="switch">
+            <input type="checkbox" data-setting="contrast">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+        </div>
+        <div class="display-toggle">
+          <div class="label">Compact</div>
+          <label class="switch">
+            <input type="checkbox" data-setting="compact">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+        </div>
+        <div class="display-toggle">
+          <div class="label">Reduce Motion</div>
+          <label class="switch">
+            <input type="checkbox" data-setting="reducedMotion">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+        </div>
+        <div class="display-toggle">
+          <div class="label">Decorations</div>
+          <label class="switch">
+            <input type="checkbox" data-setting="decorations">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+        </div>
+      </div>
+      <div class="display-section">
+        <h5>Presets</h5>
+        <div class="preset-grid">
+          <button class="preset-btn" type="button" data-accent="blue"><span style="background:#5b8bff"></span></button>
+          <button class="preset-btn" type="button" data-accent="green"><span style="background:#37e3a7"></span></button>
+          <button class="preset-btn" type="button" data-accent="purple"><span style="background:#a685ff"></span></button>
+          <button class="preset-btn" type="button" data-accent="amber"><span style="background:#ffb454"></span></button>
+          <button class="preset-btn" type="button" data-accent="red"><span style="background:#ff7a86"></span></button>
+          <button class="preset-btn" type="button" data-accent="cyan"><span style="background:#5fd8ff"></span></button>
+        </div>
+      </div>
+      <div class="display-section">
+        <h5>Font</h5>
+        <div class="font-grid">
+          <button class="font-btn" type="button" data-font="public"><b>Public Sans</b><span>UI sans</span></button>
+          <button class="font-btn" type="button" data-font="dm"><b>DM Sans</b><span>Modern sans</span></button>
+          <button class="font-btn" type="button" data-font="nunito"><b>Nunito Sans</b><span>Rounded</span></button>
+          <button class="font-btn" type="button" data-font="sora"><b>Sora</b><span>Tech display</span></button>
+        </div>
+      </div>
+    </div>
     <div class="workspace">
       <main class="main-column">
 
@@ -6749,17 +7641,35 @@ ob_start();
           <button class="btn" type="submit">Buscar</button>
         </form>
         <div style="margin-top:10px">
+          <?php
+            $searchDetailBase = [
+                'q' => $search,
+                'domain' => $domainFilter,
+                'command' => $commandFilter,
+                'date_from' => $dateFromFilter,
+                'date_to' => $dateToFilter,
+            ];
+          ?>
           <table>
-            <thead><tr><th>Fecha</th><th>Dominio</th><th>Mensaje</th><th>Score</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Dominio</th><th>Mensaje</th><th>Score</th><th>Detalle</th></tr></thead>
             <tbody>
-              <?php foreach ($filteredReports as $fr): ?>
+              <?php foreach ($searchResults as $fr): ?>
+                <?php
+                  $detailParams = $searchDetailBase;
+                  $detailParams['report_id'] = (int) ($fr['id'] ?? 0);
+                  $detailUrl = cfurl('search', true, $detailParams) . '#event-workbench';
+                ?>
                 <tr>
                   <td class="mono"><?= clickfix_h((string) ($fr['received_at'] ?? '')); ?></td>
                   <td class="mono"><?= clickfix_h((string) ($fr['hostname'] ?? '-')); ?></td>
                   <td><?= clickfix_h((string) ($fr['message'] ?? '')); ?></td>
                   <td class="mono"><?= isset($fr['score_total']) ? (int) $fr['score_total'] : 0; ?></td>
+                  <td class="mono"><a class="event-related-link" href="<?= clickfix_h($detailUrl); ?>">Ver detalle</a></td>
                 </tr>
               <?php endforeach; ?>
+              <?php if (empty($searchResults)): ?>
+                <tr><td colspan="5" class="mut">Sin resultados para los filtros actuales.</td></tr>
+              <?php endif; ?>
             </tbody>
           </table>
         </div>
@@ -7228,6 +8138,20 @@ ob_start();
             $sharedGraphData = is_array($sharedGraph['graph'] ?? null) ? $sharedGraph['graph'] : ['nodes' => [], 'edges' => []];
             $sharedNodeCount = count(is_array($sharedGraphData['nodes'] ?? null) ? $sharedGraphData['nodes'] : []);
             $sharedEdgeCount = count(is_array($sharedGraphData['edges'] ?? null) ? $sharedGraphData['edges'] : []);
+            $sharedInvestigationMitreSources = [];
+            if (!empty($sharedGraph['title'])) {
+                $sharedInvestigationMitreSources[] = (string) $sharedGraph['title'];
+            }
+            if (!empty($sharedGraph['site_domain'])) {
+                $sharedInvestigationMitreSources[] = (string) $sharedGraph['site_domain'];
+            }
+            if (!empty($sharedGraph['summary'])) {
+                $sharedInvestigationMitreSources[] = (string) $sharedGraph['summary'];
+            }
+            if (!empty($sharedGraph['notes'])) {
+                $sharedInvestigationMitreSources[] = (string) $sharedGraph['notes'];
+            }
+            $sharedInvestigationMitreText = trim(implode("\n", array_filter($sharedInvestigationMitreSources)));
           ?>
           <div class="intel-shell">
           <article class="intel-topbar">
@@ -7248,6 +8172,11 @@ ob_start();
               <div class="intel-kpi"><b>Conexiones</b><span><?= $sharedEdgeCount; ?></span></div>
               <div class="intel-kpi"><b>Actualizado</b><span class="mono"><?= clickfix_h((string) ($sharedGraph['updated_at'] ?? '-')); ?></span></div>
             </div>
+            <div class="mitre-blueprint" id="shared-mitre" data-mitre-source="<?= clickfix_h($sharedInvestigationMitreText); ?>">
+              <h4>MITRE ATT&CK Blueprint (publico)</h4>
+              <div class="mitre-blueprint-grid" id="shared-mitre-grid"></div>
+              <div class="mitre-empty" id="shared-mitre-empty" hidden>Sin TTPs detectadas para esta investigacion.</div>
+            </div>
           </article>
           <article class="card">
             <h2>Grafo de investigacion</h2>
@@ -7256,6 +8185,7 @@ ob_start();
                 <div class="intel-map-toolbar-group">
                   <label for="shared-layout-mode">Layout</label>
                   <select id="shared-layout-mode">
+                    <option value="force">Auto (gravity)</option>
                     <option value="tree-vertical">Arbol vertical</option>
                     <option value="tree-horizontal">Arbol horizontal</option>
                     <option value="cascade">Cascada</option>
@@ -7557,6 +8487,9 @@ ob_start();
               <div class="v">Cockpit operativo</div>
               <div class="intel-quick-grid">
                 <button type="button" class="btn" data-scroll-target="intel-section-briefing">Briefing</button>
+                <?php if ($selectedInvestigationSourceReportId > 0): ?>
+                  <button type="button" class="btn" data-scroll-target="intel-section-source-alert">Alerta origen</button>
+                <?php endif; ?>
                 <button type="button" class="btn" data-scroll-target="intel-section-enrichment">Enrichment</button>
                 <button type="button" class="btn" data-scroll-target="intel-section-graph">Grafo</button>
                 <button type="button" class="btn" data-scroll-target="intel-section-actions">Acciones</button>
@@ -7568,6 +8501,9 @@ ob_start();
           </div>
           <div class="intel-workspace-nav" id="intel-workspace-nav">
             <button type="button" class="btn" data-scroll-target="intel-section-briefing">Briefing</button>
+            <?php if ($selectedInvestigationSourceReportId > 0): ?>
+              <button type="button" class="btn" data-scroll-target="intel-section-source-alert">Alerta origen</button>
+            <?php endif; ?>
             <button type="button" class="btn" data-scroll-target="intel-section-enrichment">Enrichment</button>
             <button type="button" class="btn" data-scroll-target="intel-section-graph">Mapa relacional</button>
             <button type="button" class="btn" data-scroll-target="intel-section-entities">Entidades</button>
@@ -7578,13 +8514,182 @@ ob_start();
           </div>
           <div class="intel-layout workspace-only">
             <section class="intel-editor">
+            <?php if ($selectedInvestigationSourceReportId > 0): ?>
+              <?php
+                $sourceReport = clickfix_report_by_id($pdo, $selectedInvestigationSourceReportId);
+                $sourceEvent = null;
+                if (is_array($sourceReport)) {
+                    $sourceEventHost = strtolower(trim((string) ($sourceReport['hostname'] ?? '')));
+                    $sourceEventIp = trim((string) ($sourceReport['ip'] ?? ''));
+                    $sourceBlockedHistory = clickfix_report_blocked_history(
+                        $pdo,
+                        $sourceEventHost !== '' ? [$sourceEventHost] : [],
+                        ($canSrViewer && $sourceEventIp !== '' && filter_var($sourceEventIp, FILTER_VALIDATE_IP)) ? [$sourceEventIp] : []
+                    );
+                    $sourceHostHistory = is_array($sourceBlockedHistory['hostnames'][$sourceEventHost] ?? null)
+                        ? $sourceBlockedHistory['hostnames'][$sourceEventHost]
+                        : ['total_count' => 0, 'blocked_count' => 0, 'last_blocked_at' => ''];
+                    $sourceIpHistory = is_array($sourceBlockedHistory['ips'][$sourceEventIp] ?? null)
+                        ? $sourceBlockedHistory['ips'][$sourceEventIp]
+                        : ['total_count' => 0, 'blocked_count' => 0, 'last_blocked_at' => ''];
+                    $sourceEvent = [
+                        'id' => (int) ($sourceReport['id'] ?? 0),
+                        'received_at' => (string) ($sourceReport['received_at'] ?? ''),
+                        'hostname' => (string) ($sourceReport['hostname'] ?? ''),
+                        'url' => (string) ($sourceReport['url'] ?? ''),
+                        'previous_url' => (string) ($sourceReport['previous_url'] ?? ''),
+                        'message' => (string) ($sourceReport['message'] ?? ''),
+                        'detected_content' => (string) ($sourceReport['detected_content'] ?? ''),
+                        'full_context' => (string) ($sourceReport['full_context'] ?? ''),
+                        'score_total' => isset($sourceReport['score_total']) ? (int) $sourceReport['score_total'] : 0,
+                        'review_status' => (string) ($sourceReport['review_status'] ?? 'pending'),
+                        'blocked' => !empty($sourceReport['blocked']),
+                        'duplicate_count' => (int) ($sourceReport['duplicate_count'] ?? 1),
+                        'country' => (string) ($sourceReport['country'] ?? ''),
+                        'event_type' => strtolower((string) ($sourceReport['event_type'] ?? 'clickfix_alert')),
+                        'ip' => $canSrViewer ? $sourceEventIp : '',
+                        'extension_version' => $canSrViewer ? clickfix_extract_extension_version((string) ($sourceReport['user_agent'] ?? '')) : '',
+                        'host_blocked_before' => !empty($sourceHostHistory['blocked_count']),
+                        'host_blocked_count' => (int) ($sourceHostHistory['blocked_count'] ?? 0),
+                        'host_total_count' => (int) ($sourceHostHistory['total_count'] ?? 0),
+                        'host_last_blocked_at' => (string) ($sourceHostHistory['last_blocked_at'] ?? ''),
+                        'ip_blocked_before' => $canSrViewer && !empty($sourceIpHistory['blocked_count']),
+                        'ip_blocked_count' => $canSrViewer ? (int) ($sourceIpHistory['blocked_count'] ?? 0) : 0,
+                        'ip_total_count' => $canSrViewer ? (int) ($sourceIpHistory['total_count'] ?? 0) : 0,
+                        'ip_last_blocked_at' => $canSrViewer ? (string) ($sourceIpHistory['last_blocked_at'] ?? '') : '',
+                        'reason_list' => cfextractreasons($sourceReport),
+                        'snippets' => cfextractsnippets($sourceReport),
+                        'signals' => is_array($sourceReport['signals'] ?? null) ? $sourceReport['signals'] : [],
+                    ];
+                    if ($redactSensitiveForViewer) {
+                        $sourceEvent['url'] = clickfix_dashboard_redact_sensitive($sourceEvent['url']);
+                        $sourceEvent['previous_url'] = clickfix_dashboard_redact_sensitive($sourceEvent['previous_url']);
+                        $sourceEvent['message'] = clickfix_dashboard_redact_sensitive($sourceEvent['message']);
+                        $sourceEvent['detected_content'] = clickfix_dashboard_redact_sensitive($sourceEvent['detected_content']);
+                        $sourceEvent['full_context'] = clickfix_dashboard_redact_sensitive($sourceEvent['full_context']);
+                        $sourceEvent['snippets'] = array_map(static function ($snippet): string {
+                            return clickfix_dashboard_redact_sensitive((string) $snippet);
+                        }, $sourceEvent['snippets']);
+                    }
+                }
+              ?>
+              <div class="intel-editor-section" id="intel-section-source-alert" data-intel-section="intel-section-source-alert">
+                <div class="intel-section-head">
+                  <div>
+                    <span class="intel-section-kicker">Alerta origen</span>
+                    <h3>Detalle de la alerta usada para abrir este caso</h3>
+                    <p class="mut">Mismo nivel de detalle que en Eventos recientes, pero anclado al caso activo.</p>
+                  </div>
+                </div>
+                <?php if (!is_array($sourceEvent)): ?>
+                  <p class="mut">No se encontro la alerta origen o no hay permisos para verla.</p>
+                <?php else: ?>
+                  <?php
+                    $sourceBadges = [
+                        'score ' . (int) ($sourceEvent['score_total'] ?? 0) . '/100',
+                        !empty($sourceEvent['blocked']) ? 'blocked' : 'alert-only',
+                        (string) ($sourceEvent['review_status'] ?? 'pending'),
+                        'x' . max(1, (int) ($sourceEvent['duplicate_count'] ?? 1)),
+                        (string) ($sourceEvent['event_type'] ?? 'clickfix_alert'),
+                    ];
+                    if (!empty($sourceEvent['host_blocked_before'])) {
+                        $sourceBadges[] = 'domain_blocked x' . (int) ($sourceEvent['host_blocked_count'] ?? 0);
+                    }
+                    if (!empty($sourceEvent['ip_blocked_before'])) {
+                        $sourceBadges[] = 'ip_blocked x' . (int) ($sourceEvent['ip_blocked_count'] ?? 0);
+                    }
+                    $sourceMitreParts = array_filter([
+                        (string) ($sourceEvent['message'] ?? ''),
+                        (string) ($sourceEvent['detected_content'] ?? ''),
+                        $canViewExactEventContext ? (string) ($sourceEvent['full_context'] ?? '') : '',
+                        (string) ($sourceEvent['url'] ?? ''),
+                        (string) ($sourceEvent['previous_url'] ?? ''),
+                        implode("\n", is_array($sourceEvent['snippets'] ?? null) ? $sourceEvent['snippets'] : []),
+                        implode("\n", is_array($sourceEvent['signals'] ?? null) ? $sourceEvent['signals'] : []),
+                    ]);
+                    $sourceMitreText = trim(implode("\n", $sourceMitreParts));
+                    $sourceReasonList = is_array($sourceEvent['reason_list'] ?? null) && !empty($sourceEvent['reason_list'])
+                        ? $sourceEvent['reason_list']
+                        : [(string) ($sourceEvent['message'] ?? 'Sin motivo clasificado')];
+                  ?>
+                  <div class="event-detail-shell">
+                    <div class="event-topline">
+                      <h3 class="event-title"><?= clickfix_h((string) ($sourceEvent['hostname'] ?? '(sin dominio)')); ?></h3>
+                      <div class="event-badges">
+                        <?php foreach ($sourceBadges as $badgeLabel): ?>
+                          <span class="event-chip"><?= clickfix_h($badgeLabel); ?></span>
+                        <?php endforeach; ?>
+                      </div>
+                    </div>
+                    <div class="event-grid">
+                      <div class="event-kv"><b>Fecha</b><span><?= clickfix_h((string) ($sourceEvent['received_at'] ?? '')); ?></span></div>
+                      <div class="event-kv"><b>Pais</b><span><?= clickfix_h((string) ($sourceEvent['country'] ?? '-')); ?></span></div>
+                      <div class="event-kv"><b>URL</b><span><?= clickfix_h((string) ($sourceEvent['url'] ?? '-')); ?></span></div>
+                      <div class="event-kv"><b>URL previa</b><span><?= clickfix_h((string) ($sourceEvent['previous_url'] ?? '-')); ?></span></div>
+                      <div class="event-kv"><b>IP (manual report)</b><span><?= clickfix_h((string) ($sourceEvent['ip'] ?? '-')); ?></span></div>
+                      <div class="event-kv"><b>Extension (manual report)</b><span><?= clickfix_h((string) ($sourceEvent['extension_version'] ?? '-')); ?></span></div>
+                      <div class="event-kv"><b>Dominio ya bloqueado</b><span>
+                        <?= !empty($sourceEvent['host_blocked_before'])
+                          ? ('SI (' . (int) ($sourceEvent['host_blocked_count'] ?? 0) . ' bloqueos / ' . (int) ($sourceEvent['host_total_count'] ?? 0) . ' reportes' . (!empty($sourceEvent['host_last_blocked_at']) ? ', ultimo ' . (string) $sourceEvent['host_last_blocked_at'] : '') . ')')
+                          : ('No (' . (int) ($sourceEvent['host_total_count'] ?? 0) . ' reportes)'); ?>
+                      </span></div>
+                      <?php if ($canSrViewer): ?>
+                        <div class="event-kv"><b>IP ya bloqueada</b><span>
+                          <?= !empty($sourceEvent['ip_blocked_before'])
+                            ? ('SI (' . (int) ($sourceEvent['ip_blocked_count'] ?? 0) . ' bloqueos / ' . (int) ($sourceEvent['ip_total_count'] ?? 0) . ' reportes' . (!empty($sourceEvent['ip_last_blocked_at']) ? ', ultimo ' . (string) $sourceEvent['ip_last_blocked_at'] : '') . ')')
+                            : ('No (' . (int) ($sourceEvent['ip_total_count'] ?? 0) . ' reportes)'); ?>
+                        </span></div>
+                      <?php endif; ?>
+                    </div>
+                    <div class="event-columns">
+                      <div>
+                        <h3>Motivos detectados</h3>
+                        <ul class="event-list">
+                          <?php foreach ($sourceReasonList as $reason): ?>
+                            <li><?= clickfix_h((string) $reason); ?></li>
+                          <?php endforeach; ?>
+                        </ul>
+                      </div>
+                      <div>
+                        <h3>Snippets detectados</h3>
+                        <?php if (!empty($sourceEvent['snippets'])): ?>
+                          <?php foreach ($sourceEvent['snippets'] as $snippet): ?>
+                            <div class="event-snippet"><strong><?= clickfix_h((string) $snippet); ?></strong></div>
+                          <?php endforeach; ?>
+                        <?php else: ?>
+                          <div class="event-empty">Sin snippets almacenados.</div>
+                        <?php endif; ?>
+                      </div>
+                    </div>
+                    <div class="mitre-blueprint" id="source-alert-mitre" data-mitre-source="<?= clickfix_h($sourceMitreText); ?>">
+                      <h4>MITRE ATT&CK Blueprint (alerta origen)</h4>
+                      <div class="mitre-blueprint-grid" id="source-alert-mitre-grid"></div>
+                      <div class="mitre-empty" id="source-alert-mitre-empty" hidden>Sin TTPs detectadas para esta alerta.</div>
+                    </div>
+                    <?php
+                      $sourceContextText = $canViewExactEventContext
+                          ? (string) ($sourceEvent['full_context'] ?? '')
+                          : (string) ($sourceEvent['detected_content'] ?? '');
+                      if ($sourceContextText === '') {
+                          $sourceContextText = 'Sin contexto capturado.';
+                      }
+                    ?>
+                    <div class="event-context<?= $canViewExactEventContext ? ' event-context-exact' : ''; ?>">
+                      <h3><?= clickfix_h($canViewExactEventContext ? 'Contexto completo de pagina' : 'Contexto resaltado'); ?></h3>
+                      <pre><?= clickfix_h($sourceContextText); ?></pre>
+                    </div>
+                  </div>
+                <?php endif; ?>
+              </div>
+            <?php endif; ?>
             <div class="intel-editor-section" id="intel-section-briefing" data-intel-section="intel-section-briefing">
               <div class="intel-section-head">
                 <div>
-                  <span class="intel-section-kicker">Briefing</span>
-                  <h3>Contexto principal del caso</h3>
-                  <p class="mut">Define el foco, la narrativa analitica y los datos clave antes de enriquecer o compartir.</p>
+                  <span class="intel-section-kicker"><?= clickfix_h(cft('intel_briefing_kicker')); ?></span>
+                  <h3><?= clickfix_h(cft('intel_briefing_title')); ?></h3>
+                  <p class="mut"><?= clickfix_h(cft('intel_briefing_sub')); ?></p>
                 </div>
+                <div class="mut mono" id="intel-autosave-status"><?= clickfix_h(cft('intel_autosave_label')); ?> -</div>
               </div>
               <form id="intel-save-form" method="post">
                 <input type="hidden" name="action" value="investigation_save">
@@ -7592,9 +8697,9 @@ ob_start();
                 <input type="hidden" name="graph_id" id="intel-graph-id" value="<?= $activeGraphId; ?>">
                 <input type="hidden" name="graph_json" id="intel-graph-json" value="<?= clickfix_h($activeGraphJson); ?>">
                 <div class="intel-grid">
-                  <div><label>Titulo</label><input type="text" name="title" id="intel-title" maxlength="180" value="<?= clickfix_h((string) ($selectedInvestigation['title'] ?? '')); ?>" required></div>
-                  <div><label>Dominio principal</label><input type="text" name="site_domain" id="intel-domain" maxlength="180" value="<?= clickfix_h((string) ($selectedInvestigation['site_domain'] ?? '')); ?>" placeholder="ejemplo.com"></div>
-                  <div><label>Veredicto</label><select name="verdict" id="intel-verdict">
+                  <div><label><?= clickfix_h(cft('intel_briefing_title_label')); ?></label><input type="text" name="title" id="intel-title" maxlength="180" value="<?= clickfix_h((string) ($selectedInvestigation['title'] ?? '')); ?>" required></div>
+                  <div><label><?= clickfix_h(cft('intel_briefing_domain_label')); ?></label><input type="text" name="site_domain" id="intel-domain" maxlength="180" value="<?= clickfix_h((string) ($selectedInvestigation['site_domain'] ?? '')); ?>" placeholder="<?= clickfix_h(cft('intel_briefing_domain_placeholder')); ?>"></div>
+                  <div><label><?= clickfix_h(cft('intel_briefing_verdict_label')); ?></label><select name="verdict" id="intel-verdict">
                     <?php $v = (string) ($selectedInvestigation['verdict'] ?? 'suspicious'); ?>
                     <option value="investigating"<?= $v === 'investigating' ? ' selected' : ''; ?>>investigating</option>
                     <option value="malicious"<?= $v === 'malicious' ? ' selected' : ''; ?>>malicious</option>
@@ -7602,11 +8707,11 @@ ob_start();
                     <option value="clean"<?= $v === 'clean' ? ' selected' : ''; ?>>clean</option>
                     <option value="unknown"<?= $v === 'unknown' ? ' selected' : ''; ?>>unknown</option>
                   </select></div>
-                  <div><label>Tags globales</label><input type="text" name="tags" id="intel-tags" value="<?= clickfix_h(implode(', ', is_array($selectedInvestigation['tags'] ?? null) ? $selectedInvestigation['tags'] : [])); ?>" placeholder="phishing, fake-captcha, powershell"></div>
-                  <div class="intel-grid-full"><label>Resumen de la investigacion</label><textarea name="summary" id="intel-summary" maxlength="5000" placeholder="Explica por que se considera malicioso o no."><?= clickfix_h((string) ($selectedInvestigation['summary'] ?? '')); ?></textarea></div>
+                  <div><label><?= clickfix_h(cft('intel_briefing_tags_label')); ?></label><input type="text" name="tags" id="intel-tags" value="<?= clickfix_h(implode(', ', is_array($selectedInvestigation['tags'] ?? null) ? $selectedInvestigation['tags'] : [])); ?>" placeholder="<?= clickfix_h(cft('intel_briefing_tags_placeholder')); ?>"></div>
+                  <div class="intel-grid-full"><label><?= clickfix_h(cft('intel_briefing_summary_label')); ?></label><textarea name="summary" id="intel-summary" maxlength="5000" placeholder="<?= clickfix_h(cft('intel_briefing_summary_placeholder')); ?>"><?= clickfix_h((string) ($selectedInvestigation['summary'] ?? '')); ?></textarea></div>
                 </div>
                 <div class="intel-toolbar">
-                  <button class="btn" type="submit">Guardar investigacion</button>
+                  <button class="btn" type="submit"><?= clickfix_h(cft('intel_briefing_save')); ?></button>
                 </div>
               </form>
             </div>
@@ -7614,9 +8719,9 @@ ob_start();
             <div class="intel-editor-section" id="intel-section-enrichment" data-intel-section="intel-section-enrichment">
               <div class="intel-section-head">
                 <div>
-                  <span class="intel-section-kicker">Enrichment</span>
-                  <h3>Fuentes de investigacion</h3>
-                  <p class="mut"><?= $showApiUi ? 'Gestion de credenciales personales, pivotes y consultas historicas de enrichment.' : 'Consulta proveedores de inteligencia sin exponer credenciales en interfaz.'; ?></p>
+                  <span class="intel-section-kicker"><?= clickfix_h(cft('intel_enrichment_kicker')); ?></span>
+                  <h3><?= clickfix_h(cft('intel_enrichment_title')); ?></h3>
+                  <p class="mut"><?= $showApiUi ? clickfix_h(cft('intel_enrichment_sub_full')) : clickfix_h(cft('intel_enrichment_sub_lite')); ?></p>
                 </div>
                 <div class="intel-chip-row">
                   <span class="intel-chip">lookups: <?= count($intelApiLookupHistory); ?></span>
@@ -7625,177 +8730,13 @@ ob_start();
               </div>
               <div class="card-box" style="margin-bottom:10px">
               <?php if ($showApiUi): ?>
-                <h3><?= clickfix_h(cft('intel_api_keys_title')); ?></h3>
-                <p class="mut"><?= clickfix_h(cft('intel_api_keys_sub')); ?></p>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Proveedor</th>
-                      <th>API key</th>
-                      <th><?= clickfix_h(cft('intel_api_key_masked')); ?></th>
-                      <th><?= clickfix_h(cft('intel_api_key_updated')); ?></th>
-                      <th>Accion</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <?php foreach ($intelUserApiKeys as $apiRow): ?>
-                      <?php
-                        $providerKey = (string) ($apiRow['provider'] ?? '');
-                        $providerLabel = (string) ($apiRow['label'] ?? $providerKey);
-                        $providerHelp = (string) ($apiRow['help'] ?? '');
-                        $providerInputId = 'intel-api-key-' . preg_replace('/[^a-z0-9_]/', '_', strtolower($providerKey));
-                        $providerMasked = (string) ($apiRow['masked'] ?? '');
-                        $providerPlain = (string) ($apiRow['api_key'] ?? '');
-                      ?>
-                      <tr>
-                        <td>
-                          <b><?= clickfix_h($providerLabel); ?></b>
-                          <?php if ($providerHelp !== ''): ?><div class="mut-mini"><?= clickfix_h($providerHelp); ?></div><?php endif; ?>
-                        </td>
-                        <td>
-                          <form method="post" class="api-key-row-form">
-                            <input type="hidden" name="action" value="investigation_api_key_save">
-                            <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                            <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
-                            <input type="hidden" name="provider" value="<?= clickfix_h($providerKey); ?>">
-                            <input
-                              type="text"
-                              id="<?= clickfix_h($providerInputId); ?>"
-                              name="api_key"
-                              value="<?= clickfix_h($providerMasked); ?>"
-                              data-api-key-masked="<?= clickfix_h($providerMasked); ?>"
-                              data-api-key-plain="<?= clickfix_h($providerPlain); ?>"
-                              data-api-key-revealed="0"
-                              maxlength="600"
-                              autocomplete="off"
-                              placeholder="API key"
-                            >
-                            <button type="button" class="api-key-toggle" data-toggle-api-key="<?= clickfix_h($providerInputId); ?>">ver</button>
-                            <button class="btn" type="submit"><?= clickfix_h(cft('intel_api_key_save')); ?></button>
-                          </form>
-                        </td>
-                        <td class="mono"><?= !empty($apiRow['has_key']) ? clickfix_h((string) ($apiRow['masked'] ?? '')) : '-'; ?></td>
-                        <td class="mono"><?= clickfix_h((string) ($apiRow['updated_at'] ?? '')); ?></td>
-                        <td class="mono">
-                          <?php if (!empty($apiRow['has_key'])): ?>
-                            <form method="post" class="api-key-delete-form" onsubmit="return confirm('Eliminar API key de este proveedor?');">
-                              <input type="hidden" name="action" value="investigation_api_key_delete">
-                              <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                              <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
-                              <input type="hidden" name="provider" value="<?= clickfix_h($providerKey); ?>">
-                              <button type="submit"><?= clickfix_h(cft('intel_api_key_delete')); ?></button>
-                            </form>
-                          <?php else: ?>
-                            <span class="mut">-</span>
-                          <?php endif; ?>
-                        </td>
-                      </tr>
-                    <?php endforeach; ?>
-                  </tbody>
-                </table>
-
-                <div style="margin-top:16px">
-                  <h3>API de plataforma (con API key)</h3>
-                  <p class="mut">
-                    Genera API keys personales para consumir <code>/api/intel.php</code> y <code>/api/lookup.php</code>.
-                    Se guarda solo hash, se puede revocar y tiene expiracion/rate-limit por clave.
-                    Documentacion: <a class="user-link" href="api/INTEGRATIONS.md" target="_blank" rel="noreferrer noopener">API INTEGRATIONS</a>.
-                  </p>
-
-                  <?php if (is_array($platformApiKeyJustCreated) && !empty($platformApiKeyJustCreated['api_key'])): ?>
-                    <?php
-                      $apiHost = trim((string) ($_SERVER['HTTP_HOST'] ?? 'localhost'));
-                      $apiScheme = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off') ? 'https' : 'http';
-                      $apiBase = $apiScheme . '://' . $apiHost;
-                    ?>
-                    <div class="api-result">
-                      <b>API key nueva (se muestra una sola vez)</b>
-                      <div class="mut">Copiala ahora y guardala en un vault seguro. No se volvera a mostrar completa.</div>
-                      <pre><?= clickfix_h((string) ($platformApiKeyJustCreated['api_key'] ?? '')); ?></pre>
-                      <pre><?= clickfix_h('curl -H "X-API-Key: ' . (string) ($platformApiKeyJustCreated['api_key'] ?? '') . '" "' . $apiBase . '/api/intel.php?view=iocs&limit=50"'); ?></pre>
-                    </div>
-                  <?php endif; ?>
-
-                  <form method="post" style="margin-top:8px">
-                    <input type="hidden" name="action" value="platform_api_key_create">
-                    <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                    <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
-                    <div class="intel-grid">
-                      <div>
-                        <label>Etiqueta</label>
-                        <input type="text" name="platform_api_label" maxlength="80" placeholder="opencti-main">
-                      </div>
-                      <div>
-                        <label>Expira en dias (1-365)</label>
-                        <input type="number" name="platform_api_expires_days" min="1" max="365" value="90">
-                      </div>
-                      <div>
-                        <label>Rate limit RPM (30-2000)</label>
-                        <input type="number" name="platform_api_max_rpm" min="30" max="2000" value="120">
-                      </div>
-                    </div>
-                    <div class="intel-toolbar">
-                      <button class="btn" type="submit">Generar API key segura</button>
-                    </div>
-                  </form>
-
-                  <div style="margin-top:10px;overflow:auto">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>ID</th>
-                          <th>Etiqueta</th>
-                          <th>Prefijo</th>
-                          <th>Scopes</th>
-                          <th>RPM</th>
-                          <th>Ultimo uso</th>
-                          <th>Expira</th>
-                          <th>Estado</th>
-                          <th>Accion</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <?php if (!empty($platformApiKeys)): ?>
-                          <?php foreach ($platformApiKeys as $platformKeyRow): ?>
-                            <?php
-                              $pkId = (int) ($platformKeyRow['id'] ?? 0);
-                              $pkStatus = !empty($platformKeyRow['is_active']) ? 'active' : (!empty($platformKeyRow['is_revoked']) ? 'revoked' : 'expired');
-                              $pkPrefix = (string) ($platformKeyRow['key_prefix'] ?? '');
-                            ?>
-                            <tr>
-                              <td class="mono"><?= $pkId; ?></td>
-                              <td><?= clickfix_h((string) ($platformKeyRow['label'] ?? '')); ?></td>
-                              <td class="mono"><?= clickfix_h($pkPrefix !== '' ? ($pkPrefix . '***') : '-'); ?></td>
-                              <td class="mono"><?= clickfix_h((string) ($platformKeyRow['scopes'] ?? '')); ?></td>
-                              <td class="mono"><?= (int) ($platformKeyRow['max_rpm'] ?? 120); ?></td>
-                              <td class="mono"><?= clickfix_h((string) ($platformKeyRow['last_used_at'] ?? '')); ?></td>
-                              <td class="mono"><?= clickfix_h((string) ($platformKeyRow['expires_at'] ?? '')); ?></td>
-                              <td class="mono"><?= clickfix_h($pkStatus); ?></td>
-                              <td class="mono">
-                                <?php if (!empty($platformKeyRow['is_active'])): ?>
-                                  <form method="post" onsubmit="return confirm('Revocar esta API key?');">
-                                    <input type="hidden" name="action" value="platform_api_key_revoke">
-                                    <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                                    <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
-                                    <input type="hidden" name="platform_api_key_id" value="<?= $pkId; ?>">
-                                    <button type="submit">Revocar</button>
-                                  </form>
-                                <?php else: ?>
-                                  <span class="mut">-</span>
-                                <?php endif; ?>
-                              </td>
-                            </tr>
-                          <?php endforeach; ?>
-                        <?php else: ?>
-                          <tr><td colspan="9" class="mut">No hay API keys de plataforma creadas.</td></tr>
-                        <?php endif; ?>
-                      </tbody>
-                    </table>
-                  </div>
+                <div class="mut" style="margin-bottom:10px">
+                  <?= clickfix_h(cft('intel_api_keys_in_settings')); ?>
+                  <a class="user-link" href="<?= clickfix_h(cfurl('settings')); ?>"><?= clickfix_h(cft('nav_settings')); ?></a>
                 </div>
               <?php else: ?>
                 <div class="mut" style="margin-bottom:10px">
-                  La gestion manual de credenciales y la API de plataforma estan ocultas en esta vista.
+                  <?= clickfix_h(cft('intel_platform_api_hidden')); ?>
                 </div>
               <?php endif; ?>
 
@@ -7805,6 +8746,8 @@ ob_start();
                   $workbenchDecoded = is_array($intelWorkbenchResult['decoded'] ?? null) ? $intelWorkbenchResult['decoded'] : [];
                   $workbenchBatchResults = is_array($intelWorkbenchResult['batch_results'] ?? null) ? $intelWorkbenchResult['batch_results'] : [];
                   $workbenchInputDefault = trim((string) ($intelWorkbenchResult['input'] ?? ''));
+                  $workbenchDecodeChain = trim((string) ($intelWorkbenchResult['decode_chain'] ?? ''));
+                  $workbenchDecodeSuggestions = is_array($intelWorkbenchResult['decode_suggestions'] ?? null) ? $intelWorkbenchResult['decode_suggestions'] : [];
                   if ($workbenchInputDefault === '') {
                       $workbenchInputDefault = trim(implode("\n", array_filter([
                           (string) ($selectedInvestigation['site_domain'] ?? ''),
@@ -7851,6 +8794,27 @@ ob_start();
                             </label>
                           <?php endforeach; ?>
                         </div>
+                        <details class="intel-workbench-decode">
+                          <summary>Decodificacion avanzada</summary>
+                          <label style="margin-top:8px">Cadena personalizada (opcional)</label>
+                          <input
+                            type="text"
+                            name="decode_chain"
+                            value="<?= clickfix_h($workbenchDecodeChain); ?>"
+                            placeholder="base64->rot13 ; url->base64"
+                          >
+                          <p class="intel-workbench-note">Usa <span class="mono">-></span> para encadenar y <span class="mono">;</span> para separar cadenas. Ej: <span class="mono">base64->rot13</span></p>
+                          <?php if (!empty($workbenchDecodeSuggestions)): ?>
+                            <div class="intel-workbench-suggestions">
+                              <span class="mut">Sugerencias detectadas:</span>
+                              <div class="intel-chip-row">
+                                <?php foreach ($workbenchDecodeSuggestions as $suggestion): ?>
+                                  <span class="intel-chip"><?= clickfix_h((string) $suggestion); ?></span>
+                                <?php endforeach; ?>
+                              </div>
+                            </div>
+                          <?php endif; ?>
+                        </details>
                         <p class="intel-workbench-note">El batch se limita a 15 IOCs reutilizables por ejecucion y solo usa proveedores compatibles con cada tipo. Los resultados se guardan tambien en tu historial de enrichment.</p>
                         <div class="intel-toolbar" style="margin-top:auto">
                           <button class="btn" type="submit">Procesar intake</button>
@@ -7892,12 +8856,12 @@ ob_start();
                       <?php endif; ?>
                     </div>
 
-                    <div>
-                      <h3>Decodificaciones candidatas</h3>
+                    <details class="intel-accordion">
+                      <summary>Decodificaciones candidatas</summary>
                       <?php if (empty($workbenchDecoded)): ?>
                         <div class="mut">No aparecieron cadenas con una decodificacion suficientemente util en este intake.</div>
                       <?php else: ?>
-                        <div class="intel-decode-grid">
+                        <div class="intel-decode-grid" style="margin-top:10px">
                           <?php foreach ($workbenchDecoded as $decodeRow): ?>
                             <article class="intel-decode-card">
                               <div class="mono" style="font-size:12px;color:#d7ecff"><?= clickfix_h((string) ($decodeRow['input'] ?? '')); ?></div>
@@ -7911,14 +8875,14 @@ ob_start();
                           <?php endforeach; ?>
                         </div>
                       <?php endif; ?>
-                    </div>
+                    </details>
 
-                    <div>
-                      <h3>Triage batch</h3>
+                    <details class="intel-accordion" open>
+                      <summary>Triage batch</summary>
                       <?php if (empty($workbenchBatchResults)): ?>
                         <div class="mut">No se ejecutaron consultas batch en esta pasada o no habia IOCs compatibles con los proveedores seleccionados.</div>
                       <?php else: ?>
-                        <div class="intel-batch-grid">
+                        <div class="intel-batch-grid" style="margin-top:10px">
                           <?php foreach ($workbenchBatchResults as $batchRow): ?>
                             <?php
                               $batchProvider = strtolower(trim((string) ($batchRow['provider'] ?? 'unknown')));
@@ -7953,7 +8917,7 @@ ob_start();
                           <?php endforeach; ?>
                         </div>
                       <?php endif; ?>
-                    </div>
+                    </details>
                   <?php endif; ?>
                 </div>
 
@@ -7962,10 +8926,39 @@ ob_start();
                   $lookupTargetDefault = trim((string) ($intelApiLookupResult['target'] ?? (string) ($selectedInvestigation['site_domain'] ?? '')));
                 ?>
                 <div style="margin-top:10px">
-                  <h3>IOCs detectados en esta investigacion</h3>
-                  <p class="mut">IPs, dominios y URLs extraidos del dominio principal, resumen, nodos, tags y notas. Puedes lanzarlos directamente a proveedores sin copiar/pegar.</p>
+                  <h3><?= clickfix_h(cft('intel_iocs_title')); ?></h3>
+                  <p class="mut"><?= clickfix_h(cft('intel_iocs_sub')); ?></p>
+                  <?php if (clickfix_user_has_min_role($actor, 'analyst_jr')): ?>
+                    <div class="card-box" style="margin-bottom:14px">
+                      <h4><?= clickfix_h(cft('intel_manual_ioc_title')); ?></h4>
+                      <p class="mut"><?= clickfix_h(cft('intel_manual_ioc_sub')); ?></p>
+                      <form method="post">
+                        <input type="hidden" name="action" value="investigation_add_ioc">
+                        <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                        <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
+                        <div class="intel-grid">
+                          <div>
+                            <label><?= clickfix_h(cft('intel_manual_ioc_label')); ?></label>
+                            <input type="text" name="manual_ioc" maxlength="600" placeholder="example.com, 1.2.3.4, https://example.com/path">
+                          </div>
+                          <div>
+                            <label><?= clickfix_h(cft('intel_manual_ioc_type')); ?></label>
+                            <select name="manual_ioc_type">
+                              <option value="auto" selected><?= clickfix_h(cft('intel_manual_ioc_auto')); ?></option>
+                              <option value="domain">domain</option>
+                              <option value="ip">ip</option>
+                              <option value="url">url</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div class="intel-toolbar">
+                          <button class="btn" type="submit"><?= clickfix_h(cft('intel_manual_ioc_button')); ?></button>
+                        </div>
+                      </form>
+                    </div>
+                  <?php endif; ?>
                   <?php if (empty($investigationQuickTargets)): ?>
-                    <div class="mut" style="margin-bottom:12px">No se han detectado IOCs reutilizables todavia dentro del grafo actual.</div>
+                    <div class="mut" style="margin-bottom:12px"><?= clickfix_h(cft('intel_iocs_empty')); ?></div>
                   <?php else: ?>
                     <div style="display:grid;gap:8px;margin-bottom:14px">
                       <?php foreach ($investigationQuickTargets as $iocRow): ?>
@@ -8015,8 +9008,8 @@ ob_start();
                     </div>
                   <?php endif; ?>
 
-                  <h3><?= $showApiUi ? clickfix_h(cft('intel_api_lookup_title')) : 'Consulta de proveedores de inteligencia'; ?></h3>
-                  <p class="mut"><?= $showApiUi ? clickfix_h(cft('intel_api_lookup_sub')) : 'Selecciona proveedor e indicador (dominio, IP o URL).'; ?></p>
+                  <h3><?= $showApiUi ? clickfix_h(cft('intel_api_lookup_title')) : clickfix_h(cft('intel_lookup_fallback_title')); ?></h3>
+                  <p class="mut"><?= $showApiUi ? clickfix_h(cft('intel_api_lookup_sub')) : clickfix_h(cft('intel_lookup_fallback_sub')); ?></p>
                   <form method="post">
                     <input type="hidden" name="action" value="investigation_api_lookup">
                     <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
@@ -8087,18 +9080,25 @@ ob_start();
                     <?php if (!empty($intelApiLookupResult['error'])): ?>
                       <div class="mut" style="margin-top:6px"><?= clickfix_h((string) $intelApiLookupResult['error']); ?></div>
                     <?php endif; ?>
-                    <?php if ($showApiUi && !empty($lookupSummary)): ?>
-                      <pre><?= clickfix_h(json_encode($lookupSummary, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '{}'); ?></pre>
-                    <?php endif; ?>
-                    <?php if ($showApiUi && trim((string) ($intelApiLookupResult['response_json'] ?? '')) !== ''): ?>
-                      <pre><?= clickfix_h((string) ($intelApiLookupResult['response_json'] ?? '')); ?></pre>
+                    <?php if ($showApiUi && (!empty($lookupSummary) || trim((string) ($intelApiLookupResult['response_json'] ?? '')) !== '')): ?>
+                      <details class="intel-accordion">
+                        <summary>Raw JSON</summary>
+                        <?php if (!empty($lookupSummary)): ?>
+                          <div class="mut" style="margin-top:8px">summary</div>
+                          <pre><?= clickfix_h(json_encode($lookupSummary, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '{}'); ?></pre>
+                        <?php endif; ?>
+                        <?php if (trim((string) ($intelApiLookupResult['response_json'] ?? '')) !== ''): ?>
+                          <div class="mut" style="margin-top:8px">response</div>
+                          <pre><?= clickfix_h((string) ($intelApiLookupResult['response_json'] ?? '')); ?></pre>
+                        <?php endif; ?>
+                      </details>
                     <?php endif; ?>
                   </div>
                 <?php endif; ?>
 
                 <?php if ($showApiUi): ?>
-                <div class="api-lookup-history">
-                  <h4>Historial de consultas API (guardado automatico)</h4>
+                <details class="api-lookup-history" open>
+                  <summary>Historial de consultas API (guardado automatico)</summary>
                   <?php if (!empty($intelApiLookupHistory)): ?>
                     <?php foreach ($intelApiLookupHistory as $historyRow): ?>
                       <?php
@@ -8159,11 +9159,18 @@ ob_start();
                           <?php if (!empty($historyRow['error'])): ?>
                             <div class="mut"><?= clickfix_h((string) $historyRow['error']); ?></div>
                           <?php endif; ?>
-                          <?php if ($historySummaryPretty !== ''): ?>
-                            <pre><?= clickfix_h($historySummaryPretty); ?></pre>
-                          <?php endif; ?>
-                          <?php if ($historyResponse !== ''): ?>
-                            <pre><?= clickfix_h($historyResponse); ?></pre>
+                          <?php if ($historySummaryPretty !== '' || $historyResponse !== ''): ?>
+                            <details class="intel-accordion">
+                              <summary>Raw JSON</summary>
+                              <?php if ($historySummaryPretty !== ''): ?>
+                                <div class="mut" style="margin-top:8px">summary</div>
+                                <pre><?= clickfix_h($historySummaryPretty); ?></pre>
+                              <?php endif; ?>
+                              <?php if ($historyResponse !== ''): ?>
+                                <div class="mut" style="margin-top:8px">response</div>
+                                <pre><?= clickfix_h($historyResponse); ?></pre>
+                              <?php endif; ?>
+                            </details>
                           <?php endif; ?>
                         </div>
                       </details>
@@ -8171,7 +9178,7 @@ ob_start();
                   <?php else: ?>
                     <div class="mut">Sin historial todavia para esta investigacion.</div>
                   <?php endif; ?>
-                </div>
+                </details>
                 <?php endif; ?>
 
                 <?php
@@ -8275,6 +9282,7 @@ ob_start();
                   <div class="intel-map-toolbar-group">
                     <label for="intel-layout-mode">Layout</label>
                     <select id="intel-layout-mode">
+                      <option value="force">Auto (gravity)</option>
                       <option value="tree-vertical">Arbol vertical</option>
                       <option value="tree-horizontal">Arbol horizontal</option>
                       <option value="cascade">Cascada</option>
@@ -8440,6 +9448,35 @@ ob_start();
                     <h3>Timeline de investigacion (que y cuando)</h3>
                     <p class="mut">Seguimiento cronologico de cambios, revisiones y decisiones sobre este caso.</p>
                   </div>
+                </div>
+                <?php
+                  $investigationMitreSources = [];
+                  if (!empty($selectedInvestigation['title'])) {
+                      $investigationMitreSources[] = (string) $selectedInvestigation['title'];
+                  }
+                  if (!empty($selectedInvestigation['site_domain'])) {
+                      $investigationMitreSources[] = (string) $selectedInvestigation['site_domain'];
+                  }
+                  if (!empty($selectedInvestigation['summary'])) {
+                      $investigationMitreSources[] = (string) $selectedInvestigation['summary'];
+                  }
+                  if (!empty($selectedInvestigation['notes'])) {
+                      $investigationMitreSources[] = (string) $selectedInvestigation['notes'];
+                  }
+                  foreach ($investigationEvents as $event) {
+                      if (!empty($event['action'])) {
+                          $investigationMitreSources[] = (string) $event['action'];
+                      }
+                      if (!empty($event['details']) && is_array($event['details'])) {
+                          $investigationMitreSources[] = json_encode($event['details'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '';
+                      }
+                  }
+                  $investigationMitreText = trim(implode("\n", array_filter($investigationMitreSources)));
+                ?>
+                <div class="mitre-blueprint" id="investigation-mitre" data-mitre-source="<?= clickfix_h($investigationMitreText); ?>">
+                  <h4>MITRE ATT&CK Blueprint (investigacion)</h4>
+                  <div class="mitre-blueprint-grid" id="investigation-mitre-grid"></div>
+                  <div class="mitre-empty" id="investigation-mitre-empty" hidden>Sin TTPs detectadas para esta investigacion.</div>
                 </div>
                 <div class="intel-timeline-list">
                   <?php foreach ($investigationEvents as $event): ?>
@@ -8683,12 +9720,12 @@ ob_start();
 
     <?php if ($page === 'ops' || $page === 'home' || $page === 'search'): ?>
       <section class="row">
-        <article class="card">
-          <h2>Eventos recientes</h2>
+        <article class="card" id="event-workbench">
+          <h2><?= $page === 'search' ? 'Resultados de busqueda' : 'Eventos recientes'; ?></h2>
           <div class="event-workbench">
             <aside class="event-feed" id="event-feed">
               <?php if (empty($eventWorkbenchRows)): ?>
-                <div class="event-empty">Sin eventos recientes.</div>
+                <div class="event-empty"><?= $page === 'search' ? 'Sin resultados de busqueda.' : 'Sin eventos recientes.'; ?></div>
               <?php else: ?>
                 <?php foreach ($eventWorkbenchRows as $eventIndex => $eventRow): ?>
                   <?php
@@ -8724,7 +9761,9 @@ ob_start();
               <?php endif; ?>
             </aside>
             <section class="event-detail-shell">
-              <div id="event-empty" class="event-empty">Selecciona un evento para ver el detalle enriquecido.</div>
+              <div id="event-empty" class="event-empty">
+                <?= $page === 'search' ? 'Selecciona un resultado para ver el detalle enriquecido.' : 'Selecciona un evento para ver el detalle enriquecido.'; ?>
+              </div>
               <div id="event-detail" hidden>
                 <div class="event-topline">
                   <h3 id="event-title" class="event-title"></h3>
@@ -8764,6 +9803,16 @@ ob_start();
                     <div id="event-snippets"></div>
                   </div>
                 </div>
+                <div class="event-columns" id="event-evidence">
+                  <div>
+                    <h3>Evidencias (signals)</h3>
+                    <ul id="event-signals" class="event-list"></ul>
+                  </div>
+                  <div>
+                    <h3>Detalle de score</h3>
+                    <div id="event-score-details"></div>
+                  </div>
+                </div>
                 <?php if ($loggedIn): ?>
                   <div class="event-related">
                     <div class="event-related-head">
@@ -8772,24 +9821,30 @@ ob_start();
                     </div>
                     <div id="event-related-status" class="event-related-note">No se cargan automaticamente. Pulsa "Ver relacionadas" para consultar historial relacionado.</div>
                     <div id="event-related-wrap" class="event-related-table-wrap" hidden>
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>ID</th>
-                            <th>Fecha</th>
-                            <th>Host</th>
-                            <th>IP web</th>
-                            <th>Score</th>
-                            <th>Estado</th>
-                            <th>Relacion</th>
-                            <th>Abrir</th>
-                          </tr>
-                        </thead>
-                        <tbody id="event-related-body"></tbody>
-                      </table>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Fecha</th>
+            <th>Host</th>
+            <th>IP web</th>
+            <th>Score</th>
+            <th>Estado</th>
+            <th>Relacion</th>
+            <th>Evidencias</th>
+            <th>Abrir</th>
+          </tr>
+        </thead>
+        <tbody id="event-related-body"></tbody>
+      </table>
                     </div>
                   </div>
                 <?php endif; ?>
+                <div class="mitre-blueprint" id="event-mitre">
+                  <h4>MITRE ATT&CK Blueprint</h4>
+                  <div class="mitre-blueprint-grid" id="event-mitre-grid"></div>
+                  <div class="mitre-empty" id="event-mitre-empty" hidden>Sin TTPs detectadas para este evento.</div>
+                </div>
                 <div class="event-context<?= $canViewExactEventContext ? ' event-context-exact' : ''; ?>">
                   <h3 id="event-context-title"><?= clickfix_h($canViewExactEventContext ? 'Contexto completo de pagina' : 'Contexto resaltado'); ?></h3>
                   <pre id="event-context"></pre>
@@ -10606,6 +11661,55 @@ ob_start();
     <?php if ($loggedIn && $page === 'reports' && cfcan($user, 'admin')): ?>
       <section class="row">
         <article class="card">
+          <h2>Panel de borrado confidencial</h2>
+          <p class="mut">Elimina alertas y evidencias asociadas a un dominio. Esta accion es irreversible.</p>
+          <form method="post" class="stack" onsubmit="return confirm('Esta accion elimina reportes y caches del dominio. Continuar?');">
+            <input type="hidden" name="action" value="domain_purge">
+            <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+            <input type="text" name="purge_domain" placeholder="dominio o URL (ej: ejemplo.com)" required>
+            <label class="item"><b><input type="checkbox" name="purge_include_subdomains" value="1" checked> incluir subdominios</b><span>borra alertas de *.dominio</span></label>
+            <label class="item"><b><input type="checkbox" name="purge_include_url" value="1" checked> borrar coincidencias en URL</b><span>URL contiene el dominio</span></label>
+            <label class="item"><b><input type="checkbox" name="purge_include_previous_url" value="1" checked> borrar coincidencias en URL previa</b><span>previous_url contiene el dominio</span></label>
+            <label class="item"><b><input type="checkbox" name="purge_delete_caches" value="1" checked> borrar caches de dominio</b><span>domain_intel_cache y whatweb_cache</span></label>
+            <label class="item"><b><input type="checkbox" name="purge_delete_investigations" value="1"> borrar investigaciones con site_domain</b><span>borra investigaciones internas ligadas al dominio</span></label>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+              <button class="btn" type="submit">Borrar dominio</button>
+            </div>
+          </form>
+        </article>
+        <article class="card">
+          <h2>Dominios frecuentes</h2>
+          <table>
+            <thead><tr><th>Dominio</th><th>Alertas</th><th>Ultima vez</th><th>Accion</th></tr></thead>
+            <tbody>
+              <?php foreach ($purgeDomainCandidates as $row): ?>
+                <tr>
+                  <td class="mono"><?= clickfix_h((string) ($row['hostname'] ?? '')); ?></td>
+                  <td class="mono"><?= (int) ($row['hits'] ?? 0); ?></td>
+                  <td class="mono"><?= clickfix_h((string) ($row['last_seen'] ?? '')); ?></td>
+                  <td>
+                    <form method="post" onsubmit="return confirm('Eliminar reportes del dominio <?= clickfix_h((string) ($row['hostname'] ?? '')); ?>?');">
+                      <input type="hidden" name="action" value="domain_purge">
+                      <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                      <input type="hidden" name="purge_domain" value="<?= clickfix_h((string) ($row['hostname'] ?? '')); ?>">
+                      <input type="hidden" name="purge_include_subdomains" value="1">
+                      <input type="hidden" name="purge_include_url" value="1">
+                      <input type="hidden" name="purge_include_previous_url" value="1">
+                      <input type="hidden" name="purge_delete_caches" value="1">
+                      <button class="btn" type="submit">Borrar</button>
+                    </form>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+              <?php if (empty($purgeDomainCandidates)): ?>
+                <tr><td colspan="4" class="mut">Sin dominios recientes.</td></tr>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </article>
+      </section>
+      <section class="row">
+        <article class="card">
           <h2><?= clickfix_h(cft('reports_title')); ?></h2>
           <p class="mut">Define receptores y frecuencia. El generador crea JSON en <span class="mono">data/reports/</span>.</p>
           <form method="post">
@@ -10688,8 +11792,92 @@ ob_start();
 
     <?php if ($loggedIn && $page === 'requests' && cfcan($user, 'analyst_sr')): ?>
       <section class="row">
-        <article class="card"><h2>Desistimientos</h2><table><thead><tr><th>Fecha</th><th>Dominio</th><th>Estado</th><th>Accion</th></tr></thead><tbody><?php foreach ($appeals as $ap): ?><tr><td class="mono"><?= clickfix_h((string) ($ap['created_at'] ?? '')); ?></td><td class="mono"><?= clickfix_h((string) ($ap['domain'] ?? '')); ?></td><td><?= clickfix_h((string) ($ap['status'] ?? 'pending')); ?></td><td><form method="post"><input type="hidden" name="action" value="appeal_status"><input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>"><input type="hidden" name="appeal_id" value="<?= (int) ($ap['id'] ?? 0); ?>"><select name="status"><option>pending</option><option>approved</option><option>rejected</option></select><button class="btn" type="submit">OK</button></form></td></tr><?php endforeach; ?></tbody></table></article>
-        <article class="card"><h2>Solicitudes de acceso</h2><table><thead><tr><th>Email</th><th>LinkedIn</th><th>Veces</th><th>Ultima</th></tr></thead><tbody><?php foreach ($requests as $rq): ?><tr><td class="mono"><?= clickfix_h((string) ($rq['email'] ?? '')); ?></td><td class="mono"><?= clickfix_h((string) ($rq['linkedin_url'] ?? '')); ?></td><td class="mono"><?= (int) ($rq['request_count'] ?? 1); ?></td><td class="mono"><?= clickfix_h((string) ($rq['last_seen_at'] ?? '')); ?></td></tr><?php endforeach; ?></tbody></table></article>
+        <article class="card">
+          <h2>Desistimientos</h2>
+          <table>
+            <thead><tr><th>Fecha</th><th>Dominio</th><th>Estado</th><th>Accion</th></tr></thead>
+            <tbody>
+              <?php foreach ($appeals as $ap): ?>
+                <tr>
+                  <td class="mono"><?= clickfix_h((string) ($ap['created_at'] ?? '')); ?></td>
+                  <td class="mono"><?= clickfix_h((string) ($ap['domain'] ?? '')); ?></td>
+                  <td><?= clickfix_h((string) ($ap['status'] ?? 'pending')); ?></td>
+                  <td>
+                    <form method="post">
+                      <input type="hidden" name="action" value="appeal_status">
+                      <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                      <input type="hidden" name="appeal_id" value="<?= (int) ($ap['id'] ?? 0); ?>">
+                      <select name="status"><option>pending</option><option>approved</option><option>rejected</option></select>
+                      <button class="btn" type="submit">OK</button>
+                    </form>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </article>
+        <article class="card">
+          <h2>Solicitudes de eliminacion</h2>
+          <table>
+            <thead><tr><th>Fecha</th><th>Host</th><th>URL</th><th>Motivo</th><th>Cliente</th></tr></thead>
+            <tbody>
+              <?php foreach ($deleteRequests as $req): ?>
+                <tr>
+                  <td class="mono"><?= clickfix_h((string) ($req['received_at'] ?? '')); ?></td>
+                  <td class="mono"><?= clickfix_h((string) ($req['hostname'] ?? '')); ?></td>
+                  <td class="mono"><?= clickfix_h((string) ($req['url'] ?? '')); ?></td>
+                  <td><?= clickfix_h((string) ($req['message'] ?? '')); ?></td>
+                  <td class="mono"><?= clickfix_h((string) ($req['client_id'] ?? '')); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </article>
+        <article class="card">
+          <h2>Solicitudes de acceso</h2>
+          <table>
+            <thead><tr><th>Email</th><th>LinkedIn</th><th>Veces</th><th>Ultima</th><th>Accion</th></tr></thead>
+            <tbody>
+              <?php foreach ($requestsPending as $rq): ?>
+                <tr>
+                  <td class="mono"><?= clickfix_h((string) ($rq['email'] ?? '')); ?></td>
+                  <td class="mono"><?= clickfix_h((string) ($rq['linkedin_url'] ?? '')); ?></td>
+                  <td class="mono"><?= (int) ($rq['request_count'] ?? 1); ?></td>
+                  <td class="mono"><?= clickfix_h((string) ($rq['last_seen_at'] ?? '')); ?></td>
+                  <td>
+                    <form method="post">
+                      <input type="hidden" name="action" value="access_request_status">
+                      <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                      <input type="hidden" name="request_id" value="<?= (int) ($rq['id'] ?? 0); ?>">
+                      <select name="status">
+                        <option value="approved">aprobar</option>
+                        <option value="denied">denegar</option>
+                        <option value="pending">pendiente</option>
+                      </select>
+                      <button class="btn" type="submit">OK</button>
+                    </form>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </article>
+        <article class="card">
+          <h2>Accesos denegados</h2>
+          <table>
+            <thead><tr><th>Email</th><th>LinkedIn</th><th>Veces</th><th>Ultima</th></tr></thead>
+            <tbody>
+              <?php foreach ($requestsDenied as $rq): ?>
+                <tr>
+                  <td class="mono"><?= clickfix_h((string) ($rq['email'] ?? '')); ?></td>
+                  <td class="mono"><?= clickfix_h((string) ($rq['linkedin_url'] ?? '')); ?></td>
+                  <td class="mono"><?= (int) ($rq['request_count'] ?? 1); ?></td>
+                  <td class="mono"><?= clickfix_h((string) ($rq['last_seen_at'] ?? '')); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </article>
       </section>
     <?php endif; ?>
 
@@ -11027,6 +12215,17 @@ ob_start();
     </div>
   </div>
 
+  <div id="session-timeout-modal" class="session-timeout-modal" hidden>
+    <div class="session-timeout-card">
+      <h3>Sesion a punto de expirar</h3>
+      <p class="mut">Tu sesion expira en <span id="session-timeout-countdown">00:00</span>. Puedes extender <?= (int) $sessionExtendMinutes; ?> minutos o cerrar ahora.</p>
+      <div class="split" style="margin-top:10px">
+        <button class="btn" type="button" id="session-extend-btn">Seguir <?= (int) $sessionExtendMinutes; ?> min</button>
+        <button class="btn secondary" type="button" id="session-logout-btn">Cerrar sesion</button>
+      </div>
+    </div>
+  </div>
+
   <?php if ($showMonetizationPanel && !empty($monetization['show_ads'])): ?>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=<?= urlencode((string) $monetization['adsense_client']); ?>" crossorigin="anonymous"></script>
     <script>
@@ -11143,10 +12342,14 @@ ob_start();
     const eventContextTitle = document.getElementById('event-context-title');
     const eventContext = document.getElementById('event-context');
     const eventRaw = document.getElementById('event-raw');
+    const eventSignals = document.getElementById('event-signals');
+    const eventScoreDetails = document.getElementById('event-score-details');
     const eventRelatedLoad = document.getElementById('event-related-load');
     const eventRelatedStatus = document.getElementById('event-related-status');
     const eventRelatedWrap = document.getElementById('event-related-wrap');
     const eventRelatedBody = document.getElementById('event-related-body');
+    const eventMitreGrid = document.getElementById('event-mitre-grid');
+    const eventMitreEmpty = document.getElementById('event-mitre-empty');
     const canViewExactEventContext = <?= $canViewExactEventContext ? 'true' : 'false'; ?>;
     const eventReviewForm = document.getElementById('event-review-form');
     const eventReviewId = document.getElementById('event-review-id');
@@ -11156,11 +12359,300 @@ ob_start();
     const msgScope = document.getElementById('msg-scope');
     const msgClientIds = document.getElementById('msg-client-ids');
     const msgUserIds = document.getElementById('msg-user-ids');
+    const sessionExpiresAt = <?= (int) $sessionExpiresAt; ?>;
+    const sessionWarningMinutes = <?= (int) $sessionWarningMinutes; ?>;
+    const sessionExtendMinutes = <?= (int) $sessionExtendMinutes; ?>;
+    const csrfToken = <?= json_encode($csrf, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
     const homeLeafletCssUrl = <?= json_encode($leafletCssUrl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
     const homeLeafletJsUrl = <?= json_encode($leafletJsUrl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
     const homeLeafletWorldGeoJsonUrl = <?= json_encode($leafletWorldGeoJsonUrl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
     let leafletEnsurePromise = null;
     let localWorldGeoPromise = null;
+
+    const displayPanel = document.getElementById('display-settings-panel');
+    const displayToggleBtn = document.getElementById('display-settings-toggle');
+    const displayCloseBtn = document.getElementById('display-settings-close');
+    const displayStorageKey = 'cf_display_settings_v1';
+    const displayDefaults = {
+      dark: true,
+      contrast: false,
+      compact: false,
+      reducedMotion: false,
+      decorations: true,
+      accent: 'blue',
+      font: 'sora'
+    };
+    function applyDisplaySettings(settings) {
+      const body = document.body;
+      if (!body) return;
+      body.classList.toggle('ui-light', !settings.dark);
+      body.classList.toggle('ui-contrast', !!settings.contrast);
+      body.classList.toggle('ui-compact', !!settings.compact);
+      body.classList.toggle('ui-reduced-motion', !!settings.reducedMotion);
+      body.classList.toggle('ui-no-decor', !settings.decorations);
+      ['blue','green','purple','amber','red','cyan'].forEach((key) => body.classList.remove(`ui-accent-${key}`));
+      if (settings.accent) body.classList.add(`ui-accent-${settings.accent}`);
+      ['public','dm','nunito','sora'].forEach((key) => body.classList.remove(`ui-font-${key}`));
+      if (settings.font) body.classList.add(`ui-font-${settings.font}`);
+    }
+    function loadDisplaySettings() {
+      try {
+        const raw = localStorage.getItem(displayStorageKey);
+        if (!raw) return { ...displayDefaults };
+        const parsed = JSON.parse(raw);
+        return { ...displayDefaults, ...(parsed || {}) };
+      } catch (error) {
+        return { ...displayDefaults };
+      }
+    }
+    function saveDisplaySettings(settings) {
+      try {
+        localStorage.setItem(displayStorageKey, JSON.stringify(settings));
+      } catch (error) {
+        // ignore
+      }
+    }
+    function syncDisplayInputs(settings) {
+      document.querySelectorAll('[data-setting]').forEach((input) => {
+        const key = String(input.getAttribute('data-setting') || '');
+        if (!key) return;
+        input.checked = !!settings[key];
+      });
+    }
+    window.addEventListener('DOMContentLoaded', () => {
+      let current = loadDisplaySettings();
+      applyDisplaySettings(current);
+      syncDisplayInputs(current);
+      if (displayToggleBtn && displayPanel) {
+        displayToggleBtn.addEventListener('click', () => {
+          displayPanel.classList.toggle('open');
+          displayPanel.setAttribute('aria-hidden', displayPanel.classList.contains('open') ? 'false' : 'true');
+        });
+      }
+      if (displayCloseBtn && displayPanel) {
+        displayCloseBtn.addEventListener('click', () => {
+          displayPanel.classList.remove('open');
+          displayPanel.setAttribute('aria-hidden', 'true');
+        });
+      }
+      document.addEventListener('click', (ev) => {
+        if (!displayPanel || !displayPanel.classList.contains('open')) return;
+        const target = ev.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (displayPanel.contains(target) || (displayToggleBtn && displayToggleBtn.contains(target))) return;
+        displayPanel.classList.remove('open');
+        displayPanel.setAttribute('aria-hidden', 'true');
+      });
+      document.querySelectorAll('[data-setting]').forEach((input) => {
+        input.addEventListener('change', () => {
+          const key = String(input.getAttribute('data-setting') || '');
+          if (!key) return;
+          current = { ...current, [key]: !!input.checked };
+          applyDisplaySettings(current);
+          saveDisplaySettings(current);
+        });
+      });
+      document.querySelectorAll('[data-accent]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const accent = String(btn.getAttribute('data-accent') || '');
+          if (!accent) return;
+          current = { ...current, accent };
+          applyDisplaySettings(current);
+          saveDisplaySettings(current);
+        });
+      });
+      document.querySelectorAll('[data-font]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const font = String(btn.getAttribute('data-font') || '');
+          if (!font) return;
+          current = { ...current, font };
+          applyDisplaySettings(current);
+          saveDisplaySettings(current);
+        });
+      });
+    });
+
+    const MITRE_TACTIC_ORDER = [
+      'Initial Access',
+      'Execution',
+      'Persistence',
+      'Privilege Escalation',
+      'Defense Evasion',
+      'Credential Access',
+      'Discovery',
+      'Lateral Movement',
+      'Collection',
+      'Command and Control',
+      'Exfiltration',
+      'Impact',
+    ];
+
+    const MITRE_LIBRARY = [
+      { id: 'T1059.003', name: 'Windows Command Shell', tactic: 'Execution', patterns: [/\bcmd(?:\.exe)?\b/i, /\/c\s+[^\n]+/i, /\bcommand prompt\b/i] },
+      { id: 'T1059.001', name: 'PowerShell', tactic: 'Execution', patterns: [/\bpowershell(?:\.exe)?\b/i, /\bpwsh\b/i, /\bIEX\b/i, /\binvoke-expression\b/i] },
+      { id: 'T1059.005', name: 'Visual Basic', tactic: 'Execution', patterns: [/\bwscript\b/i, /\bcscript\b/i, /\.vbs\b/i, /\bvbscript\b/i] },
+      { id: 'T1218.005', name: 'Mshta', tactic: 'Defense Evasion', patterns: [/\bmshta\b/i, /\.hta\b/i] },
+      { id: 'T1218.011', name: 'Rundll32', tactic: 'Defense Evasion', patterns: [/\brundll32(?:\.exe)?\b/i] },
+      { id: 'T1218.010', name: 'Regsvr32', tactic: 'Defense Evasion', patterns: [/\bregsvr32(?:\.exe)?\b/i] },
+      { id: 'T1047', name: 'Windows Management Instrumentation', tactic: 'Execution', patterns: [/\bwmic\b/i, /\bwmiprvse\b/i, /win32_process/i] },
+      { id: 'T1053.005', name: 'Scheduled Task', tactic: 'Persistence', patterns: [/\bschtasks\b/i, /\/create\s+\/tn/i] },
+      { id: 'T1105', name: 'Ingress Tool Transfer', tactic: 'Command and Control', patterns: [/\bcurl\b/i, /\bwget\b/i, /\bInvoke-WebRequest\b/i, /\bcertutil\b/i, /\bbitsadmin\b/i] },
+      { id: 'T1071.001', name: 'Web Protocols', tactic: 'Command and Control', patterns: [/https?:\/\//i, /\bwinhttp\b/i] },
+      { id: 'T1027', name: 'Obfuscated/Encoded File or Information', tactic: 'Defense Evasion', patterns: [/\bbase64\b/i, /\bencoded\b/i, /\b-enc\b/i, /frombase64string/i] },
+      { id: 'T1021.002', name: 'SMB/Windows Admin Shares', tactic: 'Lateral Movement', patterns: [/\bnet\s+use\b/i, /\\\\[a-z0-9\.\-]+\\[a-z0-9$]+/i] },
+      { id: 'T1218.007', name: 'Msiexec', tactic: 'Defense Evasion', patterns: [/\bmsiexec\b/i, /\/i\s+https?:\/\//i] },
+      { id: 'T1204.002', name: 'User Execution: Malicious File', tactic: 'Execution', patterns: [/\.exe\b/i, /\.scr\b/i, /\.msi\b/i, /\.bat\b/i] },
+    ];
+
+    function extractMitreMatches(sourceText) {
+      const text = String(sourceText || '');
+      if (!text) return [];
+      const matches = new Map();
+      for (const entry of MITRE_LIBRARY) {
+        if (!entry || !Array.isArray(entry.patterns)) continue;
+        if (entry.patterns.some((pattern) => pattern.test(text))) {
+          matches.set(entry.id, entry);
+        }
+      }
+      return Array.from(matches.values());
+    }
+
+    function groupMitreByTactic(matches) {
+      const grouped = {};
+      (matches || []).forEach((entry) => {
+        const tactic = String(entry.tactic || 'Other');
+        if (!grouped[tactic]) grouped[tactic] = [];
+        grouped[tactic].push(entry);
+      });
+      return grouped;
+    }
+
+    function renderMitreBlueprint(container, emptyNode, matches) {
+      if (!container) return;
+      const list = Array.isArray(matches) ? matches : [];
+      container.innerHTML = '';
+      if (!list.length) {
+        if (emptyNode) emptyNode.hidden = false;
+        return;
+      }
+      if (emptyNode) emptyNode.hidden = true;
+      const grouped = groupMitreByTactic(list);
+      const tactics = [...MITRE_TACTIC_ORDER, ...Object.keys(grouped).filter((t) => !MITRE_TACTIC_ORDER.includes(t))];
+      tactics.forEach((tactic) => {
+        const entries = grouped[tactic];
+        if (!entries || !entries.length) return;
+        const card = document.createElement('div');
+        card.className = 'mitre-tactic';
+        const title = document.createElement('div');
+        title.className = 'mitre-tactic-title';
+        title.textContent = tactic;
+        const listWrap = document.createElement('div');
+        listWrap.className = 'mitre-tech-list';
+        entries.forEach((entry) => {
+          const chip = document.createElement('div');
+          chip.className = 'mitre-tech';
+          const id = document.createElement('b');
+          id.textContent = entry.id;
+          const name = document.createElement('span');
+          name.textContent = entry.name;
+          chip.appendChild(id);
+          chip.appendChild(name);
+          listWrap.appendChild(chip);
+        });
+        card.appendChild(title);
+        card.appendChild(listWrap);
+        container.appendChild(card);
+      });
+    }
+
+    function decodeBase64Candidate(value) {
+      const raw = String(value || '').trim();
+      if (!raw || raw.length < 24) return '';
+      if (!/^[A-Za-z0-9+/=]+$/.test(raw)) return '';
+      try {
+        const decoded = atob(raw.replace(/\s+/g, ''));
+        const printable = decoded.replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '');
+        if (printable.length < Math.floor(decoded.length * 0.6)) {
+          return '';
+        }
+        return decoded;
+      } catch (error) {
+        return '';
+      }
+    }
+
+    function expandMitreSource(source) {
+      const base = String(source || '');
+      if (!base) return '';
+      const extras = [];
+      if (/%[0-9A-Fa-f]{2}/.test(base)) {
+        try {
+          const decoded = decodeURIComponent(base);
+          if (decoded && decoded !== base) extras.push(decoded);
+        } catch (error) {
+          // ignore decode errors
+        }
+      }
+      const base64Candidates = base.match(/[A-Za-z0-9+/=]{24,}/g) || [];
+      base64Candidates.slice(0, 6).forEach((candidate) => {
+        const decoded = decodeBase64Candidate(candidate);
+        if (decoded) extras.push(decoded);
+      });
+      const cleaned = base.replace(/[`^]/g, '');
+      if (cleaned !== base) extras.push(cleaned);
+      return [base, ...extras].filter(Boolean).join('\n');
+    }
+
+    function buildMitreSourceFromEvent(event) {
+      const parts = [
+        event?.message,
+        event?.detected_content,
+        event?.full_context,
+        event?.url,
+        event?.previous_url,
+        Array.isArray(event?.snippets) ? event.snippets.join('\n') : '',
+        Array.isArray(event?.signals) ? event.signals.join('\n') : '',
+      ];
+      const raw = parts.filter(Boolean).join('\n');
+      return expandMitreSource(raw);
+    }
+
+    function updateEventMitre(event) {
+      if (!eventMitreGrid) return;
+      const source = buildMitreSourceFromEvent(event);
+      const matches = extractMitreMatches(source);
+      renderMitreBlueprint(eventMitreGrid, eventMitreEmpty, matches);
+    }
+
+    function updateInvestigationMitre() {
+      const container = document.getElementById('investigation-mitre-grid');
+      const emptyNode = document.getElementById('investigation-mitre-empty');
+      const wrapper = document.getElementById('investigation-mitre');
+      if (!wrapper || !container) return;
+      const source = expandMitreSource(wrapper.getAttribute('data-mitre-source') || '');
+      const matches = extractMitreMatches(source);
+      renderMitreBlueprint(container, emptyNode, matches);
+    }
+
+    function updateSharedInvestigationMitre() {
+      const container = document.getElementById('shared-mitre-grid');
+      const emptyNode = document.getElementById('shared-mitre-empty');
+      const wrapper = document.getElementById('shared-mitre');
+      if (!wrapper || !container) return;
+      const source = expandMitreSource(wrapper.getAttribute('data-mitre-source') || '');
+      const matches = extractMitreMatches(source);
+      renderMitreBlueprint(container, emptyNode, matches);
+    }
+
+    function updateSourceAlertMitre() {
+      const container = document.getElementById('source-alert-mitre-grid');
+      const emptyNode = document.getElementById('source-alert-mitre-empty');
+      const wrapper = document.getElementById('source-alert-mitre');
+      if (!wrapper || !container) return;
+      const source = expandMitreSource(wrapper.getAttribute('data-mitre-source') || '');
+      const matches = extractMitreMatches(source);
+      renderMitreBlueprint(container, emptyNode, matches);
+    }
 
     const syncMessagingScope = () => {
       if (!msgScope) {
@@ -11191,6 +12683,130 @@ ob_start();
       syncMessagingScope();
     }
 
+    (function initSessionTimeoutModal() {
+      if (!sessionExpiresAt || sessionExpiresAt <= 0) {
+        return;
+      }
+      const modal = document.getElementById('session-timeout-modal');
+      const countdown = document.getElementById('session-timeout-countdown');
+      const extendBtn = document.getElementById('session-extend-btn');
+      const logoutBtn = document.getElementById('session-logout-btn');
+      if (!modal || !countdown || !extendBtn || !logoutBtn) {
+        return;
+      }
+      let expiresAt = Number(sessionExpiresAt || 0) * 1000;
+      let warningTimer = null;
+      let tickTimer = null;
+
+      const renderCountdown = () => {
+        const remainingMs = Math.max(0, expiresAt - Date.now());
+        const totalSeconds = Math.floor(remainingMs / 1000);
+        const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+        const seconds = String(totalSeconds % 60).padStart(2, '0');
+        countdown.textContent = `${minutes}:${seconds}`;
+        if (remainingMs <= 0) {
+          window.location.href = 'dashboard.php?page=access&public=1';
+        }
+      };
+
+      const showModal = () => {
+        modal.hidden = false;
+        renderCountdown();
+        if (tickTimer) window.clearInterval(tickTimer);
+        tickTimer = window.setInterval(renderCountdown, 1000);
+      };
+
+      const scheduleWarning = () => {
+        if (warningTimer) window.clearTimeout(warningTimer);
+        const warningAt = expiresAt - (sessionWarningMinutes * 60 * 1000);
+        const delay = Math.max(0, warningAt - Date.now());
+        warningTimer = window.setTimeout(showModal, delay);
+      };
+
+      extendBtn.addEventListener('click', async () => {
+        const formData = new FormData();
+        formData.set('action', 'session_extend');
+        formData.set('csrf_token', String(csrfToken || ''));
+        try {
+          const response = await fetch('dashboard.php', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+          });
+          const payload = await response.json();
+          if (payload && payload.status === 'ok' && payload.expires_at) {
+            expiresAt = Number(payload.expires_at) * 1000;
+            modal.hidden = true;
+            if (tickTimer) window.clearInterval(tickTimer);
+            scheduleWarning();
+          }
+        } catch (error) {
+          // ignore
+        }
+      });
+
+      logoutBtn.addEventListener('click', () => {
+        window.location.href = 'dashboard.php?page=access&public=1';
+      });
+
+      scheduleWarning();
+    })();
+
+    (function initIntelAutosave() {
+      const intelSaveForm = document.getElementById('intel-save-form');
+      if (!intelSaveForm) {
+        return;
+      }
+      const status = document.getElementById('intel-autosave-status');
+      let dirty = false;
+      let saveInFlight = false;
+
+      const markDirty = () => {
+        dirty = true;
+        if (status) {
+          status.textContent = 'Autosave: cambios pendientes...';
+        }
+      };
+
+      intelSaveForm.addEventListener('input', markDirty);
+      intelSaveForm.addEventListener('change', markDirty);
+
+      const runAutosave = async () => {
+        if (!dirty || saveInFlight) {
+          return;
+        }
+        saveInFlight = true;
+        const formData = new FormData(intelSaveForm);
+        formData.set('auto_save', '1');
+        try {
+          const response = await fetch('dashboard.php', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+          });
+          const payload = await response.json();
+          if (payload && payload.status === 'ok') {
+            dirty = false;
+            const graphIdInput = document.getElementById('intel-graph-id');
+            if (graphIdInput && payload.graph_id) {
+              graphIdInput.value = String(payload.graph_id);
+            }
+            if (status) {
+              status.textContent = `Autosave: ${String(payload.saved_at || '')}`;
+            }
+          }
+        } catch (error) {
+          if (status) {
+            status.textContent = 'Autosave: error';
+          }
+        } finally {
+          saveInFlight = false;
+        }
+      };
+
+      setInterval(runAutosave, 45000);
+    })();
+
     const escapeHtml = (value) =>
       String(value || '')
         .replace(/&/g, '&amp;')
@@ -11198,6 +12814,53 @@ ob_start();
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+
+    const escapeRegex = (value) =>
+      String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    function boldMatchedSnippets(source, snippets) {
+      const text = String(source || '');
+      const list = Array.isArray(snippets) ? snippets.filter(Boolean) : [];
+      if (!text || !list.length) {
+        return escapeHtml(text);
+      }
+      const ranges = [];
+      const lowerSource = text.toLowerCase();
+      list.forEach((snippet) => {
+        const raw = String(snippet || '').trim();
+        if (!raw) return;
+        const needle = raw.toLowerCase();
+        let cursor = 0;
+        while (cursor < lowerSource.length) {
+          const idx = lowerSource.indexOf(needle, cursor);
+          if (idx === -1) break;
+          ranges.push({ start: idx, end: idx + needle.length });
+          cursor = idx + needle.length;
+        }
+      });
+      if (!ranges.length) {
+        return escapeHtml(text);
+      }
+      ranges.sort((a, b) => a.start - b.start || b.end - a.end);
+      const merged = [];
+      ranges.forEach((range) => {
+        const last = merged[merged.length - 1];
+        if (last && range.start <= last.end) {
+          last.end = Math.max(last.end, range.end);
+        } else {
+          merged.push({ ...range });
+        }
+      });
+      let output = '';
+      let cursor = 0;
+      merged.forEach((range) => {
+        output += escapeHtml(text.slice(cursor, range.start));
+        output += '<strong>' + escapeHtml(text.slice(range.start, range.end)) + '</strong>';
+        cursor = range.end;
+      });
+      output += escapeHtml(text.slice(cursor));
+      return output;
+    }
 
     function parseChartData(canvas) {
       if (!canvas) {
@@ -11624,7 +13287,7 @@ ob_start();
       return { nodes: cleanedNodes, edges: cleanedEdges };
     }
 
-    function makeGraphRenderer({ wrap, svg, nodeLayer, graph, readOnly, onSelectNode, edgeListSelect, edgeFromSelect, edgeToSelect, nodeListSelect, controls = {} }) {
+    function makeGraphRenderer({ wrap, svg, nodeLayer, graph, readOnly, onSelectNode, edgeListSelect, edgeFromSelect, edgeToSelect, nodeListSelect, controls = {}, vtLookupIndex = null }) {
       if (!wrap || !svg || !nodeLayer) {
         return null;
       }
@@ -11869,9 +13532,127 @@ ob_start();
         return (maxCount / total) >= 0.6;
       }
 
+      function estimateNodeRadius(node) {
+        const label = String(node?.label || '');
+        const base = 38;
+        const extra = Math.min(80, label.length * 2.4);
+        return base + extra;
+      }
+
+      function runForceLayout({ iterations = 200, stepsPerFrame = 6 } = {}) {
+        if (!state.graph.nodes.length) {
+          render();
+          return;
+        }
+        const nodes = state.graph.nodes;
+        const edges = state.graph.edges;
+        const velocity = new Map();
+        nodes.forEach((node) => {
+          velocity.set(node.id, { x: 0, y: 0 });
+          if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) {
+            node.x = 200 + Math.random() * 240;
+            node.y = 160 + Math.random() * 180;
+          }
+        });
+        const rect = wrap.getBoundingClientRect();
+        const center = {
+          x: rect.width > 0 ? rect.width / 2 : 420,
+          y: rect.height > 0 ? rect.height / 2 : 260
+        };
+        const repulsion = 5200;
+        const spring = 0.012;
+        const desired = 170;
+        const collisionStrength = 0.28;
+        const centerStrength = 0.004;
+        const damping = 0.86;
+        let iter = 0;
+
+        function stepSimulation() {
+          const forces = new Map();
+          nodes.forEach((node) => forces.set(node.id, { x: 0, y: 0 }));
+
+          for (let i = 0; i < nodes.length; i += 1) {
+            const a = nodes[i];
+            for (let j = i + 1; j < nodes.length; j += 1) {
+              const b = nodes[j];
+              let dx = a.x - b.x;
+              let dy = a.y - b.y;
+              let dist2 = dx * dx + dy * dy;
+              if (dist2 < 12) {
+                dx += (Math.random() - 0.5) * 4;
+                dy += (Math.random() - 0.5) * 4;
+                dist2 = dx * dx + dy * dy;
+              }
+              const dist = Math.sqrt(dist2);
+              const rep = repulsion / Math.max(40, dist2);
+              const fx = (dx / dist) * rep;
+              const fy = (dy / dist) * rep;
+              forces.get(a.id).x += fx;
+              forces.get(a.id).y += fy;
+              forces.get(b.id).x -= fx;
+              forces.get(b.id).y -= fy;
+
+              const minDist = estimateNodeRadius(a) + estimateNodeRadius(b) + 24;
+              if (dist < minDist) {
+                const push = (minDist - dist) * collisionStrength;
+                const cx = (dx / dist) * push;
+                const cy = (dy / dist) * push;
+                forces.get(a.id).x += cx;
+                forces.get(a.id).y += cy;
+                forces.get(b.id).x -= cx;
+                forces.get(b.id).y -= cy;
+              }
+            }
+          }
+
+          edges.forEach((edge) => {
+            const from = nodeById(edge.from);
+            const to = nodeById(edge.to);
+            if (!from || !to) return;
+            const dx = to.x - from.x;
+            const dy = to.y - from.y;
+            const dist = Math.max(20, Math.sqrt(dx * dx + dy * dy));
+            const force = (dist - desired) * spring;
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+            forces.get(from.id).x += fx;
+            forces.get(from.id).y += fy;
+            forces.get(to.id).x -= fx;
+            forces.get(to.id).y -= fy;
+          });
+
+          nodes.forEach((node) => {
+            const f = forces.get(node.id);
+            const vx = velocity.get(node.id);
+            vx.x = (vx.x + f.x + (center.x - node.x) * centerStrength) * damping;
+            vx.y = (vx.y + f.y + (center.y - node.y) * centerStrength) * damping;
+            node.x += vx.x;
+            node.y += vx.y;
+          });
+        }
+
+        function tick() {
+          for (let s = 0; s < stepsPerFrame && iter < iterations; s += 1) {
+            stepSimulation();
+            iter += 1;
+          }
+          render();
+          if (iter < iterations && !state.drag) {
+            requestAnimationFrame(tick);
+          } else {
+            fitGraph(110);
+          }
+        }
+        tick();
+      }
+
       function applyLayout(mode = 'tree-vertical') {
         if (!state.graph.nodes.length) {
           render();
+          return;
+        }
+        if (mode === 'force') {
+          runForceLayout({ iterations: 240, stepsPerFrame: 8 });
           return;
         }
         const { ordered, adjacency, incoming, rootId } = orderedNodeIds(state.selectedNodeId || state.graph.nodes[0]?.id || '');
@@ -12027,7 +13808,9 @@ ob_start();
 
         state.graph.nodes.forEach((node) => {
           const el = document.createElement('div');
-          el.className = 'intel-node' + (state.selectedNodeId === node.id ? ' active' : '');
+          const kind = detectNodeKind(node);
+          const kindClass = kind.key ? ` type-${kind.key}` : '';
+          el.className = 'intel-node' + kindClass + (state.selectedNodeId === node.id ? ' active' : '');
           el.dataset.nodeId = node.id;
           el.style.left = `${node.x}px`;
           el.style.top = `${node.y}px`;
@@ -12035,7 +13818,33 @@ ob_start();
           el.style.cursor = readOnly ? 'pointer' : 'move';
           const hasNotes = String(node.notes || '').trim() !== '';
           const tags = Array.isArray(node.tags) ? node.tags.filter(Boolean) : [];
-          el.textContent = `${node.label}${hasNotes ? ' *' : ''}`;
+          const labelWrap = document.createElement('div');
+          labelWrap.className = 'intel-node-label';
+          const flag = flagForNode(node);
+          labelWrap.textContent = `${flag ? `${flag} ` : ''}${node.label}${hasNotes ? ' *' : ''}`;
+          el.appendChild(labelWrap);
+          const metaWrap = document.createElement('div');
+          metaWrap.className = 'intel-node-meta';
+          if (kind.label) {
+            const kindChip = document.createElement('span');
+            kindChip.className = `node-chip ${kind.key}`;
+            kindChip.textContent = kind.label;
+            metaWrap.appendChild(kindChip);
+          }
+          const vtLookup = lookupVtForNode(node, vtLookupIndex);
+          if (vtLookup && vtLookup.summary && typeof vtLookup.summary === 'object') {
+            const mal = Number(vtLookup.summary.malicious || 0);
+            const sus = Number(vtLookup.summary.suspicious || 0);
+            const har = Number(vtLookup.summary.harmless || 0);
+            const und = Number(vtLookup.summary.undetected || 0);
+            const vtChip = document.createElement('span');
+            vtChip.className = 'node-chip vt';
+            vtChip.textContent = `VT ${mal}/${sus}/${har}/${und}`;
+            metaWrap.appendChild(vtChip);
+          }
+          if (metaWrap.childNodes.length) {
+            el.appendChild(metaWrap);
+          }
           el.title = `${node.label}${tags.length ? `\nTags: ${tags.join(', ')}` : ''}${hasNotes ? `\nNotas: ${String(node.notes).slice(0, 300)}` : ''}`;
           el.addEventListener('click', (ev) => {
             if (state.drag && state.drag.moved) {
@@ -12161,7 +13970,7 @@ ob_start();
       window.addEventListener('resize', () => render());
       const initialLayoutMode = String(controlRefs.layoutSelect?.value || 'tree-vertical');
       if (shouldAutoLayout()) {
-        applyLayout(initialLayoutMode);
+        applyLayout('force');
       } else {
         render();
         fitGraph(90);
@@ -12330,7 +14139,7 @@ ob_start();
       if (!Array.isArray(rows) || !rows.length) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
-        td.colSpan = 8;
+        td.colSpan = 9;
         td.className = 'mut';
         td.textContent = 'No se encontraron alertas relacionadas.';
         tr.appendChild(td);
@@ -12343,7 +14152,23 @@ ob_start();
         const relation = [];
         if (row.related_by_domain) relation.push('dominio');
         if (row.related_by_ip) relation.push('ip');
+        if (row.related_by_ttp) relation.push('ttp');
+        if (row.related_by_snippet) relation.push('snippet');
         const relationText = relation.length ? relation.join(' + ') : '-';
+        const sharedReasons = Array.isArray(row.shared_reasons) ? row.shared_reasons : [];
+        const sharedSignals = Array.isArray(row.shared_signals) ? row.shared_signals : [];
+        const sharedSnippets = Array.isArray(row.shared_snippets) ? row.shared_snippets : [];
+        const evidenceParts = [];
+        if (sharedSnippets.length) {
+          evidenceParts.push(`snippet: ${sharedSnippets[0]}`);
+        }
+        if (sharedReasons.length) {
+          evidenceParts.push(`reason: ${sharedReasons[0]}`);
+        }
+        if (sharedSignals.length) {
+          evidenceParts.push(`signal: ${sharedSignals[0]}`);
+        }
+        const evidenceText = evidenceParts.join(' | ') || '-';
         const cells = [
           String(row.id || ''),
           String(row.activity_at || row.received_at || '-'),
@@ -12352,6 +14177,7 @@ ob_start();
           `${Number(row.score_total || 0)}/100`,
           String(row.review_status || 'pending'),
           relationText,
+          evidenceText,
         ];
         cells.forEach((value) => {
           const td = document.createElement('td');
@@ -12400,7 +14226,8 @@ ob_start();
         return;
       }
       const event = eventWorkbenchData[index];
-      eventItems.forEach((item) => {
+      const liveItems = eventFeed ? Array.from(eventFeed.querySelectorAll('.event-feed-item')) : [];
+      liveItems.forEach((item) => {
         item.classList.toggle('is-active', Number(item.dataset.eventIndex) === index);
       });
       eventEmpty.hidden = true;
@@ -12507,7 +14334,7 @@ ob_start();
         snippets.forEach((snippet) => {
           const div = document.createElement('div');
           div.className = 'event-snippet';
-          div.textContent = String(snippet);
+          div.innerHTML = boldMatchedSnippets(String(snippet), [snippet]);
           eventSnippets.appendChild(div);
         });
       } else {
@@ -12515,6 +14342,44 @@ ob_start();
         div.className = 'event-empty';
         div.textContent = 'Sin snippets almacenados.';
         eventSnippets.appendChild(div);
+      }
+
+      if (eventSignals) {
+        eventSignals.innerHTML = '';
+        const signals = Array.isArray(event.signals) ? event.signals.filter(Boolean) : [];
+        if (signals.length) {
+          signals.forEach((signal) => {
+            const li = document.createElement('li');
+            li.textContent = String(signal);
+            eventSignals.appendChild(li);
+          });
+        } else {
+          const li = document.createElement('li');
+          li.className = 'event-empty';
+          li.textContent = 'Sin signals capturados.';
+          eventSignals.appendChild(li);
+        }
+      }
+
+      if (eventScoreDetails) {
+        eventScoreDetails.innerHTML = '';
+        const details = event.score_details;
+        if (details && typeof details === 'object') {
+          const pre = document.createElement('pre');
+          pre.className = 'event-snippet';
+          pre.textContent = JSON.stringify(details, null, 2);
+          eventScoreDetails.appendChild(pre);
+        } else if (typeof details === 'string' && details.trim() !== '') {
+          const pre = document.createElement('pre');
+          pre.className = 'event-snippet';
+          pre.textContent = details;
+          eventScoreDetails.appendChild(pre);
+        } else {
+          const div = document.createElement('div');
+          div.className = 'event-empty';
+          div.textContent = 'Sin detalle de score.';
+          eventScoreDetails.appendChild(div);
+        }
       }
 
       const fullContextText = String(event.full_context || '');
@@ -12587,6 +14452,7 @@ ob_start();
       if (eventRelatedWrap) {
         eventRelatedWrap.hidden = true;
       }
+      updateEventMitre(event);
     }
 
     if (eventReviewForm) {
@@ -12648,11 +14514,20 @@ ob_start();
       });
     }
 
-    if (eventItems.length && eventWorkbenchData.length) {
-      eventItems.forEach((item) => {
-        item.addEventListener('click', () => {
-          renderEventDetail(Number(item.dataset.eventIndex));
-        });
+    updateInvestigationMitre();
+    updateSharedInvestigationMitre();
+    updateSourceAlertMitre();
+    if (eventFeed && eventWorkbenchData.length) {
+      eventFeed.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+          return;
+        }
+        const btn = target.closest('.event-feed-item');
+        if (!btn || !eventFeed.contains(btn)) {
+          return;
+        }
+        renderEventDetail(Number(btn.dataset.eventIndex));
       });
       const preferredIndex = focusReportId > 0
         ? eventWorkbenchData.findIndex((entry) => Number(entry?.id || 0) === Number(focusReportId))
@@ -12790,6 +14665,122 @@ ob_start();
         return '';
       }
       return raw.toLowerCase().replace(/^www\./, '').replace(/:\d+$/, '');
+    }
+
+    function extractCountryCode(label) {
+      const raw = String(label || '').trim();
+      if (!raw) return '';
+      const match = raw.match(/\(([A-Z]{2})\)/);
+      if (match) return match[1];
+      if (/^[A-Z]{2}$/.test(raw)) return raw;
+      return '';
+    }
+
+    function countryCodeToFlag(code) {
+      const safe = String(code || '').trim().toUpperCase();
+      if (!/^[A-Z]{2}$/.test(safe)) return '';
+      const base = 0x1f1e6;
+      const first = safe.charCodeAt(0) - 65;
+      const second = safe.charCodeAt(1) - 65;
+      if (first < 0 || first > 25 || second < 0 || second > 25) return '';
+      return String.fromCodePoint(base + first, base + second);
+    }
+
+    function flagForNode(node) {
+      const label = String(node?.label || '');
+      const tags = Array.isArray(node?.tags) ? node.tags.map((t) => String(t).toLowerCase()) : [];
+      const code = extractCountryCode(label);
+      if (!code) return '';
+      if (!tags.includes('geo') && !/\([A-Z]{2}\)/.test(label) && !/^[A-Z]{2}$/.test(label.trim())) {
+        return '';
+      }
+      return countryCodeToFlag(code);
+    }
+
+    function detectNodeKind(node) {
+      const label = String(node?.label || '');
+      const tags = Array.isArray(node?.tags) ? node.tags.map((t) => String(t).toLowerCase()) : [];
+      if (tags.includes('api-provider') || tags.includes('source') || tags.includes('origin') || tags.includes('alert')) {
+        return { key: 'source', label: 'fuente' };
+      }
+      if (label.trim().startsWith('#') || tags.includes('keyword')) {
+        return { key: 'hash', label: '#' };
+      }
+      const isSha256 = /^[a-f0-9]{64}$/i.test(label.trim());
+      const isUrl = /^https?:\/\//i.test(label.trim());
+      const isIp = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(label.trim());
+      const isDomain = !!normalizeDomainValue(label);
+      if (isSha256 || isUrl || isIp || isDomain || tags.includes('ioc') || tags.includes('domain') || tags.includes('ip') || tags.includes('url')) {
+        return { key: 'ioc', label: 'ioc' };
+      }
+      if (tags.includes('artifact') || tags.includes('evidence') || tags.includes('snippet') || tags.includes('file') || tags.includes('download')) {
+        return { key: 'artifact', label: 'artefacto' };
+      }
+      return { key: '', label: '' };
+    }
+
+    function normalizeLookupKey(type, value) {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      if (type === 'domain') {
+        const domain = normalizeDomainValue(raw);
+        return domain ? `domain:${domain}` : '';
+      }
+      if (type === 'ip') {
+        return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(raw) ? `ip:${raw}` : '';
+      }
+      if (type === 'url') {
+        try {
+          const parsed = new URL(raw);
+          return `url:${parsed.toString()}`;
+        } catch (error) {
+          return '';
+        }
+      }
+      if (type === 'hash') {
+        return /^[a-f0-9]{64}$/i.test(raw) ? `hash:${raw.toLowerCase()}` : '';
+      }
+      return '';
+    }
+
+    function buildVtLookupIndex(lookupRows) {
+      const index = new Map();
+      const rows = Array.isArray(lookupRows) ? lookupRows : [];
+      rows.forEach((row) => {
+        if (!row || String(row.provider || '').toLowerCase() !== 'virustotal') {
+          return;
+        }
+        const target = String(row.target || '');
+        const targetType = String(row.target_type || '');
+        const meta = parseLookupTargetMeta(target, targetType);
+        let key = '';
+        if (/^[a-f0-9]{64}$/i.test(target.trim()) || targetType === 'sha256') {
+          key = normalizeLookupKey('hash', target.trim());
+        } else {
+          key = normalizeLookupKey(meta.type, meta.display || target);
+        }
+        if (!key) return;
+        index.set(key, row);
+      });
+      return index;
+    }
+
+    function lookupVtForNode(node, vtIndex) {
+      if (!vtIndex || !(vtIndex instanceof Map)) return null;
+      const label = String(node?.label || '').trim();
+      const tags = Array.isArray(node?.tags) ? node.tags.map((t) => String(t).toLowerCase()) : [];
+      let key = '';
+      if (/^[a-f0-9]{64}$/i.test(label)) {
+        key = normalizeLookupKey('hash', label);
+      } else if (tags.includes('url') || /^https?:\/\//i.test(label)) {
+        key = normalizeLookupKey('url', label);
+      } else if (tags.includes('ip') || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(label)) {
+        key = normalizeLookupKey('ip', label);
+      } else {
+        key = normalizeLookupKey('domain', label);
+      }
+      if (!key) return null;
+      return vtIndex.get(key) || null;
     }
 
     function parseLookupTargetMeta(target, targetType) {
@@ -13216,6 +15207,7 @@ ob_start();
       renderIntelApiInsights(intelApiLookupMapRows, intelApiCommonKeywords);
       const baseGraph = selectedInvestigation?.graph || { nodes: [], edges: [] };
       const initialGraph = enrichGraphWithApiResults(baseGraph, intelApiLookupMapRows, intelApiCommonKeywords);
+      const vtLookupIndex = buildVtLookupIndex(intelApiLookupMapRows);
       const editor = makeGraphRenderer({
         wrap: intelWrap,
         svg: intelSvg,
@@ -13223,6 +15215,7 @@ ob_start();
         graph: initialGraph,
         readOnly: false,
         nodeListSelect,
+        vtLookupIndex,
         controls: {
           layoutSelect: intelLayoutMode,
           layoutApplyButton: intelLayoutApply,
@@ -13382,12 +15375,14 @@ ob_start();
     const sharedNodeTags = document.getElementById('shared-node-tags');
     const sharedNodeNotes = document.getElementById('shared-node-notes');
     if (sharedWrap && sharedSvg && sharedNodeLayer && sharedInvestigation?.graph) {
+      const sharedVtIndex = buildVtLookupIndex(intelApiLookupMapRows);
       makeGraphRenderer({
         wrap: sharedWrap,
         svg: sharedSvg,
         nodeLayer: sharedNodeLayer,
         graph: sharedInvestigation.graph,
         readOnly: true,
+        vtLookupIndex: sharedVtIndex,
         controls: {
           layoutSelect: sharedLayoutMode,
           layoutApplyButton: sharedLayoutApply,

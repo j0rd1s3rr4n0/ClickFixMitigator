@@ -320,6 +320,7 @@ function clickfix_run_migrations(PDO $pdo): void
         '20260315_028_internal_ads',
         '20260320_029_investigation_correlation_pipeline',
         '20260322_030_access_request_profiles',
+        '20260325_031_user_single_session',
     ];
 
     foreach ($migrations as $id) {
@@ -436,7 +437,8 @@ CREATE TABLE IF NOT EXISTS access_requests (
     user_agent TEXT,
     request_lang TEXT,
     linkedin_url TEXT,
-    company_website TEXT
+    company_website TEXT,
+    status TEXT NOT NULL DEFAULT 'pending'
 );
 SQL
         );
@@ -504,6 +506,7 @@ SQL
             'request_lang' => 'ALTER TABLE access_requests ADD COLUMN request_lang TEXT',
             'linkedin_url' => 'ALTER TABLE access_requests ADD COLUMN linkedin_url TEXT',
             'company_website' => 'ALTER TABLE access_requests ADD COLUMN company_website TEXT',
+            'status' => "ALTER TABLE access_requests ADD COLUMN status TEXT DEFAULT 'pending'",
         ];
         foreach ($columns as $name => $sql) {
             if (!clickfix_has_column($pdo, 'access_requests', $name)) {
@@ -1086,6 +1089,16 @@ SQL
             if (!clickfix_has_column($pdo, 'access_requests', $name)) {
                 $pdo->exec($sql);
             }
+        }
+        return;
+    }
+
+    if ($id === '20260325_031_user_single_session') {
+        if (!clickfix_has_column($pdo, 'users', 'active_session_id')) {
+            $pdo->exec('ALTER TABLE users ADD COLUMN active_session_id TEXT');
+        }
+        if (!clickfix_has_column($pdo, 'users', 'active_session_updated_at')) {
+            $pdo->exec('ALTER TABLE users ADD COLUMN active_session_updated_at TEXT');
         }
         return;
     }
@@ -1941,6 +1954,15 @@ function clickfix_related_reports(PDO $pdo, int $reportId, string $hostname = ''
         return [];
     }
     $limit = max(1, min(120, $limit));
+    $sourceReport = clickfix_report_by_id($pdo, $reportId);
+    $sourceReasons = [];
+    $sourceSignals = [];
+    $sourceSnippets = [];
+    if (is_array($sourceReport)) {
+        $sourceReasons = array_map('strtolower', array_filter(array_map('trim', (array) ($sourceReport['reason_list'] ?? []))));
+        $sourceSignals = array_map('strtolower', array_filter(array_map('trim', (array) ($sourceReport['signals'] ?? []))));
+        $sourceSnippets = array_map('strtolower', array_filter(array_map('trim', (array) ($sourceReport['snippets'] ?? []))));
+    }
     $normalizedHost = clickfix_normalize_domain($hostname);
     $normalizedIp = trim($ip);
     if ($normalizedIp !== '' && !filter_var($normalizedIp, FILTER_VALIDATE_IP)) {
@@ -1977,7 +1999,8 @@ function clickfix_related_reports(PDO $pdo, int $reportId, string $hostname = ''
             $params[':web_ip_host'] = strtolower($normalizedIp);
         }
     }
-    if (empty($clauses)) {
+    $hasSourceSignals = !empty($sourceSignals) || !empty($sourceReasons) || !empty($sourceSnippets);
+    if (empty($clauses) && !$hasSourceSignals) {
         return [];
     }
 
@@ -1994,10 +2017,13 @@ function clickfix_related_reports(PDO $pdo, int $reportId, string $hostname = ''
     $queryLimit = max($limit * 6, 120);
     $queryLimit = min($queryLimit, 500);
 
+    $whereSql = '';
+    if (!empty($clauses)) {
+        $whereSql = ' AND (' . implode(' OR ', $clauses) . ')';
+    }
     $sql = 'SELECT ' . $selectFields . '
             FROM reports r' . $joins . '
-            WHERE r.id != :report_id
-              AND (' . implode(' OR ', $clauses) . ')
+            WHERE r.id != :report_id' . $whereSql . '
             ORDER BY COALESCE(NULLIF(r.last_seen, \'\'), r.received_at) DESC, r.id DESC
             LIMIT :query_limit';
     $stmt = $pdo->prepare($sql);
@@ -2011,6 +2037,13 @@ function clickfix_related_reports(PDO $pdo, int $reportId, string $hostname = ''
 
     $filteredRows = [];
     foreach ($rows as &$row) {
+        $rowReasons = array_map('strtolower', array_filter(array_map('trim', (array) ($row['reason_list'] ?? []))));
+        $rowSignals = array_map('strtolower', array_filter(array_map('trim', (array) ($row['signals'] ?? []))));
+        $rowSnippets = array_map('strtolower', array_filter(array_map('trim', (array) ($row['snippets'] ?? []))));
+        $sharedReasons = array_values(array_intersect($sourceReasons, $rowReasons));
+        $sharedSignals = array_values(array_intersect($sourceSignals, $rowSignals));
+        $sharedSnippets = array_values(array_intersect($sourceSnippets, $rowSnippets));
+
         $rowHost = clickfix_normalize_domain((string) ($row['hostname'] ?? ''));
         $rowWebIp = trim((string) (($row['cache_domain_intel_ip'] ?? '') ?: ($row['cache_whatweb_ip'] ?? '')));
         if (!filter_var($rowWebIp, FILTER_VALIDATE_IP)) {
@@ -2025,7 +2058,17 @@ function clickfix_related_reports(PDO $pdo, int $reportId, string $hostname = ''
         $row['web_ip'] = $rowWebIp;
         $row['related_by_domain'] = $normalizedHost !== '' && $rowHost === $normalizedHost;
         $row['related_by_ip'] = $normalizedIp !== '' && $rowWebIp !== '' && $rowWebIp === $normalizedIp;
-        if (!$row['related_by_domain'] && !$row['related_by_ip']) {
+        $row['related_by_ttp'] = !empty($sharedReasons) || !empty($sharedSignals);
+        $row['related_by_snippet'] = !empty($sharedSnippets);
+        $row['shared_reasons'] = $sharedReasons;
+        $row['shared_signals'] = $sharedSignals;
+        $row['shared_snippets'] = $sharedSnippets;
+        if (
+            !$row['related_by_domain']
+            && !$row['related_by_ip']
+            && !$row['related_by_ttp']
+            && !$row['related_by_snippet']
+        ) {
             continue;
         }
         $filteredRows[] = $row;
@@ -2235,6 +2278,123 @@ function clickfix_delete_report(PDO $pdo, int $reportId): bool
     }
 
     return true;
+}
+
+function clickfix_delete_domain_cache_rows(PDO $pdo, string $hostname, bool $includeSubdomains = true): int
+{
+    $hostname = clickfix_normalize_domain($hostname);
+    if ($hostname === '') {
+        return 0;
+    }
+
+    $tables = ['domain_intel_cache', 'whatweb_cache'];
+    $deleted = 0;
+    foreach ($tables as $table) {
+        if (!clickfix_has_table($pdo, $table)) {
+            continue;
+        }
+        $clauses = ['LOWER(TRIM(hostname)) = :host'];
+        $params = [':host' => $hostname];
+        if ($includeSubdomains) {
+            $clauses[] = 'LOWER(TRIM(hostname)) LIKE :sub';
+            $params[':sub'] = '%.' . $hostname;
+        }
+        $sql = 'DELETE FROM ' . $table . ' WHERE ' . implode(' OR ', $clauses);
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $deleted += $stmt->rowCount();
+    }
+    return $deleted;
+}
+
+function clickfix_delete_investigations_by_domain(PDO $pdo, string $hostname, bool $includeSubdomains = true): int
+{
+    if (!clickfix_has_table($pdo, 'investigation_graphs')) {
+        return 0;
+    }
+    $hostname = clickfix_normalize_domain($hostname);
+    if ($hostname === '') {
+        return 0;
+    }
+    $clauses = ['LOWER(TRIM(COALESCE(site_domain, \'\'))) = :host'];
+    $params = [':host' => $hostname];
+    if ($includeSubdomains) {
+        $clauses[] = 'LOWER(TRIM(COALESCE(site_domain, \'\'))) LIKE :sub';
+        $params[':sub'] = '%.' . $hostname;
+    }
+    $stmt = $pdo->prepare('DELETE FROM investigation_graphs WHERE ' . implode(' OR ', $clauses));
+    $stmt->execute($params);
+    return $stmt->rowCount();
+}
+
+function clickfix_delete_reports_by_domain(PDO $pdo, string $domain, array $options = []): array
+{
+    $host = clickfix_normalize_domain($domain);
+    if ($host === '') {
+        return [
+            'host' => '',
+            'matched' => 0,
+            'deleted' => 0,
+            'failed' => 0,
+            'cache_deleted' => 0,
+            'investigations_deleted' => 0,
+        ];
+    }
+
+    $includeSubdomains = array_key_exists('include_subdomains', $options) ? (bool) $options['include_subdomains'] : true;
+    $includeUrl = array_key_exists('include_url', $options) ? (bool) $options['include_url'] : true;
+    $includePreviousUrl = array_key_exists('include_previous_url', $options) ? (bool) $options['include_previous_url'] : true;
+    $deleteCaches = array_key_exists('delete_caches', $options) ? (bool) $options['delete_caches'] : true;
+    $deleteInvestigations = array_key_exists('delete_investigations', $options) ? (bool) $options['delete_investigations'] : false;
+
+    $clauses = ['LOWER(TRIM(COALESCE(hostname, \'\'))) = :host'];
+    $params = [':host' => $host];
+    if ($includeSubdomains) {
+        $clauses[] = 'LOWER(TRIM(COALESCE(hostname, \'\'))) LIKE :sub';
+        $params[':sub'] = '%.' . $host;
+    }
+    if ($includeUrl) {
+        $clauses[] = 'LOWER(COALESCE(url, \'\')) LIKE :url';
+        $params[':url'] = '%' . $host . '%';
+    }
+    if ($includePreviousUrl) {
+        $clauses[] = 'LOWER(COALESCE(previous_url, \'\')) LIKE :purl';
+        $params[':purl'] = '%' . $host . '%';
+    }
+
+    $stmt = $pdo->prepare('SELECT id FROM reports WHERE ' . implode(' OR ', $clauses));
+    $stmt->execute($params);
+    $reportIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    $matched = count($reportIds);
+    $deleted = 0;
+    $failed = 0;
+
+    foreach ($reportIds as $reportId) {
+        if (clickfix_delete_report($pdo, (int) $reportId)) {
+            $deleted++;
+        } else {
+            $failed++;
+        }
+    }
+
+    $cacheDeleted = 0;
+    if ($deleteCaches) {
+        $cacheDeleted = clickfix_delete_domain_cache_rows($pdo, $host, $includeSubdomains);
+    }
+
+    $investigationsDeleted = 0;
+    if ($deleteInvestigations) {
+        $investigationsDeleted = clickfix_delete_investigations_by_domain($pdo, $host, $includeSubdomains);
+    }
+
+    return [
+        'host' => $host,
+        'matched' => $matched,
+        'deleted' => $deleted,
+        'failed' => $failed,
+        'cache_deleted' => $cacheDeleted,
+        'investigations_deleted' => $investigationsDeleted,
+    ];
 }
 
 function clickfix_normalize_domain(string $domain): string
@@ -2610,6 +2770,21 @@ function clickfix_recent_appeals(PDO $pdo, int $limit = 20): array
     return $rows;
 }
 
+function clickfix_recent_delete_requests(PDO $pdo, int $limit = 30): array
+{
+    $limit = max(1, min($limit, 200));
+    $stmt = $pdo->prepare(
+        'SELECT id, received_at, hostname, url, message, client_id, user_agent
+         FROM reports
+         WHERE LOWER(TRIM(event_type)) = \'delete_request\'
+         ORDER BY id DESC
+         LIMIT :limit'
+    );
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
+
 function clickfix_update_appeal_status(PDO $pdo, int $appealId, string $status): bool
 {
     $status = in_array($status, ['pending', 'approved', 'rejected'], true) ? $status : 'pending';
@@ -2642,6 +2817,9 @@ function clickfix_store_access_request(PDO $pdo, string $email, string $language
     if (!clickfix_has_column($pdo, 'access_requests', 'company_website')) {
         $pdo->exec('ALTER TABLE access_requests ADD COLUMN company_website TEXT');
     }
+    if (!clickfix_has_column($pdo, 'access_requests', 'status')) {
+        $pdo->exec("ALTER TABLE access_requests ADD COLUMN status TEXT DEFAULT 'pending'");
+    }
 
     $hash = hash('sha256', $email);
     $now = gmdate('c');
@@ -2650,7 +2828,8 @@ function clickfix_store_access_request(PDO $pdo, string $email, string $language
 
     $hasLinkedin = clickfix_has_column($pdo, 'access_requests', 'linkedin_url');
     $hasCompany = clickfix_has_column($pdo, 'access_requests', 'company_website');
-    $stmt = $pdo->prepare('SELECT id FROM access_requests WHERE email_hash = :hash LIMIT 1');
+    $hasStatus = clickfix_has_column($pdo, 'access_requests', 'status');
+    $stmt = $pdo->prepare('SELECT id' . ($hasStatus ? ', status' : '') . ' FROM access_requests WHERE email_hash = :hash LIMIT 1');
     $stmt->execute([':hash' => $hash]);
     $row = $stmt->fetch();
 
@@ -2669,6 +2848,9 @@ function clickfix_store_access_request(PDO $pdo, string $email, string $language
             ':lang' => $language,
             ':id' => (int) ($row['id'] ?? 0),
         ];
+        if ($hasStatus && trim((string) ($row['status'] ?? '')) === '') {
+            $setParts[] = "status = 'pending'";
+        }
         if ($hasLinkedin) {
             $setParts[] = 'linkedin_url = :linkedin';
             $params[':linkedin'] = $linkedinUrl;
@@ -2710,6 +2892,10 @@ function clickfix_store_access_request(PDO $pdo, string $email, string $language
         ':agent' => $agent,
         ':lang' => $language,
     ];
+    if ($hasStatus) {
+        $columns[] = 'status';
+        $placeholders[] = "'pending'";
+    }
     if ($hasLinkedin) {
         $columns[] = 'linkedin_url';
         $placeholders[] = ':linkedin';
@@ -2724,17 +2910,22 @@ function clickfix_store_access_request(PDO $pdo, string $email, string $language
     return $ins->execute($params);
 }
 
-function clickfix_recent_access_requests(PDO $pdo, int $limit = 30): array
+function clickfix_recent_access_requests(PDO $pdo, int $limit = 30, ?string $status = 'pending'): array
 {
     $limit = max(1, min($limit, 200));
-    $cacheKey = clickfix_cache_key('recent_access_requests', ['limit' => $limit, 'v1' => true]);
+    $statusValue = $status !== null ? strtolower(trim($status)) : '';
+    $allowedStatus = ['pending', 'approved', 'denied'];
+    $filterStatus = in_array($statusValue, $allowedStatus, true) ? $statusValue : '';
+    $cacheKey = clickfix_cache_key('recent_access_requests', ['limit' => $limit, 'status' => $filterStatus, 'v2' => true]);
     $cached = clickfix_cache_get($cacheKey);
     if (is_array($cached)) {
         return $cached;
     }
     $hasLinkedin = clickfix_has_column($pdo, 'access_requests', 'linkedin_url');
     $hasCompany = clickfix_has_column($pdo, 'access_requests', 'company_website');
+    $hasStatus = clickfix_has_column($pdo, 'access_requests', 'status');
     $select = [
+        'id',
         'email',
         ($hasLinkedin ? 'linkedin_url' : "'' AS linkedin_url"),
         ($hasCompany ? 'company_website' : "'' AS company_website"),
@@ -2743,19 +2934,39 @@ function clickfix_recent_access_requests(PDO $pdo, int $limit = 30): array
         'last_seen_at',
         'request_ip',
         'request_lang',
+        ($hasStatus ? 'status' : "'' AS status"),
     ];
-    $stmt = $pdo->prepare('SELECT ' . implode(', ', $select) . ' FROM access_requests ORDER BY last_seen_at DESC, id DESC LIMIT :limit');
+    if ($filterStatus !== '' && $hasStatus) {
+        $stmt = $pdo->prepare(
+            'SELECT ' . implode(', ', $select) . ' FROM access_requests WHERE status = :status ORDER BY last_seen_at DESC, id DESC LIMIT :limit'
+        );
+        $stmt->bindValue(':status', $filterStatus, PDO::PARAM_STR);
+    } else {
+        $stmt = $pdo->prepare('SELECT ' . implode(', ', $select) . ' FROM access_requests ORDER BY last_seen_at DESC, id DESC LIMIT :limit');
+    }
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->execute();
     $rows = $stmt->fetchAll();
 
-    $fallbackRows = clickfix_access_request_fallback_load($limit);
-    if (!empty($fallbackRows)) {
-        $rows = clickfix_merge_access_request_rows($rows, $fallbackRows, $limit);
+    if ($filterStatus === '' || $filterStatus === 'pending') {
+        $fallbackRows = clickfix_access_request_fallback_load($limit);
+        if (!empty($fallbackRows)) {
+            $rows = clickfix_merge_access_request_rows($rows, $fallbackRows, $limit);
+        }
     }
 
     clickfix_cache_set($cacheKey, $rows, 8);
     return $rows;
+}
+
+function clickfix_update_access_request_status(PDO $pdo, int $requestId, string $status): bool
+{
+    $status = in_array($status, ['pending', 'approved', 'denied'], true) ? $status : 'pending';
+    if (!clickfix_has_column($pdo, 'access_requests', 'status')) {
+        $pdo->exec("ALTER TABLE access_requests ADD COLUMN status TEXT DEFAULT 'pending'");
+    }
+    $stmt = $pdo->prepare('UPDATE access_requests SET status = :status WHERE id = :id');
+    return $stmt->execute([':status' => $status, ':id' => $requestId]);
 }
 
 function clickfix_access_request_fallback_paths(): array

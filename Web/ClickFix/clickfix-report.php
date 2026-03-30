@@ -788,8 +788,12 @@ $previousUrl = substr($previousUrl, 0, 2048);
 $hostname = substr($hostname, 0, 255);
 $message = substr($message !== '' ? $message : $reason, 0, 2000);
 $timestamp = substr($timestamp, 0, 100);
-$detectedContent = substr($detectedContent, 0, 4000);
-$fullContext = substr($fullContext, 0, 50000);
+$detectedMax = (int) clickfix_env('CLICKFIX_REPORT_DETECTED_MAX', '4000');
+$detectedMax = max(1000, min(60000, $detectedMax));
+$fullContextMax = (int) clickfix_env('CLICKFIX_REPORT_FULL_CONTEXT_MAX', '50000');
+$fullContextMax = max(5000, min(250000, $fullContextMax));
+$detectedContent = substr($detectedContent, 0, $detectedMax);
+$fullContext = substr($fullContext, 0, $fullContextMax);
 $eventType = substr($eventType, 0, 60);
 
 $message = preg_replace('/[\x00-\x1F\x7F]/', ' ', (string) $message);
@@ -945,9 +949,13 @@ foreach (array_slice($reasonEntriesRaw, 0, 60) as $entry) {
     ];
 }
 
+$snippetLimit = (int) clickfix_env('CLICKFIX_REPORT_MAX_SNIPPETS', '80');
+$snippetLimit = max(5, min(200, $snippetLimit));
+$snippetMaxLen = (int) clickfix_env('CLICKFIX_REPORT_SNIPPET_MAX_CHARS', '4000');
+$snippetMaxLen = max(120, min(20000, $snippetMaxLen));
 $normalizedSnippets = [];
-foreach (array_slice($matchedSnippetsRaw, 0, 40) as $snippet) {
-    $snippet = substr(trim((string) $snippet), 0, 260);
+foreach (array_slice($matchedSnippetsRaw, 0, $snippetLimit) as $snippet) {
+    $snippet = substr(trim((string) $snippet), 0, $snippetMaxLen);
     if ($snippet !== '') {
         $normalizedSnippets[] = $snippet;
     }
@@ -1194,6 +1202,119 @@ if ($type === 'alert' && $targetReportId > 0) {
                 'report_id' => $targetReportId,
                 'url' => $entry['url'],
             ]);
+        }
+    }
+}
+
+function extractMsiexecDownloadUrl(string $text): string
+{
+    $text = clickfix_pipeline_refang_text($text);
+    if ($text === '') {
+        return '';
+    }
+    if (preg_match('/\\bmsiexec(?:\\.exe)?\\b[^\\n]*?\\/(?:i|I)\\s+([\'"]?)(https?:\\/\\/[^\\s\'"]+)\\1/i', $text, $match)) {
+        return (string) ($match[2] ?? '');
+    }
+    return '';
+}
+
+function pickAutoPipelineUserId(PDO $pdo): int
+{
+    $envId = (int) clickfix_env('CLICKFIX_AUTO_PIPELINE_USER_ID', '0');
+    if ($envId > 0) {
+        return $envId;
+    }
+    $stmt = $pdo->query("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1");
+    $adminId = (int) ($stmt ? $stmt->fetchColumn() : 0);
+    if ($adminId > 0) {
+        return $adminId;
+    }
+    $stmt = $pdo->query("SELECT id FROM users WHERE role = 'analyst_sr' ORDER BY id ASC LIMIT 1");
+    return (int) ($stmt ? $stmt->fetchColumn() : 0);
+}
+
+if ($targetReportId > 0) {
+    $autoEnabled = (string) clickfix_env('CLICKFIX_AUTO_MSIEXEC_PIPELINE', '1') === '1';
+    if ($autoEnabled && clickfix_has_table($pdo, 'investigation_graphs')) {
+        $rootTextParts = [];
+        foreach (['url', 'message', 'detected_content', 'full_context'] as $field) {
+            $value = trim((string) ($entry[$field] ?? ''));
+            if ($value !== '') {
+                $rootTextParts[] = strtoupper($field) . ': ' . $value;
+            }
+        }
+        $rootText = implode(PHP_EOL . PHP_EOL, $rootTextParts);
+        $msiUrl = extractMsiexecDownloadUrl($rootText);
+        if ($msiUrl !== '') {
+            $autoUserId = pickAutoPipelineUserId($pdo);
+            if ($autoUserId > 0) {
+                $existingGraphId = 0;
+                if (clickfix_has_column($pdo, 'investigation_graphs', 'source_report_id')) {
+                    $stmt = $pdo->prepare('SELECT id FROM investigation_graphs WHERE source_report_id = :rid AND deleted = 0 ORDER BY id DESC LIMIT 1');
+                    $stmt->execute([':rid' => $targetReportId]);
+                    $existingGraphId = (int) ($stmt->fetchColumn() ?: 0);
+                }
+                $graphId = $existingGraphId;
+                if ($graphId <= 0) {
+                    $domainForInvestigation = clickfix_normalize_domain((string) ($entry['hostname'] ?? ''));
+                    if ($domainForInvestigation === '') {
+                        $domainForInvestigation = clickfix_normalize_domain($msiUrl);
+                    }
+                    $summaryLines = [
+                        'Auto pipeline: msiexec /i detectado.',
+                        'URL payload: ' . $msiUrl,
+                    ];
+                    if (!empty($entry['message'])) {
+                        $summaryLines[] = 'Mensaje: ' . substr((string) $entry['message'], 0, 500);
+                    }
+                    $summary = implode(PHP_EOL, $summaryLines);
+                    $graphNodes = [
+                        [
+                            'id' => 'n_alert_' . $targetReportId,
+                            'label' => 'Alerta #' . $targetReportId,
+                            'color' => '#e66a6a',
+                            'x' => 200,
+                            'y' => 140,
+                            'tags' => ['alert', 'clickfix', 'auto'],
+                            'notes' => $summary,
+                        ],
+                        [
+                            'id' => 'n_payload_' . preg_replace('/[^a-z0-9]/', '_', strtolower($msiUrl)),
+                            'label' => $msiUrl,
+                            'color' => '#a78bfa',
+                            'x' => 520,
+                            'y' => 170,
+                            'tags' => ['payload', 'url'],
+                            'notes' => 'Descarga msiexec /i',
+                        ],
+                    ];
+                    $graphEdges = [
+                        [
+                            'id' => 'e_alert_payload_' . $targetReportId,
+                            'from' => 'n_alert_' . $targetReportId,
+                            'to' => 'n_payload_' . preg_replace('/[^a-z0-9]/', '_', strtolower($msiUrl)),
+                            'label' => 'descarga',
+                            'color' => '#a78bfa',
+                        ],
+                    ];
+                    $graphId = (int) (clickfix_investigation_save(
+                        $pdo,
+                        $autoUserId,
+                        null,
+                        'Investigacion msiexec #' . $targetReportId . ' - ' . ($domainForInvestigation !== '' ? $domainForInvestigation : 'payload'),
+                        $domainForInvestigation,
+                        'investigating',
+                        $summary,
+                        'auto, msiexec, payload',
+                        ['nodes' => $graphNodes, 'edges' => $graphEdges],
+                        true,
+                        $targetReportId
+                    ) ?? 0);
+                }
+                if ($graphId > 0) {
+                    clickfix_investigation_enqueue_alert_correlation($pdo, $graphId, $targetReportId, $autoUserId, 4);
+                }
+            }
         }
     }
 }
