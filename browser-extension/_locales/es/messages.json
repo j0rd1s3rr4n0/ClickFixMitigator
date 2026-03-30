@@ -1,4 +1,4 @@
-﻿{
+{
   "appName": {
     "message": "ClickFix Mitigator"
   },
@@ -210,6 +210,23 @@
   "popupReportButton": {
     "message": "Reportar"
   },
+  "popupDeleteRequestButton": {
+    "message": "Solicitar eliminacion"
+  },
+  "popupDeleteReasonPrompt": {
+    "message": "Motivo de eliminacion (obligatorio)"
+  },
+  "popupDeleteReasonRequired": {
+    "message": "Introduce un motivo para solicitar la eliminacion."
+  },
+  "popupDeleteRequestSent": {
+    "message": "Solicitud enviada: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
   "popupReportStatusMissing": {
     "message": "Introduce una URL o usa la pestaña actual."
   },
@@ -226,6 +243,9 @@
   },
   "popupReportStatusNoTab": {
     "message": "No se pudo detectar la pestaña activa."
+  },
+  "deleteRequestReason": {
+    "message": "Usuario solicito la eliminacion de la deteccion."
   },
   "popupOptionsLink": {
     "message": "Opciones avanzadas"
@@ -631,5 +651,37 @@
   },
   "alertFilterRed": {
     "message": "Solo rojo"
+  },
+  "popupFalsePositiveButton": {
+    "message": "Revisar falso positivo"
+  },
+  "popupFalsePositiveSent": {
+    "message": "Falso positivo enviado: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "falsePositiveReason": {
+    "message": "Falso positivo reportado"
+  },
+  "optionsExceptionlistTitle": {
+    "message": "Lista de excepciones"
+  },
+  "optionsExceptionlistHint": {
+    "message": "Los sitios en esta lista no se bloquean ni muestran alertas localmente, pero se reportan a administradores."
+  },
+  "optionsExceptionlistWarning": {
+    "message": "El usuario es responsable de las excepciones que agregue."
+  },
+  "optionsExceptionlistPlaceholder": {
+    "message": "ejemplo.com"
+  },
+  "optionsExceptionlistAdd": {
+    "message": "Agregar excepci?n"
+  },
+  "optionsExceptionlistEmpty": {
+    "message": "Sin excepciones."
   }
 }

@@ -5,6 +5,7 @@ const DEFAULT_SETTINGS = {
   uiTheme: "system",
   muteDetectionNotifications: false,
   whitelist: [],
+  exceptionlist: [],
   history: [],
   blocklistSources: [],
   allowlistSources: [],
@@ -83,6 +84,9 @@ const toggleMuteNotifications = document.getElementById("toggle-mute-notificatio
 const whitelistInput = document.getElementById("whitelist-input");
 const addDomainButton = document.getElementById("add-domain");
 const whitelistList = document.getElementById("whitelist-list");
+const exceptionlistInput = document.getElementById("exceptionlist-input");
+const addExceptionButton = document.getElementById("add-exception");
+const exceptionlistList = document.getElementById("exceptionlist-list");
 const blocklistInput = document.getElementById("blocklist-input");
 const addBlocklistButton = document.getElementById("add-blocklist");
 const blocklistList = document.getElementById("blocklist-list");
@@ -146,6 +150,31 @@ function normalizeLocale(locale) {
   }
   const base = lower.split("-")[0];
   return SUPPORTED_LOCALES.includes(base) ? base : DEFAULT_LOCALE;
+}
+
+function extractHostname(value) {
+  if (!value) {
+    return "";
+  }
+  try {
+    return new URL(value).hostname;
+  } catch (error) {
+    return "";
+  }
+}
+
+function normalizeHostname(value) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) {
+    return "";
+  }
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return extractHostname(trimmed);
+  }
+  if (trimmed.includes("/")) {
+    return extractHostname(`https://${trimmed}`);
+  }
+  return trimmed.replace(/^\*\./, "");
 }
 
 function normalizeAlertMinSeverity(value) {
@@ -320,6 +349,7 @@ async function loadSettings() {
     uiTheme: settings.uiTheme ?? "system",
     muteDetectionNotifications: settings.muteDetectionNotifications ?? false,
     whitelist: settings.whitelist ?? [],
+    exceptionlist: settings.exceptionlist ?? [],
     history: settings.history ?? [],
     alertCount: settings.alertCount ?? 0,
     blockCount: settings.blockCount ?? 0,
@@ -359,6 +389,35 @@ function renderWhitelist(domains) {
     });
     item.appendChild(removeButton);
     whitelistList.appendChild(item);
+  });
+}
+
+function renderExceptionlist(domains) {
+  if (!exceptionlistList) {
+    return;
+  }
+  exceptionlistList.innerHTML = "";
+  if (!domains.length) {
+    const item = document.createElement("li");
+    item.textContent = t("optionsExceptionlistEmpty");
+    item.classList.add("empty");
+    exceptionlistList.appendChild(item);
+    return;
+  }
+
+  domains.forEach((domain) => {
+    const item = document.createElement("li");
+    item.textContent = domain;
+    const removeButton = document.createElement("button");
+    removeButton.textContent = t("optionsRemove");
+    removeButton.addEventListener("click", async () => {
+      const settings = await loadSettings();
+      const next = settings.exceptionlist.filter((entry) => entry !== domain);
+      await chrome.storage.local.set({ exceptionlist: next });
+      renderExceptionlist(next);
+    });
+    item.appendChild(removeButton);
+    exceptionlistList.appendChild(item);
   });
 }
 
@@ -1003,11 +1062,34 @@ async function addDomain(domain) {
   }
 }
 
+async function addException(domain) {
+  const normalized = normalizeHostname(domain);
+  if (!normalized) {
+    return;
+  }
+  const settings = await loadSettings();
+  if (!settings.exceptionlist.includes(normalized)) {
+    const next = [...settings.exceptionlist, normalized].sort();
+    await chrome.storage.local.set({ exceptionlist: next });
+    renderExceptionlist(next);
+  }
+}
+
 addDomainButton.addEventListener("click", async () => {
   const domain = whitelistInput.value.trim();
   if (domain) {
     await addDomain(domain);
     whitelistInput.value = "";
+  }
+});
+
+addExceptionButton?.addEventListener("click", async () => {
+  const domain = exceptionlistInput?.value.trim();
+  if (domain) {
+    await addException(domain);
+    if (exceptionlistInput) {
+      exceptionlistInput.value = "";
+    }
   }
 });
 
@@ -1114,6 +1196,7 @@ alertMinSeveritySelect?.addEventListener("change", async () => {
     alertMinSeveritySelect.value = settings.alertMinSeverity;
   }
   renderWhitelist(settings.whitelist);
+  renderExceptionlist(settings.exceptionlist);
   renderBlocklistSources(settings.blocklistSources);
   renderAllowlistSources(settings.allowlistSources);
   renderHistory(settings.history);
@@ -1137,6 +1220,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
     changes.whitelist;
   if (shouldUpdateStats) {
     loadSettings().then(renderStats);
+  }
+  if (changes.exceptionlist) {
+    loadSettings().then((settings) => renderExceptionlist(settings.exceptionlist));
   }
   if (changes.scoreConfig || changes.scoreConfigManagedBy || changes.scoreConfigServerUpdatedAt) {
     loadSettings().then((settings) => {

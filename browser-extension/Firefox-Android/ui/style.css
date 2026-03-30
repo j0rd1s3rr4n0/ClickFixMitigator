@@ -346,6 +346,10 @@ h2 {
   margin: 4px 0 10px;
 }
 
+.hint.warning {
+  color: var(--danger);
+}
+
 .row {
   display: flex;
   gap: 8px;

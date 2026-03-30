@@ -75,6 +75,7 @@ const DEFAULT_SETTINGS = {
   apiTokenTier: "basic",
   whitelist: [],
   allowlist: [],
+  exceptionlist: [],
   history: [],
   blocklist: [],
   blocklistSources: [],
@@ -161,6 +162,53 @@ const DOWNLOAD_DANGEROUS_EXTENSIONS = new Set([
 const DOWNLOAD_SCRIPT_EXTENSIONS = new Set(["bat", "cmd", "ps1", "vbs", "js", "hta"]);
 const DOWNLOAD_DOUBLE_EXTENSION_REGEX =
   /\.(txt|pdf|docx?|xlsx?|pptx?|jpg|jpeg|png|gif|webp|zip|rar|7z)\.(exe|msi|bat|cmd|ps1|js|vbs|scr|com|jar|lnk)$/i;
+const NON_HTML_PROBE_EXTENSIONS = new Set([
+  "exe",
+  "msi",
+  "msix",
+  "msixbundle",
+  "scr",
+  "com",
+  "pif",
+  "lnk",
+  "bat",
+  "cmd",
+  "ps1",
+  "psm1",
+  "vbs",
+  "js",
+  "jar",
+  "hta",
+  "dll",
+  "zip",
+  "rar",
+  "7z",
+  "gz",
+  "tgz",
+  "bz2",
+  "xz",
+  "iso",
+  "img",
+  "dmg",
+  "pkg",
+  "deb",
+  "rpm",
+  "apk",
+  "pdf",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "ppt",
+  "pptx",
+  "rtf",
+  "csv"
+]);
+const NON_HTML_PROBE_TIMEOUT_MS = 8000;
+const NON_HTML_PROBE_MAX_BYTES = 65536;
+const NON_HTML_PROBE_TEXT_LIMIT = 2000;
+const NON_HTML_PROBE_CACHE_MS = 120000;
+const NON_HTML_PROBE_MIN_SCORE = 28;
 const TRUSTED_DOWNLOAD_HOSTS = [
   "microsoft.com",
   "github.com",
@@ -460,6 +508,7 @@ async function getSettings() {
     apiTokenTier: typeof stored.apiTokenTier === "string" ? stored.apiTokenTier : "basic",
     whitelist: stored.whitelist ?? [],
     allowlist: stored.allowlist ?? [],
+    exceptionlist: stored.exceptionlist ?? [],
     history: stored.history ?? [],
     blocklist: stored.blocklist ?? [],
     blocklistSources: stored.blocklistSources ?? [],
@@ -653,6 +702,20 @@ function extractFileExtension(filename) {
     return "";
   }
   return normalized.split(".").pop() || "";
+}
+
+function extractUrlFilename(url) {
+  try {
+    const parsed = new URL(String(url || ""));
+    const path = parsed.pathname || "";
+    if (!path || path === "/") {
+      return "";
+    }
+    const parts = path.split("/");
+    return parts[parts.length - 1] || "";
+  } catch (error) {
+    return "";
+  }
 }
 
 function hasConfiguredScoreSigningKey() {
@@ -2371,6 +2434,16 @@ async function maybeCaptureBeforeScreenshotForPage(message, sender) {
 
 async function triggerAlert(details) {
   await ensureLocaleReady();
+  const exceptionlisted = await isExceptionlisted(details?.url || "");
+  if (exceptionlisted) {
+    details = {
+      ...details,
+      suppressNotification: true,
+      suppressPageBlock: true,
+      incrementAlertCount: false,
+      incrementBlockCount: false
+    };
+  }
   const scoreDetails = computeDetectionScore(details);
   const progressive = computeProgressiveBonus(details);
   const progressiveBonus = applyProgressiveBonus(scoreDetails, progressive);
@@ -2451,25 +2524,27 @@ async function triggerAlert(details) {
       ? false
       : Boolean(listDecision ? listDecision.allowlisted : await isAllowlisted(details.url));
   const shouldBlockPage = !details.suppressPageBlock;
-  const shouldCaptureScreenshots = shouldCaptureDetectionScreenshots(details, settings);
+  const shouldCaptureScreenshots = !exceptionlisted && shouldCaptureDetectionScreenshots(details, settings);
   const captureWindowId = shouldCaptureScreenshots
     ? await resolveCaptureWindowId(details.tabId)
     : chrome.windows.WINDOW_ID_CURRENT;
   let afterScreenshot = "";
   const allowClipboardRestore = details.allowClipboardRestore !== false;
 
-  await saveHistory({
-    message,
-    reasonEntries,
-    snippets,
-    url: reportUrl,
-    hostname: reportHostname || (details.reportHostname === false ? t("historyClipboardOnly") : hostname),
-    timestamp,
-    reportHostname: details.reportHostname !== false,
-    confidenceScore,
-    scoreDetails,
-    detectedContent: details.detectedContent || ""
-  });
+  if (!exceptionlisted) {
+    await saveHistory({
+      message,
+      reasonEntries,
+      snippets,
+      url: reportUrl,
+      hostname: reportHostname || (details.reportHostname === false ? t("historyClipboardOnly") : hostname),
+      timestamp,
+      reportHostname: details.reportHostname !== false,
+      confidenceScore,
+      scoreDetails,
+      detectedContent: details.detectedContent || ""
+    });
+  }
   let queuedReport = {
     type: "alert",
     url: reportUrl,
@@ -2486,6 +2561,7 @@ async function triggerAlert(details) {
     score_total: confidenceScore,
     score_details: scoreDetails,
     runtime_verdict: runtimeVerdict || null,
+    exceptionlisted,
     signals: {
       mismatch: details.mismatch,
       commandMatch: details.commandMatch,
@@ -2700,6 +2776,18 @@ async function isAllowlisted(url) {
   return items.some((entry) => matchesHostname(hostname, entry));
 }
 
+async function isExceptionlisted(url) {
+  const settings = await getSettings();
+  const hostname = extractHostname(url);
+  if (!hostname) {
+    return false;
+  }
+  if (!Array.isArray(settings.exceptionlist) || !settings.exceptionlist.length) {
+    return false;
+  }
+  return settings.exceptionlist.some((entry) => matchesHostname(hostname, entry));
+}
+
 async function isBlocked(url) {
   const settings = await getSettings();
   const hostname = extractHostname(url);
@@ -2782,6 +2870,196 @@ async function analyzeDownloadRisk(downloadItem) {
   };
 }
 
+function decodeBytesToText(bytes) {
+  try {
+    return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+  } catch (error) {
+    return "";
+  }
+}
+
+function extractAsciiStrings(bytes, minLen = 5, maxChars = 4000) {
+  const results = [];
+  let current = "";
+  const pushCurrent = () => {
+    if (current.length >= minLen) {
+      results.push(current);
+    }
+    current = "";
+  };
+  for (let i = 0; i < bytes.length; i += 1) {
+    const code = bytes[i];
+    if (code >= 32 && code <= 126) {
+      current += String.fromCharCode(code);
+      if (current.length >= 200) {
+        pushCurrent();
+      }
+    } else {
+      pushCurrent();
+    }
+    if (results.join("\n").length >= maxChars) {
+      break;
+    }
+  }
+  pushCurrent();
+  return results.join("\n").slice(0, maxChars);
+}
+
+function computeNonHtmlScore(analysis, extension, contentType) {
+  let score = 0;
+  if (analysis?.commandMatch) score += 28;
+  if (analysis?.shellHint) score += 24;
+  if (analysis?.evasionHint) score += 18;
+  if (extension && DOWNLOAD_DANGEROUS_EXTENSIONS.has(extension)) score += 16;
+  if (contentType && /octet-stream|x-msdownload|x-msi|x-dosexec/i.test(contentType)) {
+    score += 12;
+  }
+  return clampScore(score);
+}
+
+function shouldProbeNonHtmlUrl(url) {
+  if (!/^https?:/i.test(String(url || ""))) {
+    return false;
+  }
+  const filename = extractUrlFilename(url);
+  const ext = extractFileExtension(filename);
+  if (ext && NON_HTML_PROBE_EXTENSIONS.has(ext)) {
+    return true;
+  }
+  const host = extractHostname(url);
+  if (!host) {
+    return false;
+  }
+  if (host === "raw.githubusercontent.com" || host.endsWith(".githubusercontent.com")) {
+    return true;
+  }
+  return false;
+}
+
+async function fetchNonHtmlProbe(url) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), NON_HTML_PROBE_TIMEOUT_MS);
+  try {
+    let contentType = "";
+    try {
+      const head = await fetch(url, {
+        method: "HEAD",
+        redirect: "follow",
+        cache: "no-store",
+        signal: controller.signal
+      });
+      contentType = String(head.headers.get("content-type") || "").toLowerCase();
+    } catch (error) {
+      // ignore head errors
+    }
+
+    if (contentType && /text\/html|application\/xhtml\+xml|text\/plain|application\/json|text\/xml/i.test(contentType)) {
+      return { contentType, bytes: null };
+    }
+
+    const response = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      cache: "no-store",
+      headers: { Range: `bytes=0-${NON_HTML_PROBE_MAX_BYTES - 1}` },
+      signal: controller.signal
+    });
+    const buffer = await response.arrayBuffer();
+    return {
+      contentType: contentType || String(response.headers.get("content-type") || "").toLowerCase(),
+      bytes: new Uint8Array(buffer)
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+const nonHtmlProbeCache = new Map();
+
+async function probeNonHtmlContent(tabId, url) {
+  const settings = await getSettings();
+  if (!settings.enabled) {
+    return;
+  }
+  if (await isExceptionlisted(url)) {
+    return;
+  }
+  if (!shouldProbeNonHtmlUrl(url)) {
+    return;
+  }
+  const cacheKey = `${tabId || "na"}|${url}`;
+  const lastProbe = nonHtmlProbeCache.get(cacheKey);
+  if (lastProbe && Date.now() - lastProbe < NON_HTML_PROBE_CACHE_MS) {
+    return;
+  }
+  nonHtmlProbeCache.set(cacheKey, Date.now());
+
+  const filename = extractUrlFilename(url);
+  const extension = extractFileExtension(filename);
+  const downloadRisk = await analyzeDownloadRisk({ finalUrl: url, filename });
+  let contentType = "";
+  let sampleText = "";
+  try {
+    const probe = await fetchNonHtmlProbe(url);
+    contentType = probe.contentType || "";
+    if (probe.bytes && probe.bytes.length) {
+      const decoded = decodeBytesToText(probe.bytes);
+      const printableRatio =
+        decoded.length > 0
+          ? decoded.replace(/[^\x20-\x7e]/g, "").length / decoded.length
+          : 0;
+      if (printableRatio > 0.6) {
+        sampleText = decoded.slice(0, NON_HTML_PROBE_TEXT_LIMIT);
+      } else {
+        sampleText = extractAsciiStrings(probe.bytes);
+      }
+    }
+  } catch (error) {
+    // Ignore fetch errors
+  }
+
+  if (!sampleText && !downloadRisk?.unsafe) {
+    return;
+  }
+
+  const analysis = analyzeText(sampleText);
+  const score = computeNonHtmlScore(analysis, extension, contentType);
+  const shouldAlert =
+    downloadRisk?.unsafe ||
+    analysis?.commandMatch ||
+    analysis?.shellHint ||
+    analysis?.evasionHint ||
+    score >= NON_HTML_PROBE_MIN_SCORE;
+  if (!shouldAlert) {
+    return;
+  }
+
+  const snippets = dedupeStrings([
+    `Non-HTML content probe (${contentType || "unknown"})`,
+    filename ? `Filename: ${filename}` : "",
+    extension ? `Extension: .${extension}` : "",
+    ...(downloadRisk?.snippets || [])
+  ]);
+  await triggerAlert({
+    url,
+    tabId,
+    timestamp: Date.now(),
+    eventType: "non_html_probe",
+    detectedContent: sampleText.slice(0, 600),
+    fullContext: sampleText.slice(0, 2000),
+    commandMatch: Boolean(analysis?.commandMatch),
+    shellHint: Boolean(analysis?.shellHint),
+    evasionHint: Boolean(analysis?.evasionHint),
+    downloadRisk,
+    download_url: url,
+    download_filename: filename,
+    download_host: extractHostname(url),
+    snippets,
+    suppressPageBlock: true,
+    incrementBlockCount: false
+  });
+}
+
 function cancelDownload(downloadId) {
   return new Promise((resolve) => {
     if (!chrome?.downloads?.cancel) {
@@ -2801,6 +3079,9 @@ function cancelDownload(downloadId) {
 async function handleDownloadCreated(downloadItem) {
   const settings = await getSettings();
   if (!settings.enabled || !settings.blockUnsafeDownloads) {
+    return;
+  }
+  if (await isExceptionlisted(String(downloadItem?.finalUrl || downloadItem?.url || ""))) {
     return;
   }
   const risk = await analyzeDownloadRisk(downloadItem);
@@ -2930,15 +3211,18 @@ if (chrome?.tabs?.onRemoved) {
 
 if (chrome?.tabs?.onUpdated) {
   chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (!tab || changeInfo?.status !== "complete") {
+    if (!tab) {
       return;
     }
-    const pageUrl = String(tab.url || "");
+    const pageUrl = String(changeInfo?.url || tab.url || "");
     if (!/^https?:/i.test(pageUrl)) {
       return;
     }
     if (isClickFixDisabledUrl(pageUrl)) {
       return;
+    }
+    if (changeInfo?.status === "complete" || changeInfo?.url) {
+      probeNonHtmlContent(tabId, pageUrl).catch(() => undefined);
     }
   });
 }
@@ -2976,7 +3260,10 @@ async function getAllowlistItems() {
 async function resolveListDecision(url) {
   const hostname = extractHostname(url);
   if (!hostname) {
-    return { hostname: "", allowlisted: false, blocked: false, conflict: false };
+    return { hostname: "", allowlisted: false, blocked: false, conflict: false, exceptionlisted: false };
+  }
+  if (await isExceptionlisted(url)) {
+    return { hostname, allowlisted: false, blocked: false, conflict: false, exceptionlisted: true };
   }
   const allowlisted = await isAllowlisted(url);
   const items = await getBlocklistItems();
@@ -2985,7 +3272,7 @@ async function resolveListDecision(url) {
   if (conflict) {
     console.warn("[ClickFix] List conflict detected", { hostname, url });
   }
-  return { hostname, allowlisted, blocked, conflict };
+  return { hostname, allowlisted, blocked, conflict, exceptionlisted: false };
 }
 
 async function sendReport(details) {
@@ -3228,10 +3515,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       const decision = await resolveListDecision(message.url);
       sendResponse({
-        blocked: decision.blocked && !decision.allowlisted,
+        blocked: decision.exceptionlisted ? false : decision.blocked && !decision.allowlisted,
         hostname: decision.hostname,
         allowlisted: decision.allowlisted,
-        conflict: decision.conflict
+        conflict: decision.conflict,
+        exceptionlisted: decision.exceptionlisted
       });
     })();
     return true;
@@ -3240,7 +3528,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "checkAllowlist") {
     (async () => {
       const decision = await resolveListDecision(message.url);
-      sendResponse({ allowlisted: decision.allowlisted, conflict: decision.conflict });
+      sendResponse({
+        allowlisted: decision.allowlisted,
+        conflict: decision.conflict,
+        exceptionlisted: decision.exceptionlisted
+      });
+    })();
+    return true;
+  }
+
+  if (message.type === "checkExceptionlist") {
+    (async () => {
+      const exceptionlisted = await isExceptionlisted(message.url);
+      sendResponse({ exceptionlisted });
     })();
     return true;
   }
@@ -3304,10 +3604,57 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "pageAlert" && message.alertType) {
-    if (isClickFixDisabledUrl(message.url || sender?.tab?.url || "")) {
-      return;
-    }
-    queueBatchedPageAlert(message, sender);
+    (async () => {
+      if (isClickFixDisabledUrl(message.url || sender?.tab?.url || "")) {
+        return;
+      }
+      queueBatchedPageAlert(message, sender);
+    })();
+    return;
+  }
+
+  if (message.type === "falsePositiveReport") {
+    (async () => {
+      if (isClickFixDisabledUrl(message.url || sender?.tab?.url || "")) {
+        return;
+      }
+      await ensureLocaleReady();
+      enqueueReport({
+        url: message.url,
+        hostname: message.hostname || extractHostname(message.url),
+        timestamp: message.timestamp ?? Date.now(),
+        reason: message.reason ? String(message.reason).slice(0, 160) : t("falsePositiveReason"),
+        blocked: false,
+        event_type: "false_positive",
+        manualReport: true,
+        detectedContent: "",
+        previous_url: message.previousUrl || ""
+      });
+    })();
+    return;
+  }
+
+  if (message.type === "deleteDetectionRequest") {
+    (async () => {
+      if (isClickFixDisabledUrl(message.url || sender?.tab?.url || "")) {
+        return;
+      }
+      await ensureLocaleReady();
+      const reason = message.reason
+        ? String(message.reason).slice(0, 160)
+        : t("deleteRequestReason");
+      enqueueReport({
+        url: message.url || sender?.tab?.url || "",
+        hostname: message.hostname || extractHostname(message.url || sender?.tab?.url || ""),
+        timestamp: message.timestamp ?? Date.now(),
+        reason,
+        blocked: false,
+        event_type: "delete_request",
+        manualReport: true,
+        detectedContent: message.detectedContent || "",
+        previous_url: message.previousUrl || ""
+      });
+    })();
     return;
   }
 
@@ -3407,6 +3754,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
 
+      const exceptionlisted = await isExceptionlisted(message.url);
       const analysis = message.analysis || {};
       const snippet = message.snippet || "";
       const detectedContent = message.detectedContent || snippet;
@@ -3442,6 +3790,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         clipboardAnalysis: analysis,
         context: message.context || message.source || null,
         tabId: sender?.tab?.id ?? null,
+        exceptionlisted,
         incrementBlockCount: Boolean(message.blocked),
         allowClipboardRestore: false,
         suppressPageBlock: true,
@@ -3461,6 +3810,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
 
+      const exceptionlisted = await isExceptionlisted(message.url);
       const selectionText = message.selectionText || "";
       const clipboardText = message.clipboardText || "";
       const incomingAnalysis = message.analysis || null;
@@ -3501,6 +3851,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const snippet = detectedContent ? detectedContent.slice(0, 200) : "";
         const snippets = snippet ? [snippet] : [];
         const shouldBlockClipboard =
+          !exceptionlisted &&
           isClipboardWatch &&
           trimmedClipboard &&
           clipboardSignals;
@@ -3549,7 +3900,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           clipboardAnalysis,
           context: message.context || null,
           tabId: sender?.tab?.id ?? null,
-          incrementBlockCount: true,
+          exceptionlisted,
+          incrementBlockCount: Boolean(shouldBlockClipboard),
           reportHostname: true
         });
 

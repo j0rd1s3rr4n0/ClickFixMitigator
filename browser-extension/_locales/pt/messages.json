@@ -619,5 +619,37 @@
   },
   "alertFilterRed": {
     "message": "Red only"
+  },
+  "popupFalsePositiveButton": {
+    "message": "Review false positive"
+  },
+  "popupFalsePositiveSent": {
+    "message": "False positive submitted: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "falsePositiveReason": {
+    "message": "False positive reported"
+  },
+  "optionsExceptionlistTitle": {
+    "message": "Exception list"
+  },
+  "optionsExceptionlistHint": {
+    "message": "Sites listed here bypass local blocking and UI, but detections are still reported to administrators."
+  },
+  "optionsExceptionlistWarning": {
+    "message": "You are responsible for any exceptions you add."
+  },
+  "optionsExceptionlistPlaceholder": {
+    "message": "example.com"
+  },
+  "optionsExceptionlistAdd": {
+    "message": "Add exception"
+  },
+  "optionsExceptionlistEmpty": {
+    "message": "No exceptions."
   }
 }

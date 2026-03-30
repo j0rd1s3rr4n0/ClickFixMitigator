@@ -153,6 +153,9 @@
   "manualReportReason": {
     "message": "Manual user report"
   },
+  "falsePositiveReason": {
+    "message": "Reported false positive"
+  },
   "blocklistReason": {
     "message": "Blocked by list"
   },
@@ -222,6 +225,26 @@
   "popupReportButton": {
     "message": "Report"
   },
+  "popupFalsePositiveButton": {
+    "message": "Review false positive"
+  },
+  "popupDeleteRequestButton": {
+    "message": "Request removal"
+  },
+  "popupDeleteReasonPrompt": {
+    "message": "Reason for removal (required)"
+  },
+  "popupDeleteReasonRequired": {
+    "message": "Enter a reason to request removal."
+  },
+  "popupDeleteRequestSent": {
+    "message": "Removal request sent: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
   "popupReportStatusMissing": {
     "message": "Enter a URL or use the current tab."
   },
@@ -233,11 +256,22 @@
       }
     }
   },
+  "popupFalsePositiveSent": {
+    "message": "False positive sent: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
   "popupReportStatusInvalid": {
     "message": "Invalid URL."
   },
   "popupReportStatusNoTab": {
     "message": "Could not detect the active tab."
+  },
+  "deleteRequestReason": {
+    "message": "User requested detection removal."
   },
   "popupOptionsLink": {
     "message": "Advanced options"
@@ -631,5 +665,23 @@
   },
   "alertFilterRed": {
     "message": "Red only"
+  },
+  "optionsExceptionlistTitle": {
+    "message": "Exception list"
+  },
+  "optionsExceptionlistHint": {
+    "message": "Sites listed here bypass local blocking and UI, but detections are still reported to administrators."
+  },
+  "optionsExceptionlistWarning": {
+    "message": "You are responsible for any exceptions you add."
+  },
+  "optionsExceptionlistPlaceholder": {
+    "message": "example.com"
+  },
+  "optionsExceptionlistAdd": {
+    "message": "Add exception"
+  },
+  "optionsExceptionlistEmpty": {
+    "message": "No exceptions."
   }
 }

@@ -24,6 +24,7 @@ const clearClipboardHistoryButton = document.getElementById("clear-clipboard-his
 const reportInput = document.getElementById("report-input");
 const reportReasonInput = document.getElementById("report-reason");
 const reportButton = document.getElementById("report-site");
+const falsePositiveButton = document.getElementById("report-false-positive");
 const reportStatus = document.getElementById("report-status");
 const languageSelect = document.getElementById("language-select");
 const themeSelect = document.getElementById("theme-select");
@@ -300,6 +301,16 @@ function renderHistory(history) {
       card.appendChild(breakdown);
     }
     card.appendChild(meta);
+    const actions = document.createElement("div");
+    actions.classList.add("history-actions");
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.textContent = t("popupDeleteRequestButton");
+    deleteBtn.addEventListener("click", async () => {
+      await requestDeletion(entry);
+    });
+    actions.appendChild(deleteBtn);
+    card.appendChild(actions);
     historyContainer.appendChild(card);
   });
   resizePopupToContent();
@@ -803,6 +814,61 @@ async function reportSite(targetUrl) {
   }
 }
 
+async function reportFalsePositive(targetUrl) {
+  if (!targetUrl) {
+    reportStatus.textContent = t("popupReportStatusMissing");
+    return;
+  }
+  try {
+    const parsedUrl = new URL(targetUrl);
+    const reason = reportReasonInput?.value
+      ? reportReasonInput.value.trim().replace(/\s+/g, " ").slice(0, 160)
+      : "";
+    chrome.runtime.sendMessage({
+      type: "falsePositiveReport",
+      url: parsedUrl.href,
+      hostname: parsedUrl.hostname,
+      timestamp: Date.now(),
+      reason
+    });
+    reportStatus.textContent = t("popupFalsePositiveSent", parsedUrl.hostname);
+    if (reportReasonInput) {
+      reportReasonInput.value = "";
+    }
+  } catch (error) {
+    reportStatus.textContent = t("popupReportStatusInvalid");
+  }
+}
+
+async function requestDeletion(entry) {
+  const hostname = String(entry?.hostname || "");
+  const url = String(entry?.url || "");
+  const promptText = t("popupDeleteReasonPrompt");
+  const reasonInput = window.prompt(promptText, "");
+  if (reasonInput === null) {
+    return;
+  }
+  const reason = reasonInput.trim().replace(/\s+/g, " ").slice(0, 160);
+  if (!reason) {
+    if (reportStatus) {
+      reportStatus.textContent = t("popupDeleteReasonRequired");
+    }
+    return;
+  }
+  await sendRuntimeMessage({
+    type: "deleteDetectionRequest",
+    url,
+    hostname,
+    timestamp: entry?.timestamp ?? Date.now(),
+    detectedContent: entry?.detectedContent ?? entry?.detected_content ?? "",
+    previousUrl: entry?.previousUrl ?? entry?.previous_url ?? "",
+    reason
+  });
+  if (reportStatus) {
+    reportStatus.textContent = t("popupDeleteRequestSent", hostname || url || "");
+  }
+}
+
 reportButton.addEventListener("click", async () => {
   const value = reportInput.value.trim();
   if (value) {
@@ -814,6 +880,22 @@ reportButton.addEventListener("click", async () => {
   const url = tabs?.[0]?.url;
   if (url) {
     await reportSite(url);
+  } else {
+    reportStatus.textContent = t("popupReportStatusNoTab");
+  }
+});
+
+falsePositiveButton?.addEventListener("click", async () => {
+  const value = reportInput.value.trim();
+  if (value) {
+    await reportFalsePositive(value);
+    reportInput.value = "";
+    return;
+  }
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  const url = tabs?.[0]?.url;
+  if (url) {
+    await reportFalsePositive(url);
   } else {
     reportStatus.textContent = t("popupReportStatusNoTab");
   }

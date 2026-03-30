@@ -190,6 +190,26 @@
     </section>
 
     <section>
+      <h2 data-i18n="optionsExceptionlistTitle">Lista de excepciones</h2>
+      <p class="hint" data-i18n="optionsExceptionlistHint">
+        Los sitios en esta lista no se bloquean ni muestran alertas localmente, pero se reportan a administradores.
+      </p>
+      <p class="hint warning" data-i18n="optionsExceptionlistWarning">
+        El usuario es responsable de las excepciones que agregue.
+      </p>
+      <div class="row">
+        <input
+          id="exceptionlist-input"
+          type="text"
+          placeholder="ejemplo.com"
+          data-i18n-placeholder="optionsExceptionlistPlaceholder"
+        />
+        <button id="add-exception" type="button" data-i18n="optionsExceptionlistAdd">Agregar excepción</button>
+      </div>
+      <ul id="exceptionlist-list"></ul>
+    </section>
+
+    <section>
       <h2 data-i18n="optionsBlocklistTitle">Listas de bloqueo adicionales</h2>
       <p class="hint" data-i18n="optionsBlocklistHint">
         Agrega URLs de listas de ClickFix (una por lista) para combinarlas con la lista principal.

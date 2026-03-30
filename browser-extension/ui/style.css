@@ -346,6 +346,10 @@ h2 {
   margin: 4px 0 10px;
 }
 
+.hint.warning {
+  color: var(--danger);
+}
+
 .row {
   display: flex;
   gap: 8px;
@@ -697,6 +701,28 @@ li.empty,
 
 .history-item small {
   color: var(--muted);
+}
+
+.history-actions {
+  margin-top: 6px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.history-actions button {
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--accent-strong);
+  border-radius: 10px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.history-actions button:hover {
+  background: var(--surface-alt);
+  color: var(--accent);
 }
 
 .footer {

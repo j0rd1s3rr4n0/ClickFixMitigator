@@ -619,5 +619,37 @@
   },
   "alertFilterRed": {
     "message": "Red only"
+  },
+  "popupFalsePositiveButton": {
+    "message": "Revisar fals positiu"
+  },
+  "popupFalsePositiveSent": {
+    "message": "Fals positiu enviat: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "falsePositiveReason": {
+    "message": "Fals positiu reportat"
+  },
+  "optionsExceptionlistTitle": {
+    "message": "Llista d'excepcions"
+  },
+  "optionsExceptionlistHint": {
+    "message": "Els llocs d'aquesta llista no es bloquegen ni mostren alertes localment, per? es reporten als administradors."
+  },
+  "optionsExceptionlistWarning": {
+    "message": "L'usuari ?s responsable de les excepcions que afegeixi."
+  },
+  "optionsExceptionlistPlaceholder": {
+    "message": "exemple.com"
+  },
+  "optionsExceptionlistAdd": {
+    "message": "Afegir excepci?"
+  },
+  "optionsExceptionlistEmpty": {
+    "message": "Sense excepcions."
   }
 }

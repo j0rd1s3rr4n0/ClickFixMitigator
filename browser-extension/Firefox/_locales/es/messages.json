@@ -1,4 +1,4 @@
-﻿{
+{
   "appName": {
     "message": "ClickFix Mitigator"
   },
@@ -631,5 +631,23 @@
   },
   "alertFilterRed": {
     "message": "Solo rojo"
+  },
+  "optionsExceptionlistTitle": {
+    "message": "Lista de excepciones"
+  },
+  "optionsExceptionlistHint": {
+    "message": "Los sitios en esta lista no se bloquean ni muestran alertas localmente, pero se reportan a administradores."
+  },
+  "optionsExceptionlistWarning": {
+    "message": "El usuario es responsable de las excepciones que agregue."
+  },
+  "optionsExceptionlistPlaceholder": {
+    "message": "ejemplo.com"
+  },
+  "optionsExceptionlistAdd": {
+    "message": "Agregar excepci?n"
+  },
+  "optionsExceptionlistEmpty": {
+    "message": "Sin excepciones."
   }
 }

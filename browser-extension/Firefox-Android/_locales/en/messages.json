@@ -631,5 +631,23 @@
   },
   "alertFilterRed": {
     "message": "Red only"
+  },
+  "optionsExceptionlistTitle": {
+    "message": "Exception list"
+  },
+  "optionsExceptionlistHint": {
+    "message": "Sites listed here bypass local blocking and UI, but detections are still reported to administrators."
+  },
+  "optionsExceptionlistWarning": {
+    "message": "You are responsible for any exceptions you add."
+  },
+  "optionsExceptionlistPlaceholder": {
+    "message": "example.com"
+  },
+  "optionsExceptionlistAdd": {
+    "message": "Add exception"
+  },
+  "optionsExceptionlistEmpty": {
+    "message": "No exceptions."
   }
 }

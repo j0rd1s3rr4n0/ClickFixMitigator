@@ -81,6 +81,7 @@ let blockAllRequested = false;
 let blockAllUnavailableNotified = false;
 
 let currentAllowlisted = false;
+let currentExceptionlisted = false;
 let familySafeEnabled = false;
 let uiThemePreference = "system";
 let muteDetectionNotifications = false;
@@ -269,11 +270,34 @@ function checkBlockAllInjection() {
   }
 }
 
+async function updateExceptionState() {
+  return new Promise((resolve) => {
+    safeSendMessage(
+      { type: "checkExceptionlist", url: window.location.href },
+      (response) => {
+        currentExceptionlisted = Boolean(response?.exceptionlisted);
+        updatePageContextFlags();
+        resolve(currentExceptionlisted);
+      }
+    );
+  });
+}
+
 async function updateBlockAllClipboardState() {
   const { blockAllClipboard, enabled } = await chrome.storage.local.get({
     blockAllClipboard: true,
     enabled: true
   });
+  const exceptionlisted = await updateExceptionState();
+  if (exceptionlisted) {
+    currentAllowlisted = false;
+    blockAllRequested = false;
+    if (blockAllActive) {
+      blockAllActive = false;
+      window.postMessage({ type: BLOCK_ALL_UPDATE_TYPE, enabled: false }, "*");
+    }
+    return;
+  }
   const allowlisted = await new Promise((resolve) => {
     safeSendMessage({ type: "checkAllowlist", url: window.location.href }, (response) => {
       resolve(Boolean(response?.allowlisted));
@@ -670,6 +694,9 @@ if (!CLICKFIX_DISABLED_ON_THIS_HOST) {
     if (event.source !== window) {
       return;
     }
+    if (currentExceptionlisted) {
+      return;
+    }
     if (event.data?.type === BLOCK_ALL_BLOCKED_TYPE) {
       markDetectionOnPage();
       showBanner(t("blockAllClipboardBlocked"));
@@ -690,6 +717,7 @@ if (!CLICKFIX_DISABLED_ON_THIS_HOST) {
         changes.enabled ||
         changes.whitelist ||
         changes.allowlist ||
+        changes.exceptionlist ||
         changes.allowlistUpdatedAt)
     ) {
       updateBlockAllClipboardState();
@@ -718,7 +746,9 @@ async function getBlocklistStatus() {
 }
 
 function sendPageAlert(alertType, snippet) {
-  markDetectionOnPage();
+  if (!currentExceptionlisted) {
+    markDetectionOnPage();
+  }
   const fullContext = collectFullContext();
   safeSendMessage({
     type: "pageAlert",
@@ -1448,6 +1478,9 @@ async function checkBlocklistAndBlock() {
   if (!isTopFrame) {
     return false;
   }
+  if (await updateExceptionState()) {
+    return false;
+  }
   await ensureLocaleReady();
   const currentHost = getHostname(window.location.href);
   if (!familySafeEnabled) {
@@ -1750,6 +1783,7 @@ function updatePageContextFlags() {
     ? "true"
     : "false";
   document.documentElement.dataset.clickfixAllowlisted = currentAllowlisted ? "true" : "false";
+  document.documentElement.dataset.clickfixExceptionlisted = currentExceptionlisted ? "true" : "false";
 }
 
 function scheduleIframeScan() {
@@ -1824,6 +1858,7 @@ function handleUrlChange() {
   copyTriggerDetected = false;
   lastScanSnapshot = { text: "", html: "", timestamp: 0 };
   currentAllowlisted = false;
+  currentExceptionlisted = false;
   hasDetectionsOnPage = false;
   hideFullscreenNotice();
   updatePageContextFlags();
@@ -1839,11 +1874,13 @@ function reportClipboardThreat({ text, analysis, method, source }) {
   if (!text) {
     return;
   }
-  markDetectionOnPage();
+  if (!currentExceptionlisted) {
+    markDetectionOnPage();
+  }
   if (shouldThrottleClipboardAlert(text)) {
     return;
   }
-  if (!muteDetectionNotifications) {
+  if (!currentExceptionlisted && !muteDetectionNotifications) {
     showBanner(t("clipboardThreatWarning"));
   }
   const snippet = normalizeSnippet(text).slice(0, 200);
@@ -1897,7 +1934,9 @@ function scheduleClipboardPostCheck(context, source, method) {
     if (!analysis.block) {
       return;
     }
-    await writeClipboardText("");
+    if (!currentExceptionlisted) {
+      await writeClipboardText("");
+    }
     reportClipboardThreat({
       text: clipboard.text,
       analysis,
@@ -2420,13 +2459,15 @@ function handleCopyCut(eventType, event) {
   const source = buildClipboardSource(event);
 
   if (analysis.block) {
-    event?.preventDefault();
-    event?.stopImmediatePropagation();
-    if (event?.clipboardData?.setData) {
-      try {
-        event.clipboardData.setData("text/plain", "");
-      } catch (error) {
-        // Ignore clipboard reset errors.
+    if (!currentExceptionlisted) {
+      event?.preventDefault();
+      event?.stopImmediatePropagation();
+      if (event?.clipboardData?.setData) {
+        try {
+          event.clipboardData.setData("text/plain", "");
+        } catch (error) {
+          // Ignore clipboard reset errors.
+        }
       }
     }
     reportClipboardThreat({
@@ -2514,6 +2555,9 @@ function startMonitoring() {
 
 chrome.runtime.onMessage.addListener((message) => {
   if (CLICKFIX_DISABLED_ON_THIS_HOST) {
+    return;
+  }
+  if (currentExceptionlisted) {
     return;
   }
   if (message?.type === "replaceClipboard") {
