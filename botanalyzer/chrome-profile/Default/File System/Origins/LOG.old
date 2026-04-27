@@ -1,3 +1,2 @@
-2026/03/14-13:37:59.343 c63c Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\File System\Origins/MANIFEST-000001
-2026/03/14-13:37:59.344 c63c Recovering log #3
-2026/03/14-13:37:59.344 c63c Reusing old log C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\File System\Origins/000003.log 
+2026/04/04-15:04:31.711 111c0 Creating DB C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\File System\Origins__tmp_for_rebuild since it was missing.
+2026/04/04-15:04:31.716 111c0 Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\File System\Origins__tmp_for_rebuild/MANIFEST-000001

@@ -1,3 +1,2 @@
-2026/03/15-23:46:25.530 122bc Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\Local Storage\leveldb/MANIFEST-000001
-2026/03/15-23:46:25.534 122bc Recovering log #160
-2026/03/15-23:46:25.537 122bc Reusing old log C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\Local Storage\leveldb/000160.log 
+2026/04/04-15:04:25.634 ff68 Creating DB C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\Local Storage\leveldb__tmp_for_rebuild since it was missing.
+2026/04/04-15:04:25.737 ff68 Reusing MANIFEST C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\botanalyzer\chrome-profile\Default\Local Storage\leveldb__tmp_for_rebuild/MANIFEST-000001
