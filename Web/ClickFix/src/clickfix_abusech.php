@@ -6,9 +6,15 @@ require_once __DIR__ . '/clickfix_core.php';
 function clickfix_abusech_urlhaus_by_tag(string $tag, int $limit = 200): array
 {
     $url = 'https://urlhaus-api.abuse.ch/v1/tag/';
-    $payload = json_encode(['tag' => $tag, 'limit' => min(1000, max(1, $limit))]);
-    if ($payload === false) {
-        return ['ok' => false, 'error' => 'json_encode_failed', 'domains' => []];
+    $body = 'tag=' . urlencode($tag);
+    $response = clickfix_http_fetch($url, ['method' => 'POST', 'body' => $body, 'headers' => ['Content-Type' => 'application/x-www-form-urlencoded'], 'timeout' => 20]);
+    if ($response === null) {
+        return ['ok' => false, 'error' => 'http_failed', 'domains' => []];
+    }
+    $data = json_decode($response, true);
+    if (!is_array($data) || (($data['query_status'] ?? '') !== 'ok' && ($data['query_status'] ?? '') !== 'no_results')) {
+        $errDetail = is_array($data) ? (json_encode($data) ?: 'invalid_json') : substr($response ?? '', 0, 200);
+        return ['ok' => false, 'error' => ($data['query_status'] ?? 'api_error') . ' | ' . $errDetail, 'domains' => []];
     }
     $response = clickfix_http_fetch($url, ['method' => 'POST', 'body' => $payload, 'headers' => ['Content-Type' => 'application/json'], 'timeout' => 20]);
     if ($response === null) {
@@ -16,7 +22,8 @@ function clickfix_abusech_urlhaus_by_tag(string $tag, int $limit = 200): array
     }
     $data = json_decode($response, true);
     if (!is_array($data) || (($data['query_status'] ?? '') !== 'ok' && ($data['query_status'] ?? '') !== 'no_results')) {
-        return ['ok' => false, 'error' => $data['query_status'] ?? 'api_error', 'domains' => []];
+        $errDetail = is_array($data) ? (json_encode($data) ?: 'invalid_json') : substr($response ?? '', 0, 300);
+        return ['ok' => false, 'error' => ($data['query_status'] ?? 'api_error') . ' | ' . $errDetail, 'domains' => []];
     }
     $domains = []; $seen = [];
     $urls = is_array($data['urls'] ?? null) ? $data['urls'] : [];
