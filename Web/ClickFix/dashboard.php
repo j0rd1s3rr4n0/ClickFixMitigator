@@ -6926,17 +6926,27 @@ $ogImage = 'https://clickfix.jordiserrano.me/assets/corona/images/clickfix-og.pn
             $d = clickfix_normalize_domain((string) $domain);
             if ($d === '' || isset($seenDomains[$d])) continue;
             if ($domainListSearch !== '' && stripos($d, $domainListSearch) === false) continue;
-            $seenDomains[$d] = true;
             $firstSeen = $firstSeenCache[strtolower($d)] ?? $firstSeenCache[$d] ?? $now;
-            $unifiedDomains[] = ['domain' => $d, 'source' => 'Blocklist', 'source_key' => 'blocklist', 'first_seen' => $firstSeen, 'details' => []];
+            $seenDomains[$d] = true;
+            $unifiedDomains[] = ['domain' => $d, 'sources' => ['Blocklist'], 'source_keys' => ['blocklist'], 'first_seen' => $firstSeen, 'threat' => '', 'details' => []];
         }
         foreach ($allFeedEntries as $entry) {
             $d = clickfix_normalize_domain((string) ($entry['domain'] ?? ''));
-            if ($d === '' || isset($seenDomains[$d])) continue;
-            if ($domainListSearch !== '' && stripos($d, $domainListSearch) === false) continue;
-            $seenDomains[$d] = true;
+            if ($d === '' || $domainListSearch !== '' && stripos($d, $domainListSearch) === false) continue;
+            $src = $entry['source_label'] ?? $entry['source_key'] ?? 'External';
             $firstSeen = $firstSeenCache[strtolower($d)] ?? $firstSeenCache[$d] ?? ($entry['first_seen'] !== '' ? $entry['first_seen'] : $now);
-            $unifiedDomains[] = ['domain' => $d, 'source' => $entry['source_label'] ?? $entry['source_key'] ?? 'External Feed', 'source_key' => $entry['source_key'] ?? '', 'first_seen' => $firstSeen, 'details' => $entry['details'] ?? []];
+            $det = is_array($entry['details'] ?? null) ? $entry['details'] : [];
+            $threat = (string) ($det['threat'] ?? $det['malware'] ?? $det['threat_type'] ?? '');
+            $tags = is_array($det['tags'] ?? null) ? $det['tags'] : [];
+            if (isset($seenDomains[$d])) {
+                $existing = &$unifiedDomains[array_search($d, array_column($unifiedDomains, 'domain'), true)];
+                if (!in_array($src, $existing['sources'])) { $existing['sources'][] = $src; $existing['source_keys'][] = $entry['source_key'] ?? ''; }
+                if ($threat !== '' && $existing['threat'] === '') { $existing['threat'] = $threat; }
+                if (!empty($tags) && empty($existing['details']['tags'])) { $existing['details'] = $det; }
+            } else {
+                $seenDomains[$d] = true;
+                $unifiedDomains[] = ['domain' => $d, 'sources' => [$src], 'source_keys' => [$entry['source_key'] ?? ''], 'first_seen' => $firstSeen, 'threat' => $threat, 'details' => $det];
+            }
         }
         usort($unifiedDomains, function($a, $b) { return strcmp($a['domain'], $b['domain']); });
         $domainListTotal = count($unifiedDomains);
@@ -6957,16 +6967,44 @@ $ogImage = 'https://clickfix.jordiserrano.me/assets/corona/images/clickfix-og.pn
         </form>
         <div class="analytics-table-wrap" style="max-height:70vh;overflow-y:auto">
           <table class="compact-table">
-            <thead><tr><th>#</th><th>Domain</th><th>Source</th><th>First Seen</th><th>Threat Info</th></tr></thead>
+            <thead><tr><th>#</th><th>Domain</th><th>Sources</th><th>First Seen</th><th>Threat Info</th></tr></thead>
             <tbody>
               <?php $rowNum = ($domainListPage - 1) * $domainListPerPage; foreach ($domainListSlice as $row): $rowNum++; ?>
-                <tr><td class="mono"><?= $rowNum; ?></td><td class="mono" style="word-break:break-all"><?= clickfix_h($row['domain']); ?></td><td><span class="badge <?= $row['source']==='Blocklist'?'blocked':'accepted'; ?>"><?= clickfix_h($row['source']); ?></span></td><td class="mono"><?= clickfix_h((string) ($row['first_seen'] ?? '')); ?></td><td style="font-size:.74rem;max-width:280px"><?php $det = is_array($row['details'] ?? null) ? $row['details'] : []; echo clickfix_h((string) ($det['threat'] ?? $det['malware'] ?? $det['threat_type'] ?? '')); if (!empty($det['tags'])) echo '<br><span class="mut">' . clickfix_h(implode(', ', array_slice((array) $det['tags'], 0, 5))) . '</span>'; ?></td></tr>
+                <tr>
+                  <td class="mono"><?= $rowNum; ?></td>
+                  <td class="mono" style="word-break:break-all"><?= clickfix_h($row['domain']); ?></td>
+                  <td style="font-size:.74rem">
+                    <?php $srcs = $row['sources'] ?? [$row['source'] ?? 'Unknown']; foreach ($srcs as $i => $src): ?>
+                      <span class="badge" style="margin:1px"><?= clickfix_h($src); ?></span>
+                    <?php endforeach; ?>
+                  </td>
+                  <td class="mono"><?= clickfix_h((string) ($row['first_seen'] ?? '')); ?></td>
+                  <td style="font-size:.74rem;max-width:260px">
+                    <?= clickfix_h((string) ($row['threat'] ?? '')); ?>
+                    <?php $det = is_array($row['details'] ?? null) ? $row['details'] : []; if (!empty($det['tags'])): ?><br><span class="mut"><?= clickfix_h(implode(', ', array_slice((array) $det['tags'], 0, 5))); ?></span><?php endif; ?>
+                  </td>
+                </tr>
               <?php endforeach; ?>
               <?php if (empty($domainListSlice)): ?><tr><td colspan="5" class="mut">No domains found. Fetch external feeds first.</td></tr><?php endif; ?>
             </tbody>
           </table>
         </div>
-        <?php if ($domainListPages > 1): ?><div style="display:flex;gap:6px;justify-content:center;margin-top:16px;flex-wrap:wrap"><?php for ($p = 1; $p <= min($domainListPages, 50); $p++): ?><a class="btn btn-sm<?= $p===$domainListPage?' btn-primary':''; ?>" href="<?= clickfix_h(cfurl('clickfix_domain_list', true, ['p' => $p, 'q' => $domainListSearch, 'source' => $domainListSource])); ?>"><?= $p; ?></a><?php endfor; ?><?php if ($domainListPages > 50): ?><span class="mut">... <?= $domainListPages; ?> pages</span><?php endif; ?></div><?php endif; ?>
+        <?php if ($domainListPages > 1): ?>
+        <div style="display:flex;gap:4px;justify-content:center;align-items:center;margin-top:18px;flex-wrap:wrap;font-size:.84rem">
+          <?php if ($domainListPage > 1): ?><a class="btn btn-sm" href="<?= clickfix_h(cfurl('clickfix_domain_list', true, ['p' => $domainListPage - 1, 'q' => $domainListSearch, 'source' => $domainListSource])); ?>">&laquo; Prev</a><?php endif; ?>
+          <?php
+            $startP = max(1, $domainListPage - 2);
+            $endP = min($domainListPages, $domainListPage + 2);
+            if ($startP > 1) { echo '<a class="btn btn-sm" href="' . clickfix_h(cfurl('clickfix_domain_list', true, ['p' => 1, 'q' => $domainListSearch, 'source' => $domainListSource])) . '">1</a>'; if ($startP > 2) echo '<span class="mut">...</span>'; }
+            for ($p = $startP; $p <= $endP; $p++):
+          ?>
+            <a class="btn btn-sm<?= $p === $domainListPage ? ' btn-primary' : ''; ?>" href="<?= clickfix_h(cfurl('clickfix_domain_list', true, ['p' => $p, 'q' => $domainListSearch, 'source' => $domainListSource])); ?>"><?= $p; ?></a>
+          <?php endfor; ?>
+          <?php if ($endP < $domainListPages): if ($endP < $domainListPages - 1) echo '<span class="mut">...</span>'; ?><a class="btn btn-sm" href="<?= clickfix_h(cfurl('clickfix_domain_list', true, ['p' => $domainListPages, 'q' => $domainListSearch, 'source' => $domainListSource])); ?>"><?= $domainListPages; ?></a><?php endif; ?>
+          <?php if ($domainListPage < $domainListPages): ?><a class="btn btn-sm" href="<?= clickfix_h(cfurl('clickfix_domain_list', true, ['p' => $domainListPage + 1, 'q' => $domainListSearch, 'source' => $domainListSource])); ?>">Next &raquo;</a><?php endif; ?>
+          <span class="mut" style="margin-left:8px"><?= $domainListTotal; ?> total</span>
+        </div>
+        <?php endif; ?>
       </div>
     <?php elseif ($page === 'investigation'): ?>
       <section class="intel-public">
