@@ -88,9 +88,12 @@ function clickfix_bootstrap(): void
         header('X-Content-Type-Options: nosniff');
         header('Referrer-Policy: strict-origin-when-cross-origin');
         header('X-Frame-Options: DENY');
+        header('X-XSS-Protection: 1; mode=block');
         header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
-        if (clickfix_external_tracking_disabled()) {
-            header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+        header("Content-Security-Policy: default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; connect-src 'self' http: https: ws: wss:; img-src 'self' data: blob: http: https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+        $isHttps = !empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off';
+        if ($isHttps) {
+            header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
         }
     }
 
@@ -256,6 +259,13 @@ function clickfix_open_db(bool $runMigrations = true): PDO
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
             $pdo->exec('PRAGMA busy_timeout = 5000');
+            try {
+                $pdo->exec('PRAGMA journal_mode = OFF');
+                $pdo->exec('PRAGMA synchronous = OFF');
+                $pdo->exec('PRAGMA temp_store = MEMORY');
+            } catch (Throwable $pragmaException) {
+                // Ignore if the filesystem is read-only.
+            }
             $pdo->exec('PRAGMA query_only = ON');
             return $pdo;
         }
@@ -263,15 +273,28 @@ function clickfix_open_db(bool $runMigrations = true): PDO
     }
 }
 
+function clickfix_is_readonly_error(Throwable $exception): bool
+{
+    $message = strtolower($exception->getMessage());
+    return str_contains($message, 'readonly') || str_contains($message, 'read-only') || str_contains($message, 'attempt to write a readonly database');
+}
+
 function clickfix_has_column(PDO $pdo, string $table, string $column): bool
 {
-    $rows = $pdo->query('PRAGMA table_info(' . $table . ')')->fetchAll();
-    foreach ($rows as $row) {
-        if ((string) ($row['name'] ?? '') === $column) {
-            return true;
+    try {
+        $rows = $pdo->query('PRAGMA table_info(' . $table . ')')->fetchAll();
+        foreach ($rows as $row) {
+            if ((string) ($row['name'] ?? '') === $column) {
+                return true;
+            }
         }
+        return false;
+    } catch (Throwable $exception) {
+        if (clickfix_is_readonly_error($exception)) {
+            return false;
+        }
+        throw $exception;
     }
-    return false;
 }
 
 function clickfix_run_migrations(PDO $pdo): void
@@ -321,6 +344,7 @@ function clickfix_run_migrations(PDO $pdo): void
         '20260320_029_investigation_correlation_pipeline',
         '20260322_030_access_request_profiles',
         '20260325_031_user_single_session',
+        '20260424_032_client_host_baseline',
     ];
 
     foreach ($migrations as $id) {
@@ -1103,6 +1127,58 @@ SQL
         return;
     }
 
+
+    if ($id === '20260424_032_client_host_baseline') {
+        $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS client_host_baseline (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id TEXT NOT NULL,
+    hostname TEXT NOT NULL,
+    first_seen_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL,
+    last_visit_day TEXT,
+    days_seen INTEGER DEFAULT 0,
+    visits_count INTEGER DEFAULT 0,
+    alert_count INTEGER DEFAULT 0,
+    blocked_count INTEGER DEFAULT 0,
+    accepted_count INTEGER DEFAULT 0,
+    rejected_count INTEGER DEFAULT 0,
+    allowlisted_count INTEGER DEFAULT 0,
+    local_allowlisted INTEGER DEFAULT 0,
+    trust_score INTEGER DEFAULT 0,
+    last_verdict TEXT,
+    updated_at TEXT NOT NULL,
+    source TEXT DEFAULT 'extension'
+);
+SQL
+        );
+        $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_client_host_baseline_unique ON client_host_baseline(client_id, hostname)');
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_client_host_baseline_client ON client_host_baseline(client_id, trust_score DESC, last_seen_at DESC)');
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_client_host_baseline_host ON client_host_baseline(hostname, trust_score DESC)');
+        return;
+    }
+
+    if ($id === '20260428_033_public_preview_settings') {
+        $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS public_preview_settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    updated_at TEXT NOT NULL,
+    updated_by INTEGER,
+    limit_points_per_country INTEGER DEFAULT 1,
+    max_points_per_country INTEGER DEFAULT 2
+);
+SQL
+        );
+        $pdo->exec(
+            "INSERT OR IGNORE INTO public_preview_settings (
+                id, updated_at, updated_by, limit_points_per_country, max_points_per_country
+             ) VALUES (
+                1, '" . gmdate('c') . "', 0, 1, 2
+             )"
+        );
+        return;
+    }
+
     if ($id === '20260315_028_internal_ads') {
         $pdo->exec(<<<'SQL'
 CREATE TABLE IF NOT EXISTS internal_ad_settings (
@@ -1540,13 +1616,14 @@ function clickfix_live_metrics(PDO $pdo): array
         'active_extension_clients_24h' => 0,
     ];
 
-    $row = $pdo->query("SELECT COUNT(*) total_alerts, SUM(CASE WHEN blocked = 1 THEN 1 ELSE 0 END) total_blocks, COUNT(DISTINCT hostname) unique_hosts, SUM(CASE WHEN review_status IS NULL OR review_status = 'pending' THEN 1 ELSE 0 END) pending_review_total, SUM(CASE WHEN review_status = 'accepted' THEN 1 ELSE 0 END) accepted_reviews, SUM(CASE WHEN review_status = 'rejected' THEN 1 ELSE 0 END) rejected_reviews, MAX(received_at) last_update FROM reports")->fetch() ?: [];
+    $row = $pdo->query("SELECT COUNT(*) total_alerts, SUM(CASE WHEN blocked = 1 THEN 1 ELSE 0 END) total_blocks, COUNT(DISTINCT hostname) unique_hosts, SUM(CASE WHEN review_status IS NULL OR review_status = 'pending' THEN 1 ELSE 0 END) pending_review_total, SUM(CASE WHEN review_status = 'accepted' THEN 1 ELSE 0 END) accepted_reviews, SUM(CASE WHEN review_status = 'rejected' THEN 1 ELSE 0 END) rejected_reviews, SUM(CASE WHEN review_status = 'allowlisted' THEN 1 ELSE 0 END) allowlisted_reviews, MAX(received_at) last_update FROM reports")->fetch() ?: [];
     $stats['total_alerts'] = (int) ($row['total_alerts'] ?? 0);
     $stats['total_blocks'] = (int) ($row['total_blocks'] ?? 0);
     $stats['unique_hosts'] = (int) ($row['unique_hosts'] ?? 0);
     $stats['pending_review_total'] = (int) ($row['pending_review_total'] ?? 0);
     $stats['accepted_reviews'] = (int) ($row['accepted_reviews'] ?? 0);
     $stats['rejected_reviews'] = (int) ($row['rejected_reviews'] ?? 0);
+    $stats['allowlisted_reviews'] = (int) ($row['allowlisted_reviews'] ?? 0);
     if (!empty($row['last_update'])) {
         $stats['last_update'] = (string) $row['last_update'];
     }
@@ -1608,7 +1685,7 @@ function clickfix_live_metrics(PDO $pdo): array
         }
     }
     $stats['manual_sites_count'] = count($manualSet);
-    $stats['reviewed_total'] = $stats['accepted_reviews'] + $stats['rejected_reviews'];
+    $stats['reviewed_total'] = $stats['accepted_reviews'] + $stats['rejected_reviews'] + $stats['allowlisted_reviews'];
     if ($stats['total_alerts'] > 0) {
         $stats['review_coverage_pct'] = round(($stats['reviewed_total'] / $stats['total_alerts']) * 100, 2);
     }
@@ -1620,7 +1697,14 @@ function clickfix_public_preview_payload(PDO $pdo, int $days = 14, int $recentLi
 {
     $days = max(7, min(60, $days));
     $recentLimit = max(1, min(30, $recentLimit));
-    $cacheKey = clickfix_cache_key('public_preview_payload', ['days' => $days, 'recent' => $recentLimit, 'v2' => true]);
+    $previewSettings = clickfix_public_preview_settings($pdo);
+    $cacheKey = clickfix_cache_key('public_preview_payload', [
+        'days' => $days,
+        'recent' => $recentLimit,
+        'limit_enabled' => !empty($previewSettings['limit_points_per_country']) ? 1 : 0,
+        'limit_max' => (int) ($previewSettings['max_points_per_country'] ?? 2),
+        'v3' => true,
+    ]);
     $cached = clickfix_cache_get($cacheKey);
     if (is_array($cached)) {
         return $cached;
@@ -1633,6 +1717,7 @@ function clickfix_public_preview_payload(PDO $pdo, int $days = 14, int $recentLi
 
     $recentDomains = [];
     try {
+        $allowlist = clickfix_load_list_file('allowlist');
         $sampleLimit = max(80, $recentLimit * 25);
         $stmt = $pdo->prepare(
             "SELECT hostname,
@@ -1650,6 +1735,9 @@ function clickfix_public_preview_payload(PDO $pdo, int $days = 14, int $recentLi
         foreach ($rows as $row) {
             $hostname = clickfix_normalize_domain((string) ($row['hostname'] ?? ''));
             if ($hostname === '' || isset($seen[$hostname])) {
+                continue;
+            }
+            if (clickfix_domain_in_list($hostname, $allowlist)) {
                 continue;
             }
             $seen[$hostname] = true;
@@ -1738,6 +1826,10 @@ function clickfix_public_preview_payload(PDO $pdo, int $days = 14, int $recentLi
             );
             $domainStmt->execute();
             foreach ($domainStmt->fetchAll() as $domainRow) {
+                $domainHostname = clickfix_normalize_domain((string) ($domainRow['hostname'] ?? ''));
+                if ($domainHostname !== '' && clickfix_domain_in_list($domainHostname, $allowlist)) {
+                    continue;
+                }
                 $lat = isset($domainRow['latitude']) ? (float) $domainRow['latitude'] : 0.0;
                 $lon = isset($domainRow['longitude']) ? (float) $domainRow['longitude'] : 0.0;
                 if (!is_finite($lat) || !is_finite($lon) || (abs($lat) < 0.01 && abs($lon) < 0.01)) {
@@ -1757,6 +1849,12 @@ function clickfix_public_preview_payload(PDO $pdo, int $days = 14, int $recentLi
         $domainGeoPoints = [];
     }
 
+    $domainGeoPoints = clickfix_limit_geo_points_per_country(
+        $domainGeoPoints,
+        !empty($previewSettings['limit_points_per_country']),
+        (int) ($previewSettings['max_points_per_country'] ?? 2)
+    );
+
     $payload = [
         'charts' => [
             'daily' => [
@@ -1772,6 +1870,10 @@ function clickfix_public_preview_payload(PDO $pdo, int $days = 14, int $recentLi
         'geo_points' => $geoPoints,
         'geo_points_alerts' => $geoPoints,
         'geo_points_domains' => $domainGeoPoints,
+        'map_settings' => [
+            'limit_points_per_country' => !empty($previewSettings['limit_points_per_country']),
+            'max_points_per_country' => (int) ($previewSettings['max_points_per_country'] ?? 2),
+        ],
     ];
 
     clickfix_cache_set($cacheKey, $payload, 20);
@@ -2174,7 +2276,7 @@ function clickfix_report_blocked_history(PDO $pdo, array $hostnames = [], array 
 
 function clickfix_update_report_review(PDO $pdo, int $reportId, string $status, int $reviewerId): bool
 {
-    $allowed = ['pending', 'accepted', 'rejected'];
+    $allowed = ['pending', 'accepted', 'rejected', 'allowlisted'];
     if ($reportId <= 0 || !in_array($status, $allowed, true)) {
         return false;
     }
@@ -2201,6 +2303,7 @@ function clickfix_update_report_review(PDO $pdo, int $reportId, string $status, 
                     $domain = clickfix_normalize_domain((string) ($report['url'] ?? ''));
                 }
                 if ($domain !== '') {
+                    clickfix_baseline_record_review($pdo, (string) ($report['client_id'] ?? ''), $domain, $status);
                     clickfix_apply_list_action(
                         $pdo,
                         $reviewerId,
@@ -2214,6 +2317,45 @@ function clickfix_update_report_review(PDO $pdo, int $reportId, string $status, 
             }
         } catch (Throwable $exception) {
             // Keep the review result even if the automatic block action fails.
+        }
+    } elseif ($updated && $status === 'allowlisted') {
+        try {
+            $report = clickfix_report_by_id($pdo, $reportId);
+            if (is_array($report)) {
+                $domain = clickfix_normalize_domain((string) ($report['hostname'] ?? ''));
+                if ($domain === '') {
+                    $domain = clickfix_normalize_domain((string) ($report['url'] ?? ''));
+                }
+                if ($domain !== '') {
+                    clickfix_baseline_record_review($pdo, (string) ($report['client_id'] ?? ''), $domain, $status);
+                    clickfix_apply_list_action(
+                        $pdo,
+                        $reviewerId,
+                        'allowlist',
+                        'add',
+                        $domain,
+                        'auto allowlist after review #' . $reportId
+                    );
+                }
+                clickfix_set_report_blocked($pdo, $reportId, false);
+            }
+        } catch (Throwable $exception) {
+            // Keep the review result even if the automatic allowlist action fails.
+        }
+    } elseif ($updated && $status === 'rejected') {
+        try {
+            $report = clickfix_report_by_id($pdo, $reportId);
+            if (is_array($report)) {
+                $domain = clickfix_normalize_domain((string) ($report['hostname'] ?? ''));
+                if ($domain === '') {
+                    $domain = clickfix_normalize_domain((string) ($report['url'] ?? ''));
+                }
+                if ($domain !== '') {
+                    clickfix_baseline_record_review($pdo, (string) ($report['client_id'] ?? ''), $domain, $status);
+                }
+            }
+        } catch (Throwable $exception) {
+            // Keep the review result even if the baseline update fails.
         }
     }
     return $updated;
@@ -3482,6 +3624,7 @@ function clickfix_analytics_overview(PDO $pdo, int $days = 30): array
                 SUM(CASE WHEN blocked = 1 THEN 1 ELSE 0 END) as b,
                 SUM(CASE WHEN review_status = 'accepted' THEN 1 ELSE 0 END) as review_accepted,
                 SUM(CASE WHEN review_status = 'rejected' THEN 1 ELSE 0 END) as review_rejected,
+                SUM(CASE WHEN review_status = 'allowlisted' THEN 1 ELSE 0 END) as review_allowlisted,
                 SUM(CASE WHEN review_status IS NULL OR review_status = '' OR review_status = 'pending' THEN 1 ELSE 0 END) as review_pending,
                 SUM(CASE WHEN event_type = 'manual_report' THEN 1 ELSE 0 END) as manual_reports,
                 SUM(CASE WHEN COALESCE(score_total, 0) >= 80 THEN 1 ELSE 0 END) as high_risk,
@@ -3501,6 +3644,7 @@ function clickfix_analytics_overview(PDO $pdo, int $days = 30): array
             'review_pending' => (int) ($row['review_pending'] ?? 0),
             'review_accepted' => (int) ($row['review_accepted'] ?? 0),
             'review_rejected' => (int) ($row['review_rejected'] ?? 0),
+            'review_allowlisted' => (int) ($row['review_allowlisted'] ?? 0),
             'manual_reports' => (int) ($row['manual_reports'] ?? 0),
             'high_risk' => (int) ($row['high_risk'] ?? 0),
             'avg_score' => round((float) ($row['avg_score'] ?? 0.0), 2),
@@ -3516,7 +3660,7 @@ function clickfix_analytics_overview(PDO $pdo, int $days = 30): array
         $reviewPending[] = (int) ($byDayMap[$day]['review_pending'] ?? 0);
         $reviewAccepted[] = (int) ($byDayMap[$day]['review_accepted'] ?? 0);
         $reviewRejected[] = (int) ($byDayMap[$day]['review_rejected'] ?? 0);
-        $reviewed[] = (int) (($byDayMap[$day]['review_accepted'] ?? 0) + ($byDayMap[$day]['review_rejected'] ?? 0));
+        $reviewed[] = (int) (($byDayMap[$day]['review_accepted'] ?? 0) + ($byDayMap[$day]['review_rejected'] ?? 0) + ($byDayMap[$day]['review_allowlisted'] ?? 0));
         $manualReports[] = (int) ($byDayMap[$day]['manual_reports'] ?? 0);
         $highRisk[] = (int) ($byDayMap[$day]['high_risk'] ?? 0);
         $avgScore[] = (float) ($byDayMap[$day]['avg_score'] ?? 0.0);
@@ -4175,6 +4319,7 @@ function clickfix_investigation_correlation_stats(PDO $pdo, int $topLimit = 12):
             'pending' => 0,
             'accepted' => 0,
             'rejected' => 0,
+            'allowlisted' => 0,
             'blocked' => 0,
         ],
         'investigations' => [
@@ -4247,6 +4392,7 @@ function clickfix_investigation_correlation_stats(PDO $pdo, int $topLimit = 12):
         $alertRow = $pdo->query(
             "SELECT SUM(CASE WHEN review_status = 'accepted' THEN 1 ELSE 0 END) AS accepted,
                     SUM(CASE WHEN review_status = 'rejected' THEN 1 ELSE 0 END) AS rejected,
+                    SUM(CASE WHEN review_status = 'allowlisted' THEN 1 ELSE 0 END) AS allowlisted,
                     SUM(CASE WHEN review_status IS NULL OR TRIM(review_status) = '' OR LOWER(TRIM(review_status)) = 'pending' THEN 1 ELSE 0 END) AS pending,
                     SUM(CASE WHEN blocked = 1 THEN 1 ELSE 0 END) AS blocked
              FROM reports"
@@ -4255,6 +4401,7 @@ function clickfix_investigation_correlation_stats(PDO $pdo, int $topLimit = 12):
             'pending' => (int) ($alertRow['pending'] ?? 0),
             'accepted' => (int) ($alertRow['accepted'] ?? 0),
             'rejected' => (int) ($alertRow['rejected'] ?? 0),
+            'allowlisted' => (int) ($alertRow['allowlisted'] ?? 0),
             'blocked' => (int) ($alertRow['blocked'] ?? 0),
         ];
     }
@@ -5759,7 +5906,7 @@ function clickfix_scan_asset_clear_kind_files(int $reportId, string $kind): void
         return;
     }
     $dir = clickfix_scan_asset_storage_dir();
-    foreach (['png', 'jpg', 'jpeg', 'webp'] as $ext) {
+    foreach (['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'] as $ext) {
         $path = $dir . '/' . $reportId . '-' . $kind . '.' . $ext;
         if (is_file($path)) {
             @unlink($path);
@@ -5767,15 +5914,73 @@ function clickfix_scan_asset_clear_kind_files(int $reportId, string $kind): void
     }
 }
 
+function clickfix_scan_detect_image_info(string $bytes): ?array
+{
+    if ($bytes === '') {
+        return null;
+    }
+    if (strlen($bytes) > 8 * 1024 * 1024) {
+        return null;
+    }
+
+    $prefix = strtolower(substr(ltrim($bytes), 0, 256));
+    if (
+        str_starts_with($prefix, '<svg')
+        || str_starts_with($prefix, '<?xml')
+        || str_contains($prefix, '<script')
+        || str_contains($prefix, '<?php')
+        || str_contains($prefix, '<html')
+    ) {
+        return null;
+    }
+
+    $size = @getimagesizefromstring($bytes);
+    if (!is_array($size)) {
+        return null;
+    }
+
+    $width = (int) ($size[0] ?? 0);
+    $height = (int) ($size[1] ?? 0);
+    $mime = strtolower((string) ($size['mime'] ?? ''));
+    if ($width <= 0 || $height <= 0 || $width > 12000 || $height > 12000) {
+        return null;
+    }
+
+    $extByMime = [
+        'image/png' => 'png',
+        'image/jpeg' => 'jpg',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
+        'image/bmp' => 'bmp',
+        'image/x-ms-bmp' => 'bmp',
+        'image/avif' => 'avif',
+    ];
+    $ext = (string) ($extByMime[$mime] ?? '');
+    if ($ext === '') {
+        return null;
+    }
+
+    return [
+        'mime' => $mime,
+        'ext' => $ext,
+        'width' => $width,
+        'height' => $height,
+    ];
+}
+
 function clickfix_scan_write_asset_bytes(int $reportId, string $kind, string $bytes, string $ext): bool
 {
     $reportId = (int) $reportId;
     $kind = clickfix_scan_kind_normalize($kind);
     $ext = strtolower(trim($ext));
-    if ($reportId <= 0 || $kind === '' || !in_array($ext, ['png', 'jpg', 'jpeg', 'webp'], true)) {
+    if ($reportId <= 0 || $kind === '' || !in_array($ext, ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'], true)) {
         return false;
     }
     if ($bytes === '') {
+        return false;
+    }
+    $imageInfo = clickfix_scan_detect_image_info($bytes);
+    if ($imageInfo === null) {
         return false;
     }
     $dir = clickfix_scan_asset_storage_dir();
@@ -5786,7 +5991,8 @@ function clickfix_scan_write_asset_bytes(int $reportId, string $kind, string $by
         return false;
     }
     clickfix_scan_asset_clear_kind_files($reportId, $kind);
-    $path = $dir . '/' . $reportId . '-' . $kind . '.' . $ext;
+    $safeExt = (string) ($imageInfo['ext'] ?? $ext);
+    $path = $dir . '/' . $reportId . '-' . $kind . '.' . $safeExt;
     return file_put_contents($path, $bytes, LOCK_EX) !== false;
 }
 
@@ -6193,6 +6399,295 @@ function clickfix_extension_client_events(PDO $pdo, string $clientId, int $limit
     );
     $stmt->bindValue(':client_id', $clientId, PDO::PARAM_STR);
     $stmt->bindValue(':limit', max(1, min(500, $limit)), PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
+
+function clickfix_baseline_trust_score(array $row): int
+{
+    $daysSeen = max(0, (int) ($row['days_seen'] ?? 0));
+    $visitsCount = max(0, (int) ($row['visits_count'] ?? 0));
+    $alertCount = max(0, (int) ($row['alert_count'] ?? 0));
+    $blockedCount = max(0, (int) ($row['blocked_count'] ?? 0));
+    $localAllowlisted = !empty($row['local_allowlisted']);
+
+    $score = 0;
+    if ($daysSeen >= 2) {
+        $score += 18;
+    }
+    if ($daysSeen >= 4) {
+        $score += 14;
+    }
+    if ($daysSeen >= 7) {
+        $score += 12;
+    }
+    if ($visitsCount >= 4) {
+        $score += 16;
+    }
+    if ($visitsCount >= 8) {
+        $score += 12;
+    }
+    if ($visitsCount >= 20) {
+        $score += 10;
+    }
+    if ($alertCount === 0) {
+        $score += 10;
+    } elseif ($alertCount <= 1) {
+        $score += 4;
+    }
+    if ($blockedCount === 0) {
+        $score += 4;
+    }
+    if ($localAllowlisted) {
+        $score += 14;
+    }
+
+    return max(0, min(100, (int) round($score)));
+}
+
+function clickfix_upsert_client_host_baseline(PDO $pdo, string $clientId, string $hostname, array $fields = []): bool
+{
+    $clientId = clickfix_normalize_client_id($clientId);
+    $hostname = clickfix_normalize_domain($hostname);
+    if ($clientId === '' || $hostname === '' || !clickfix_has_table($pdo, 'client_host_baseline')) {
+        return false;
+    }
+
+    $now = (string) ($fields['updated_at'] ?? gmdate('c'));
+    $select = $pdo->prepare('SELECT * FROM client_host_baseline WHERE client_id = :client_id AND hostname = :hostname LIMIT 1');
+    $select->execute([':client_id' => $clientId, ':hostname' => $hostname]);
+    $current = $select->fetch(PDO::FETCH_ASSOC) ?: null;
+
+    $row = [
+        'client_id' => $clientId,
+        'hostname' => $hostname,
+        'first_seen_at' => (string) ($fields['first_seen_at'] ?? ($current['first_seen_at'] ?? $now)),
+        'last_seen_at' => (string) ($fields['last_seen_at'] ?? ($current['last_seen_at'] ?? $now)),
+        'last_visit_day' => (string) ($fields['last_visit_day'] ?? ($current['last_visit_day'] ?? substr($now, 0, 10))),
+        'days_seen' => max(0, (int) ($fields['days_seen'] ?? ($current['days_seen'] ?? 0))),
+        'visits_count' => max(0, (int) ($fields['visits_count'] ?? ($current['visits_count'] ?? 0))),
+        'alert_count' => max(0, (int) ($fields['alert_count'] ?? ($current['alert_count'] ?? 0))),
+        'blocked_count' => max(0, (int) ($fields['blocked_count'] ?? ($current['blocked_count'] ?? 0))),
+        'accepted_count' => max(0, (int) ($fields['accepted_count'] ?? ($current['accepted_count'] ?? 0))),
+        'rejected_count' => max(0, (int) ($fields['rejected_count'] ?? ($current['rejected_count'] ?? 0))),
+        'allowlisted_count' => max(0, (int) ($fields['allowlisted_count'] ?? ($current['allowlisted_count'] ?? 0))),
+        'local_allowlisted' => !empty($fields['local_allowlisted']) || !empty($current['local_allowlisted']) ? 1 : 0,
+        'trust_score' => 0,
+        'last_verdict' => substr((string) ($fields['last_verdict'] ?? ($current['last_verdict'] ?? '')), 0, 40),
+        'updated_at' => $now,
+        'source' => substr((string) ($fields['source'] ?? ($current['source'] ?? 'extension')), 0, 40),
+    ];
+    $row['trust_score'] = clickfix_baseline_trust_score($row);
+
+    if ($current) {
+        $stmt = $pdo->prepare(
+            'UPDATE client_host_baseline
+             SET first_seen_at = :first_seen_at,
+                 last_seen_at = :last_seen_at,
+                 last_visit_day = :last_visit_day,
+                 days_seen = :days_seen,
+                 visits_count = :visits_count,
+                 alert_count = :alert_count,
+                 blocked_count = :blocked_count,
+                 accepted_count = :accepted_count,
+                 rejected_count = :rejected_count,
+                 allowlisted_count = :allowlisted_count,
+                 local_allowlisted = :local_allowlisted,
+                 trust_score = :trust_score,
+                 last_verdict = :last_verdict,
+                 updated_at = :updated_at,
+                 source = :source
+             WHERE client_id = :client_id AND hostname = :hostname'
+        );
+    } else {
+        $stmt = $pdo->prepare(
+            'INSERT INTO client_host_baseline (
+                client_id, hostname, first_seen_at, last_seen_at, last_visit_day,
+                days_seen, visits_count, alert_count, blocked_count,
+                accepted_count, rejected_count, allowlisted_count,
+                local_allowlisted, trust_score, last_verdict, updated_at, source
+             ) VALUES (
+                :client_id, :hostname, :first_seen_at, :last_seen_at, :last_visit_day,
+                :days_seen, :visits_count, :alert_count, :blocked_count,
+                :accepted_count, :rejected_count, :allowlisted_count,
+                :local_allowlisted, :trust_score, :last_verdict, :updated_at, :source
+             )'
+        );
+    }
+
+    return $stmt->execute([
+        ':client_id' => $row['client_id'],
+        ':hostname' => $row['hostname'],
+        ':first_seen_at' => $row['first_seen_at'],
+        ':last_seen_at' => $row['last_seen_at'],
+        ':last_visit_day' => $row['last_visit_day'],
+        ':days_seen' => $row['days_seen'],
+        ':visits_count' => $row['visits_count'],
+        ':alert_count' => $row['alert_count'],
+        ':blocked_count' => $row['blocked_count'],
+        ':accepted_count' => $row['accepted_count'],
+        ':rejected_count' => $row['rejected_count'],
+        ':allowlisted_count' => $row['allowlisted_count'],
+        ':local_allowlisted' => $row['local_allowlisted'],
+        ':trust_score' => $row['trust_score'],
+        ':last_verdict' => $row['last_verdict'],
+        ':updated_at' => $row['updated_at'],
+        ':source' => $row['source'],
+    ]);
+}
+
+function clickfix_baseline_merge_host_summaries(PDO $pdo, string $clientId, array $rows, string $receivedAt): void
+{
+    if (!clickfix_has_table($pdo, 'client_host_baseline')) {
+        return;
+    }
+    $clientId = clickfix_normalize_client_id($clientId);
+    if ($clientId === '') {
+        return;
+    }
+    foreach ($rows as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $hostname = clickfix_normalize_domain((string) ($row['hostname'] ?? ''));
+        if ($hostname === '') {
+            continue;
+        }
+        clickfix_upsert_client_host_baseline($pdo, $clientId, $hostname, [
+            'first_seen_at' => (string) ($row['first_seen_at'] ?? $receivedAt),
+            'last_seen_at' => $receivedAt,
+            'last_visit_day' => substr((string) ($row['last_seen_day'] ?? substr($receivedAt, 0, 10)), 0, 10),
+            'days_seen' => max(0, (int) ($row['days_seen'] ?? 0)),
+            'visits_count' => max(0, (int) ($row['visits_count'] ?? 0)),
+            'alert_count' => max(0, (int) ($row['alert_count'] ?? 0)),
+            'blocked_count' => max(0, (int) ($row['blocked_count'] ?? 0)),
+            'local_allowlisted' => !empty($row['local_allowlisted']) ? 1 : 0,
+            'last_verdict' => '',
+            'updated_at' => $receivedAt,
+            'source' => 'summary',
+        ]);
+    }
+}
+
+function clickfix_baseline_record_alert(PDO $pdo, string $clientId, string $hostname, bool $blocked = false, string $receivedAt = '', string $verdict = ''): void
+{
+    if (!clickfix_has_table($pdo, 'client_host_baseline')) {
+        return;
+    }
+    $clientId = clickfix_normalize_client_id($clientId);
+    $hostname = clickfix_normalize_domain($hostname);
+    if ($clientId === '' || $hostname === '') {
+        return;
+    }
+    $at = $receivedAt !== '' ? $receivedAt : gmdate('c');
+    $select = $pdo->prepare('SELECT * FROM client_host_baseline WHERE client_id = :client_id AND hostname = :hostname LIMIT 1');
+    $select->execute([':client_id' => $clientId, ':hostname' => $hostname]);
+    $current = $select->fetch(PDO::FETCH_ASSOC) ?: [];
+    $day = substr($at, 0, 10);
+    $daysSeen = max(1, (int) ($current['days_seen'] ?? 0));
+    if ((string) ($current['last_visit_day'] ?? '') !== $day) {
+        $daysSeen++;
+    }
+    clickfix_upsert_client_host_baseline($pdo, $clientId, $hostname, [
+        'first_seen_at' => (string) ($current['first_seen_at'] ?? $at),
+        'last_seen_at' => $at,
+        'last_visit_day' => $day,
+        'days_seen' => $daysSeen,
+        'visits_count' => max(1, (int) ($current['visits_count'] ?? 0)) + 1,
+        'alert_count' => max(0, (int) ($current['alert_count'] ?? 0)) + 1,
+        'blocked_count' => max(0, (int) ($current['blocked_count'] ?? 0)) + ($blocked ? 1 : 0),
+        'accepted_count' => max(0, (int) ($current['accepted_count'] ?? 0)),
+        'rejected_count' => max(0, (int) ($current['rejected_count'] ?? 0)),
+        'allowlisted_count' => max(0, (int) ($current['allowlisted_count'] ?? 0)),
+        'local_allowlisted' => !empty($current['local_allowlisted']) ? 1 : 0,
+        'last_verdict' => $verdict !== '' ? $verdict : (string) ($current['last_verdict'] ?? ''),
+        'updated_at' => $at,
+        'source' => 'alert',
+    ]);
+}
+
+function clickfix_baseline_record_review(PDO $pdo, string $clientId, string $hostname, string $status): void
+{
+    if (!clickfix_has_table($pdo, 'client_host_baseline')) {
+        return;
+    }
+    $status = strtolower(trim($status));
+    if (!in_array($status, ['accepted', 'rejected', 'allowlisted'], true)) {
+        return;
+    }
+    $clientId = clickfix_normalize_client_id($clientId);
+    $hostname = clickfix_normalize_domain($hostname);
+    if ($clientId === '' || $hostname === '') {
+        return;
+    }
+    $select = $pdo->prepare('SELECT * FROM client_host_baseline WHERE client_id = :client_id AND hostname = :hostname LIMIT 1');
+    $select->execute([':client_id' => $clientId, ':hostname' => $hostname]);
+    $current = $select->fetch(PDO::FETCH_ASSOC) ?: [];
+    clickfix_upsert_client_host_baseline($pdo, $clientId, $hostname, [
+        'first_seen_at' => (string) ($current['first_seen_at'] ?? gmdate('c')),
+        'last_seen_at' => (string) ($current['last_seen_at'] ?? gmdate('c')),
+        'last_visit_day' => (string) ($current['last_visit_day'] ?? gmdate('Y-m-d')),
+        'days_seen' => max(0, (int) ($current['days_seen'] ?? 0)),
+        'visits_count' => max(0, (int) ($current['visits_count'] ?? 0)),
+        'alert_count' => max(0, (int) ($current['alert_count'] ?? 0)),
+        'blocked_count' => max(0, (int) ($current['blocked_count'] ?? 0)),
+        'accepted_count' => max(0, (int) ($current['accepted_count'] ?? 0)) + ($status === 'accepted' ? 1 : 0),
+        'rejected_count' => max(0, (int) ($current['rejected_count'] ?? 0)) + ($status === 'rejected' ? 1 : 0),
+        'allowlisted_count' => max(0, (int) ($current['allowlisted_count'] ?? 0)) + ($status === 'allowlisted' ? 1 : 0),
+        'local_allowlisted' => !empty($current['local_allowlisted']) || $status === 'allowlisted' ? 1 : 0,
+        'last_verdict' => $status,
+        'updated_at' => gmdate('c'),
+        'source' => 'review',
+    ]);
+}
+
+function clickfix_extension_client_baseline_hosts(PDO $pdo, string $clientId, int $limit = 60): array
+{
+    if (!clickfix_has_table($pdo, 'client_host_baseline')) {
+        return [];
+    }
+    $clientId = clickfix_normalize_client_id($clientId);
+    if ($clientId === '') {
+        return [];
+    }
+    $stmt = $pdo->prepare(
+        'SELECT hostname, first_seen_at, last_seen_at, last_visit_day, days_seen, visits_count,
+                alert_count, blocked_count, accepted_count, rejected_count, allowlisted_count,
+                local_allowlisted, trust_score, last_verdict, updated_at
+         FROM client_host_baseline
+         WHERE client_id = :client_id
+         ORDER BY trust_score DESC, visits_count DESC, last_seen_at DESC
+         LIMIT :limit'
+    );
+    $stmt->bindValue(':client_id', $clientId, PDO::PARAM_STR);
+    $stmt->bindValue(':limit', max(1, min(200, $limit)), PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
+
+function clickfix_baseline_global_candidates(PDO $pdo, int $limit = 50): array
+{
+    if (!clickfix_has_table($pdo, 'client_host_baseline')) {
+        return [];
+    }
+    $stmt = $pdo->prepare(
+        "SELECT hostname,
+                COUNT(DISTINCT client_id) AS clients,
+                SUM(visits_count) AS visits,
+                SUM(alert_count) AS alerts,
+                SUM(blocked_count) AS blocks,
+                SUM(accepted_count) AS accepted,
+                SUM(rejected_count) AS rejected,
+                SUM(allowlisted_count) AS allowlisted,
+                AVG(trust_score) AS avg_trust,
+                MAX(last_seen_at) AS last_seen_at
+         FROM client_host_baseline
+         GROUP BY hostname
+         HAVING COUNT(DISTINCT client_id) >= 1
+         ORDER BY avg_trust DESC, clients DESC, visits DESC
+         LIMIT :limit"
+    );
+    $stmt->bindValue(':limit', max(1, min(200, $limit)), PDO::PARAM_INT);
     $stmt->execute();
     return $stmt->fetchAll();
 }
@@ -7026,7 +7521,7 @@ function clickfix_generate_period_report(PDO $pdo, string $period): array
         $period = 'daily';
         $from = gmdate('c', time() - 86400);
     }
-    $cacheKey = clickfix_cache_key('period_report', ['period' => $period, 'v1' => true]);
+    $cacheKey = clickfix_cache_key('period_report', ['period' => $period, 'v2' => true]);
     $cached = clickfix_cache_get($cacheKey);
     if (is_array($cached)) {
         return $cached;
@@ -7047,9 +7542,15 @@ function clickfix_generate_period_report(PDO $pdo, string $period): array
     $stmt->execute([':from_sql' => $fromSql]);
     $row = $stmt->fetch() ?: [];
 
+    $totalAlerts = (int) ($row['total_alerts'] ?? 0);
+    $totalBlocks = (int) ($row['total_blocks'] ?? 0);
+
     $topDomains = [];
     $domainsStmt = $pdo->prepare(
-        "SELECT hostname, COUNT(*) as hits
+        "SELECT hostname,
+                COUNT(*) as hits,
+                SUM(CASE WHEN blocked = 1 THEN 1 ELSE 0 END) as blocked_hits,
+                MAX(received_at) as last_seen
          FROM reports
          WHERE COALESCE(
                    datetime(replace(substr(received_at, 1, 19), 'T', ' ')),
@@ -7065,20 +7566,101 @@ function clickfix_generate_period_report(PDO $pdo, string $period): array
         $topDomains[] = [
             'hostname' => (string) ($domainRow['hostname'] ?? ''),
             'hits' => (int) ($domainRow['hits'] ?? 0),
+            'blocked_hits' => (int) ($domainRow['blocked_hits'] ?? 0),
+            'percent_total' => $totalAlerts > 0 ? round(((int) ($domainRow['hits'] ?? 0) * 100) / $totalAlerts, 2) : 0.0,
+            'last_seen' => (string) ($domainRow['last_seen'] ?? ''),
+        ];
+    }
+
+    $eventTypeDistribution = [];
+    $eventStmt = $pdo->prepare(
+        "SELECT COALESCE(NULLIF(TRIM(event_type), ''), 'clickfix_alert') as event_type,
+                COUNT(*) as hits,
+                SUM(CASE WHEN blocked = 1 THEN 1 ELSE 0 END) as blocked_hits
+         FROM reports
+         WHERE COALESCE(
+                   datetime(replace(substr(received_at, 1, 19), 'T', ' ')),
+                   datetime(received_at)
+               ) >= datetime(:from_sql)
+         GROUP BY COALESCE(NULLIF(TRIM(event_type), ''), 'clickfix_alert')
+         ORDER BY hits DESC
+         LIMIT 12"
+    );
+    $eventStmt->execute([':from_sql' => $fromSql]);
+    foreach ($eventStmt->fetchAll() as $eventRow) {
+        $hits = (int) ($eventRow['hits'] ?? 0);
+        $eventTypeDistribution[] = [
+            'event_type' => (string) ($eventRow['event_type'] ?? 'clickfix_alert'),
+            'hits' => $hits,
+            'blocked_hits' => (int) ($eventRow['blocked_hits'] ?? 0),
+            'percent_total' => $totalAlerts > 0 ? round(($hits * 100) / $totalAlerts, 2) : 0.0,
+        ];
+    }
+
+    $severityDistribution = [];
+    $severityStmt = $pdo->prepare(
+        "SELECT CASE
+                    WHEN COALESCE(server_score_total, score_total, 0) >= 75 THEN 'critical'
+                    WHEN COALESCE(server_score_total, score_total, 0) >= 50 THEN 'high'
+                    WHEN COALESCE(server_score_total, score_total, 0) >= 25 THEN 'medium'
+                    ELSE 'low'
+                END as severity,
+                COUNT(*) as hits,
+                SUM(CASE WHEN blocked = 1 THEN 1 ELSE 0 END) as blocked_hits
+         FROM reports
+         WHERE COALESCE(
+                   datetime(replace(substr(received_at, 1, 19), 'T', ' ')),
+                   datetime(received_at)
+               ) >= datetime(:from_sql)
+         GROUP BY severity
+         ORDER BY CASE severity
+                    WHEN 'critical' THEN 1
+                    WHEN 'high' THEN 2
+                    WHEN 'medium' THEN 3
+                    ELSE 4
+                  END"
+    );
+    $severityStmt->execute([':from_sql' => $fromSql]);
+    foreach ($severityStmt->fetchAll() as $severityRow) {
+        $hits = (int) ($severityRow['hits'] ?? 0);
+        $severityDistribution[] = [
+            'severity' => (string) ($severityRow['severity'] ?? 'low'),
+            'hits' => $hits,
+            'blocked_hits' => (int) ($severityRow['blocked_hits'] ?? 0),
+            'percent_total' => $totalAlerts > 0 ? round(($hits * 100) / $totalAlerts, 2) : 0.0,
         ];
     }
 
     $result = [
+        'title' => 'ClickFix Mitigator - Top Sources of Attack',
         'period' => $period,
         'generated_at' => gmdate('c'),
         'from' => $from,
+        'to' => gmdate('c'),
+        'time_window' => [
+            'earliest_event_time' => $from,
+            'latest_event_time' => gmdate('c'),
+            'label' => 'Earliest Event Time: ' . $from . ' to Latest Event Time: ' . gmdate('c'),
+        ],
         'summary' => [
-            'total_alerts' => (int) ($row['total_alerts'] ?? 0),
-            'total_blocks' => (int) ($row['total_blocks'] ?? 0),
+            'total_alerts' => $totalAlerts,
+            'total_blocks' => $totalBlocks,
             'unique_hosts' => (int) ($row['unique_hosts'] ?? 0),
             'active_clients' => (int) ($row['active_clients'] ?? 0),
+            'block_rate_percent' => $totalAlerts > 0 ? round(($totalBlocks * 100) / $totalAlerts, 2) : 0.0,
         ],
         'top_domains' => $topDomains,
+        'top_sources_of_attack' => array_map(static function (array $domainRow): array {
+            return [
+                'attacking_host' => (string) ($domainRow['hostname'] ?? ''),
+                'number_of_attacks' => (int) ($domainRow['hits'] ?? 0),
+                'percent_total' => (float) ($domainRow['percent_total'] ?? 0.0),
+                'blocked_attacks' => (int) ($domainRow['blocked_hits'] ?? 0),
+                'last_seen' => (string) ($domainRow['last_seen'] ?? ''),
+            ];
+        }, $topDomains),
+        'event_type_distribution' => $eventTypeDistribution,
+        'severity_distribution' => $severityDistribution,
     ];
     clickfix_cache_set($cacheKey, $result, 15);
     return $result;
@@ -7644,7 +8226,17 @@ function clickfix_user_api_key_value(PDO $pdo, int $userId, string $provider): s
 
 function clickfix_platform_api_allowed_scopes(): array
 {
-    return ['intel:read'];
+    return [
+        'config:read',
+        'intel:read',
+        'alerts:read',
+        'stats:read',
+        'reviews:write',
+        'lists:write',
+        'messages:write',
+        'investigations:read',
+        'investigations:write',
+    ];
 }
 
 function clickfix_platform_api_scope_text(string $scopeText): string
@@ -10040,9 +10632,141 @@ function clickfix_redirect(string $url): void
     exit;
 }
 
+function clickfix_fix_locale_text(?string $value): string
+{
+    $text = (string) $value;
+    if ($text === '') {
+        return '';
+    }
+
+    $replace = [
+        'Ã¡' => 'á',
+        'Ã©' => 'é',
+        'Ã­' => 'í',
+        'Ã³' => 'ó',
+        'Ãº' => 'ú',
+        'Ã' => 'Á',
+        'Ã‰' => 'É',
+        'Ã' => 'Í',
+        'Ã“' => 'Ó',
+        'Ãš' => 'Ú',
+        'Ã±' => 'ñ',
+        'Ã‘' => 'Ñ',
+        'Ã¼' => 'ü',
+        'Ãœ' => 'Ü',
+        'Â¿' => '¿',
+        'Â¡' => '¡',
+        'â' => "'",
+        'â' => '"',
+        'â' => '"',
+        'â' => '-',
+        'â' => '-',
+        'aci?ón' => 'ación',
+        'aci?nes' => 'aciones',
+        'ici?ón' => 'ición',
+        'ici?nes' => 'iciones',
+        'uci?ón' => 'ución',
+        'uci?nes' => 'uciones',
+        'sesi?ón' => 'sesión',
+        'revisi?ón' => 'revisión',
+        'detecci?ón' => 'detección',
+        'Investigaci?ón' => 'Investigación',
+        'Investigaci?ones' => 'Investigaciones',
+        'investigaci?ón' => 'investigación',
+        'investigaci?ones' => 'investigaciones',
+        '?ltima' => 'Última',
+        '?ltimo' => 'Último',
+        '?ltimos' => 'Últimos',
+        '?ltim' => 'Últim',
+        '?n' => 'ón',
+        '?squeda' => 'úsqueda',
+        'b?squeda' => 'búsqueda',
+        'Pa?s' => 'País',
+        'pa?s' => 'país',
+        'pases' => 'países',
+        'revisin' => 'revisión',
+        'revisi?n' => 'revisión',
+        'sesion' => 'sesión',
+        'deteccion' => 'detección',
+        'detecciones' => 'detecciones',
+        'detecci?n' => 'detección',
+        'investigacin' => 'investigación',
+        'investigacines' => 'investigaciones',
+        'investigaci?n' => 'investigación',
+        'investigaci?nes' => 'investigaciones',
+        'investigacin pública' => 'investigación pública',
+        'programacion' => 'programación',
+        'programaci?n' => 'programación',
+        'Acci?n' => 'Acción',
+        'acci?n' => 'acción',
+        'operaci?nal' => 'operacional',
+        'operaci?nes' => 'operaciones',
+        'Contrase?a' => 'Contraseña',
+        'contrase?a' => 'contraseña',
+        'Autenticaci?n' => 'Autenticación',
+        'autenticaci?n' => 'autenticación',
+        'Configuraci?n' => 'Configuración',
+        'configuraci?n' => 'configuración',
+        'Informaci?n' => 'Información',
+        'informaci?n' => 'información',
+        'Clasificaci?n' => 'Clasificación',
+        'clasificaci?n' => 'clasificación',
+        'Se?ales' => 'Señales',
+        'se?ales' => 'señales',
+        'Gr?ficos' => 'Gráficos',
+        'gr?ficos' => 'gráficos',
+        'Gr?fico' => 'Gráfico',
+        'gr?fico' => 'gráfico',
+        'B?squeda' => 'Búsqueda',
+        'b?squeda' => 'búsqueda',
+        'Pa?ses' => 'Países',
+        'pa?ses' => 'países',
+        'm?s' => 'más',
+        'M?s' => 'Más',
+        'd?a' => 'día',
+        'D?a' => 'Día',
+        'd?as' => 'días',
+        'D?as' => 'Días',
+        'telemetr?a' => 'telemetría',
+        'analitica' => 'analítica',
+        'Analitica' => 'Analítica',
+        'hist?rico' => 'histórico',
+        'Hist?rico' => 'Histórico',
+        'm?dulo' => 'módulo',
+        'M?dulo' => 'Módulo',
+        'versi?n' => 'versión',
+        'Versi?n' => 'Versión',
+        'p?blica' => 'pública',
+        'P?blica' => 'Pública',
+        'p?blico' => 'público',
+        'P?blico' => 'Público',
+        'r?pido' => 'rápido',
+        'R?pido' => 'Rápido',
+        'r?pida' => 'rápida',
+        'R?pida' => 'Rápida',
+        'analitica' => 'analítica',
+        'hist?rico' => 'histórico',
+        'an?lisis' => 'análisis',
+        'Pblico' => 'Público',
+        'publica' => 'pública',
+        'publico' => 'público',
+        'rapida' => 'rápida',
+        'rapido' => 'rápido',
+        'metricas' => 'métricas',
+        'politica' => 'política',
+        'correlacion' => 'correlación',
+        'automatica' => 'automática',
+        'valida' => 'válida',
+        'solo' => 'solo',
+    ];
+    $text = strtr($text, $replace);
+
+    return $text;
+}
+
 function clickfix_h(?string $value): string
 {
-    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars(clickfix_fix_locale_text((string) $value), ENT_QUOTES, 'UTF-8');
 }
 
 function clickfix_normalize_hex_color(string $value, string $fallback = '#5dc8ff'): string
@@ -11058,12 +11782,22 @@ function clickfix_sanitize_http_url(?string $value): string
     if ($url === '') {
         return '';
     }
+    if (preg_match('/[\x00-\x1F\x7F]/', $url)) {
+        return '';
+    }
     $parts = parse_url($url);
     if (!is_array($parts)) {
         return '';
     }
     $scheme = strtolower((string) ($parts['scheme'] ?? ''));
     if ($scheme !== 'http' && $scheme !== 'https') {
+        return '';
+    }
+    if (isset($parts['user']) || isset($parts['pass'])) {
+        return '';
+    }
+    $host = strtolower(trim((string) ($parts['host'] ?? '')));
+    if ($host === '') {
         return '';
     }
     return $url;
@@ -11135,6 +11869,84 @@ function clickfix_internal_ad_settings_default(): array
         'show_analyst_sr' => 0,
         'show_admin' => 0,
     ];
+}
+
+function clickfix_public_preview_settings_default(): array
+{
+    return [
+        'limit_points_per_country' => 1,
+        'max_points_per_country' => 2,
+    ];
+}
+
+function clickfix_public_preview_settings(PDO $pdo): array
+{
+    $defaults = clickfix_public_preview_settings_default();
+    if (!clickfix_has_table($pdo, 'public_preview_settings')) {
+        return $defaults;
+    }
+    $row = $pdo->query('SELECT * FROM public_preview_settings WHERE id = 1 LIMIT 1')->fetch() ?: [];
+    if (!$row) {
+        return $defaults;
+    }
+    return [
+        'limit_points_per_country' => !empty($row['limit_points_per_country']) ? 1 : 0,
+        'max_points_per_country' => max(1, min(12, (int) ($row['max_points_per_country'] ?? $defaults['max_points_per_country']))),
+        'updated_at' => (string) ($row['updated_at'] ?? ''),
+        'updated_by' => (int) ($row['updated_by'] ?? 0),
+    ];
+}
+
+function clickfix_public_preview_settings_save(PDO $pdo, array $payload, int $actorId = 0): bool
+{
+    if (!clickfix_has_table($pdo, 'public_preview_settings')) {
+        return false;
+    }
+    $enabled = !empty($payload['limit_points_per_country']) ? 1 : 0;
+    $max = max(1, min(12, (int) ($payload['max_points_per_country'] ?? 2)));
+    $stmt = $pdo->prepare(
+        'INSERT INTO public_preview_settings (
+            id, updated_at, updated_by, limit_points_per_country, max_points_per_country
+         ) VALUES (
+            1, :updated_at, :updated_by, :enabled, :max_points
+         )
+         ON CONFLICT(id) DO UPDATE SET
+            updated_at = excluded.updated_at,
+            updated_by = excluded.updated_by,
+            limit_points_per_country = excluded.limit_points_per_country,
+            max_points_per_country = excluded.max_points_per_country'
+    );
+    return $stmt->execute([
+        ':updated_at' => gmdate('c'),
+        ':updated_by' => max(0, $actorId),
+        ':enabled' => $enabled,
+        ':max_points' => $max,
+    ]);
+}
+
+function clickfix_limit_geo_points_per_country(array $points, bool $enabled, int $maxPointsPerCountry): array
+{
+    if (!$enabled) {
+        return array_values($points);
+    }
+    $maxPointsPerCountry = max(1, min(12, $maxPointsPerCountry));
+    $limited = [];
+    $seen = [];
+    foreach ($points as $point) {
+        if (!is_array($point)) {
+            continue;
+        }
+        $countryCode = strtoupper(substr((string) ($point['country_code'] ?? ''), 0, 2));
+        if ($countryCode === '' || !preg_match('/^[A-Z]{2}$/', $countryCode)) {
+            $countryCode = '__UNK__';
+        }
+        $seen[$countryCode] = ($seen[$countryCode] ?? 0) + 1;
+        if ($seen[$countryCode] > $maxPointsPerCountry) {
+            continue;
+        }
+        $limited[] = $point;
+    }
+    return $limited;
 }
 
 function clickfix_internal_ad_settings(PDO $pdo): array
@@ -11614,38 +12426,70 @@ function clickfix_hash_secret(string $value): string
 
 function clickfix_api_rate_limit(PDO $pdo, string $bucketKey, int $limit, int $windowSeconds): bool
 {
-    $limit = max(1, $limit);
-    $windowSeconds = max(10, $windowSeconds);
-    $now = time();
-    $windowStart = $now - ($now % $windowSeconds);
+    try {
+        $limit = max(1, $limit);
+        $windowSeconds = max(10, $windowSeconds);
+        $now = time();
+        $windowStart = $now - ($now % $windowSeconds);
 
-    if (random_int(1, 50) === 1) {
-        $cleanup = $pdo->prepare('DELETE FROM api_rate_limits WHERE window_start < :min_window');
-        $cleanup->execute([':min_window' => $windowStart - ($windowSeconds * 2)]);
+        if (random_int(1, 50) === 1) {
+            try {
+                $cleanup = $pdo->prepare('DELETE FROM api_rate_limits WHERE window_start < :min_window');
+                $cleanup->execute([':min_window' => $windowStart - ($windowSeconds * 2)]);
+            } catch (Throwable $exception) {
+                // Cleanup is best-effort; ignore lock contention.
+            }
+        }
+
+        $attempts = 0;
+        while ($attempts < 3) {
+            try {
+                $upsert = $pdo->prepare(
+                    'INSERT INTO api_rate_limits (bucket_key, window_start, request_count)
+                     VALUES (:k, :w, 1)
+                     ON CONFLICT(bucket_key) DO UPDATE SET
+                       window_start = CASE
+                         WHEN api_rate_limits.window_start = :w THEN api_rate_limits.window_start
+                         ELSE :w
+                       END,
+                       request_count = CASE
+                         WHEN api_rate_limits.window_start = :w THEN api_rate_limits.request_count + 1
+                         ELSE 1
+                       END'
+                );
+                $upsert->execute([':k' => $bucketKey, ':w' => $windowStart]);
+
+                $select = $pdo->prepare('SELECT window_start, request_count FROM api_rate_limits WHERE bucket_key = :k LIMIT 1');
+                $select->execute([':k' => $bucketKey]);
+                $row = $select->fetch();
+                if (!$row) {
+                    return true;
+                }
+                $storedWindow = (int) ($row['window_start'] ?? 0);
+                $storedCount = (int) ($row['request_count'] ?? 0);
+                if ($storedWindow !== $windowStart) {
+                    return true;
+                }
+                return $storedCount <= $limit;
+            } catch (PDOException $exception) {
+                $message = strtolower($exception->getMessage());
+                if (str_contains($message, 'database is locked') || str_contains($message, 'busy')) {
+                    $attempts++;
+                    usleep(50000);
+                    continue;
+                }
+                throw $exception;
+            }
+        }
+
+        return false;
+    } catch (Throwable $exception) {
+        if (clickfix_is_readonly_error($exception)) {
+            // If the DB is read-only, allow the request instead of 500.
+            return true;
+        }
+        throw $exception;
     }
-
-    $select = $pdo->prepare('SELECT window_start, request_count FROM api_rate_limits WHERE bucket_key = :k LIMIT 1');
-    $select->execute([':k' => $bucketKey]);
-    $row = $select->fetch();
-
-    if (!$row) {
-        $insert = $pdo->prepare('INSERT INTO api_rate_limits (bucket_key, window_start, request_count) VALUES (:k, :w, 1)');
-        $insert->execute([':k' => $bucketKey, ':w' => $windowStart]);
-        return true;
-    }
-
-    $storedWindow = (int) ($row['window_start'] ?? 0);
-    $storedCount = (int) ($row['request_count'] ?? 0);
-    if ($storedWindow !== $windowStart) {
-        $reset = $pdo->prepare('UPDATE api_rate_limits SET window_start = :w, request_count = 1 WHERE bucket_key = :k');
-        $reset->execute([':w' => $windowStart, ':k' => $bucketKey]);
-        return true;
-    }
-
-    $nextCount = $storedCount + 1;
-    $update = $pdo->prepare('UPDATE api_rate_limits SET request_count = :c WHERE bucket_key = :k');
-    $update->execute([':c' => $nextCount, ':k' => $bucketKey]);
-    return $nextCount <= $limit;
 }
 
 function clickfix_static_license_map(): array
@@ -12040,7 +12884,7 @@ function clickfix_api_parse_since(string $value): string
 function clickfix_api_normalize_review_filter(string $value): string
 {
     $value = strtolower(trim($value));
-    if (in_array($value, ['pending', 'accepted', 'rejected'], true)) {
+    if (in_array($value, ['pending', 'accepted', 'rejected', 'allowlisted'], true)) {
         return $value;
     }
     return 'all';
@@ -12049,7 +12893,7 @@ function clickfix_api_normalize_review_filter(string $value): string
 function clickfix_api_normalize_report_status(string $value): string
 {
     $value = strtolower(trim($value));
-    if ($value === 'accepted' || $value === 'rejected') {
+    if (in_array($value, ['accepted', 'rejected', 'allowlisted'], true)) {
         return $value;
     }
     return 'pending';
@@ -12099,6 +12943,8 @@ function clickfix_api_fetch_alert_rows(
         $sql .= " AND LOWER(TRIM(COALESCE(review_status, ''))) = 'accepted'";
     } elseif ($reviewFilter === 'rejected') {
         $sql .= " AND LOWER(TRIM(COALESCE(review_status, ''))) = 'rejected'";
+    } elseif ($reviewFilter === 'allowlisted') {
+        $sql .= " AND LOWER(TRIM(COALESCE(review_status, ''))) = 'allowlisted'";
     }
     if ($blockedFilter === '0' || $blockedFilter === '1') {
         $sql .= ' AND blocked = :blocked';
@@ -12219,7 +13065,7 @@ function clickfix_api_build_ioc_feed(array $alertRows, string $typeFilter = 'all
                     'last_seen_ts' => $activityTs,
                     'reports' => 0,
                     'blocked_hits' => 0,
-                    'status_counts' => ['pending' => 0, 'accepted' => 0, 'rejected' => 0],
+                    'status_counts' => ['pending' => 0, 'accepted' => 0, 'rejected' => 0, 'allowlisted' => 0],
                     'sample' => [
                         'report_id' => $reportId,
                         'hostname' => clickfix_normalize_domain((string) ($row['hostname'] ?? '')),
@@ -12610,4 +13456,38 @@ function clickfix_sign_payload(string $payload): ?array
         'key_id' => trim((string) clickfix_env('CLICKFIX_SIGN_KEY_ID', 'default')),
         'signature' => base64_encode($signature),
     ];
+}
+
+function clickfix_http_fetch(string $url, array $options = []): ?string
+{
+    $method = strtoupper((string) ($options['method'] ?? 'GET'));
+    $body = $options['body'] ?? null;
+    $headers = is_array($options['headers'] ?? null) ? $options['headers'] : [];
+    $timeout = max(3, min(30, (int) ($options['timeout'] ?? 15)));
+    $headerLines = [];
+    foreach ($headers as $k => $v) {
+        if ($v !== '') { $headerLines[] = "{$k}: {$v}"; }
+    }
+    $opts = [
+        'http' => [
+            'method' => $method,
+            'timeout' => $timeout,
+            'ignore_errors' => true,
+            'header' => implode("\r\n", $headerLines) . "\r\n",
+        ],
+        'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
+    ];
+    if ($body !== null) {
+        $opts['http']['content'] = is_string($body) ? $body : json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+    $ctx = stream_context_create($opts);
+    $raw = @file_get_contents($url, false, $ctx);
+    return is_string($raw) ? $raw : null;
+}
+
+function clickfix_http_fetch_json(string $url, array $options = []): ?array
+{
+    $response = clickfix_http_fetch($url, $options);
+    if ($response === null) { return null; }
+    return json_decode($response, true) ?: null;
 }

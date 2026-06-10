@@ -3,6 +3,12 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/src/clickfix_core.php';
 clickfix_bootstrap();
+header('Content-Type: text/html; charset=utf-8');
+if ((string) ($_GET['debug'] ?? '') === '1') {
+    ini_set('display_errors', '1');
+    ini_set('display_startup_errors', '1');
+    error_reporting(E_ALL);
+}
 
 function clickfix_dashboard_fatal(string $message, string $details = ''): void
 {
@@ -56,7 +62,7 @@ function clickfix_dashboard_redact_sensitive(string $input): string
     $value = $input;
     $value = preg_replace('/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/iu', '[REDACTED_EMAIL]', $value) ?? $value;
     $value = preg_replace(
-        '/((?:["\']?\b(?:password|passwd|pwd|pass|contrasena|contrase(?:n|Ã±)a|clave)\b["\']?)\s*[:=]\s*)(?:"[^"]*"|\'[^\']*\'|[^\s,;|]+)/iu',
+        '/((?:["\']?\b(?:password|passwd|pwd|pass|contraseÃ±a|contrase(?:n|Ã±)a|clave)\b["\']?)\s*[:=]\s*)(?:"[^"]*"|\'[^\']*\'|[^\s,;|]+)/iu',
         '$1[REDACTED_PASSWORD]',
         $value
     ) ?? $value;
@@ -176,7 +182,7 @@ if ($loggedIn && $hasActiveSessionColumn) {
     $activeSessionId = (string) ($activeSessionStmt->fetchColumn() ?: '');
     $currentSessionId = session_id();
     if ($activeSessionId !== '' && $currentSessionId !== '' && $activeSessionId !== $currentSessionId) {
-        clickfix_flash('Tu sesion ha sido cerrada porque se inicio en otro dispositivo.');
+        clickfix_flash('Tu SesiÃ³n ha sido cerrada porque se inicio en otro dispositivo.');
         unset($_SESSION['clickfix_user']);
         unset($_SESSION['clickfix_lang']);
         unset($_SESSION['clickfix_session_expires_at']);
@@ -190,7 +196,7 @@ if ($loggedIn && $hasActiveSessionColumn) {
 $redactSensitiveForViewer = $loggedIn
     && clickfix_user_has_min_role($user, 'analyst_jr')
     && !clickfix_user_has_min_role($user, 'analyst_sr');
-$publicPages = ['home', 'search', 'about', 'coverage', 'access', 'investigation', 'profile'];
+$publicPages = ['home', 'search', 'about', 'coverage', 'access', 'investigation', 'profile', 'clickfix_domain_list'];
 $pageAccess = [
     'settings' => 'analyst_jr',
     'ops' => 'analyst_jr',
@@ -198,6 +204,7 @@ $pageAccess = [
     'intel_stats' => 'analyst_jr',
     'intel' => 'analyst_jr',
     'community' => 'analyst_jr',
+    'domain_feeds' => 'analyst_mid',
     'extensions' => 'analyst_sr',
     'lists' => 'analyst_sr',
     'requests' => 'analyst_sr',
@@ -295,7 +302,7 @@ if ($loggedIn) {
         unset($_SESSION['clickfix_lang']);
         unset($_SESSION['clickfix_session_expires_at']);
         @session_regenerate_id(true);
-        clickfix_flash('Sesion expirada por inactividad.');
+        clickfix_flash('SesiÃ³n expirada por inactividad.');
         clickfix_redirect('dashboard.php?page=access&public=1');
     }
 }
@@ -336,7 +343,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
                 (string) ($_SERVER['HTTP_USER_AGENT'] ?? ''),
                 session_id()
             );
-            clickfix_flash('Sesion iniciada.');
+            clickfix_flash('SesiÃ³n iniciada.');
             clickfix_redirect('dashboard.php?page=ops');
         }
         clickfix_flash('Credenciales incorrectas.');
@@ -366,11 +373,11 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         unset($_SESSION['clickfix_user']);
         unset($_SESSION['clickfix_lang']);
         @session_regenerate_id(true);
-        clickfix_flash('Sesion cerrada.');
+        clickfix_flash('SesiÃ³n cerrada.');
         clickfix_redirect('dashboard.php?page=home&public=1');
     }
     if (!clickfix_verify_csrf($csrf)) {
-        clickfix_flash('CSRF invalido.');
+        clickfix_flash('CSRF invÃ¡lido.');
         clickfix_redirect('dashboard.php?page=' . urlencode($page));
     }
     if ($action === 'session_extend') {
@@ -469,21 +476,35 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             (string) ($_POST['self_current_password'] ?? ''),
             (string) ($_POST['self_new_password'] ?? '')
         );
-        clickfix_flash($ok ? 'Contraseña actualizada.' : 'No se pudo cambiar la contraseña (revisa tu clave actual y el minimo de 10 caracteres).');
+        clickfix_flash($ok ? 'ContraseÃ±a actualizada.' : 'No se pudo cambiar la contraseÃ±a (revisa tu clave actual y el minimo de 10 caracteres).');
+        clickfix_redirect('dashboard.php?page=settings');
+    }
+
+
+    if ($action === 'public_preview_settings_save') {
+        if (!$canManageConfigs) {
+            clickfix_flash('Permisos insuficientes: requiere Administrador.');
+            clickfix_redirect('dashboard.php?page=settings');
+        }
+        $ok = clickfix_public_preview_settings_save($pdo, [
+            'limit_points_per_country' => ((string) ($_POST['preview_limit_points_per_country'] ?? '0')) === '1',
+            'max_points_per_country' => (int) ($_POST['preview_max_points_per_country'] ?? 2),
+        ], $actorId);
+        clickfix_flash($ok ? 'Mapa p?blico actualizado.' : 'No se pudo guardar la configuraci?n del mapa p?blico.');
         clickfix_redirect('dashboard.php?page=settings');
     }
 
     if ($action === 'user_self_profile_update') {
         $ok = clickfix_user_update_public_profile($pdo, $actorId, [
             'full_name' => (string) ($_POST['full_name'] ?? ''),
-            'profile_email_public' => (string) ($_POST['profile_email_public'] ?? '0'),
-            'profile_threatrip_public' => (string) ($_POST['profile_threatrip_public'] ?? '0'),
+            'profile_email_public' => (string) ($_POST['profile_email_public'] ?? 0),
+            'profile_threatrip_public' => (string) ($_POST['profile_threatrip_public'] ?? 0),
             'profile_threatrip_id' => (string) ($_POST['profile_threatrip_id'] ?? ''),
-            'profile_vt_public' => (string) ($_POST['profile_vt_public'] ?? '0'),
+            'profile_vt_public' => (string) ($_POST['profile_vt_public'] ?? 0),
             'profile_vt_handle' => (string) ($_POST['profile_vt_handle'] ?? ''),
-            'profile_abuseipdb_public' => (string) ($_POST['profile_abuseipdb_public'] ?? '0'),
+            'profile_abuseipdb_public' => (string) ($_POST['profile_abuseipdb_public'] ?? 0),
             'profile_abuseipdb_id' => (string) ($_POST['profile_abuseipdb_id'] ?? ''),
-            'profile_github_public' => (string) ($_POST['profile_github_public'] ?? '0'),
+            'profile_github_public' => (string) ($_POST['profile_github_public'] ?? 0),
             'profile_github_handle' => (string) ($_POST['profile_github_handle'] ?? ''),
         ]);
         clickfix_flash($ok ? 'Perfil actualizado.' : 'No se pudo actualizar el perfil.');
@@ -493,7 +514,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
     if ($action === 'investigation_submit_community') {
         $graphId = (int) ($_POST['graph_id'] ?? 0);
         if ($graphId <= 0) {
-            clickfix_flash('Investigacion no valida para enviar a comunidad.');
+            clickfix_flash('InvestigaciÃ³n no vÃ¡lida para enviar a comunidad.');
             clickfix_redirect('dashboard.php?page=intel');
         }
         $ok = clickfix_investigation_submit_community(
@@ -503,7 +524,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             (string) ($actor['role'] ?? 'analyst_jr'),
             clickfix_is_admin()
         );
-        clickfix_flash($ok ? 'Investigacion enviada a Community (fase JR).' : 'No se pudo enviar la investigacion a Community.');
+        clickfix_flash($ok ? 'InvestigaciÃ³n enviada a Community (fase JR).' : 'No se pudo enviar la investigaciÃ³n a Community.');
         clickfix_redirect('dashboard.php?page=community&graph_id=' . $graphId);
     }
 
@@ -553,12 +574,12 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         $mode = strtolower(trim((string) ($_POST['quick_mode'] ?? '')));
         $reportId = (int) ($_POST['report_id'] ?? 0);
         if ($reportId <= 0) {
-            clickfix_flash('No se pudo ejecutar la accion: report_id invalido.');
+            clickfix_flash('No se pudo ejecutar la acciÃ³n: report_id invÃ¡lido.');
             clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage));
         }
         $report = clickfix_report_by_id($pdo, $reportId);
         if ($report === null) {
-            clickfix_flash('No se encontro la alerta para esa accion rapida.');
+            clickfix_flash('No se encontrÃ³ la alerta para esa acciÃ³n rÃ¡pida.');
             clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage));
         }
         $domainCandidate = (string) ($report['hostname'] ?? '');
@@ -586,7 +607,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
                 clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage));
             }
             if ($domain === '') {
-                clickfix_flash('No se pudo bloquear: la alerta no tiene dominio valido.');
+                clickfix_flash('No se pudo bloquear: la alerta no tiene dominio vÃ¡lido.');
                 clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage) . '&report_id=' . $reportId);
             }
             $ok = clickfix_apply_list_action($pdo, $actorId, 'blocklist', 'add', $domain, 'quick action from report #' . $reportId);
@@ -604,11 +625,11 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
                 clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage) . '&report_id=' . $reportId);
             }
             if ($domain === '') {
-                clickfix_flash('No se pudo anadir a investigatelist: dominio invalido.');
+                clickfix_flash('No se pudo aÃ±adir a investigatelist: dominio invÃ¡lido.');
                 clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage) . '&report_id=' . $reportId);
             }
             $ok = clickfix_apply_list_action($pdo, $actorId, 'investigatelist', 'add', $domain, 'quick action from report #' . $reportId);
-            clickfix_flash($ok ? ('Dominio enviado a investigacion: ' . $domain) : 'No se pudo actualizar investigatelist.');
+            clickfix_flash($ok ? ('Dominio enviado a investigaciÃ³n: ' . $domain) : 'No se pudo actualizar investigatelist.');
             clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage) . '&report_id=' . $reportId);
         }
 
@@ -631,7 +652,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
                 $fullContext = clickfix_dashboard_redact_sensitive($fullContext);
             }
             $summaryLines = [
-                'Investigacion generada desde alerta #' . $reportId . '.',
+                'InvestigaciÃ³n generada desde alerta #' . $reportId . '.',
                 'Dominio: ' . $domainForInvestigation,
                 'Fecha alerta: ' . ($receivedAt !== '' ? $receivedAt : gmdate('c')),
                 'Score: ' . $score . '/100',
@@ -701,7 +722,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
                 $pdo,
                 $actorId,
                 null,
-                'Investigacion alerta #' . $reportId . ' - ' . $domainForInvestigation,
+                'InvestigaciÃ³n alerta #' . $reportId . ' - ' . $domainForInvestigation,
                 $domainForInvestigation,
                 'investigating',
                 $summary,
@@ -713,22 +734,69 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             if ($savedId !== null) {
                 $queuedJobId = clickfix_investigation_enqueue_alert_correlation($pdo, (int) $savedId, $reportId, $actorId, 4);
                 if ($queuedJobId !== null) {
-                    clickfix_flash('Investigacion creada desde alerta #' . $reportId . ' y correlacion encolada (#' . $queuedJobId . ').');
+                    clickfix_flash('InvestigaciÃ³n creada desde alerta #' . $reportId . ' y correlaciÃ³n encolada (#' . $queuedJobId . ').');
                 } else {
-                    clickfix_flash('Investigacion creada desde alerta #' . $reportId . '. No se pudo encolar la correlacion automatica.');
+                    clickfix_flash('InvestigaciÃ³n creada desde alerta #' . $reportId . '. No se pudo encolar la correlaciÃ³n automÃ¡tica.');
                 }
                 clickfix_redirect('dashboard.php?page=intel&graph_id=' . $savedId);
             }
-            clickfix_flash('No se pudo crear la investigacion automatica.');
+            clickfix_flash('No se pudo crear la investigaciÃ³n automÃ¡tica.');
             clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage) . '&report_id=' . $reportId);
         }
 
-        clickfix_flash('Accion rapida no valida.');
+        clickfix_flash('AcciÃ³n rÃ¡pida no vÃ¡lida.');
         clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage) . '&report_id=' . $reportId);
+    }
+    if ($action === 'report_quick_action_llm') {
+        $reportId = (int) ($_POST['report_id'] ?? 0);
+        $llmProfileId = max(0, (int) ($_POST['llm_profile_id'] ?? 0));
+        if ($reportId <= 0) { clickfix_flash('report_id invalido.'); clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage)); }
+        if (!clickfix_user_has_min_role($actor, 'analyst_jr')) { clickfix_flash('Permisos insuficientes para crear investigaciones con LLM.'); clickfix_redirect('dashboard.php?page=ops'); }
+        $report = clickfix_report_by_id($pdo, $reportId);
+        if ($report === null) { clickfix_flash('No se encontro la alerta.'); clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage)); }
+        require_once __DIR__ . '/src/clickfix_llm.php';
+        clickfix_llm_ensure_table($pdo);
+        $domainCandidate = (string) ($report['hostname'] ?? '');
+        if ($domainCandidate === '') { $domainCandidate = (string) ($report['url'] ?? ''); }
+        $domain = clickfix_normalize_domain($domainCandidate);
+        $domainForInv = $domain !== '' ? $domain : 'unknown-domain.local';
+        $score = isset($report['score_total']) ? (int) $report['score_total'] : 0;
+        $url = trim((string) ($report['url'] ?? ''));
+        $detected = trim((string) ($report['detected_content'] ?? ''));
+        $receivedAt = trim((string) ($report['received_at'] ?? ''));
+        $summaryBase = "Inv. LLM desde alerta #{$reportId} | Dominio: {$domainForInv} | Score: {$score}/100 | " . ($receivedAt !== '' ? $receivedAt : gmdate('c'));
+        $graphNodes = [
+            ['id' => 'n_alert_' . $reportId, 'label' => 'Alerta #' . $reportId, 'color' => '#e66a6a', 'x' => 200, 'y' => 140, 'tags' => ['alert', 'llm'], 'notes' => $summaryBase],
+            ['id' => 'n_domain_' . preg_replace('/[^a-z0-9]/', '_', strtolower($domainForInv)), 'label' => $domainForInv, 'color' => '#5dc8ff', 'x' => 500, 'y' => 160, 'tags' => ['domain'], 'notes' => $url !== '' ? ('URL: ' . $url) : ''],
+        ];
+        $graphEdges = [['id' => 'e_alert_domain_' . $reportId, 'from' => 'n_alert_' . $reportId, 'to' => 'n_domain_' . preg_replace('/[^a-z0-9]/', '_', strtolower($domainForInv)), 'label' => 'evento detectado', 'color' => '#94a3b8']];
+        if ($detected !== '') {
+            $graphNodes[] = ['id' => 'n_snippet_' . $reportId, 'label' => 'Snippet', 'color' => '#ffd166', 'x' => 350, 'y' => 300, 'tags' => ['snippet'], 'notes' => substr($detected, 0, 400)];
+            $graphEdges[] = ['id' => 'e_alert_snippet_' . $reportId, 'from' => 'n_alert_' . $reportId, 'to' => 'n_snippet_' . $reportId, 'label' => 'evidencia', 'color' => '#ffd166'];
+        }
+        $savedId = clickfix_investigation_save($pdo, $actorId, null, 'Inv. LLM #' . $reportId . ' - ' . $domainForInv, $domainForInv, 'investigating', $summaryBase, 'llm, auto, from-alert', ['nodes' => $graphNodes, 'edges' => $graphEdges], clickfix_is_admin(), $reportId);
+        if ($savedId === null) { clickfix_flash('No se pudo crear la investigacion.'); clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage) . '&report_id=' . $reportId); }
+        clickfix_investigation_enqueue_alert_correlation($pdo, (int) $savedId, $reportId, $actorId, 4);
+        $llmResult = clickfix_llm_investigate_alert($pdo, $reportId, $actorId, ['profile_id' => $llmProfileId]);
+        $llmVerdict = 'investigating';
+        if ($llmResult['ok'] && !empty($llmResult['content'])) {
+            $content = $llmResult['content'];
+            $lower = strtolower($content);
+            if (str_contains($lower, 'malicious') || str_contains($lower, 'confirmed threat')) { $llmVerdict = 'confirmed_malicious'; }
+            elseif (str_contains($lower, 'suspicious') || str_contains($lower, 'sospechoso') || str_contains($lower, 'likely malicious')) { $llmVerdict = 'suspicious'; }
+            elseif (str_contains($lower, 'benign') || str_contains($lower, 'false positive') || str_contains($lower, 'legitimo') || str_contains($lower, 'limpio')) { $llmVerdict = 'false_positive'; }
+            $fullSummary = "[VEREDICTO LLM: " . strtoupper(str_replace('_', ' ', $llmVerdict)) . "]\n\n" . substr($content, 0, 4000) . "\n\n[ORIGINAL]\n" . $summaryBase;
+            $pdo->prepare('UPDATE investigation_graphs SET verdict = :v, summary = :s WHERE id = :id')->execute([':v' => $llmVerdict, ':s' => $fullSummary, ':id' => $savedId]);
+            clickfix_flash('Investigacion creada + LLM. Veredicto: ' . strtoupper(str_replace('_', ' ', $llmVerdict)));
+        } else {
+            $err = $llmResult['error'] ?? 'no_response';
+            clickfix_flash('Investigacion creada pero LLM no disponible: ' . $err . '. Configura tu perfil LLM en Settings > LLM Profiles.');
+        }
+        clickfix_redirect('dashboard.php?page=intel&graph_id=' . $savedId);
     }
     if ($action === 'extension_link_add') {
         if (!$canManageExtensionLinks) {
-            clickfix_flash('Permisos insuficientes para asociar usuarios de extension.');
+            clickfix_flash('Permisos insuficientes para asociar usuarios de extensi?n.');
             clickfix_redirect('dashboard.php?page=ops');
         }
         $targetClient = clickfix_normalize_client_id((string) ($_POST['link_client_id'] ?? ''));
@@ -739,7 +807,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             $targetClient,
             (string) ($_POST['link_note'] ?? '')
         );
-        clickfix_flash($ok ? 'Asociacion guardada.' : 'No se pudo guardar la asociacion.');
+        clickfix_flash($ok ? 'Asociaci?n guardada.' : 'No se pudo guardar la asociaci?n.');
         $redirect = 'dashboard.php?page=extensions';
         if ($targetClient !== '') {
             $redirect .= '&client_id=' . urlencode($targetClient);
@@ -748,11 +816,11 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
     }
     if ($action === 'extension_link_remove') {
         if (!$canManageExtensionLinks) {
-            clickfix_flash('Permisos insuficientes para editar asociaciones de extension.');
+            clickfix_flash('Permisos insuficientes para editar asociaci?nes de extensi?n.');
             clickfix_redirect('dashboard.php?page=ops');
         }
         $ok = clickfix_unlink_user_extension_client($pdo, (int) ($_POST['link_id'] ?? 0));
-        clickfix_flash($ok ? 'Asociacion desactivada.' : 'No se pudo desactivar la asociacion.');
+        clickfix_flash($ok ? 'Asociaci?n desactivada.' : 'No se pudo desactivar la asociaci?n.');
         clickfix_redirect('dashboard.php?page=extensions');
     }
     if ($action === 'review') {
@@ -764,14 +832,16 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         $status = (string) ($_POST['status'] ?? 'pending');
         $report = clickfix_report_by_id($pdo, $reportId);
         if ($report === null) {
-            clickfix_flash('No se pudo actualizar la revision: alerta no encontrada.');
+            clickfix_flash('No se pudo actualizar la revisiÃ³n: alerta no encontrada.');
             clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage));
         }
         $ok = clickfix_update_report_review($pdo, $reportId, $status, $actorId);
         if ($ok && $status === 'accepted') {
-            clickfix_flash('Revision actualizada. El dominio ha quedado bloqueado automaticamente si era valido.');
+            clickfix_flash('RevisiÃ³n actualizada. El dominio ha quedado bloqueado automÃ¡ticamente si era vÃ¡lido.');
+        } elseif ($ok && $status === 'allowlisted') {
+            clickfix_flash('RevisiÃ³n actualizada. El dominio se ha enviado automÃ¡ticamente a allowlist si era vÃ¡lido.');
         } else {
-            clickfix_flash($ok ? 'Revision actualizada.' : 'No hubo cambios en la revision (verifica el evento y el estado).');
+            clickfix_flash($ok ? 'RevisiÃ³n actualizada.' : 'No hubo cambios en la revisiÃ³n (verifica el evento y el estado).');
         }
         clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage) . '&report_id=' . $reportId);
     }
@@ -797,7 +867,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         }
         $reportIds = array_keys($reportIdsMap);
         if (empty($reportIds)) {
-            clickfix_flash('Selecciona al menos una alerta para revision masiva.');
+            clickfix_flash('Selecciona al menos una alerta para revisiÃ³n masiva.');
             clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage));
         }
 
@@ -809,9 +879,11 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         }
         $totalCount = count($reportIds);
         $failedCount = max(0, $totalCount - $updatedCount);
-        $bulkMessage = 'Revision masiva aplicada: ' . $updatedCount . '/' . $totalCount . ($failedCount > 0 ? (' (' . $failedCount . ' sin cambios)') : '') . '.';
+        $bulkMessage = 'RevisiÃ³n masiva aplicada: ' . $updatedCount . '/' . $totalCount . ($failedCount > 0 ? (' (' . $failedCount . ' sin cambios)') : '') . '.';
         if ($status === 'accepted' && $updatedCount > 0) {
-            $bulkMessage .= ' Los dominios aceptados se han bloqueado automaticamente cuando eran validos.';
+            $bulkMessage .= ' Los dominios aceptados se han bloqueado automÃ¡ticamente cuando eran vÃ¡lidos.';
+        } elseif ($status === 'allowlisted' && $updatedCount > 0) {
+            $bulkMessage .= ' Los dominios seleccionados se han enviado automÃ¡ticamente a allowlist cuando eran vÃ¡lidos.';
         }
         clickfix_flash($bulkMessage);
         clickfix_redirect('dashboard.php?page=' . urlencode($postReturnPage));
@@ -863,7 +935,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             (string) ($_POST['domains_raw'] ?? ''),
             (string) ($_POST['reason'] ?? 'dashboard bulk')
         );
-        clickfix_flash('Accion masiva: ' . (int) ($bulk['applied'] ?? 0) . '/' . (int) ($bulk['total'] ?? 0) . ' aplicada.');
+        clickfix_flash('AcciÃ³n masiva: ' . (int) ($bulk['applied'] ?? 0) . '/' . (int) ($bulk['total'] ?? 0) . ' aplicada.');
         clickfix_redirect('dashboard.php?page=lists');
     }
     if ($action === 'scan_image_review') {
@@ -876,7 +948,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         $status = (string) ($_POST['scan_status'] ?? 'pending');
         $note = (string) ($_POST['scan_note'] ?? '');
         $ok = clickfix_scan_image_set_review($pdo, $reportId, $kind, $status, $actorId, $note);
-        clickfix_flash($ok ? 'Revision de captura actualizada.' : 'No se pudo actualizar la revision de captura.');
+        clickfix_flash($ok ? 'RevisiÃ³n de captura actualizada.' : 'No se pudo actualizar la revisiÃ³n de captura.');
         $returnPage = strtolower(trim((string) ($_POST['return_page'] ?? 'analytics')));
         if (!in_array($returnPage, ['home', 'analytics'], true)) {
             $returnPage = 'analytics';
@@ -945,17 +1017,17 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         }
         $upload = $_FILES['scan_upload_file'] ?? null;
         if (!is_array($upload) || (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-            clickfix_flash('No se recibio un archivo valido para la captura.');
+            clickfix_flash('No se recibiÃ³ un archivo vÃ¡lido para la captura.');
             clickfix_redirect('dashboard.php?page=' . urlencode($returnPage));
         }
         $tmpName = (string) ($upload['tmp_name'] ?? '');
         if ($tmpName === '' || !is_uploaded_file($tmpName)) {
-            clickfix_flash('Archivo temporal de subida no valido.');
+            clickfix_flash('Archivo temporal de subida no vÃ¡lido.');
             clickfix_redirect('dashboard.php?page=' . urlencode($returnPage));
         }
         $size = (int) ($upload['size'] ?? 0);
         if ($size <= 0 || $size > 8 * 1024 * 1024) {
-            clickfix_flash('Tamano de captura invalido (max 8 MB).');
+            clickfix_flash('TamaÃ±o de captura invÃ¡lido (max 8 MB).');
             clickfix_redirect('dashboard.php?page=' . urlencode($returnPage));
         }
         $mime = '';
@@ -973,25 +1045,39 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             'image/png' => 'png',
             'image/jpeg' => 'jpg',
             'image/webp' => 'webp',
+            'image/gif' => 'gif',
+            'image/bmp' => 'bmp',
+            'image/x-ms-bmp' => 'bmp',
+            'image/avif' => 'avif',
         ];
         $ext = (string) ($extByMime[$mime] ?? '');
         if ($ext === '') {
             $name = strtolower((string) ($upload['name'] ?? ''));
             if (preg_match('/\.png$/', $name)) {
                 $ext = 'png';
-            } elseif (preg_match('/\.jpe?g$/', $name)) {
+            } elseif (preg_match('/\.(jpe?g)$/', $name)) {
                 $ext = 'jpg';
             } elseif (preg_match('/\.webp$/', $name)) {
                 $ext = 'webp';
+            } elseif (preg_match('/\.gif$/', $name)) {
+                $ext = 'gif';
+            } elseif (preg_match('/\.bmp$/', $name)) {
+                $ext = 'bmp';
+            } elseif (preg_match('/\.avif$/', $name)) {
+                $ext = 'avif';
             }
         }
         if ($ext === '') {
-            clickfix_flash('Formato no permitido. Usa PNG, JPG o WEBP.');
+            clickfix_flash('Formato no permitido. Usa PNG, JPG, WEBP, GIF, BMP o AVIF.');
             clickfix_redirect('dashboard.php?page=' . urlencode($returnPage));
         }
         $bytes = @file_get_contents($tmpName);
         if (!is_string($bytes) || $bytes === '') {
             clickfix_flash('No se pudo leer el archivo subido.');
+            clickfix_redirect('dashboard.php?page=' . urlencode($returnPage));
+        }
+        if (clickfix_scan_detect_image_info($bytes) === null) {
+            clickfix_flash('La imagen no es valida o contiene un formato inseguro. No se permiten SVG ni contenidos ejecutables.');
             clickfix_redirect('dashboard.php?page=' . urlencode($returnPage));
         }
         $stored = clickfix_scan_write_asset_bytes($reportId, $kind, $bytes, $ext);
@@ -1005,7 +1091,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
     }
     if ($action === 'message_send') {
         if (!$canManageMessaging) {
-            clickfix_flash('Permisos insuficientes para mensajeria.');
+            clickfix_flash('Permisos insuficientes para mensajerÃ­a.');
             clickfix_redirect('dashboard.php?page=ops');
         }
         $dispatch = clickfix_dispatch_extension_message(
@@ -1045,7 +1131,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             } elseif ($scopeUsed === 'unlinked') {
                 clickfix_flash('No se pudo enviar: no hay clientes de extension no asociados disponibles.');
             } elseif ($scopeUsed === 'client') {
-                clickfix_flash('No se pudo enviar: indica uno o varios client_id validos.');
+                clickfix_flash('No se pudo enviar: indica uno o varios client_id vÃ¡lidos.');
             } else {
                 clickfix_flash('No se pudo enviar el mensaje.');
             }
@@ -1054,7 +1140,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
     }
     if ($action === 'message_delete') {
         if (!$canManageMessaging) {
-            clickfix_flash('Permisos insuficientes para mensajeria.');
+            clickfix_flash('Permisos insuficientes para mensajerÃ­a.');
             clickfix_redirect('dashboard.php?page=ops');
         }
         $messageId = (int) ($_POST['message_id'] ?? 0);
@@ -1064,7 +1150,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
     }
     if ($action === 'message_hard_delete') {
         if (!$canManageMessaging) {
-            clickfix_flash('Permisos insuficientes para mensajeria.');
+            clickfix_flash('Permisos insuficientes para mensajerÃ­a.');
             clickfix_redirect('dashboard.php?page=ops');
         }
         $messageId = (int) ($_POST['message_id'] ?? 0);
@@ -1074,11 +1160,11 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
     }
     if ($action === 'message_edit') {
         if (!$canManageMessaging) {
-            clickfix_flash('Permisos insuficientes para mensajeria.');
+            clickfix_flash('Permisos insuficientes para mensajerÃ­a.');
             clickfix_redirect('dashboard.php?page=ops');
         }
         $messageId = (int) ($_POST['message_id'] ?? 0);
-        $active = ((string) ($_POST['msg_active'] ?? '1')) === '1';
+        $active = ((string) ($_POST['msg_active'] ?? 1)) === '1';
         $ok = clickfix_update_extension_message(
             $pdo,
             $messageId,
@@ -1094,7 +1180,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
     }
     if ($action === 'message_history_clear') {
         if (!$canManageMessaging) {
-            clickfix_flash('Permisos insuficientes para mensajeria.');
+            clickfix_flash('Permisos insuficientes para mensajerÃ­a.');
             clickfix_redirect('dashboard.php?page=ops');
         }
         $clearMode = (string) ($_POST['clear_mode'] ?? 'inactive');
@@ -1123,12 +1209,12 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             clickfix_redirect('dashboard.php?page=ops');
         }
         $ok = clickfix_internal_ad_settings_save($pdo, [
-            'enabled_global' => ((string) ($_POST['ads_enabled_global'] ?? '0')) === '1',
-            'show_guest' => ((string) ($_POST['ads_show_guest'] ?? '0')) === '1',
-            'show_analyst_jr' => ((string) ($_POST['ads_show_analyst_jr'] ?? '0')) === '1',
-            'show_analyst_mid' => ((string) ($_POST['ads_show_analyst_mid'] ?? '0')) === '1',
-            'show_analyst_sr' => ((string) ($_POST['ads_show_analyst_sr'] ?? '0')) === '1',
-            'show_admin' => ((string) ($_POST['ads_show_admin'] ?? '0')) === '1',
+            'enabled_global' => ((string) ($_POST['ads_enabled_global'] ?? 0)) === '1',
+            'show_guest' => ((string) ($_POST['ads_show_guest'] ?? 0)) === '1',
+            'show_analyst_jr' => ((string) ($_POST['ads_show_analyst_jr'] ?? 0)) === '1',
+            'show_analyst_mid' => ((string) ($_POST['ads_show_analyst_mid'] ?? 0)) === '1',
+            'show_analyst_sr' => ((string) ($_POST['ads_show_analyst_sr'] ?? 0)) === '1',
+            'show_admin' => ((string) ($_POST['ads_show_admin'] ?? 0)) === '1',
         ], $actorId);
         clickfix_flash($ok ? 'Politica global de anuncios actualizada.' : 'No se pudo guardar la politica global de anuncios.');
         clickfix_redirect('dashboard.php?page=configs');
@@ -1148,14 +1234,14 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             'priority' => (int) ($_POST['ad_priority'] ?? 100),
             'starts_at' => (string) ($_POST['ad_starts_at'] ?? ''),
             'expires_at' => (string) ($_POST['ad_expires_at'] ?? ''),
-            'active' => ((string) ($_POST['ad_active'] ?? '1')) === '1',
-            'target_guest' => ((string) ($_POST['ad_target_guest'] ?? '0')) === '1',
-            'target_analyst_jr' => ((string) ($_POST['ad_target_analyst_jr'] ?? '0')) === '1',
-            'target_analyst_mid' => ((string) ($_POST['ad_target_analyst_mid'] ?? '0')) === '1',
-            'target_analyst_sr' => ((string) ($_POST['ad_target_analyst_sr'] ?? '0')) === '1',
-            'target_admin' => ((string) ($_POST['ad_target_admin'] ?? '0')) === '1',
+            'active' => ((string) ($_POST['ad_active'] ?? 1)) === '1',
+            'target_guest' => ((string) ($_POST['ad_target_guest'] ?? 0)) === '1',
+            'target_analyst_jr' => ((string) ($_POST['ad_target_analyst_jr'] ?? 0)) === '1',
+            'target_analyst_mid' => ((string) ($_POST['ad_target_analyst_mid'] ?? 0)) === '1',
+            'target_analyst_sr' => ((string) ($_POST['ad_target_analyst_sr'] ?? 0)) === '1',
+            'target_admin' => ((string) ($_POST['ad_target_admin'] ?? 0)) === '1',
         ], $actorId);
-        clickfix_flash($ok ? 'Anuncio guardado.' : 'No se pudo guardar el anuncio. Revisa titulo, contenido, URL o targets.');
+        clickfix_flash($ok ? 'Anuncio guardado.' : 'No se pudo guardar el anuncio. Revisa t?tulo, contenido, URL o targets.');
         clickfix_redirect('dashboard.php?page=configs');
     }
     if ($action === 'internal_ad_toggle') {
@@ -1194,7 +1280,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             $pdo,
             (string) ($_POST['period'] ?? 'daily'),
             (string) ($_POST['recipient'] ?? ''),
-            ((string) ($_POST['enabled'] ?? '1')) === '1'
+            ((string) ($_POST['enabled'] ?? 1)) === '1'
         );
         clickfix_flash($ok ? 'Programacion de reporte actualizada.' : 'No se pudo guardar la programacion.');
         clickfix_redirect('dashboard.php?page=reports');
@@ -1226,14 +1312,14 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         }
         $domainRaw = (string) ($_POST['purge_domain'] ?? '');
         $result = clickfix_delete_reports_by_domain($pdo, $domainRaw, [
-            'include_subdomains' => ((string) ($_POST['purge_include_subdomains'] ?? '1')) === '1',
-            'include_url' => ((string) ($_POST['purge_include_url'] ?? '1')) === '1',
-            'include_previous_url' => ((string) ($_POST['purge_include_previous_url'] ?? '1')) === '1',
-            'delete_caches' => ((string) ($_POST['purge_delete_caches'] ?? '1')) === '1',
-            'delete_investigations' => ((string) ($_POST['purge_delete_investigations'] ?? '0')) === '1',
+            'include_subdomains' => ((string) ($_POST['purge_include_subdomains'] ?? 1)) === '1',
+            'include_url' => ((string) ($_POST['purge_include_url'] ?? 1)) === '1',
+            'include_previous_url' => ((string) ($_POST['purge_include_previous_url'] ?? 1)) === '1',
+            'delete_caches' => ((string) ($_POST['purge_delete_caches'] ?? 1)) === '1',
+            'delete_investigations' => ((string) ($_POST['purge_delete_investigations'] ?? 0)) === '1',
         ]);
         if (($result['host'] ?? '') === '') {
-            clickfix_flash('Dominio invalido. Usa un dominio o URL valida.');
+            clickfix_flash('Dominio invÃ¡lido. Usa un dominio o URL vÃ¡lida.');
             clickfix_redirect('dashboard.php?page=reports');
         }
         $summary = sprintf(
@@ -1286,7 +1372,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
                 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 exit;
             }
-            clickfix_flash('Investigacion guardada.');
+            clickfix_flash('InvestigaciÃ³n guardada.');
             clickfix_redirect('dashboard.php?page=intel&graph_id=' . (int) $savedId);
         }
         if ($autoSave) {
@@ -1295,7 +1381,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             echo json_encode(['status' => 'error', 'message' => 'save_failed']);
             exit;
         }
-        clickfix_flash('No se pudo guardar la investigacion.');
+        clickfix_flash('No se pudo guardar la investigaciÃ³n.');
         clickfix_redirect('dashboard.php?page=intel');
     }
     if ($action === 'investigation_delete') {
@@ -1305,9 +1391,9 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         }
         $graphId = (int) ($_POST['graph_id'] ?? 0);
         if (clickfix_investigation_delete($pdo, $graphId, $actorId, clickfix_is_admin())) {
-            clickfix_flash('Investigacion eliminada.');
+            clickfix_flash('InvestigaciÃ³n eliminada.');
         } else {
-            clickfix_flash('No se pudo eliminar la investigacion.');
+            clickfix_flash('No se pudo eliminar la investigaciÃ³n.');
         }
         clickfix_redirect('dashboard.php?page=intel');
     }
@@ -1341,7 +1427,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         $shareEnabled = ((string) ($_POST['share_mode'] ?? 'off')) === 'on';
         $token = clickfix_investigation_set_share($pdo, $graphId, $actorId, $shareEnabled, clickfix_is_admin());
         if ($shareEnabled && $token !== null) {
-            clickfix_flash('Enlace publico generado.');
+            clickfix_flash('Enlace PÃºblico generado.');
             clickfix_redirect('dashboard.php?page=intel&graph_id=' . $graphId);
         }
         clickfix_flash('Comparticion desactivada.');
@@ -1349,7 +1435,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
     }
     if ($action === 'investigation_api_key_save') {
         if (!clickfix_user_has_min_role($actor, 'analyst_jr')) {
-            clickfix_flash('Permisos insuficientes para gestionar API keys de investigacion.');
+            clickfix_flash('Permisos insuficientes para gestionar API keys de investigaciÃ³n.');
             clickfix_redirect('dashboard.php?page=home&public=1');
         }
         $graphId = (int) ($_POST['graph_id'] ?? 0);
@@ -1374,7 +1460,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
     }
     if ($action === 'investigation_api_key_delete') {
         if (!clickfix_user_has_min_role($actor, 'analyst_jr')) {
-            clickfix_flash('Permisos insuficientes para gestionar API keys de investigacion.');
+            clickfix_flash('Permisos insuficientes para gestionar API keys de investigaciÃ³n.');
             clickfix_redirect('dashboard.php?page=home&public=1');
         }
         $graphId = (int) ($_POST['graph_id'] ?? 0);
@@ -1434,9 +1520,88 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         }
         clickfix_redirect($redirect);
     }
+    if ($action === 'llm_profile_save') {
+        if (!clickfix_user_has_min_role($actor, 'analyst_mid')) {
+            clickfix_flash('Permisos insuficientes para gestionar perfiles LLM.');
+            clickfix_redirect('dashboard.php?page=home&public=1');
+        }
+        require_once __DIR__ . '/src/clickfix_llm.php';
+        clickfix_llm_ensure_table($pdo);
+        $profileData = [
+            'label' => (string) ($_POST['llm_label'] ?? ''),
+            'provider' => (string) ($_POST['llm_provider'] ?? 'openai'),
+            'base_url' => (string) ($_POST['llm_base_url'] ?? ''),
+            'model' => (string) ($_POST['llm_model'] ?? ''),
+            'api_key' => (string) ($_POST['llm_api_key'] ?? ''),
+            'extra_headers' => json_decode((string) ($_POST['llm_extra_headers'] ?? '{}'), true) ?: [],
+            'is_active' => ((string) ($_POST['llm_is_active'] ?? '1')) === '1',
+        ];
+        $saved = clickfix_llm_save_profile($pdo, $profileData, $actorId);
+        clickfix_flash($saved !== null ? 'Perfil LLM guardado correctamente.' : 'No se pudo guardar el perfil LLM.');
+        clickfix_redirect('dashboard.php?page=settings#settings-llm-profiles');
+    }
+    if ($action === 'llm_profile_delete') {
+        if (!clickfix_user_has_min_role($actor, 'analyst_mid')) {
+            clickfix_flash('Permisos insuficientes para gestionar perfiles LLM.');
+            clickfix_redirect('dashboard.php?page=home&public=1');
+        }
+        require_once __DIR__ . '/src/clickfix_llm.php';
+        clickfix_llm_ensure_table($pdo);
+        $profileId = (int) ($_POST['profile_id'] ?? 0);
+        $ok = clickfix_llm_delete_profile($pdo, $profileId, $actorId);
+        clickfix_flash($ok ? 'Perfil LLM eliminado.' : 'No se pudo eliminar el perfil LLM.');
+        clickfix_redirect('dashboard.php?page=settings#settings-llm-profiles');
+    }
+    if ($action === 'auto_investigation_settings_save') {
+        if (!clickfix_user_has_min_role($actor, 'analyst_mid')) {
+            clickfix_flash('Permisos insuficientes para configurar auto-investigacion.');
+            clickfix_redirect('dashboard.php?page=home&public=1');
+        }
+        require_once __DIR__ . '/src/clickfix_auto_investigation.php';
+        clickfix_llm_ensure_table($pdo);
+        clickfix_auto_investigation_set_settings($pdo, [
+            'enabled' => (string) ($_POST['auto_inv_enabled'] ?? '0'),
+            'min_score' => (string) ($_POST['auto_inv_min_score'] ?? '60'),
+            'max_depth' => (string) ($_POST['auto_inv_max_depth'] ?? '3'),
+            'llm_enrich' => (string) ($_POST['auto_inv_llm_enrich'] ?? '0'),
+            'llm_profile_id' => (string) ($_POST['auto_inv_llm_profile_id'] ?? '0'),
+            'schedule_interval_minutes' => (string) ($_POST['auto_inv_schedule_interval'] ?? '15'),
+        ]);
+        clickfix_flash('Configuracion de auto-investigacion guardada.');
+        clickfix_redirect('dashboard.php?page=settings#settings-auto-inv');
+    }
+    if ($action === 'domain_feed_fetch') {
+        if (!clickfix_user_has_min_role($actor, 'analyst_mid')) { clickfix_flash('Permisos insuficientes.'); clickfix_redirect('dashboard.php?page=home&public=1'); }
+        require_once __DIR__ . '/src/clickfix_domain_feeds.php';
+        require_once __DIR__ . '/src/clickfix_socdefenders.php';
+        require_once __DIR__ . '/src/clickfix_abusech.php';
+        clickfix_domain_feeds_ensure_table($pdo);
+        $r1 = clickfix_domain_feeds_fetch_all($pdo);
+        $r2 = clickfix_abusech_fetch_clickfix_tags($pdo);
+        $r3 = clickfix_socdefenders_fetch_clickfix_iocs($pdo);
+        clickfix_flash('Domain feeds fetched. Gist/Carson: ' . count($r1) . ' sources, abuse.ch: ' . $r2['domains_found'] . ' domains, SOC Defenders: ' . $r3['domains_found'] . ' domains.');
+        clickfix_redirect('dashboard.php?page=domain_feeds');
+    }
+    if ($action === 'domain_feed_import_one') {
+        if (!clickfix_user_has_min_role($actor, 'analyst_sr')) { clickfix_flash('Permisos insuficientes para importar a blocklist.'); clickfix_redirect('dashboard.php?page=domain_feeds'); }
+        require_once __DIR__ . '/src/clickfix_domain_feeds.php';
+        clickfix_domain_feeds_ensure_table($pdo);
+        $entryId = (int) ($_POST['feed_entry_id'] ?? 0);
+        $ok = clickfix_domain_feeds_import_to_blocklist($pdo, $entryId, $actorId);
+        clickfix_flash($ok ? 'Domain imported to blocklist.' : 'Import failed.');
+        clickfix_redirect('dashboard.php?page=domain_feeds');
+    }
+    if ($action === 'domain_feed_import_all') {
+        if (!clickfix_user_has_min_role($actor, 'analyst_sr')) { clickfix_flash('Permisos insuficientes para importar a blocklist.'); clickfix_redirect('dashboard.php?page=domain_feeds'); }
+        require_once __DIR__ . '/src/clickfix_domain_feeds.php';
+        clickfix_domain_feeds_ensure_table($pdo);
+        $result = clickfix_domain_feeds_import_all_new($pdo, $actorId);
+        clickfix_flash('Imported ' . $result['imported'] . ' domains to blocklist.');
+        clickfix_redirect('dashboard.php?page=domain_feeds');
+    }
     if ($action === 'investigation_api_lookup') {
         if (!clickfix_user_has_min_role($actor, 'analyst_jr')) {
-            clickfix_flash('Permisos insuficientes para consultas de investigacion.');
+            clickfix_flash('Permisos insuficientes para consultas de investigaciÃ³n.');
             clickfix_redirect('dashboard.php?page=home&public=1');
         }
         $graphId = (int) ($_POST['graph_id'] ?? 0);
@@ -1502,7 +1667,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         }
         $investigation = $graphId > 0 ? clickfix_get_investigation_any($pdo, $graphId) : null;
         if (!is_array($investigation)) {
-            clickfix_flash('Investigacion no encontrada.');
+            clickfix_flash('InvestigaciÃ³n no encontrada.');
             clickfix_redirect('dashboard.php?page=intel');
         }
 
@@ -1534,7 +1699,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         }
 
         if (empty($targets)) {
-            clickfix_flash('No se detectaron IOCs validos (dominio, IP o URL).');
+            clickfix_flash('No se detectaron IOCs vÃ¡lidos (dominio, IP o URL).');
             clickfix_redirect('dashboard.php?page=intel&graph_id=' . $graphId);
         }
 
@@ -1575,7 +1740,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         }
 
         if ($added === 0) {
-            clickfix_flash('No se anadieron IOCs nuevos (duplicados o invalidos).');
+            clickfix_flash('No se aÃ±adieron IOCs nuevos (duplicados o invÃ¡lidos).');
             clickfix_redirect('dashboard.php?page=intel&graph_id=' . $graphId);
         }
 
@@ -1594,19 +1759,19 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             clickfix_is_admin()
         );
         if ($savedId !== null) {
-            $summary = 'IOC(s) anadidos: ' . $added;
+            $summary = 'IOC(s) a?adidos: ' . $added;
             if ($skipped > 0) {
                 $summary .= ' | omitidos: ' . $skipped;
             }
             clickfix_flash($summary);
         } else {
-            clickfix_flash('No se pudo guardar la investigacion con los IOCs nuevos.');
+            clickfix_flash('No se pudo guardar la investigaciÃ³n con los IOCs nuevos.');
         }
         clickfix_redirect('dashboard.php?page=intel&graph_id=' . $graphId);
     }
     if ($action === 'investigation_ioc_workbench') {
         if (!clickfix_user_has_min_role($actor, 'analyst_jr')) {
-            clickfix_flash('Permisos insuficientes para enrichment de investigacion.');
+            clickfix_flash('Permisos insuficientes para enrichment de investigaciÃ³n.');
             clickfix_redirect('dashboard.php?page=home&public=1');
         }
         $graphId = (int) ($_POST['graph_id'] ?? 0);
@@ -1788,7 +1953,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
                 (string) ($_POST['new_username'] ?? ''),
                 (string) ($_POST['new_password'] ?? ''),
                 (string) ($_POST['new_role'] ?? 'analyst_jr'),
-                ((string) ($_POST['new_verified'] ?? '1')) === '1',
+                ((string) ($_POST['new_verified'] ?? 1)) === '1',
                 (string) ($_POST['new_email'] ?? ''),
                 (string) ($_POST['new_lang'] ?? 'en')
             );
@@ -1807,7 +1972,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
             $pdo,
             (int) ($_POST['edit_user_id'] ?? 0),
             (string) ($_POST['edit_role'] ?? 'analyst_jr'),
-            ((string) ($_POST['edit_verified'] ?? '1')) === '1',
+            ((string) ($_POST['edit_verified'] ?? 1)) === '1',
             (string) ($_POST['edit_password'] ?? ''),
             (string) ($_POST['edit_email'] ?? ''),
             (string) ($_POST['edit_lang'] ?? 'en'),
@@ -2007,7 +2172,7 @@ $pageNeedsExtensionData = $canSrViewer && in_array($page, ['extensions', 'messag
 $pageNeedsExtensionMessages = $canSrViewer && $page === 'messaging';
 $pageNeedsDataCenter = $canSrViewer && $page === 'data_center';
 $pageNeedsReportPreview = $canAdminViewer && $page === 'reports';
-$pageNeedsScanReviewQueue = $canAdminViewer && $page === 'home';
+$pageNeedsScanReviewQueue = $canAdminViewer && in_array($page, ['home', 'ops'], true);
 $pageNeedsPendingOutsideData = $loggedIn && clickfix_user_has_min_role($user, 'analyst_jr') && in_array($page, ['home', 'analytics', 'lists'], true);
 $pageNeedsAnomalyData = $loggedIn && clickfix_user_has_min_role($user, 'analyst_jr') && in_array($page, ['home', 'analytics'], true);
 $pageNeedsProjectExposure = $canSrViewer && in_array($page, ['home', 'analytics'], true);
@@ -2038,6 +2203,7 @@ $appeals = $pageNeedsAppealsData ? clickfix_recent_appeals($pdo, 20) : [];
 $deleteRequests = $pageNeedsAppealsData ? clickfix_recent_delete_requests($pdo, 30) : [];
 $requestsPending = $pageNeedsRequestsData ? clickfix_recent_access_requests($pdo, 30, 'pending') : [];
 $requestsDenied = $pageNeedsRequestsData ? clickfix_recent_access_requests($pdo, 30, 'denied') : [];
+$requests = $pageNeedsRequestsData ? clickfix_recent_access_requests($pdo, 60, null) : [];
 $actions = $pageNeedsListData ? clickfix_recent_list_actions($pdo, 20) : [];
 $lists = [
     'blocklist' => [],
@@ -2105,6 +2271,10 @@ $selectedClientId = trim((string) ($_GET['client_id'] ?? ''));
 $extensionClientEvents = ($pageNeedsExtensionData && $page === 'extensions' && $selectedClientId !== '')
     ? clickfix_extension_client_events($pdo, $selectedClientId, 200)
     : [];
+$selectedClientBaselineHosts = ($pageNeedsExtensionData && $page === 'extensions' && $selectedClientId !== '')
+    ? clickfix_extension_client_baseline_hosts($pdo, $selectedClientId, 60)
+    : [];
+$globalBaselineCandidates = $pageNeedsExtensionData ? clickfix_baseline_global_candidates($pdo, 50) : [];
 $extensionLinksByClient = [];
 $extensionTargetsByUser = [];
 foreach ($extensionUserLinks as $linkRow) {
@@ -2154,6 +2324,106 @@ foreach ($extensionClients as &$ec) {
 }
 unset($ec);
 $selectedClientLinks = ($selectedClientId !== '' && isset($extensionLinksByClient[$selectedClientId])) ? $extensionLinksByClient[$selectedClientId] : [];
+$extensionFingerprintGroups = [];
+$extensionIpGroups = [];
+$extensionVersionGroups = [];
+$extensionFingerprintCounts = [];
+foreach ($extensionClients as &$ec) {
+    $version = trim((string) ($ec['extension_version'] ?? ''));
+    $channel = trim((string) ($ec['install_channel'] ?? ''));
+    $source = trim((string) ($ec['install_source'] ?? ''));
+    $linkedCount = (int) ($ec['linked_user_count'] ?? 0);
+    $userAgent = trim((string) ($ec['user_agent'] ?? ''));
+    $fingerprintParts = array_filter([$version, $channel, $source, $userAgent], static fn($value): bool => trim((string) $value) !== '');
+    $fingerprintSeed = implode('|', $fingerprintParts);
+    $fingerprintKey = $fingerprintSeed !== '' ? substr(hash('sha1', $fingerprintSeed), 0, 12) : 'sin_firma';
+    $ec['fingerprint_key'] = $fingerprintKey;
+    $ec['fingerprint_label'] = $fingerprintSeed !== '' ? strtoupper($fingerprintKey) : 'Sin firma';
+
+    if (!isset($extensionFingerprintGroups[$fingerprintKey])) {
+        $extensionFingerprintGroups[$fingerprintKey] = [
+            'fingerprint' => $ec['fingerprint_label'],
+            'version' => $version !== '' ? $version : '-',
+            'channel' => $channel !== '' ? $channel : '-',
+            'source' => $source !== '' ? $source : '-',
+            'client_count' => 0,
+            'total_events' => 0,
+            'total_blocks' => 0,
+            'linked_users' => 0,
+            'client_ids' => [],
+        ];
+    }
+    $extensionFingerprintGroups[$fingerprintKey]['client_count']++;
+    $extensionFingerprintGroups[$fingerprintKey]['total_events'] += (int) ($ec['total_events'] ?? 0);
+    $extensionFingerprintGroups[$fingerprintKey]['total_blocks'] += (int) ($ec['total_blocks'] ?? 0);
+    $extensionFingerprintGroups[$fingerprintKey]['linked_users'] += $linkedCount;
+    $extensionFingerprintGroups[$fingerprintKey]['client_ids'][] = (string) ($ec['client_id'] ?? 'unknown');
+    $extensionFingerprintCounts[$fingerprintKey] = (int) ($extensionFingerprintGroups[$fingerprintKey]['client_count'] ?? 0);
+
+    $versionKey = $version !== '' ? $version : 'desconocida';
+    if (!isset($extensionVersionGroups[$versionKey])) {
+        $extensionVersionGroups[$versionKey] = [
+            'version' => $versionKey,
+            'client_count' => 0,
+            'total_events' => 0,
+            'total_blocks' => 0,
+        ];
+    }
+    $extensionVersionGroups[$versionKey]['client_count']++;
+    $extensionVersionGroups[$versionKey]['total_events'] += (int) ($ec['total_events'] ?? 0);
+    $extensionVersionGroups[$versionKey]['total_blocks'] += (int) ($ec['total_blocks'] ?? 0);
+
+    $ipHistoryRaw = trim((string) ($ec['ip_history'] ?? ''));
+    if ($ipHistoryRaw !== '') {
+        $seenIps = [];
+        foreach (preg_split('/\s*,\s*/', $ipHistoryRaw) as $ipValue) {
+            $ip = trim((string) $ipValue);
+            if ($ip === '' || isset($seenIps[$ip])) {
+                continue;
+            }
+            $seenIps[$ip] = true;
+            if (!isset($extensionIpGroups[$ip])) {
+                $extensionIpGroups[$ip] = [
+                    'ip' => $ip,
+                    'client_count' => 0,
+                    'total_events' => 0,
+                    'total_blocks' => 0,
+                    'client_ids' => [],
+                ];
+            }
+            $extensionIpGroups[$ip]['client_count']++;
+            $extensionIpGroups[$ip]['total_events'] += (int) ($ec['total_events'] ?? 0);
+            $extensionIpGroups[$ip]['total_blocks'] += (int) ($ec['total_blocks'] ?? 0);
+            $extensionIpGroups[$ip]['client_ids'][] = (string) ($ec['client_id'] ?? 'unknown');
+        }
+    }
+}
+unset($ec);
+usort($extensionClients, static function (array $a, array $b) use ($extensionFingerprintCounts): int {
+    $countA = (int) ($extensionFingerprintCounts[(string) ($a['fingerprint_key'] ?? '')] ?? 0);
+    $countB = (int) ($extensionFingerprintCounts[(string) ($b['fingerprint_key'] ?? '')] ?? 0);
+    if ($countA !== $countB) {
+        return $countB <=> $countA;
+    }
+    return strcmp((string) ($b['last_seen'] ?? ''), (string) ($a['last_seen'] ?? ''));
+});
+uasort($extensionFingerprintGroups, static function (array $a, array $b): int {
+    $clientsCmp = (int) ($b['client_count'] ?? 0) <=> (int) ($a['client_count'] ?? 0);
+    if ($clientsCmp !== 0) {
+        return $clientsCmp;
+    }
+    return (int) ($b['total_events'] ?? 0) <=> (int) ($a['total_events'] ?? 0);
+});
+uasort($extensionIpGroups, static function (array $a, array $b): int {
+    $clientsCmp = (int) ($b['client_count'] ?? 0) <=> (int) ($a['client_count'] ?? 0);
+    if ($clientsCmp !== 0) {
+        return $clientsCmp;
+    }
+    return (int) ($b['total_events'] ?? 0) <=> (int) ($a['total_events'] ?? 0);
+});
+uasort($extensionVersionGroups, static function (array $a, array $b): int {
+    return (int) ($b['client_count'] ?? 0) <=> (int) ($a['client_count'] ?? 0);
+});
 $messagingUserTargets = array_values($extensionTargetsByUser);
 usort($messagingUserTargets, static function (array $a, array $b): int {
     return strcmp((string) ($a['username'] ?? ''), (string) ($b['username'] ?? ''));
@@ -2217,6 +2487,7 @@ if ($canAdminViewer && $page === 'reports') {
         ];
     }
 }
+$publicPreviewSettings = clickfix_public_preview_settings($pdo);
 $internalAdSettings = clickfix_internal_ad_settings($pdo);
 $internalAdsAdminList = ($canAdminViewer && $page === 'configs') ? clickfix_internal_ads_recent($pdo, 160) : [];
 $dashboardAdRole = $loggedIn ? $viewerRole : 'guest';
@@ -2334,6 +2605,15 @@ if ($loggedIn && $page === 'intel') {
     if (!$intelWorkspaceActive) {
         $intelSelectionReports = clickfix_recent_reports($pdo, 18);
     }
+    $llmProfiles = [];
+    $autoInvJobs = [];
+    if (clickfix_has_table($pdo, 'user_llm_profiles')) {
+        require_once __DIR__ . '/src/clickfix_llm.php';
+        clickfix_llm_ensure_table($pdo);
+        $llmProfiles = clickfix_llm_configured_providers($pdo, (int) ($user['id'] ?? 0));
+        require_once __DIR__ . '/src/clickfix_auto_investigation.php';
+        $autoInvJobs = clickfix_auto_investigation_recent_jobs($pdo, 20);
+    }
 }
 if ($pageNeedsApiSettings) {
     $intelUserApiKeys = clickfix_user_api_keys($pdo, (int) ($user['id'] ?? 0), $showApiUi);
@@ -2410,6 +2690,7 @@ if ($loggedIn && $page === 'community') {
     }
 }
 $enableHomeGeoPanels = $loggedIn && $page === 'home';
+$enableSidebarGeoMap = true;
 $profileTargetId = (int) ($_GET['user_id'] ?? 0);
 if ($page === 'profile' && $profileTargetId <= 0 && $loggedIn) {
     $profileTargetId = (int) ($user['id'] ?? 0);
@@ -3037,7 +3318,7 @@ function cfintel_output_ioc_export(array $investigation, array $targets, string 
 {
     $rows = cfintel_export_rows($targets);
     if (empty($rows)) {
-        clickfix_flash('No hay IOCs exportables en esta investigacion.');
+        clickfix_flash('No hay IOCs exportables en esta investigaciÃ³n.');
         clickfix_redirect('dashboard.php?page=intel&graph_id=' . (int) ($investigation['id'] ?? 0));
     }
 
@@ -3446,16 +3727,16 @@ function cft(string $key): string
     $dict = [
         'es' => [
             'nav_home' => 'Inicio',
-            'nav_search' => 'Busqueda',
+            'nav_search' => 'B?squeda',
             'nav_coverage' => 'Cobertura',
             'nav_about' => 'Acerca',
             'nav_access' => 'Acceso',
             'nav_profile' => 'Perfil',
             'nav_settings' => 'Ajustes',
             'nav_ops' => 'Operaciones',
-            'nav_graphs' => 'Graficos',
+            'nav_graphs' => 'GrÃ¡ficos',
             'nav_intel_stats' => 'Intel Stats',
-            'nav_investigation' => 'Investigacion',
+            'nav_investigation' => 'InvestigaciÃ³n',
             'nav_community' => 'Community',
             'nav_extensions' => 'Extensiones',
             'nav_lists' => 'Listas',
@@ -3466,19 +3747,19 @@ function cft(string $key): string
             'nav_reports' => 'Reportes',
             'nav_users' => 'Usuarios',
             'lang_label' => 'Idioma',
-            'lang_es' => 'Español',
+            'lang_es' => 'EspaÃ±ol',
             'lang_en' => 'English',
             'lang_ca' => 'Catala',
             'lang_de' => 'Aleman',
             'lang_fr' => 'Frances',
             'lang_it' => 'Italiano',
-            'label_module' => 'Modulo',
+            'label_module' => 'MÃ³dulo',
             'label_role' => 'Rol',
             'dc_title' => 'Centro de datos',
-            'dc_sub' => 'Estado de tablas, volumen y consulta rapida del contenido operacional.',
+            'dc_sub' => 'Estado de tablas, volumen y consulta rÃ¡pida del contenido operacional.',
             'msg_title' => 'Mensajeria para extensiones',
             'cfg_title' => 'Editor de score config',
-            'reports_title' => 'Reportes automaticos',
+            'reports_title' => 'Reportes automÃ¡ticos',
             'support_title' => 'Apoya el proyecto',
             'support_sub' => 'Ayuda a mantener ClickFix con donaciones o patrocinio.',
             'support_ads' => 'Patrocinado',
@@ -3487,7 +3768,7 @@ function cft(string $key): string
             'support_kofi' => 'Invitar un cafe (Ko-fi)',
             'support_stripe' => 'Aportar con Stripe',
             'intel_api_keys_title' => 'API keys privadas',
-            'intel_api_keys_sub' => 'Solo tu usuario puede ver, modificar y usar estas claves en investigacion.',
+            'intel_api_keys_sub' => 'Solo tu usuario puede ver, modificar y usar estas claves en investigaciÃ³n.',
             'intel_api_keys_in_settings' => 'Las API keys privadas se gestionan en Ajustes.',
             'intel_api_key_save' => 'Guardar clave',
             'intel_api_key_delete' => 'Eliminar clave',
@@ -3498,9 +3779,9 @@ function cft(string $key): string
             'intel_api_lookup_target' => 'Indicador (dominio, IP o URL)',
             'intel_api_lookup_button' => 'Consultar',
             'intel_api_lookup_result' => 'Resultado de consulta',
-            'intel_iocs_title' => 'IOCs detectados en esta investigacion',
+            'intel_iocs_title' => 'IOCs detectados en esta investigaciÃ³n',
             'intel_iocs_sub' => 'IPs, dominios y URLs extraidos del dominio principal, resumen, nodos, tags y notas. Puedes lanzarlos directamente a proveedores sin copiar/pegar.',
-            'intel_iocs_empty' => 'No se han detectado IOCs reutilizables todavia dentro del grafo actual.',
+            'intel_iocs_empty' => 'No se han detectado IOCs reutilizables todavÃ­a dentro del grafo actual.',
             'intel_manual_ioc_title' => 'Anadir IOC manualmente',
             'intel_manual_ioc_sub' => 'Se guarda como nodo del grafo y aparece en esta lista si es dominio, IP o URL.',
             'intel_manual_ioc_label' => 'IOC',
@@ -3511,19 +3792,19 @@ function cft(string $key): string
             'intel_lookup_fallback_sub' => 'Selecciona proveedor e indicador (dominio, IP o URL).',
             'intel_briefing_kicker' => 'Briefing',
             'intel_briefing_title' => 'Contexto principal del caso',
-            'intel_briefing_sub' => 'Define el foco, la narrativa analitica y los datos clave antes de enriquecer o compartir.',
+            'intel_briefing_sub' => 'Define el foco, la narrativa analÃ­tica y los datos clave antes de enriquecer o compartir.',
             'intel_autosave_label' => 'Autosave:',
-            'intel_briefing_title_label' => 'Titulo',
+            'intel_briefing_title_label' => 'Título',
             'intel_briefing_domain_label' => 'Dominio principal',
             'intel_briefing_domain_placeholder' => 'ejemplo.com',
             'intel_briefing_verdict_label' => 'Veredicto',
             'intel_briefing_tags_label' => 'Tags globales',
             'intel_briefing_tags_placeholder' => 'phishing, fake-captcha, powershell',
-            'intel_briefing_summary_label' => 'Resumen de la investigacion',
+            'intel_briefing_summary_label' => 'Resumen de la investigaciÃ³n',
             'intel_briefing_summary_placeholder' => 'Explica por que se considera malicioso o no.',
-            'intel_briefing_save' => 'Guardar investigacion',
+            'intel_briefing_save' => 'Guardar investigaciÃ³n',
             'intel_enrichment_kicker' => 'Enrichment',
-            'intel_enrichment_title' => 'Fuentes de investigacion',
+            'intel_enrichment_title' => 'Fuentes de investigaciÃ³n',
             'intel_enrichment_sub_full' => 'Gestion de credenciales personales, pivotes y consultas historicas de enrichment.',
             'intel_enrichment_sub_lite' => 'Consulta proveedores de inteligencia sin exponer credenciales en interfaz.',
             'intel_platform_api_title' => 'API de plataforma (con API key)',
@@ -3532,35 +3813,37 @@ function cft(string $key): string
             'intel_platform_api_sub_line3' => 'Documentacion:',
             'intel_platform_api_docs' => 'API INTEGRATIONS',
             'intel_platform_api_new_title' => 'API key nueva (se muestra una sola vez)',
-            'intel_platform_api_new_sub' => 'Copiala ahora y guardala en un vault seguro. No se volvera a mostrar completa.',
+            'intel_platform_api_new_sub' => 'CÃ³piala ahora y guÃ¡rdala en un vault seguro. No se volvera a mostrar completa.',
             'intel_platform_api_label' => 'Etiqueta',
-            'intel_platform_api_expires' => 'Expira en dias (1-365)',
+            'intel_platform_api_expires' => 'Expira en dÃ­as (1-365)',
             'intel_platform_api_rpm' => 'Rate limit RPM (30-2000)',
             'intel_platform_api_generate' => 'Generar API key segura',
             'intel_platform_api_hidden' => 'La gestion manual de credenciales y la API de plataforma estan ocultas en esta vista.',
             'announce_title' => 'Anuncios operativos',
             'announce_sub' => 'Lateral, discreto y no intrusivo.',
-            'announce_focus_note' => 'Modo investigacion activo: el panel se muestra minimizado para mantener el foco.',
+            'announce_focus_note' => 'Modo investigaciÃ³n activo: el panel se muestra minimizado para mantener el foco.',
             'announce_empty' => 'No hay anuncios activos.',
             'announce_until' => 'hasta',
             'announce_guest_title' => 'Patrocinios discretos',
-            'announce_guest_text' => 'Los anuncios se muestran solo en el lateral para no interrumpir analisis ni investigaciones.',
-            'review_pending' => 'pending - pendiente de revision',
+            'announce_guest_text' => 'Los anuncios se muestran solo en el lateral para no interrumpir an?lisis ni investigaciones.',
+            'review_pending' => 'pending - pendiente de revisiÃ³n',
             'review_accepted' => 'accepted - malicioso confirmado (ilegitimo)',
             'review_rejected' => 'rejected - legitimo o falso positivo',
-            'review_legend_title' => 'Guia de revision',
-            'review_legend_pending' => 'pending: evento aun no validado por analista.',
+            'review_allowlisted' => 'allowlisted - enviar a lista blanca',
+            'review_legend_title' => 'Guia de revisiÃ³n',
+            'review_legend_pending' => 'pending: evento aÃºn no validado por analista.',
             'review_legend_accepted' => 'accepted: la alerta se confirma como amenaza real (evento ilegitimo/malicioso).',
             'review_legend_rejected' => 'rejected: la alerta se marca como legitima o falso positivo.',
+            'review_legend_allowlisted' => 'allowlisted: el dominio se considera legitimo y se manda a allowlist.',
             'about_project_title' => 'Mision y enfoque',
             'about_project_intro' => 'ClickFix Mitigator es una plataforma defensiva para detectar, contener y analizar ataques basados en ingenieria social web (ClickFix y variantes de ejecucion guiada).',
             'about_project_p1' => 'Diseno orientado a operaciones reales: baja friccion para usuario final y alta trazabilidad para equipos SOC.',
-            'about_project_p2' => 'Cobertura integral: extension, backend de correlacion, workflows de triage, evidencias y analitica operacional.',
-            'about_project_p3' => 'Modelo de madurez: desde prevencion inmediata en navegador hasta investigacion profunda con contexto historico.',
-            'about_project_p4' => 'Principio de seguridad: minimo privilegio, control por roles, reduccion de superficie de ataque y auditoria de acciones.',
+            'about_project_p2' => 'Cobertura integral: extension, backend de correlaciÃ³n, workflows de triage, evidencias y analÃ­tica operacional.',
+            'about_project_p3' => 'Modelo de madurez: desde prevenciÃ³n inmediata en navegador hasta investigaciÃ³n profunda con contexto histÃ³rico.',
+            'about_project_p4' => 'Principio de seguridad: mÃ­nimo privilegio, control por roles, reducciÃ³n de superficie de ataque y auditorÃ­a de acciones.',
             'about_project_p5' => 'Objetivo de negocio: reducir riesgo operativo, acelerar respuesta a incidentes y mejorar la resiliencia de usuarios y organizaciones.',
             'about_owner_title' => 'Direccion del proyecto y contacto',
-            'about_owner_text' => 'Proyecto mantenido activamente con foco en calidad tecnica, hardening continuo y utilidad practica para investigacion y defensa.',
+            'about_owner_text' => 'Proyecto mantenido activamente con foco en calidad t?cnica, hardening continuo y utilidad practica para investigaciÃ³n y defensa.',
             'about_contact_links' => 'Canales oficiales',
         ],
         'en' => [
@@ -3667,10 +3950,12 @@ function cft(string $key): string
             'review_pending' => 'pending - pending analyst review',
             'review_accepted' => 'accepted - confirmed malicious (illegitimate)',
             'review_rejected' => 'rejected - legitimate or false positive',
+            'review_allowlisted' => 'allowlisted - send to allowlist',
             'review_legend_title' => 'Review guide',
             'review_legend_pending' => 'pending: event has not been validated by an analyst yet.',
             'review_legend_accepted' => 'accepted: alert is confirmed as a real threat (illegitimate/malicious event).',
             'review_legend_rejected' => 'rejected: alert is considered legitimate activity or a false positive.',
+            'review_legend_allowlisted' => 'allowlisted: domain is considered legitimate and sent to allowlist.',
             'about_project_title' => 'Mission and approach',
             'about_project_intro' => 'ClickFix Mitigator is a defensive platform to detect, contain, and investigate web social-engineering attacks (ClickFix and guided execution variants).',
             'about_project_p1' => 'Built for real operations: low friction for end users and high traceability for SOC teams.',
@@ -3813,7 +4098,7 @@ function cfworkflowlabel(string $status, string $lang): string
             'draft' => 'Borrador',
             'jr_submitted' => 'Enviado por JR',
             'mid_verified' => 'Validado por Mid',
-            'sr_review' => 'Revision Senior',
+            'sr_review' => 'RevisiÃ³n Senior',
             'verified_public' => 'Verificada Publica',
             'verified_internal' => 'Verificada Interna',
             'rejected' => 'Rechazada',
@@ -3823,7 +4108,7 @@ function cfworkflowlabel(string $status, string $lang): string
             'jr_submitted' => 'Enviat per JR',
             'mid_verified' => 'Validat per Mid',
             'sr_review' => 'Revisio Senior',
-            'verified_public' => 'Verificada publica',
+            'verified_public' => 'Verificada pÃºblica',
             'verified_internal' => 'Verificada interna',
             'rejected' => 'Rebutjada',
         ],
@@ -3885,18 +4170,18 @@ function cfdashboardliteralmaps(): array
     }
     $maps = ['ca' => [], 'de' => [], 'fr' => []];
     $phrases = [
-        'Cerrar sesion' => ['ca' => 'Tancar sessio', 'de' => 'Abmelden', 'fr' => 'Se deconnecter'],
+        'Cerrar SesiÃ³n' => ['ca' => 'Tancar sessio', 'de' => 'Abmelden', 'fr' => 'Se deconnecter'],
         'ClickFix Command Center' => ['ca' => 'ClickFix Centre de Comandament', 'de' => 'ClickFix Command Center', 'fr' => 'ClickFix Centre de Commandement'],
         'Deteccion, explicabilidad y respuesta en una sola superficie de control.' => ['ca' => 'Deteccio, explicabilitat i resposta en una sola superficie de control.', 'de' => 'Erkennung, Erklarbarkeit und Reaktion auf einer zentralen Oberflache.', 'fr' => 'Detection, explicabilite et reponse sur une surface unique de pilotage.'],
-        'Busqueda forense' => ['ca' => 'Cerca forense', 'de' => 'Forensische Suche', 'fr' => 'Recherche forensique'],
+        'B?squeda forense' => ['ca' => 'Cerca forense', 'de' => 'Forensische Suche', 'fr' => 'Recherche forensique'],
         'Operaciones' => ['ca' => 'Operacions', 'de' => 'Betrieb', 'fr' => 'Operations'],
-        'Investigacion' => ['ca' => 'Investigacio', 'de' => 'Untersuchung', 'fr' => 'Investigation'],
-        'Inicio rapido' => ['ca' => 'Inici rapid', 'de' => 'Schnellstart', 'fr' => 'Demarrage rapide'],
+        'InvestigaciÃ³n' => ['ca' => 'Investigacio', 'de' => 'Untersuchung', 'fr' => 'Investigation'],
+        'Inicio r?pido' => ['ca' => 'Inici rapid', 'de' => 'Schnellstart', 'fr' => 'Demarrage rapide'],
         'Workspace autenticado' => ['ca' => 'Workspace autenticat', 'de' => 'Authentifizierter Workspace', 'fr' => 'Workspace authentifie'],
-        'Vista publica' => ['ca' => 'Vista publica', 'de' => 'Offentliche Ansicht', 'fr' => 'Vue publique'],
+        'Vista pÃºblica' => ['ca' => 'Vista pÃºblica', 'de' => 'Offentliche Ansicht', 'fr' => 'Vue publique'],
         'alertas totales' => ['ca' => 'alertes totals', 'de' => 'gesamtwarnungen', 'fr' => 'alertes totales'],
         'bloqueos totales' => ['ca' => 'bloquejos totals', 'de' => 'gesamtblockierungen', 'fr' => 'blocages totaux'],
-        'dominios unicos' => ['ca' => 'dominis unics', 'de' => 'eindeutige Domains', 'fr' => 'domaines uniques'],
+        'dominios Ãºnicos' => ['ca' => 'dominis unics', 'de' => 'eindeutige Domains', 'fr' => 'domaines uniques'],
         'usuarios 24h' => ['ca' => 'usuaris 24h', 'de' => 'Benutzer 24h', 'fr' => 'utilisateurs 24h'],
         'alertas 24h' => ['ca' => 'alertes 24h', 'de' => 'Warnungen 24h', 'fr' => 'alertes 24h'],
         'bloqueos 24h' => ['ca' => 'bloquejos 24h', 'de' => 'Blockierungen 24h', 'fr' => 'blocages 24h'],
@@ -3905,24 +4190,24 @@ function cfdashboardliteralmaps(): array
         'nuevos dominios 24h' => ['ca' => 'nous dominis 24h', 'de' => 'neue Domains 24h', 'fr' => 'nouveaux domaines 24h'],
         'clientes ext 24h' => ['ca' => 'clients ext 24h', 'de' => 'Erweiterungs-Clients 24h', 'fr' => 'clients extension 24h'],
         'revisadas' => ['ca' => 'revisades', 'de' => 'gepruft', 'fr' => 'revues'],
-        'cobertura revision' => ['ca' => 'cobertura revisio', 'de' => 'Review-Abdeckung', 'fr' => 'couverture revue'],
+        'cobertura revisiÃ³n' => ['ca' => 'cobertura revisio', 'de' => 'Review-Abdeckung', 'fr' => 'couverture revue'],
         'sitios manuales' => ['ca' => 'llocs manuals', 'de' => 'manuelle Sites', 'fr' => 'sites manuels'],
         'pendientes' => ['ca' => 'pendents', 'de' => 'ausstehend', 'fr' => 'en attente'],
         'Pendientes reales (fuera de allowlist/blocklist)' => ['ca' => 'Pendents reals (fora de allowlist/blocklist)', 'de' => 'Reale offene Falle (ausserhalb allowlist/blocklist)', 'fr' => 'En attente reels (hors allowlist/blocklist)'],
-        'Ultimo escaneo' => ['ca' => 'Ultim escaneig', 'de' => 'Letzter Scan', 'fr' => 'Dernier scan'],
+        'Último escaneo' => ['ca' => 'Ultim escaneig', 'de' => 'Letzter Scan', 'fr' => 'Dernier scan'],
         'Sin capturas disponibles.' => ['ca' => 'Sense captures disponibles.', 'de' => 'Keine Screenshots verfugbar.', 'fr' => 'Aucune capture disponible.'],
         'Antes' => ['ca' => 'Abans', 'de' => 'Vorher', 'fr' => 'Avant'],
         'Despues' => ['ca' => 'Despres', 'de' => 'Nachher', 'fr' => 'Apres'],
         'Ver aqui (manual)' => ['ca' => 'Veure aqui (manual)', 'de' => 'Hier ansehen (manuell)', 'fr' => 'Voir ici (manuel)'],
         'Descargar' => ['ca' => 'Descarregar', 'de' => 'Herunterladen', 'fr' => 'Telecharger'],
-        'Guardar revision' => ['ca' => 'Desar revisio', 'de' => 'Review speichern', 'fr' => 'Enregistrer la revue'],
+        'Guardar revisiÃ³n' => ['ca' => 'Desar revisio', 'de' => 'Review speichern', 'fr' => 'Enregistrer la revue'],
         'Eliminar captura' => ['ca' => 'Eliminar captura', 'de' => 'Screenshot loschen', 'fr' => 'Supprimer capture'],
-        'Aprobar y usar en publico' => ['ca' => 'Aprovar i usar en public', 'de' => 'Freigeben und offentlich nutzen', 'fr' => 'Approuver et utiliser en public'],
+        'Aprobar y usar en PÃºblico' => ['ca' => 'Aprovar i usar en public', 'de' => 'Freigeben und offentlich nutzen', 'fr' => 'Approuver et utiliser en public'],
         'Mapa usuarios extension' => ['ca' => 'Mapa usuaris extensio', 'de' => 'Karte Erweiterungs-Benutzer', 'fr' => 'Carte utilisateurs extension'],
         'Mapa webs detectadas' => ['ca' => 'Mapa webs detectades', 'de' => 'Karte erkannter Webseiten', 'fr' => 'Carte des sites detectes'],
-        'Graficos globales (14 dias)' => ['ca' => 'Grafics globals (14 dies)', 'de' => 'Globale Diagramme (14 Tage)', 'fr' => 'Graphiques globaux (14 jours)'],
+        'GrÃ¡ficos globales (14 das)' => ['ca' => 'Grafics globals (14 dies)', 'de' => 'Globale Diagramme (14 Tage)', 'fr' => 'Graphiques globaux (14 jours)'],
         'Tendencia diaria' => ['ca' => 'Tendencia diaria', 'de' => 'Taglicher Trend', 'fr' => 'Tendance quotidienne'],
-        'Ratio de bloqueo por dia' => ['ca' => 'Ratio de bloqueig per dia', 'de' => 'Blockierungsquote pro Tag', 'fr' => 'Ratio de blocage par jour'],
+        'Ratio de bloqueo por dÃ­a' => ['ca' => 'Ratio de bloqueig per dia', 'de' => 'Blockierungsquote pro Tag', 'fr' => 'Ratio de blocage par jour'],
         'No hay capturas pendientes.' => ['ca' => 'No hi ha captures pendents.', 'de' => 'Keine ausstehenden Screenshots.', 'fr' => 'Aucune capture en attente.'],
         'Fuentes de inteligencia' => ['ca' => 'Fonts dintel-ligencia', 'de' => 'Intelligence-Quellen', 'fr' => 'Sources de renseignement'],
         'Cobertura de amenazas' => ['ca' => 'Cobertura damenaces', 'de' => 'Bedrohungsabdeckung', 'fr' => 'Couverture des menaces'],
@@ -3934,36 +4219,36 @@ function cfdashboardliteralmaps(): array
         'Mi cuenta' => ['ca' => 'El meu compte', 'de' => 'Mein Konto', 'fr' => 'Mon compte'],
         'Idioma por defecto' => ['ca' => 'Idioma per defecte', 'de' => 'Standardsprache', 'fr' => 'Langue par defaut'],
         'Guardar idioma' => ['ca' => 'Desar idioma', 'de' => 'Sprache speichern', 'fr' => 'Enregistrer la langue'],
-        'Cambiar mi contraseña' => ['ca' => 'Canviar la meva contrasenya', 'de' => 'Mein Passwort andern', 'fr' => 'Changer mon mot de passe'],
+        'Cambiar mi contraseÃ±a' => ['ca' => 'Canviar la meva contrasenya', 'de' => 'Mein Passwort andern', 'fr' => 'Changer mon mot de passe'],
         'Perfil no encontrado' => ['ca' => 'Perfil no trobat', 'de' => 'Profil nicht gefunden', 'fr' => 'Profil introuvable'],
         'Editar perfil' => ['ca' => 'Editar perfil', 'de' => 'Profil bearbeiten', 'fr' => 'Modifier profil'],
         'Guardar perfil' => ['ca' => 'Desar perfil', 'de' => 'Profil speichern', 'fr' => 'Enregistrer profil'],
-        'Investigacion no disponible' => ['ca' => 'Investigacio no disponible', 'de' => 'Untersuchung nicht verfugbar', 'fr' => 'Investigation non disponible'],
-        'Grafo de investigacion' => ['ca' => 'Graf dinvestigacio', 'de' => 'Untersuchungsgraph', 'fr' => 'Graphe dinvestigation'],
+        'InvestigaciÃ³n no disponible' => ['ca' => 'Investigacio no disponible', 'de' => 'Untersuchung nicht verfugbar', 'fr' => 'Investigation non disponible'],
+        'Grafo de investigaciÃ³n' => ['ca' => 'Graf dinvestigacio', 'de' => 'Untersuchungsgraph', 'fr' => 'Graphe dinvestigation'],
         'Detalle del nodo seleccionado' => ['ca' => 'Detall del node seleccionat', 'de' => 'Details des ausgewahlten Knotens', 'fr' => 'Detail du noeud selectionne'],
         'Sin nodo seleccionado.' => ['ca' => 'Cap node seleccionat.', 'de' => 'Kein Knoten ausgewahlt.', 'fr' => 'Aucun noeud selectionne.'],
         'Investigaciones de sitios' => ['ca' => 'Investigacions de llocs', 'de' => 'Site-Untersuchungen', 'fr' => 'Investigations de sites'],
         'Case queue' => ['ca' => 'Cua de casos', 'de' => 'Fall-Warteschlange', 'fr' => 'File de cas'],
-        'Nueva investigacion' => ['ca' => 'Nova investigacio', 'de' => 'Neue Untersuchung', 'fr' => 'Nouvelle investigation'],
-        'Guardar investigacion' => ['ca' => 'Desar investigacio', 'de' => 'Untersuchung speichern', 'fr' => 'Enregistrer investigation'],
+        'Nueva investigaciÃ³n' => ['ca' => 'Nova investigacio', 'de' => 'Neue Untersuchung', 'fr' => 'Nouvelle investigation'],
+        'Guardar investigaciÃ³n' => ['ca' => 'Desar investigacio', 'de' => 'Untersuchung speichern', 'fr' => 'Enregistrer investigation'],
         'Eventos recientes' => ['ca' => 'Esdeveniments recents', 'de' => 'Neueste Ereignisse', 'fr' => 'Evenements recents'],
         'Sin eventos recientes.' => ['ca' => 'Sense esdeveniments recents.', 'de' => 'Keine aktuellen Ereignisse.', 'fr' => 'Aucun evenement recent.'],
         'Motivos detectados' => ['ca' => 'Motius detectats', 'de' => 'Erkannte Grunde', 'fr' => 'Motifs detectes'],
         'Snippets detectados' => ['ca' => 'Snippets detectats', 'de' => 'Erkannte Snippets', 'fr' => 'Snippets detectes'],
         'Ver relacionadas' => ['ca' => 'Veure relacionades', 'de' => 'Verwandte anzeigen', 'fr' => 'Voir liees'],
         'Bloquear dominio' => ['ca' => 'Bloquejar domini', 'de' => 'Domain blockieren', 'fr' => 'Bloquer domaine'],
-        'Mandar a investigacion' => ['ca' => 'Enviar a investigacio', 'de' => 'Zur Untersuchung senden', 'fr' => 'Envoyer en investigation'],
-        'Generar investigacion' => ['ca' => 'Generar investigacio', 'de' => 'Untersuchung erzeugen', 'fr' => 'Generer investigation'],
-        'Eliminar deteccion' => ['ca' => 'Eliminar deteccio', 'de' => 'Erkennung loschen', 'fr' => 'Supprimer detection'],
+        'Mandar a investigaciÃ³n' => ['ca' => 'Enviar a investigacio', 'de' => 'Zur Untersuchung senden', 'fr' => 'Envoyer en investigation'],
+        'Generar investigaciÃ³n' => ['ca' => 'Generar investigacio', 'de' => 'Untersuchung erzeugen', 'fr' => 'Generer investigation'],
+        'Eliminar detecciÃ³n' => ['ca' => 'Eliminar detecciÃ³', 'de' => 'Erkennung lÃ¶schen', 'fr' => 'Supprimer la dÃ©tection'],
         'Capturas web (before/after)' => ['ca' => 'Captures web (before/after)', 'de' => 'Web-Screenshots (before/after)', 'fr' => 'Captures web (before/after)'],
         'Vista tabular clasica' => ['ca' => 'Vista tabular classica', 'de' => 'Klassische Tabellenansicht', 'fr' => 'Vue tabulaire classique'],
         'Solo pendientes' => ['ca' => 'Nomes pendents', 'de' => 'Nur ausstehend', 'fr' => 'Seulement en attente'],
         'Aplicar veredicto masivo' => ['ca' => 'Aplicar veredicte massiu', 'de' => 'Massenverdict anwenden', 'fr' => 'Appliquer verdict massif'],
-        'Graficos y metricas operativas' => ['ca' => 'Grafics i metriques operatives', 'de' => 'Operative Diagramme und Metriken', 'fr' => 'Graphiques et metriques operationnelles'],
-        'Detector de anomalias (24h vs baseline)' => ['ca' => 'Detector danomalies (24h vs baseline)', 'de' => 'Anomalie-Detektor (24h vs Baseline)', 'fr' => 'Detecteur danomalies (24h vs baseline)'],
+        'GrÃ¡ficos y mÃ©tricas operativas' => ['ca' => 'Grafics i metriques operatives', 'de' => 'Operative Diagramme und Metriken', 'fr' => 'Graphiques et metriques operationnelles'],
+        'Detector de anomalÃ­as (24h vs baseline)' => ['ca' => 'Detector danomalies (24h vs baseline)', 'de' => 'Anomalie-Detektor (24h vs Baseline)', 'fr' => 'Detecteur danomalies (24h vs baseline)'],
         'Keywords por ventana temporal' => ['ca' => 'Keywords per finestra temporal', 'de' => 'Keywords nach Zeitfenster', 'fr' => 'Keywords par fenetre temporelle'],
         'Predicciones de riesgo (Top)' => ['ca' => 'Prediccions de risc (Top)', 'de' => 'Risikovorhersagen (Top)', 'fr' => 'Predictions de risque (Top)'],
-        'Busqueda avanzada' => ['ca' => 'Cerca avancada', 'de' => 'Erweiterte Suche', 'fr' => 'Recherche avancee'],
+        'B?squeda avanzada' => ['ca' => 'Cerca avancada', 'de' => 'Erweiterte Suche', 'fr' => 'Recherche avancee'],
         'Gestion de listas' => ['ca' => 'Gestio de llistes', 'de' => 'Listenverwaltung', 'fr' => 'Gestion des listes'],
         'Historial de mensajes' => ['ca' => 'Historial de missatges', 'de' => 'Nachrichtenverlauf', 'fr' => 'Historique des messages'],
         'Limpiar historial' => ['ca' => 'Netejar historial', 'de' => 'Verlauf leeren', 'fr' => 'Nettoyer historique'],
@@ -3971,8 +4256,8 @@ function cfdashboardliteralmaps(): array
         'Solicitudes de acceso' => ['ca' => 'Sol-licituds dacces', 'de' => 'Zugriffsanfragen', 'fr' => 'Demandes dacces'],
         'Nuevo usuario' => ['ca' => 'Nou usuari', 'de' => 'Neuer Benutzer', 'fr' => 'Nouvel utilisateur'],
         'Crear usuario' => ['ca' => 'Crear usuari', 'de' => 'Benutzer erstellen', 'fr' => 'Creer utilisateur'],
-        'Radar rapido' => ['ca' => 'Radar rapid', 'de' => 'Schnellradar', 'fr' => 'Radar rapide'],
-        'Top paises' => ['ca' => 'Top paisos', 'de' => 'Top Lander', 'fr' => 'Top pays'],
+        'Radar rÃ¡pido' => ['ca' => 'Radar rapid', 'de' => 'Schnellradar', 'fr' => 'Radar rapide'],
+        'Top pases' => ['ca' => 'Top paÃ­sos', 'de' => 'Top Lander', 'fr' => 'Top pays'],
         'Sin datos recientes' => ['ca' => 'Sense dades recents', 'de' => 'Keine aktuellen Daten', 'fr' => 'Aucune donnee recente'],
         'Copiar' => ['ca' => 'Copiar', 'de' => 'Kopieren', 'fr' => 'Copier'],
         'Copiado' => ['ca' => 'Copiat', 'de' => 'Kopiert', 'fr' => 'Copie'],
@@ -3982,14 +4267,23 @@ function cfdashboardliteralmaps(): array
         'No se encontraron alertas relacionadas.' => ['ca' => 'No shan trobat alertes relacionades.', 'de' => 'Keine verwandten Warnungen gefunden.', 'fr' => 'Aucune alerte liee trouvee.'],
         'Sin contexto capturado.' => ['ca' => 'Sense context capturat.', 'de' => 'Kein erfasster Kontext.', 'fr' => 'Aucun contexte capture.'],
         'Cargando alertas relacionadas...' => ['ca' => 'Carregant alertes relacionades...', 'de' => 'Verwandte Warnungen werden geladen...', 'fr' => 'Chargement des alertes liees...'],
-        'Selecciona al menos una alerta para revision masiva.' => ['ca' => 'Selecciona almenys una alerta per a revisio massiva.', 'de' => 'Bitte mindestens eine Warnung fur Massenreview auswahlen.', 'fr' => 'Selectionnez au moins une alerte pour la revue massive.'],
+        'Selecciona al menos una alerta para revisiÃ³n masiva.' => ['ca' => 'Selecciona almenys una alerta per a revisio massiva.', 'de' => 'Bitte mindestens eine Warnung fur Massenreview auswahlen.', 'fr' => 'Selectionnez au moins une alerte pour la revue massive.'],
         'Mapa no disponible (Leaflet no cargado).' => ['ca' => 'Mapa no disponible (Leaflet no carregat).', 'de' => 'Karte nicht verfugbar (Leaflet nicht geladen).', 'fr' => 'Carte indisponible (Leaflet non charge).'],
         'No se pudo cargar geointeligencia de usuarios.' => ['ca' => 'No sha pogut carregar geointel-ligencia dusuaris.', 'de' => 'Geointelligence der Benutzer konnte nicht geladen werden.', 'fr' => 'Impossible de charger la geointelligence des utilisateurs.'],
         'No se pudo cargar geointeligencia de webs.' => ['ca' => 'No sha pogut carregar geointel-ligencia de webs.', 'de' => 'Geointelligence der Webseiten konnte nicht geladen werden.', 'fr' => 'Impossible de charger la geointelligence des sites.'],
         'Sin datos de geointeligencia.' => ['ca' => 'Sense dades de geointel-ligencia.', 'de' => 'Keine Geointelligence-Daten.', 'fr' => 'Aucune donnee de geointelligence.'],
     ];
 
+    $normalizedPhrases = [];
     foreach ($phrases as $source => $targets) {
+        $fixedTargets = [];
+        foreach ($targets as $targetLang => $translated) {
+            $fixedTargets[$targetLang] = clickfix_fix_locale_text((string) $translated);
+        }
+        $normalizedPhrases[clickfix_fix_locale_text((string) $source)] = $fixedTargets;
+    }
+
+    foreach ($normalizedPhrases as $source => $targets) {
         foreach ($maps as $targetLang => &$targetMap) {
             if (isset($targets[$targetLang])) {
                 $targetMap[$source] = (string) $targets[$targetLang];
@@ -4007,15 +4301,83 @@ function cfdashboardliteralmaps(): array
 function cfdashboardtranslateoutput(string $output, string $lang): string
 {
     $lang = strtolower(trim($lang));
+    $protected = cfdashboardprotectblocks($output);
+    $output = cfdashboardnormalizeoutputtext($protected['html']);
     if (!in_array($lang, ['ca', 'de', 'fr'], true)) {
-        return $output;
+        return cfdashboardrestoreblocks($output, $protected['blocks']);
     }
     $maps = cfdashboardliteralmaps();
     $map = $maps[$lang] ?? [];
     if (empty($map)) {
-        return $output;
+        return cfdashboardrestoreblocks($output, $protected['blocks']);
     }
-    return strtr($output, $map);
+    $translated = cfdashboardnormalizeoutputtext(strtr($output, $map));
+    return cfdashboardrestoreblocks($translated, $protected['blocks']);
+}
+
+function cfdashboardprotectblocks(string $html): array
+{
+    $blocks = [];
+    $index = 0;
+    $masked = preg_replace_callback(
+        '/<(script|style)\b[^>]*>.*?<\/\1>/is',
+        static function (array $matches) use (&$blocks, &$index): string {
+            $token = '__CFDASHBOARD_BLOCK_' . $index++ . '__';
+            $blocks[$token] = (string) ($matches[0] ?? '');
+            return $token;
+        },
+        $html
+    );
+    return [
+        'html' => is_string($masked) ? $masked : $html,
+        'blocks' => $blocks,
+    ];
+}
+
+function cfdashboardrestoreblocks(string $html, array $blocks): string
+{
+    if ($html === '' || empty($blocks)) {
+        return $html;
+    }
+    return strtr($html, $blocks);
+}
+
+function cfdashboardnormalizeoutputtext(string $output): string
+{
+    if ($output === '' || !class_exists('DOMDocument')) {
+        return clickfix_fix_locale_text($output);
+    }
+
+    $dom = new DOMDocument('1.0', 'UTF-8');
+    $previous = libxml_use_internal_errors(true);
+    $loaded = $dom->loadHTML('<?xml encoding="UTF-8">' . $output, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+
+    if (!$loaded) {
+        return clickfix_fix_locale_text($output);
+    }
+
+    $xpath = new DOMXPath($dom);
+    foreach ($xpath->query('//text()[not(ancestor::script) and not(ancestor::style)]') as $node) {
+        $node->nodeValue = clickfix_fix_locale_text((string) $node->nodeValue);
+    }
+
+    $attributes = ['title', 'placeholder', 'aria-label', 'alt', 'value', 'label'];
+    foreach ($xpath->query('//*[@title or @placeholder or @aria-label or @alt or @value or @label]') as $element) {
+        if (!$element instanceof DOMElement) {
+            continue;
+        }
+        foreach ($attributes as $attribute) {
+            if ($element->hasAttribute($attribute)) {
+                $element->setAttribute($attribute, clickfix_fix_locale_text($element->getAttribute($attribute)));
+            }
+        }
+    }
+
+    $normalized = $dom->saveHTML();
+    $normalized = preg_replace('/^<\?xml encoding="UTF-8"\?>/i', '', (string) $normalized);
+    return (string) $normalized;
 }
 
 function cfextractreasons(array $report): array
@@ -4357,2735 +4719,350 @@ $scriptDirUrl = str_replace('\\', '/', dirname((string) ($_SERVER['SCRIPT_NAME']
 if ($scriptDirUrl === '/' || $scriptDirUrl === '\\' || $scriptDirUrl === '.') {
     $scriptDirUrl = '';
 }
+$webRootUrl = ($scriptDirUrl === '') ? '' : rtrim(dirname($scriptDirUrl), '/');
+if ($webRootUrl === '.' || $webRootUrl === '/') {
+    $webRootUrl = '';
+}
+$templateBaseUrl = ($scriptDirUrl !== '' ? $scriptDirUrl : '') . '/assets/corona';
 $leafletCssUrl = ($scriptDirUrl !== '' ? $scriptDirUrl : '') . '/assets/vendor/leaflet/leaflet.css';
 $leafletJsUrl = ($scriptDirUrl !== '' ? $scriptDirUrl : '') . '/assets/vendor/leaflet/leaflet.js';
 $leafletWorldGeoJsonUrl = ($scriptDirUrl !== '' ? $scriptDirUrl : '') . '/assets/vendor/leaflet/data/world-countries.geo.json';
 $activeTheme = $loggedIn ? clickfix_profile_normalize_theme((string) ($user['profile_theme'] ?? 'default')) : 'default';
 $bodyClass = 'theme-' . $activeTheme;
+$bodyClass .= ' template-corona';
+$bodyClass .= ' page-' . preg_replace('/[^a-z0-9_-]/i', '-', strtolower((string) $page));
+$bodyClass .= $loggedIn ? ' state-authenticated' : ' state-public';
 ob_start();
+$pageTitles = ['home' => 'ClickFix Mitigator | Defense-first anti ClickFix', 'search' => 'Search', 'about' => 'About', 'coverage' => 'Coverage', 'access' => 'Access', 'investigation' => 'Investigation', 'profile' => 'Profile', 'clickfix_domain_list' => 'ClickFix Domain List', 'ops' => 'Operations', 'analytics' => 'Analytics', 'intel_stats' => 'Intel Stats', 'intel' => 'Intel Workspace', 'community' => 'Community', 'extensions' => 'Extensions', 'lists' => 'Lists', 'requests' => 'Requests', 'messaging' => 'Messaging', 'data_center' => 'Data Center', 'configs' => 'Configs', 'reports' => 'Reports', 'users' => 'Users', 'settings' => 'Settings', 'llm_settings' => 'LLM Profiles', 'auto_investigation' => 'Auto-Investigation', 'domain_feeds' => 'Domain Feeds'];
+$pageDescriptions = ['home' => 'ClickFix Mitigator monitors, detects and blocks ClickFix social engineering attacks. Real-time browser extension, clipboard protection, SOC dashboard and threat intelligence feed.', 'search' => 'Search across all ClickFix detections, domains, IOCs, and threat intelligence.', 'about' => 'About ClickFix Mitigator - the defense-first platform against ClickFix attacks. Built by Jordi Serrano.', 'coverage' => 'Active coverage map and detection pipeline for ClickFix Mitigator.', 'access' => 'Request access to the ClickFix Mitigator dashboard for threat analysts.', 'investigation' => 'Detailed ClickFix threat investigation with graph analysis, IOCs, and MITRE ATT&CK mapping.', 'clickfix_domain_list' => 'Complete list of known ClickFix-related domains from URLHaus, ThreatFox, Carson, GitHub Gist, SOC Defenders and internal blocklists.'];
+$pageTitle = $pageTitles[$page] ?? 'ClickFix Mitigator';
+$pageDescription = $pageDescriptions[$page] ?? 'ClickFix Mitigator - Defense-first platform against ClickFix social engineering attacks. Real-time detection, investigation and mitigation.';
+$canonicalUrl = 'https://clickfix.jordiserrano.me/dashboard.php?page=' . urlencode($page) . ($publicView ? '&public=1' : '');
+if ($page === 'investigation' && !empty($sharedGraph)) {
+    $pageTitle = clickfix_h((string) ($sharedGraph['title'] ?? 'Investigation')) . ' | ClickFix Mitigator';
+    $pageDescription = clickfix_h(substr((string) ($sharedGraph['summary'] ?? 'ClickFix threat investigation with graph analysis.'), 0, 300));
+    $canonicalUrl = 'https://clickfix.jordiserrano.me/dashboard.php?page=investigation&share=' . urlencode((string) ($sharedGraph['share_token'] ?? ''));
+}
+if ($page === 'profile' && $profileUser !== null) {
+    $pageTitle = clickfix_h((string) ($profileUser['username'] ?? 'Profile')) . ' | ClickFix Mitigator';
+}
+$ogImage = 'https://clickfix.jordiserrano.me/assets/corona/images/clickfix-og.png';
 ?>
 <!doctype html>
-<html lang="es">
+<html lang="<?= clickfix_h($lang); ?>">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ClickFix Security Operations Center</title>
-  <?php if ($enableHomeGeoPanels): ?>
+  <title><?= $pageTitle; ?></title>
+  <meta name="description" content="<?= clickfix_h($pageDescription); ?>">
+  <meta name="robots" content="<?= $publicView ? 'index,follow,max-image-preview:large' : 'noindex,nofollow'; ?>">
+  <meta name="googlebot" content="<?= $publicView ? 'index,follow' : 'noindex,nofollow'; ?>">
+  <link rel="canonical" href="<?= clickfix_h($canonicalUrl); ?>">
+  <meta property="og:title" content="<?= $pageTitle; ?>">
+  <meta property="og:description" content="<?= clickfix_h($pageDescription); ?>">
+  <meta property="og:url" content="<?= clickfix_h($canonicalUrl); ?>">
+  <meta property="og:image" content="<?= clickfix_h($ogImage); ?>">
+  <meta property="og:type" content="<?= $page === 'investigation' ? 'article' : 'website'; ?>">
+  <meta property="og:site_name" content="ClickFix Mitigator">
+  <meta property="og:locale" content="<?= clickfix_h($lang === 'ca' ? 'ca_ES' : ($lang === 'es' ? 'es_ES' : ($lang === 'fr' ? 'fr_FR' : ($lang === 'de' ? 'de_DE' : ($lang === 'it' ? 'it_IT' : 'en_US'))))); ?>">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="<?= $pageTitle; ?>">
+  <meta name="twitter:description" content="<?= clickfix_h($pageDescription); ?>">
+  <meta name="twitter:image" content="<?= clickfix_h($ogImage); ?>">
+  <meta name="twitter:site" content="@jordiserrano">
+  <meta name="author" content="Jordi Serrano">
+  <meta name="theme-color" content="#05070f">
+  <?php if ($page === 'clickfix_domain_list' || $page === 'investigation'): ?>
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"<?= $page === 'investigation' ? 'Article' : 'WebPage'; ?>",
+    "headline":"<?= $pageTitle; ?>",
+    "description":"<?= clickfix_h($pageDescription); ?>",
+    "url":"<?= clickfix_h($canonicalUrl); ?>",
+    "author":{"@type":"Organization","name":"ClickFix Mitigator","url":"https://clickfix.jordiserrano.me"},
+    "publisher":{"@type":"Organization","name":"ClickFix Mitigator","url":"https://clickfix.jordiserrano.me"}
+  }
+  </script>
+  <?php endif; ?>
+  <?php if ($enableHomeGeoPanels || $enableSidebarGeoMap): ?>
   <link rel="stylesheet" href="<?= clickfix_h($leafletCssUrl); ?>">
   <?php endif; ?>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Public+Sans:wght@400;600;700&family=DM+Sans:wght@400;500;700&family=Nunito+Sans:wght@400;600;700&display=swap');
-    :root{
-      --bg:#05070f;
-      --bg-layer:#0a1222;
-      --bg-soft:#141f35;
-      --card:#0d1729cc;
-      --line:#2d3f5f;
-      --line-soft:#22334f;
-      --txt:#e9f4ff;
-      --mut:#97afca;
-      --brand:#6ff6ff;
-      --brand-2:#7fffbf;
-      --accent:#9aa4ff;
-      --warn:#ffd070;
-      --danger:#ff6f92;
-      --ok:#59f2b5;
-      --shadow:0 26px 70px rgba(2,8,18,.55);
-      --radius:20px;
-      --radius-sm:12px;
-      --glow:0 0 24px rgba(111,246,255,.18);
-      --font-main:'Manrope',sans-serif;
-    }
-    body.theme-teal{
-      --brand:#56d6c9;
-      --brand-2:#4fe38d;
-      --bg:#051211;
-      --bg-layer:#0a2221;
-      --bg-soft:#113732;
-      --line:#2f6f64;
-      --line-soft:#25564f;
-    }
-    body.theme-sunset{
-      --brand:#ffb75e;
-      --brand-2:#ff8f70;
-      --bg:#170b08;
-      --bg-layer:#2a1410;
-      --bg-soft:#3c1d15;
-      --line:#89543c;
-      --line-soft:#6f432f;
-    }
-    body.theme-mono{
-      --brand:#b9c2cf;
-      --brand-2:#dee4ec;
-      --bg:#07090d;
-      --bg-layer:#11161f;
-      --bg-soft:#1a212d;
-      --line:#4a5568;
-      --line-soft:#394353;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%;scroll-behavior:smooth}
-    html{-webkit-text-size-adjust:100%}
-    body{
-      margin:0;
-      color:var(--txt);
-      font-family:var(--font-main);
-      background:
-        radial-gradient(820px 420px at 12% -8%,rgba(111,246,255,.28),transparent 65%),
-        radial-gradient(880px 420px at 92% -12%,rgba(127,255,191,.18),transparent 60%),
-        radial-gradient(700px 300px at 60% 108%,rgba(154,164,255,.12),transparent 62%),
-        linear-gradient(120deg,rgba(255,255,255,.04) 0 1px,transparent 1px 22px),
-        linear-gradient(145deg,var(--bg),var(--bg-layer) 50%,#0b1628 100%);
-      min-height:100vh;
-    }
-    body.ui-light{
-      --bg:#f3f7fb;
-      --bg-layer:#e8eef5;
-      --bg-soft:#ffffff;
-      --card:#ffffff;
-      --line:#c8d4e3;
-      --line-soft:#d6e0ec;
-      --txt:#0c1726;
-      --mut:#3e4a5d;
-      --brand:#1a6bff;
-      --brand-2:#06c47a;
-      --accent:#2b5cff;
-      --warn:#b97300;
-      --danger:#b5283f;
-      --ok:#148a64;
-      --shadow:0 18px 40px rgba(7,12,20,.14);
-      --glow:none;
-    }
-    body.ui-light .card,
-    body.ui-light .panel,
-    body.ui-light table{
-      background:rgba(255,255,255,.92);
-      border-color:rgba(140,160,190,.5);
-    }
-    body.ui-light .top,
-    body.ui-light .nav,
-    body.ui-light .intel-workspace-nav{
-      background:rgba(255,255,255,.85);
-      border-color:rgba(140,160,190,.45);
-    }
-    body.ui-contrast{
-      --line:#5c7aa8;
-      --line-soft:#476a97;
-      --mut:#c8ddf4;
-    }
-    body.ui-compact .card{padding:8px}
-    body.ui-compact .grid,
-    body.ui-compact .row,
-    body.ui-compact .viz-grid,
-    body.ui-compact .intel-grid,
-    body.ui-compact .intel-side,
-    body.ui-compact .intel-workbench-grid{
-      gap:6px;
-    }
-    body.ui-compact .intel-workspace-nav{gap:6px}
-    body.ui-reduced-motion *,
-    body.ui-reduced-motion *::before,
-    body.ui-reduced-motion *::after{
-      animation:none !important;
-      transition:none !important;
-      scroll-behavior:auto !important;
-    }
-    body.ui-no-decor{
-      background:linear-gradient(160deg,var(--bg),var(--bg-layer));
-    }
-    body.ui-no-decor .card,
-    body.ui-no-decor .panel,
-    body.ui-no-decor .nav,
-    body.ui-no-decor .top{
-      box-shadow:none !important;
-    }
-    body.ui-accent-blue{--accent:#5b8bff;--brand:#66b5ff}
-    body.ui-accent-green{--accent:#37e3a7;--brand:#37e3a7}
-    body.ui-accent-purple{--accent:#a685ff;--brand:#b59bff}
-    body.ui-accent-amber{--accent:#ffb454;--brand:#ffb454}
-    body.ui-accent-red{--accent:#ff7a86;--brand:#ff7a86}
-    body.ui-accent-cyan{--accent:#5fd8ff;--brand:#5fd8ff}
-    body.ui-font-public{--font-main:'Public Sans',sans-serif}
-    body.ui-font-dm{--font-main:'DM Sans',sans-serif}
-    body.ui-font-nunito{--font-main:'Nunito Sans',sans-serif}
-    body.ui-font-sora{--font-main:'Sora',sans-serif}
-    a{
-      color:#b7f4ff;
-      text-decoration:none;
-      transition:color .2s ease,opacity .2s ease;
-    }
-    a:hover{color:#e9ffff;opacity:.95}
-    code{
-      font-family:'JetBrains Mono',monospace;
-      background:rgba(16,33,55,.7);
-      border:1px solid rgba(68,104,150,.45);
-      border-radius:8px;
-      padding:1px 6px;
-    }
-    pre{
-      background:rgba(9,18,34,.8);
-      border:1px solid rgba(62,96,142,.45);
-      border-radius:12px;
-      padding:10px;
-      color:#d7e8ff;
-      box-shadow:0 12px 28px rgba(3,10,22,.28) inset;
-    }
-    input::placeholder,textarea::placeholder{color:rgba(167,189,214,.75)}
-    ::selection{background:rgba(111,246,255,.28);color:#031321}
-    body.nav-open-mobile{
-      overflow:hidden;
-    }
-    :root{
-      --sticky-header-offset:136px;
-    }
-    .wrap{
-      width:100%;
-      max-width:none;
-      margin:auto;
-      padding:
-        calc(10px + env(safe-area-inset-top))
-        clamp(8px,1.6vw,18px)
-        calc(18px + env(safe-area-inset-bottom))
-        clamp(8px,1.6vw,18px);
-    }
-    .workspace{
-      display:grid;
-      grid-template-columns:minmax(0,1fr) clamp(280px,22vw,380px);
-      gap:10px;
-      align-items:start;
-      min-height:calc(100vh - var(--sticky-header-offset));
-    }
-    .main-column{min-width:0;min-height:calc(100vh - var(--sticky-header-offset))}
-    .side-column{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      position:sticky;
-      top:var(--sticky-header-offset);
-      align-self:start;
-      max-height:calc(100vh - var(--sticky-header-offset) - 12px);
-      overflow:auto;
-    }
-    .side-card{padding:10px}
-    .side-card h3{margin:0 0 8px;font-size:.86rem}
-    .side-metrics{
-      display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:7px;
-    }
-    .side-metric{
-      border:1px solid #3b608a;
-      border-radius:12px;
-      background:linear-gradient(150deg,#102843,#0c2038);
-      padding:8px;
-    }
-    .side-metric b{display:block;font-size:1.05rem;line-height:1.1}
-    .side-metric span{font:.64rem 'JetBrains Mono',monospace;color:#a9c9e7}
-    .mini-list{margin:0;padding:0;list-style:none}
-    .mini-list li{
-      display:flex;
-      justify-content:space-between;
-      gap:8px;
-      padding:6px 0;
-      border-bottom:1px solid rgba(58,96,132,.35);
-      font-size:.8rem;
-    }
-    .mini-list li:last-child{border-bottom:none}
-    .mini-links{display:grid;gap:6px}
-    .mini-links a{
-      text-decoration:none;
-      color:#e3f2ff;
-      padding:8px 9px;
-      border-radius:11px;
-      border:1px solid #355f86;
-      background:linear-gradient(135deg,#112742,#0f2238);
-      font:600 .72rem 'JetBrains Mono',monospace;
-      transition:.22s ease;
-    }
-    .mini-links a:hover{border-color:#75dcff;background:#183857;transform:translateY(-1px)}
-    .announcement-aside details{
-      border:1px solid #325978;
-      border-radius:12px;
-      background:linear-gradient(150deg,#0f2841,#0b2136);
-      padding:8px;
-    }
-    .announcement-aside summary{
-      list-style:none;
-      cursor:pointer;
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:10px;
-    }
-    .announcement-aside summary::-webkit-details-marker{display:none}
-    .announcement-aside summary::after{
-      content:'+';
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      width:18px;
-      height:18px;
-      border-radius:999px;
-      border:1px solid #4d7498;
-      color:#d9edff;
-      background:#153553;
-      flex-shrink:0;
-      font:700 .85rem 'JetBrains Mono',monospace;
-      line-height:1;
-    }
-    .announcement-aside details[open] > summary::after{content:'-'}
-    .announcement-aside summary b{font:700 .78rem 'Sora',sans-serif}
-    .announcement-aside summary span{display:block;color:#9fc0df;font:.67rem 'JetBrains Mono',monospace}
-    .announcement-focus{
-      margin:8px 0 0;
-      padding:6px 8px;
-      border-radius:9px;
-      border:1px solid #365f85;
-      background:#102740;
-      color:#bdd7f0;
-      font-size:.76rem;
-      line-height:1.35;
-    }
-    .announcement-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:7px}
-    .announcement-item{
-      border:1px solid #31577b;
-      border-radius:10px;
-      background:#0d2338;
-      padding:7px 8px;
-    }
-    .announcement-item-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:8px;
-      margin-bottom:5px;
-    }
-    .announcement-severity{
-      display:inline-flex;
-      align-items:center;
-      border-radius:999px;
-      border:1px solid #4e7294;
-      padding:2px 7px;
-      font:.62rem 'JetBrains Mono',monospace;
-      text-transform:uppercase;
-      letter-spacing:.25px;
-    }
-    .announcement-severity.info{border-color:#2e7aa5;background:#113953;color:#bdeaff}
-    .announcement-severity.warning{border-color:#8f7a41;background:#3a3016;color:#ffe5ab}
-    .announcement-severity.critical{border-color:#9f4d5e;background:#491b27;color:#ffd5dd}
-    .announcement-meta{font:.64rem 'JetBrains Mono',monospace;color:#a9c7e2}
-    .announcement-item b{display:block;font-size:.78rem;line-height:1.25}
-    .announcement-item p{margin:4px 0 0;color:#c3dbf2;font-size:.76rem;line-height:1.35}
-    .ad-slot{
-      border:1px dashed #4ea9db;
-      border-radius:10px;
-      background:#0b1d2f;
-      min-height:120px;
-      display:grid;
-      place-items:center;
-      overflow:hidden;
-    }
-    .internal-ads-stack{
-      display:grid;
-      gap:8px;
-    }
-    .internal-ad-card{
-      border:1px solid #355f86;
-      border-radius:14px;
-      background:linear-gradient(155deg,#102840,#0d2136);
-      padding:10px;
-      display:grid;
-      gap:8px;
-    }
-    .internal-ad-card.cyan{border-color:#2f82a8;background:linear-gradient(155deg,#0f2941,#0b2235)}
-    .internal-ad-card.lime{border-color:#4e8d5c;background:linear-gradient(155deg,#132d2b,#0f2230)}
-    .internal-ad-card.amber{border-color:#9b6d35;background:linear-gradient(155deg,#312412,#14263b)}
-    .internal-ad-card.fuchsia{border-color:#8a4db6;background:linear-gradient(155deg,#2d1836,#0f2237)}
-    .internal-ad-kicker{
-      font:.64rem 'JetBrains Mono',monospace;
-      color:#b9d8f0;
-      text-transform:uppercase;
-      letter-spacing:.08em;
-    }
-    .internal-ad-card b{
-      display:block;
-      font:700 .9rem 'Sora',sans-serif;
-      color:#f3fbff;
-      line-height:1.25;
-    }
-    .internal-ad-card p{
-      margin:0;
-      color:#c7def2;
-      font-size:.78rem;
-      line-height:1.42;
-    }
-    .internal-ad-card .btn{
-      width:auto;
-    }
-    .support-note{margin:0 0 8px;color:#bcd6ef;font-size:.8rem;line-height:1.4}
-    .top,.card{
-      background:
-        radial-gradient(circle at top right,rgba(111,246,255,.08),transparent 40%),
-        linear-gradient(165deg,rgba(13,26,44,.92),rgba(9,19,34,.9));
-      border:1px solid rgba(84,126,178,.48);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      backdrop-filter:blur(14px);
-    }
-    .top{
-      display:grid;
-      gap:12px;
-      padding:14px 16px;
-      margin-bottom:8px;
-      position:sticky;
-      top:10px;
-      z-index:28;
-      background:
-        radial-gradient(circle at top right,rgba(127,255,191,.18),transparent 34%),
-        linear-gradient(170deg,rgba(13,30,52,.95),rgba(7,15,28,.95));
-      border-color:rgba(104,155,208,.58);
-      box-shadow:0 22px 50px rgba(3,10,22,.5),var(--glow);
-    }
-    .app-header-main{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:16px;
-      flex-wrap:wrap;
-    }
-    .nav-toggle{
-      display:none;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
-      min-height:42px;
-      padding:9px 12px;
-      border-radius:12px;
-      border:1px solid #3f6690;
-      background:linear-gradient(140deg,#132d49,#10253d);
-      color:#e6f4ff;
-      font:700 .74rem 'JetBrains Mono',monospace;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      cursor:pointer;
-      transition:.22s ease;
-      box-shadow:0 10px 22px rgba(8,26,44,.22);
-    }
-    .nav-toggle:hover{
-      border-color:#79dbff;
-      transform:translateY(-1px);
-      box-shadow:0 12px 24px rgba(16,78,129,.32);
-    }
-    .nav-toggle-lines{
-      display:inline-grid;
-      gap:3px;
-      width:15px;
-    }
-    .nav-toggle-lines span{
-      display:block;
-      width:15px;
-      height:2px;
-      border-radius:999px;
-      background:currentColor;
-    }
-    .app-header-brand{
-      display:grid;
-      gap:6px;
-      min-width:280px;
-      flex:1 1 420px;
-    }
-    .app-header-title{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .app-header-title b{font:700 1.06rem 'Sora',sans-serif;letter-spacing:.2px}
-    .app-header-subline{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-      color:#b9d4ec;
-      font:.78rem 'JetBrains Mono',monospace;
-    }
-    .app-header-subline .sep{opacity:.55}
-    .mono,code{font-family:'JetBrains Mono',monospace}
-    .top .mut{font-size:.79rem}
-    .module-chip{
-      display:inline-flex;
-      align-items:center;
-      gap:7px;
-      padding:5px 10px;
-      border-radius:999px;
-      border:1px solid #79dbff55;
-      background:linear-gradient(135deg,#173f62,#11324f);
-      font:600 .7rem 'JetBrains Mono',monospace;
-      color:#e0f5ff;
-    }
-    .top-status{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-      align-items:flex-start;
-      flex:1 1 500px;
-    }
-    .status-chip{
-      padding:5px 10px;
-      border-radius:999px;
-      border:1px solid #4a76a2;
-      background:linear-gradient(135deg,#152f4a,#11263b);
-      font:.7rem 'JetBrains Mono',monospace;
-      color:#e5f2ff;
-    }
-    .status-chip a{color:#c9f2ff;text-decoration:none}
-    .app-header-navrow{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-      padding-top:10px;
-      border-top:1px solid rgba(96,137,177,.28);
-    }
-    .header-nav{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      flex:1 1 720px;
-      min-width:0;
-    }
-    .header-nav a,
-    .nav-actions{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      flex-wrap:wrap;
-    }
-    .nav-actions{
-      justify-content:flex-end;
-      flex:0 1 auto;
-    }
-    .nav-actions form{margin:0}
-    .header-nav a,
-    .nav-actions .nav-btn{
-      text-decoration:none;
-      color:#dff1ff;
-      padding:8px 11px;
-      border-radius:12px;
-      border:1px solid #3f6690;
-      background:linear-gradient(140deg,#132d49,#10253d);
-      font:600 .76rem 'JetBrains Mono',monospace;
-      letter-spacing:.1px;
-      transition:.22s ease;
-      display:inline-flex;
-      align-items:center;
-      width:auto;
-      cursor:pointer;
-    }
-    .header-nav a:hover,
-    .nav-actions .nav-btn:hover{
-      border-color:#79dbff;
-      transform:translateY(-1px);
-      box-shadow:0 10px 20px rgba(16,78,129,.3);
-    }
-    .header-nav a.active,
-    .nav-actions .nav-btn.active{
-      color:#06182a;
-      border-color:transparent;
-      background:linear-gradient(135deg,var(--brand),var(--brand-2));
-      box-shadow:0 12px 26px rgba(99,217,255,.32);
-    }
-    .nav-actions .nav-btn.logout{
-      border-color:#7b4450;
-      background:linear-gradient(140deg,#4d1f2b,#3a1720);
-      color:#ffd9e1;
-    }
-    .nav-actions .nav-btn.logout:hover{
-      border-color:#e2879a;
-      box-shadow:0 10px 20px rgba(145,42,68,.35);
-    }
-    .display-settings-panel{
-      position:fixed;
-      right:18px;
-      top:78px;
-      width:min(360px,92vw);
-      max-height:80vh;
-      overflow:auto;
-      border-radius:20px;
-      border:1px solid rgba(255,255,255,.08);
-      background:linear-gradient(160deg,rgba(12,20,32,.96),rgba(9,15,24,.96));
-      box-shadow:0 28px 70px rgba(0,0,0,.5);
-      padding:14px;
-      z-index:1200;
-      display:none;
-    }
-    .display-settings-panel.open{display:block}
-    .display-settings-header{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom:10px;
-    }
-    .display-settings-header h4{margin:0;font:700 .9rem 'Sora',sans-serif}
-    .display-settings-grid{
-      display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:10px;
-    }
-    .display-toggle{
-      border:1px solid #1f2f46;
-      border-radius:16px;
-      padding:12px;
-      background:linear-gradient(160deg,#121c2b,#0e1826);
-      display:grid;
-      gap:10px;
-    }
-    .display-toggle .label{font:.75rem 'Manrope',sans-serif;color:#d6e6f7}
-    .switch{
-      display:inline-flex;
-      align-items:center;
-      gap:10px;
-    }
-    .switch input{display:none}
-    .switch-track{
-      width:42px;height:24px;border-radius:999px;
-      border:1px solid #42597a;background:#101f30;position:relative;
-      transition:background .2s ease,border-color .2s ease;
-    }
-    .switch-thumb{
-      position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;
-      background:#8197b7;transition:transform .2s ease,background .2s ease;
-    }
-    .switch input:checked + .switch-track{background:#17324d;border-color:#66b4ff}
-    .switch input:checked + .switch-track .switch-thumb{transform:translateX(18px);background:#9de2ff}
-    .display-section{margin-top:14px}
-    .display-section h5{margin:0 0 8px;font:.72rem 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.12em;color:#a9c5df}
-    .preset-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-    .preset-btn{
-      border:1px solid #20354d;border-radius:12px;padding:10px;background:#0c1826;
-      display:flex;align-items:center;justify-content:center;cursor:pointer;
-    }
-    .preset-btn span{display:block;width:26px;height:26px;border-radius:8px}
-    .font-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-    .font-btn{
-      border:1px solid #20354d;border-radius:14px;padding:10px;background:#0c1826;cursor:pointer;
-      display:grid;gap:4px;text-align:left;
-    }
-    .font-btn b{font-size:.86rem}
-    .font-btn span{font-size:.68rem;color:#9ab3cc}
-    .hero{display:grid;grid-template-columns:2fr .9fr;gap:8px;margin-bottom:8px}
-    .hero-main,.hero-side{padding:11px}
-    .hero-main h1{margin:0 0 6px;font-size:clamp(1.14rem,1.45vw,1.48rem);line-height:1.15}
-    .hero-main p{margin:0;color:#c8d9ef}
-    .hero-kicker{
-      display:inline-block;
-      padding:5px 9px;
-      border-radius:999px;
-      border:1px solid #3f739a;
-      background:#11314a;
-      font:.69rem 'JetBrains Mono',monospace;
-      color:#d0ebff;
-      margin-bottom:6px;
-    }
-    .role-chip{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding:5px 10px;
-      border-radius:999px;
-      font:.7rem 'JetBrains Mono',monospace;
-      border:1px solid #2ca97788;
-      background:#10382d;
-      color:#bff8df;
-    }
-    .role-chip.guest{border-color:#927138;background:#3d2f12;color:#ffe8ac}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-bottom:8px}
-    .card{
-      padding:10px;
-      position:relative;
-      overflow:hidden;
-      transition:border-color .2s ease,box-shadow .22s ease,transform .22s ease;
-    }
-    .card:hover{
-      border-color:rgba(125,193,255,.62);
-      box-shadow:0 22px 46px rgba(8,20,40,.44);
-    }
-    h2{margin:0 0 7px;font:700 .92rem 'Sora',sans-serif;letter-spacing:.14px}
-    h3{margin:0 0 6px;font:600 .8rem 'Sora',sans-serif}
-    p{line-height:1.35}
-    ul{margin:0;padding-left:18px}
-    li{margin:4px 0}
-    .kpi{
-      background:linear-gradient(155deg,rgba(21,45,73,.86),rgba(14,31,51,.86));
-      border-color:rgba(88,141,197,.56);
-    }
-    .kpi-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
-    .kpi-icon{
-      width:28px;
-      height:28px;
-      border-radius:10px;
-      border:1px solid #4a749a;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      background:linear-gradient(145deg,#12324f,#0d243a);
-      box-shadow:0 8px 18px rgba(0,0,0,.24);
-      flex-shrink:0;
-    }
-    .kpi-icon svg{width:15px;height:15px;stroke:#c8ebff;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
-    .kpi b{font-size:1.34rem;font-family:'Sora',sans-serif;font-weight:700;line-height:1.1}
-    .viz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px}
-    .mini-chart{display:grid;gap:6px}
-    .mini-row{display:grid;grid-template-columns:140px 1fr 52px;align-items:center;gap:8px}
-    .mini-bar{height:8px;border-radius:999px;background:#183f5d;overflow:hidden}
-    .mini-bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#56d4ff,#33d17a)}
-    .mini-score{font:.72rem 'JetBrains Mono',monospace;color:#a8cae8;text-align:right}
-    .pred-badge{padding:2px 7px;border-radius:999px;border:1px solid #3f6c95;background:#13324f;font:.66rem 'JetBrains Mono',monospace}
-    .pred-badge.malicious{border-color:#a94a56;color:#ffd2d8;background:#3f1822}
-    .pred-badge.suspicious{border-color:#8f7844;color:#ffebbe;background:#3e3014}
-    .pred-badge.low_risk{border-color:#2b7c5f;color:#c7ffe8;background:#10352b}
-    .mut{color:var(--mut)}
-    .user-link{color:#9de9ff;text-decoration:none;border-bottom:1px dashed #4ea7d8}
-    .user-link:hover{color:#d5f4ff;border-bottom-color:#8fe4ff}
-    .flash{
-      border:1px solid #2b8466;
-      background:linear-gradient(150deg,rgba(31,101,81,.48),rgba(17,62,52,.45));
-      padding:8px 10px;
-      border-radius:11px;
-      margin-bottom:8px;
-      box-shadow:0 10px 20px rgba(0,0,0,.2) inset;
-    }
-    .row{display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-bottom:8px}
-    .stack{display:grid;gap:8px}
-    table{
-      width:100%;
-      border-collapse:separate;
-      border-spacing:0;
-      font-size:.79rem;
-      background:rgba(9,18,32,.45);
-      border:1px solid rgba(55,87,130,.45);
-      border-radius:14px;
-      overflow:hidden;
-    }
-    th,td{
-      padding:7px 8px;
-      border-bottom:1px solid rgba(58,96,132,.3);
-      text-align:left;
-      vertical-align:top;
-    }
-    th{
-      font:700 .68rem 'JetBrains Mono',monospace;
-      text-transform:uppercase;
-      color:#c7ddf4;
-      letter-spacing:.28px;
-      background:linear-gradient(120deg,rgba(24,49,75,.75),rgba(12,28,46,.6));
-      border-bottom:1px solid rgba(90,130,178,.55);
-    }
-    th.sortable{
-      cursor:pointer;
-      user-select:none;
-      position:relative;
-      padding-right:18px;
-    }
-    th.sortable::after{
-      content:'â†•';
-      position:absolute;
-      right:7px;
-      top:50%;
-      transform:translateY(-50%);
-      font-size:.68rem;
-      color:#84a6c8;
-      opacity:.9;
-    }
-    th.sortable.sort-asc::after{content:'â†‘';color:#d8efff}
-    th.sortable.sort-desc::after{content:'â†“';color:#d8efff}
-    tr:hover td{background:rgba(16,32,55,.58)}
-    input,select,textarea,button{
-      width:100%;
-      padding:9px 11px;
-      border-radius:12px;
-      border:1px solid rgba(70,104,150,.7);
-      background:
-        linear-gradient(150deg,rgba(20,39,64,.95),rgba(10,24,42,.95));
-      color:var(--txt);
-      font:600 .84rem 'Manrope',sans-serif;
-      transition:border-color .2s ease,box-shadow .2s ease,transform .18s ease,background .2s ease;
-      box-shadow:0 6px 16px rgba(3,10,22,.2);
-    }
-    select{
-      appearance:none;
-      background-image:
-        linear-gradient(45deg,transparent 50%,rgba(180,210,255,.9) 50%),
-        linear-gradient(135deg,rgba(180,210,255,.9) 50%,transparent 50%),
-        linear-gradient(to right,transparent,transparent);
-      background-position:
-        calc(100% - 16px) calc(50% - 2px),
-        calc(100% - 10px) calc(50% - 2px),
-        calc(100% - 26px) 0.55rem;
-      background-size:6px 6px,6px 6px,1px 1.4rem;
-      background-repeat:no-repeat;
-      padding-right:30px;
-    }
-    select:focus{background-image:
-        linear-gradient(45deg,transparent 50%,rgba(255,255,255,.95) 50%),
-        linear-gradient(135deg,rgba(255,255,255,.95) 50%,transparent 50%),
-        linear-gradient(to right,transparent,transparent);}
-    input[type=checkbox],input[type=radio]{width:auto;padding:0;transform:translateY(1px)}
-    label{display:flex;gap:8px;align-items:center}
-    input:focus,select:focus,textarea:focus{
-      outline:none;
-      border-color:#9af1ff;
-      box-shadow:0 0 0 3px rgba(111,246,255,.18),0 10px 24px rgba(3,12,22,.25);
-      background:linear-gradient(160deg,rgba(24,49,78,.95),rgba(10,24,42,.95));
-    }
-    textarea{min-height:76px}
-    .btn{
-      background:
-        linear-gradient(120deg,var(--brand),var(--brand-2));
-      border:none;
-      color:#041322;
-      font-weight:800;
-      letter-spacing:.2px;
-      text-transform:uppercase;
-      font-size:.73rem;
-      cursor:pointer;
-      box-shadow:0 14px 30px rgba(86,210,255,.3),var(--glow);
-      transition:.2s ease;
-    }
-    .btn:hover{
-      transform:translateY(-1px);
-      box-shadow:0 18px 36px rgba(86,210,255,.4),0 0 20px rgba(127,255,191,.25);
-    }
-    .btn:active{transform:translateY(0);box-shadow:0 10px 20px rgba(86,210,255,.26)}
-    .split{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-    .badge{padding:4px 8px;border-radius:999px;border:1px solid #5b7f9f;font:.68rem 'JetBrains Mono',monospace}
-    .pending{color:var(--warn)}.accepted{color:var(--ok)}.rejected{color:var(--danger)}
-    .bulk-review-toolbar{
-      margin:8px 0;
-      display:flex;
-      flex-wrap:wrap;
-      align-items:center;
-      gap:8px;
-      border:1px solid rgba(68,112,150,.58);
-      border-radius:12px;
-      background:linear-gradient(150deg,#10253d,#0d2135);
-      padding:8px;
-    }
-    .bulk-review-toolbar .bulk-review-count{
-      font:.73rem 'JetBrains Mono',monospace;
-      color:#bcd6ef;
-      min-width:120px;
-    }
-    .bulk-review-toolbar .bulk-review-actions{
-      display:flex;
-      gap:6px;
-      flex-wrap:wrap;
-      margin-left:auto;
-    }
-    .bulk-review-toolbar .bulk-review-actions button{
-      width:auto;
-      min-width:0;
-      padding:6px 10px;
-      font:.72rem 'JetBrains Mono',monospace;
-    }
-    .bulk-review-toolbar .bulk-review-actions button.secondary{
-      background:linear-gradient(145deg,#16324e,#102742);
-      border:1px solid #486e95;
-      color:#d8edff;
-      box-shadow:none;
-    }
-    .bulk-review-select-cell{
-      width:38px;
-      text-align:center;
-    }
-    .bulk-review-select-cell input[type=checkbox]{
-      width:16px;
-      height:16px;
-      margin:0;
-      transform:none;
-      cursor:pointer;
-    }
-    .event-workbench{display:grid;grid-template-columns:minmax(240px,312px) minmax(0,1fr);gap:8px;margin-top:6px}
-    .event-feed{display:flex;flex-direction:column;gap:6px;max-height:560px;overflow:auto;padding-right:4px}
-    .event-feed-item{
-      display:flex;align-items:flex-start;gap:8px;text-align:left;
-      border:1px solid #315a80;border-radius:11px;background:#0c2137;padding:8px;
-      color:var(--txt);cursor:pointer;transition:.14s ease;
-    }
-    .event-feed-item:hover{border-color:#73d4ff;background:#143150}
-    .event-feed-item.is-active{border-color:#67edc1;background:linear-gradient(145deg,#194867,#143d59)}
-    .event-feed-item.is-blocked{
-      border-color:#ff6d7d;
-      background:linear-gradient(145deg,#3f1c29,#2b1520);
-      box-shadow:inset 0 0 0 1px #ff899766;
-    }
-    .event-feed-item.is-blocked:hover{
-      border-color:#ffa8b3;
-      background:linear-gradient(145deg,#4a1f2d,#341724);
-    }
-    .event-feed-item.is-active.is-blocked{
-      border-color:#ff8f9f;
-      background:linear-gradient(145deg,#5a2435,#3d1b27);
-      box-shadow:inset 0 0 0 1px #ffb2bc88;
-    }
-    .event-feed-item.is-blocked .event-feed-host{color:#ffdce1}
-    .event-feed-item.is-blocked .event-feed-meta{color:#f2c2cb}
-    .event-feed-main{display:flex;flex-direction:column;gap:2px;min-width:0}
-    .event-feed-host{font-weight:700;word-break:break-word}
-    .event-feed-meta{font:.72rem 'JetBrains Mono',monospace;color:var(--mut);word-break:break-word}
-    .event-feed-reason{font-size:.77rem;color:#d7e7fb;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-    .event-feed-flag{
-      display:inline-flex;align-items:center;gap:4px;margin-top:4px;width:max-content;
-      padding:2px 7px;border-radius:999px;border:1px solid #ff7a8f;background:#5f1b2a;color:#ffd9df;
-      font:.66rem 'JetBrains Mono',monospace;letter-spacing:.2px
-    }
-    .event-feed-sev{width:8px;height:8px;border-radius:999px;margin-top:5px;flex-shrink:0;background:#4de09f}
-    .event-feed-sev.low{background:#4de09f}.event-feed-sev.medium{background:#f5c14b}.event-feed-sev.high{background:#ff8f3f}.event-feed-sev.critical{background:#ff6d7d}
-    .event-detail-shell{border:1px solid #3d638b;border-radius:14px;padding:12px;background:linear-gradient(150deg,#102741,#0b2137)}
-    .event-empty{color:var(--mut);font-size:.88rem}
-    .event-title{margin:0 0 4px}
-    .event-topline{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap}
-    .event-badges{display:flex;gap:6px;flex-wrap:wrap}
-    .event-chip{padding:2px 8px;border-radius:999px;border:1px solid #365f85;background:#12314b;font:.7rem 'JetBrains Mono',monospace}
-    .event-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:8px 0}
-    .event-kv{padding:6px;border:1px solid #2e5478;border-radius:9px;background:#0f2841}
-    .event-kv b{display:block;font-size:.68rem;color:#b4d2ef;font-family:'JetBrains Mono',monospace}
-    .event-kv span{font-size:.83rem;word-break:break-word}
-    .event-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
-    .event-related{
-      margin-top:10px;
-      border:1px solid #2f5579;
-      border-radius:11px;
-      background:#0c2238;
-      padding:8px;
-    }
-    .event-related-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-bottom:6px;
-    }
-    .event-related-note{font:.74rem 'JetBrains Mono',monospace;color:#a8c6e4}
-    .event-related-table-wrap{max-height:260px;overflow:auto;margin-top:6px}
-    .event-related-link{
-      color:#9de9ff;
-      text-decoration:none;
-      border-bottom:1px dashed #58bde4;
-    }
-    .event-related-link:hover{color:#d5f4ff;border-bottom-color:#9de9ff}
-    .event-list{margin:6px 0 0 16px;padding:0}
-    .event-list li{margin:2px 0;color:#c8e0f7}
-    .event-snippet{padding:7px 8px;border-radius:8px;border:1px solid #2f597f;background:#13304a;font:.73rem 'JetBrains Mono',monospace;white-space:pre-wrap;word-break:break-word}
-    .event-context{margin-top:8px}
-    .event-context pre{margin:0;padding:8px;border-radius:10px;border:1px solid #2d5377;background:#081929;max-height:180px;overflow:auto;white-space:pre-wrap;font:.74rem 'JetBrains Mono',monospace}
-    .event-context.event-context-exact pre{max-height:420px}
-    .event-context mark{background:#ffd26666;color:#fff;border-radius:3px;padding:0 2px}
-    .event-raw{margin-top:8px}
-    .event-raw pre{margin:6px 0 0;padding:8px;border:1px solid #2d5377;border-radius:10px;max-height:220px;overflow:auto;background:#081929;font:.73rem 'JetBrains Mono',monospace;white-space:pre-wrap}
-    .session-timeout-modal{position:fixed;inset:0;background:rgba(5,12,22,.78);display:flex;align-items:center;justify-content:center;z-index:9999}
-    .session-timeout-modal[hidden]{display:none}
-    .session-timeout-card{max-width:420px;width:92%;border-radius:14px;padding:16px;border:1px solid #2d557a;background:linear-gradient(160deg,#0c2236,#0b1c2c);box-shadow:0 20px 50px rgba(0,0,0,.45)}
-    .session-timeout-card h3{margin:0 0 6px 0}
-    .session-timeout-card .mut{font-size:.86rem}
-    .legacy-events{margin-top:8px}
-    .legacy-events summary{cursor:pointer;color:#cbeefd}
-    .mitre-blueprint{margin-top:8px;border:1px solid #2d557a;border-radius:12px;padding:10px;background:linear-gradient(160deg,#0c2236,#0b1c2c)}
-    .mitre-blueprint h4{margin:0 0 6px 0;font-size:.9rem}
-    .mitre-blueprint-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
-    .mitre-tactic{border:1px solid #2a4b69;border-radius:10px;padding:8px;background:#0e2337;display:grid;gap:6px}
-    .mitre-tactic-title{font:.7rem 'JetBrains Mono',monospace;color:#9dc3e1;text-transform:uppercase;letter-spacing:.12em}
-    .mitre-tech-list{display:flex;flex-wrap:wrap;gap:6px}
-    .mitre-tech{padding:4px 6px;border-radius:8px;border:1px solid #3c6a8f;background:#10304b;font:.7rem 'JetBrains Mono',monospace;color:#d7ecff}
-    .mitre-tech b{display:block;font-size:.68rem;color:#87c7ff}
-    .mitre-empty{color:var(--mut);font-size:.8rem}
-    .intel-shell{display:grid;gap:12px}
-    .intel-topbar{
-      border:1px solid #2b5378;
-      border-radius:14px;
-      padding:12px;
-      background:linear-gradient(155deg,#0f2842,#0c2136 62%,#0a1c2d);
-      display:grid;
-      gap:10px;
-    }
-    .intel-topline{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .intel-title-wrap h2{margin:0}
-    .intel-title-wrap p{margin:4px 0 0;color:#b5d1ea}
-    .intel-chip-row{display:flex;flex-wrap:wrap;gap:7px}
-    .intel-chip{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding:3px 9px;
-      border-radius:999px;
-      border:1px solid #39658e;
-      background:#12304a;
-      font:.69rem 'JetBrains Mono',monospace;
-      color:#d1e8ff;
-    }
-    .intel-chip.critical{border-color:#8e3f51;background:#3a1d28;color:#ffd7dd}
-    .intel-chip.ok{border-color:#3f7d66;background:#17392f;color:#c9ffea}
-    .intel-chip.warn{border-color:#80643b;background:#392f1b;color:#ffeecb}
-    .intel-kpi-grid{
-      display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:8px;
-    }
-    .intel-kpi{
-      border:1px solid #2e557b;
-      border-radius:11px;
-      background:#0f2740;
-      padding:9px;
-    }
-    .intel-kpi b{
-      display:block;
-      font:.7rem 'JetBrains Mono',monospace;
-      color:#a8c6e4;
-      margin-bottom:5px;
-      letter-spacing:.2px;
-      text-transform:uppercase;
-    }
-    .intel-kpi span{
-      font:700 .95rem 'Manrope',sans-serif;
-      color:#ecf7ff;
-      word-break:break-word;
-    }
-    .intel-stage-bar{
-      display:grid;
-      grid-template-columns:repeat(5,minmax(0,1fr));
-      gap:8px;
-    }
-    .intel-stage{
-      border:1px solid #2f567d;
-      border-radius:10px;
-      background:#0d2439;
-      padding:8px;
-      text-align:center;
-      font:.72rem 'JetBrains Mono',monospace;
-      color:#c5def5;
-    }
-    .intel-stage.active{
-      border-color:#4de09f99;
-      background:#154159;
-      color:#e8fff6;
-      font-weight:700;
-    }
-    .intel-layout{display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:12px}
-    .intel-layout.workspace-only{grid-template-columns:minmax(0,1fr)}
-    .intel-selector-shell{
-      display:grid;
-      gap:14px;
-      border:1px solid #2b5378;
-      border-radius:16px;
-      background:linear-gradient(155deg,#0a1f31,#0b2438);
-      padding:16px;
-      box-shadow:0 24px 60px -44px #000;
-    }
-    .intel-selector-head{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:14px;
-      flex-wrap:wrap;
-    }
-    .intel-selector-head h3{margin:0 0 6px}
-    .intel-selector-head p{margin:0;max-width:720px}
-    .intel-selector-grid{
-      display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:12px;
-      align-items:start;
-    }
-    .intel-selector-column{
-      display:grid;
-      gap:10px;
-      border:1px solid #294c6d;
-      border-radius:14px;
-      background:linear-gradient(160deg,#0d253a,#0c2235);
-      padding:12px;
-      min-height:100%;
-    }
-    .intel-selector-column h4{margin:0}
-    .intel-selector-column .mut{margin:0}
-    .intel-picker-stack{display:grid;gap:10px}
-    .intel-picker-card{
-      display:grid;
-      gap:8px;
-      padding:12px;
-      border:1px solid #2f567d;
-      border-radius:12px;
-      background:#10283f;
-      box-shadow:inset 0 1px 0 #ffffff08;
-    }
-    .intel-picker-card strong{display:block;font-size:.96rem;color:#f5fbff}
-    .intel-picker-card .mono{font-size:.72rem}
-    .intel-picker-card .summary{
-      font-size:.82rem;
-      color:#d4e9fa;
-      display:-webkit-box;
-      -webkit-line-clamp:3;
-      -webkit-box-orient:vertical;
-      overflow:hidden;
-    }
-    .intel-picker-actions{display:flex;gap:8px;flex-wrap:wrap}
-    .intel-picker-actions .btn{width:auto}
-    .intel-empty-state{
-      padding:18px 14px;
-      border:1px dashed #3c668c;
-      border-radius:12px;
-      background:#0d2438;
-      color:#bedbf0;
-    }
-    .intel-selector-v2{
-      border-color:#2f5b84;
-      background:
-        radial-gradient(circle at top left, rgba(68,151,218,.12), transparent 55%),
-        linear-gradient(155deg,#0a1f31,#0b2236 60%,#0a1f31);
-      padding:18px;
-    }
-    .intel-focus-hero{
-      display:grid;
-      grid-template-columns:minmax(0,1fr) minmax(220px,260px);
-      gap:16px;
-      align-items:start;
-    }
-    .intel-focus-eyebrow{
-      font-size:.7rem;
-      letter-spacing:.16em;
-      text-transform:uppercase;
-      color:#6db3ff;
-      margin-bottom:6px;
-    }
-    .intel-focus-steps{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:10px;
-    }
-    .intel-step{
-      padding:4px 10px;
-      border-radius:999px;
-      border:1px solid #295d84;
-      font-size:.72rem;
-      color:#b7d8f7;
-      background:#0f2840;
-    }
-    .intel-step.active{
-      border-color:#5ad0ff;
-      color:#e7f7ff;
-      box-shadow:0 0 0 1px #5ad0ff33 inset;
-    }
-    .intel-focus-meta{
-      display:grid;
-      gap:10px;
-      border:1px solid #2b567d;
-      border-radius:14px;
-      padding:12px;
-      background:#0f2740;
-    }
-    .intel-stat{
-      display:flex;
-      align-items:baseline;
-      justify-content:space-between;
-      gap:8px;
-      padding:6px 8px;
-      border-radius:10px;
-      background:#0b2135;
-      border:1px solid #234d72;
-    }
-    .intel-stat .k{font-size:.7rem;color:#9fbfe0;text-transform:uppercase;letter-spacing:.12em}
-    .intel-stat .v{font-size:1.15rem;font-weight:700;color:#f5fbff}
-    .intel-focus-search{
-      display:grid;
-      gap:6px;
-      font-size:.72rem;
-      color:#b8d5ef;
-    }
-    .intel-focus-search input{
-      width:100%;
-      padding:9px 10px;
-      border-radius:10px;
-      border:1px solid #2a587f;
-      background:#0a1b2a;
-      color:#e6f4ff;
-    }
-    .intel-focus-tabs{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:10px;
-    }
-    .intel-tab{
-      border:1px solid #2b567d;
-      background:#0c2236;
-      color:#c7def4;
-      padding:8px 12px;
-      border-radius:10px;
-      font-weight:600;
-      cursor:pointer;
-    }
-    .intel-tab.is-active{
-      background:#14324c;
-      border-color:#64b5ff;
-      color:#f2f9ff;
-      box-shadow:0 0 0 1px #64b5ff33 inset;
-    }
-    .intel-focus-panels{margin-top:10px;display:grid;gap:12px}
-    .intel-panel-head{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .intel-panel-head h4{margin:0}
-    .intel-panel-chip{
-      padding:6px 10px;
-      border-radius:999px;
-      font-size:.72rem;
-      border:1px solid #2b5a82;
-      background:#0c2338;
-      color:#b9d6f0;
-    }
-    .intel-focus-list{display:grid;gap:10px}
-    .intel-focus-card{
-      display:grid;
-      gap:10px;
-      padding:14px;
-      border-radius:14px;
-      border:1px solid #2f567d;
-      background:#0f263c;
-      box-shadow:inset 0 1px 0 #ffffff08;
-    }
-    .intel-focus-card.hero{
-      background:linear-gradient(145deg,#102a42,#0c2032);
-      border-color:#3b6e9a;
-    }
-    .intel-focus-main strong{
-      display:block;
-      font-size:1rem;
-      color:#f5fbff;
-      margin-bottom:6px;
-    }
-    .intel-meta-row{
-      display:flex;
-      gap:6px;
-      flex-wrap:wrap;
-      align-items:center;
-      font-size:.72rem;
-      color:#b9d7ef;
-    }
-    .intel-badge{
-      padding:3px 8px;
-      border-radius:999px;
-      border:1px solid #2a587f;
-      background:#0b2135;
-      color:#c4dcf2;
-      text-transform:lowercase;
-    }
-    .intel-badge.score{border-color:#4aa6ff;color:#e6f4ff;background:#103251}
-    .intel-badge.soft{opacity:.9}
-    .intel-badge.critical{border-color:#a94a56;color:#ffd2d8;background:#3f1822}
-    .intel-focus-summary .summary{
-      font-size:.82rem;
-      color:#d4e9fa;
-      display:-webkit-box;
-      -webkit-line-clamp:3;
-      -webkit-box-orient:vertical;
-      overflow:hidden;
-    }
-    .intel-summary-details{
-      margin-top:6px;
-      font-size:.75rem;
-      color:#b8d5ef;
-    }
-    .intel-summary-details summary{
-      cursor:pointer;
-      color:#8ac5ff;
-    }
-    .intel-focus-actions{display:flex;gap:8px;flex-wrap:wrap}
-    .intel-focus-card.is-hidden{display:none}
-    .intel-focus-bar{
-      position:sticky;
-      top:calc(var(--sticky-header-offset) + 8px);
-      z-index:18;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-      margin:12px 0;
-      padding:11px 12px;
-      border:1px solid #315c82;
-      border-radius:13px;
-      background:linear-gradient(155deg,rgba(14,38,58,.96),rgba(11,31,49,.96));
-      backdrop-filter:blur(14px);
-      box-shadow:0 18px 40px -34px #000;
-    }
-    .intel-focus-main{display:grid;gap:4px}
-    .intel-focus-main strong{font-size:1rem;color:#f6fbff}
-    .intel-focus-main span{color:#bddcff;font:.76rem 'JetBrains Mono',monospace}
-    .intel-focus-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .intel-focus-actions .btn{width:auto}
-    .intel-cockpit{
-      display:grid;
-      grid-template-columns:repeat(6,minmax(0,1fr));
-      gap:10px;
-      margin:0 0 12px;
-    }
-    .intel-cockpit-card{
-      border:1px solid #2c5478;
-      border-radius:14px;
-      background:linear-gradient(160deg,#0f2a42,#0a1f31);
-      padding:12px;
-      display:grid;
-      gap:6px;
-      min-height:108px;
-      box-shadow:0 16px 32px -28px #000;
-    }
-    .intel-cockpit-card .k{
-      font:.68rem 'JetBrains Mono',monospace;
-      color:#9fc2de;
-      text-transform:uppercase;
-      letter-spacing:.04em;
-    }
-    .intel-cockpit-card .v{
-      font:700 1.08rem 'Sora',sans-serif;
-      color:#f2faff;
-      word-break:break-word;
-    }
-    .intel-cockpit-card .mut{margin:0}
-    .intel-cockpit-card.actions{
-      grid-column:span 2;
-      align-content:start;
-    }
-    .intel-quick-grid{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-    }
-    .intel-quick-grid .btn{width:auto}
-    .intel-workspace-nav{
-      position:sticky;
-      top:calc(var(--sticky-header-offset) + 8px);
-      z-index:17;
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin:0 0 12px;
-      padding:10px;
-      border:1px solid #315a7f;
-      border-radius:13px;
-      background:linear-gradient(155deg,rgba(14,36,55,.94),rgba(10,27,43,.94));
-      backdrop-filter:blur(14px);
-      box-shadow:0 16px 38px -34px #000;
-    }
-    .intel-workspace-nav .btn{
-      width:auto;
-      min-width:0;
-      padding:8px 12px;
-      border-radius:999px;
-    }
-    .intel-workspace-nav .btn.active{
-      border-color:#4de09f99;
-      background:#154159;
-      color:#effff7;
-    }
-    .intel-section-head{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-bottom:10px;
-    }
-    .intel-section-head h3{margin:0}
-    .intel-section-head p{margin:4px 0 0}
-    .intel-section-kicker{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding:4px 9px;
-      border:1px solid #3d6b93;
-      border-radius:999px;
-      background:#12314a;
-      color:#d5eeff;
-      font:.68rem 'JetBrains Mono',monospace;
-      text-transform:uppercase;
-      letter-spacing:.04em;
-    }
-    .intel-list{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      max-height:840px;
-      overflow:auto;
-      padding-right:4px;
-      border:1px solid #2b5378;
-      border-radius:12px;
-      background:#0a1d2f;
-      padding:10px;
-    }
-    .intel-list-head{
-      position:sticky;
-      top:0;
-      z-index:2;
-      border:1px solid #2f567d;
-      border-radius:10px;
-      background:linear-gradient(160deg,#11314c,#0e273e);
-      padding:8px 9px;
-      margin-bottom:2px;
-    }
-    .intel-list-head b{display:block}
-    .intel-list-head span{color:#b8d4ec;font-size:.78rem}
-    .intel-item{
-      display:block;
-      text-decoration:none;
-      color:var(--txt);
-      padding:10px 11px;
-      border:1px solid #2f567d;
-      border-radius:11px;
-      background:#0d243a;
-      transition:.14s ease;
-    }
-    .intel-item:hover{border-color:#53a8db;background:#12304a}
-    .intel-item.active{border-color:#4de09f99;background:#154159}
-    .intel-item b{display:block}
-    .intel-item .meta{font:.7rem 'JetBrains Mono',monospace;color:var(--mut);margin-top:3px}
-    .intel-item .summary{font-size:.8rem;color:#d9eafc;margin-top:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-    .intel-editor{
-      border:1px solid #2b5378;
-      border-radius:12px;
-      padding:12px;
-      background:linear-gradient(160deg,#0b2135,#091b2b);
-    }
-    .intel-editor h2{margin-bottom:8px}
-    .intel-editor-section{
-      border:1px solid #2d5277;
-      border-radius:11px;
-      background:#0f2740;
-      padding:10px;
-      margin-bottom:10px;
-    }
-    [data-intel-section]{scroll-margin-top:calc(var(--sticky-header-offset) + 110px)}
-    .intel-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-    .intel-grid-full{grid-column:1 / -1}
-    .intel-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
-    .intel-toolbar button{width:auto}
-    .intel-workbench-panel{
-      display:grid;
-      gap:12px;
-      margin:14px 0 18px;
-      padding:12px;
-      border:1px solid #2f5579;
-      border-radius:14px;
-      background:linear-gradient(160deg,#0d243a,#0b1d2f);
-    }
-    .intel-workbench-grid{
-      display:grid;
-      grid-template-columns:minmax(0,1.3fr) minmax(260px,.9fr);
-      gap:12px;
-      align-items:start;
-    }
-    .intel-workbench-side{display:grid;gap:8px}
-    .intel-workbench-note{
-      margin:0;
-      color:#b6d2eb;
-      font-size:.78rem;
-      line-height:1.45;
-    }
-    .intel-workbench-provider-list{display:flex;flex-wrap:wrap;gap:8px}
-    .intel-workbench-provider-list label{
-      gap:6px;
-      padding:7px 10px;
-      border-radius:10px;
-      border:1px solid #335d83;
-      background:#102741;
-      font:.72rem 'JetBrains Mono',monospace;
-      color:#d3e9ff;
-    }
-    .intel-workbench-provider-list input[type=checkbox]{accent-color:#5fd8ff}
-    .intel-workbench-decode{
-      border:1px solid #2f5579;
-      border-radius:10px;
-      background:#0d2237;
-      padding:8px;
-      display:grid;
-      gap:8px;
-    }
-    .intel-workbench-decode summary{
-      list-style:none;
-      cursor:pointer;
-      font:700 .82rem 'Manrope',sans-serif;
-      color:#d8ecff;
-    }
-    .intel-workbench-decode summary::-webkit-details-marker{display:none}
-    .intel-workbench-decode[open] summary{
-      border-bottom:1px solid #2f5579;
-      padding-bottom:6px;
-    }
-    .intel-workbench-suggestions{
-      display:grid;
-      gap:6px;
-    }
-    .intel-workbench-kpis{
-      display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:8px;
-    }
-    .intel-workbench-kpi{
-      padding:8px 9px;
-      border:1px solid #30577b;
-      border-radius:11px;
-      background:#0f2740;
-      min-height:72px;
-    }
-    .intel-workbench-kpi b{
-      display:block;
-      margin-bottom:5px;
-      font:.66rem 'JetBrains Mono',monospace;
-      color:#a8c6e4;
-      text-transform:uppercase;
-      letter-spacing:.05em;
-    }
-    .intel-workbench-kpi span{
-      display:block;
-      font:700 1.05rem 'Sora',sans-serif;
-      color:#edf7ff;
-    }
-    .intel-artifact-grid,
-    .intel-batch-grid,
-    .intel-decode-grid{display:grid;gap:8px}
-    .intel-artifact-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
-    .intel-artifact-card,
-    .intel-batch-card,
-    .intel-decode-card{
-      border:1px solid #30577b;
-      border-radius:12px;
-      background:#0f2740;
-      padding:10px;
-      display:grid;
-      gap:6px;
-    }
-    .intel-artifact-type{
-      display:inline-flex;
-      align-items:center;
-      width:max-content;
-      padding:2px 8px;
-      border-radius:999px;
-      border:1px solid #47719a;
-      background:#14324d;
-      font:.66rem 'JetBrains Mono',monospace;
-      color:#d3ebff;
-      text-transform:uppercase;
-    }
-    .intel-artifact-value{
-      margin:0;
-      color:#f3fbff;
-      font:600 .8rem 'JetBrains Mono',monospace;
-      word-break:break-word;
-    }
-    .intel-decode-card pre,
-    .intel-batch-card pre{
-      margin:0;
-      padding:8px;
-      border-radius:10px;
-      border:1px solid #284a69;
-      background:#091a2a;
-      max-height:180px;
-      overflow:auto;
-      white-space:pre-wrap;
-      font:.72rem 'JetBrains Mono',monospace;
-    }
-    .intel-batch-head{
-      display:flex;
-      justify-content:space-between;
-      gap:8px;
-      align-items:flex-start;
-      flex-wrap:wrap;
-    }
-    .intel-batch-status{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding:3px 8px;
-      border-radius:999px;
-      border:1px solid #3b6e96;
-      background:#13304a;
-      font:.67rem 'JetBrains Mono',monospace;
-      color:#d9efff;
-    }
-    .intel-batch-status.ok{border-color:#3f7d66;background:#17392f;color:#cbffea}
-    .intel-batch-status.ko{border-color:#8e3f51;background:#3a1d28;color:#ffd7dd}
-    .intel-map-shell{display:grid;gap:10px}
-    .intel-map-toolbar{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-      padding:8px 10px;
-      border:1px solid #315c82;
-      border-radius:11px;
-      background:linear-gradient(155deg,#0d253a,#102e49);
-    }
-    .intel-map-toolbar-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .intel-map-toolbar label{margin:0;font:.72rem 'JetBrains Mono',monospace;color:#bddcff}
-    .intel-map-toolbar select{width:auto;min-width:180px;max-width:240px}
-    .intel-map-toolbar button{width:auto;min-width:0}
-    .intel-map-toolbar .map-stat{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding:5px 10px;
-      border-radius:999px;
-      border:1px solid #3e6e98;
-      background:#12314a;
-      color:#d5eeff;
-      font:.7rem 'JetBrains Mono',monospace;
-    }
-    .intel-canvas-wrap{position:relative;height:470px;border:1px solid #2f577f;border-radius:11px;background:radial-gradient(circle at 18% 12%,#214865 0,#0d2438 42%,#091728 100%);overflow:hidden;touch-action:none}
-    .intel-canvas-wrap svg{position:absolute;inset:0;width:100%;height:100%}
-    .intel-node-layer{position:absolute;inset:0;transform-origin:0 0}
-    .intel-canvas-wrap.is-panning{cursor:grabbing}
-    .intel-canvas-wrap.is-fullscreen{
-      height:100vh;
-      border-radius:0;
-      border-color:#4a7aa1;
-    }
-    .intel-canvas-dock{
-      position:absolute;
-      right:14px;
-      bottom:14px;
-      z-index:6;
-      display:grid;
-      gap:8px;
-      width:min(100%,420px);
-      padding:10px;
-      border:1px solid #335d83;
-      border-radius:14px;
-      background:linear-gradient(160deg,rgba(9,23,36,.9),rgba(13,36,56,.88));
-      backdrop-filter:blur(14px);
-      box-shadow:0 20px 44px -30px #000;
-    }
-    .intel-canvas-dock-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .intel-canvas-dock-title{
-      display:grid;
-      gap:3px;
-    }
-    .intel-canvas-dock-title b{font-size:.9rem}
-    .intel-canvas-dock-title span{font:.68rem 'JetBrains Mono',monospace;color:#b9d9ee}
-    .intel-canvas-dock-actions,
-    .intel-canvas-dock-tools{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    .intel-canvas-dock .btn{
-      width:auto;
-      min-width:0;
-      padding:8px 11px;
-    }
-    .intel-node{position:absolute;transform:translate(-50%,-50%);min-width:96px;max-width:200px;padding:8px 10px;border-radius:12px;color:#fff;font:700 .74rem 'Manrope',sans-serif;border:1px solid #ffffff55;cursor:move;user-select:none;box-shadow:0 8px 18px -12px #000a;word-break:break-word}
-    .intel-node.active{outline:2px solid #ffd266;z-index:3}
-    .intel-node .intel-node-label{font:700 .74rem 'Manrope',sans-serif}
-    .intel-node .intel-node-meta{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
-    .intel-node .node-chip{font:.56rem 'JetBrains Mono',monospace;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:999px;border:1px solid #ffffff44;background:#10263b;color:#d7e7fb}
-    .intel-node .node-chip.source{border-color:#7bb9ff;background:#0f2b47;color:#cfe4ff}
-    .intel-node .node-chip.hash{border-color:#d9b45a;background:#2d2412;color:#ffe7b6}
-    .intel-node .node-chip.ioc{border-color:#6fe0a6;background:#103427;color:#d4ffe8}
-    .intel-node .node-chip.artifact{border-color:#ff9f6b;background:#3a1d10;color:#ffe0cf}
-    .intel-node .node-chip.vt{border-color:#ff9f43;background:#3a2412;color:#ffe2c2}
-    .intel-edge-label{position:absolute;transform:translate(-50%,-50%);font:.68rem 'JetBrains Mono',monospace;color:#d6ebf8;background:#10314a;border:1px solid #3d6991;padding:2px 5px;border-radius:6px;pointer-events:none}
-    .intel-side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
-    .intel-side h3{margin:.2rem 0}
-    .intel-side .card-box{padding:8px;border:1px solid #2d5277;border-radius:10px;background:#0f2740}
-    .intel-side .card-box button{margin-top:6px}
-    .intel-share{margin-top:10px;padding:8px;border:1px solid #2ea579;border-radius:10px;background:#103b3f}
-    .intel-share a{color:#9de9ff;word-break:break-all}
-    .intel-api-map-insights{
-      border:1px solid #2e557c;
-      border-radius:10px;
-      background:linear-gradient(155deg,#102940,#0c2438);
-      padding:8px;
-      margin:6px 0 10px;
-      display:grid;
-      gap:7px;
-    }
-    .intel-api-map-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:8px;
-      flex-wrap:wrap;
-      font:.72rem 'JetBrains Mono',monospace;
-      color:#cbe7ff;
-    }
-    .intel-api-keywords{
-      display:flex;
-      gap:6px;
-      flex-wrap:wrap;
-      align-items:center;
-      min-height:28px;
-    }
-    .intel-api-keyword-chip{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      border:1px solid #44729b;
-      border-radius:999px;
-      padding:3px 10px;
-      background:#12314a;
-      color:#dcf2ff;
-      font:.68rem 'JetBrains Mono',monospace;
-      line-height:1;
-    }
-    .intel-api-keyword-chip b{
-      font:700 .67rem 'JetBrains Mono',monospace;
-      color:#ffd98e;
-    }
-    .api-key-row-form{
-      display:flex;
-      gap:6px;
-      align-items:center;
-    }
-    .api-key-row-form input[type="password"],
-    .api-key-row-form input[type="text"]{
-      min-width:220px;
-    }
-    .api-key-toggle{
-      width:auto;
-      padding:7px 9px;
-      border-radius:10px;
-      border:1px solid #3a5f88;
-      background:linear-gradient(150deg,#102742,#0d2137);
-      color:var(--txt);
-      font:600 .72rem 'JetBrains Mono',monospace;
-      cursor:pointer;
-    }
-    .api-key-delete-form{display:inline-flex}
-    .api-result{
-      margin-top:8px;
-      border:1px solid #2f5579;
-      border-radius:10px;
-      background:#0d2237;
-      padding:8px;
-    }
-    .api-result pre{
-      margin:6px 0 0;
-      max-height:230px;
-      overflow:auto;
-      border:1px solid #2f5579;
-      border-radius:8px;
-      background:#091828;
-      padding:8px;
-      font:.72rem 'JetBrains Mono',monospace;
-      white-space:pre-wrap;
-      word-break:break-word;
-    }
-    .vt-summary{
-      margin-top:8px;
-      border:1px solid #2f5579;
-      border-radius:8px;
-      background:#0a1d2f;
-      padding:8px;
-      display:grid;
-      gap:8px;
-    }
-    .vt-summary-head{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      align-items:center;
-      justify-content:space-between;
-      font:.72rem 'JetBrains Mono',monospace;
-      color:#c8e5ff;
-    }
-    .vt-stat-grid{
-      display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
-      gap:6px;
-    }
-    .vt-stat-chip{
-      border:1px solid #345f84;
-      border-radius:10px;
-      padding:7px;
-      display:grid;
-      gap:4px;
-      background:#10273d;
-      font:.72rem 'JetBrains Mono',monospace;
-    }
-    .vt-stat-chip span{opacity:.95}
-    .vt-stat-chip b{font:800 .94rem 'Sora',sans-serif}
-    .vt-stat-malicious{border-color:#8e3444;background:#351422;color:#ffd4dc}
-    .vt-stat-suspicious{border-color:#8c7639;background:#332812;color:#ffe9be}
-    .vt-stat-harmless{border-color:#2f7a58;background:#123427;color:#c9ffe3}
-    .vt-stat-undetected{border-color:#3a5f86;background:#10263b;color:#cde6ff}
-    .api-lookup-history{
-      margin-top:10px;
-      border:1px solid #2f5579;
-      border-radius:10px;
-      background:#0d2237;
-      display:grid;
-      gap:8px;
-    }
-    .api-lookup-history summary{
-      list-style:none;
-      cursor:pointer;
-      margin:0;
-      padding:8px;
-      font:700 .86rem 'Manrope',sans-serif;
-      color:#d8ecff;
-    }
-    .api-lookup-history summary::-webkit-details-marker{display:none}
-    .api-lookup-history[open] summary{
-      border-bottom:1px solid #2f5579;
-    }
-    .api-lookup-history > *:not(summary){
-      padding:0 8px 8px 8px;
-    }
-    .api-lookup-item{
-      border:1px solid #2f5579;
-      border-radius:8px;
-      background:#0a1d2e;
-      overflow:hidden;
-    }
-    .api-lookup-item summary{
-      list-style:none;
-      cursor:pointer;
-      padding:8px;
-      display:grid;
-      gap:4px;
-    }
-    .api-lookup-item summary::-webkit-details-marker{display:none}
-    .api-lookup-meta{
-      font:.72rem 'JetBrains Mono',monospace;
-      color:#b4d9f7;
-      word-break:break-word;
-    }
-    .api-lookup-status-ok{color:#89e6b7}
-    .api-lookup-status-ko{color:#ffb0b0}
-    .api-lookup-body{
-      border-top:1px solid #2f5579;
-      padding:8px;
-      display:grid;
-      gap:8px;
-    }
-    .api-lookup-body pre{
-      margin:0;
-      max-height:260px;
-      overflow:auto;
-      border:1px solid #2f5579;
-      border-radius:8px;
-      background:#091828;
-      padding:8px;
-      font:.72rem 'JetBrains Mono',monospace;
-      white-space:pre-wrap;
-      word-break:break-word;
-    }
-    .intel-accordion{
-      border:1px solid #284968;
-      border-radius:12px;
-      background:#0a1926;
-      padding:8px 12px;
-      margin-top:10px;
-    }
-    .intel-accordion > summary{
-      cursor:pointer;
-      font:700 .8rem 'Manrope',sans-serif;
-      color:#dcecff;
-      list-style:none;
-    }
-    .intel-accordion > summary::-webkit-details-marker{display:none}
-    .intel-accordion[open]{
-      box-shadow:0 10px 24px -18px #000a;
-    }
-    .vt-reported-wrap{
-      margin-top:10px;
-      border:1px solid #2f5579;
-      border-radius:10px;
-      background:#0d2237;
-      padding:8px;
-      display:grid;
-      gap:8px;
-    }
-    .vt-reported-kpis{
-      display:grid;
-      gap:6px;
-      grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
-    }
-    .vt-reported-kpi{
-      border:1px solid #325b80;
-      border-radius:9px;
-      background:#102a43;
-      padding:7px;
-      display:grid;
-      gap:3px;
-    }
-    .vt-reported-kpi .k{
-      font:.66rem 'JetBrains Mono',monospace;
-      color:#a9cbe7;
-      text-transform:uppercase;
-    }
-    .vt-reported-kpi .v{
-      font:800 1.02rem 'Sora',sans-serif;
-      color:#e8f6ff;
-    }
-    .vt-reported-domain-table{
-      max-height:260px;
-      overflow:auto;
-      border:1px solid #2f5579;
-      border-radius:8px;
-    }
-    .vt-domain-badge{
-      display:inline-flex;
-      align-items:center;
-      gap:4px;
-      padding:2px 8px;
-      border-radius:999px;
-      border:1px solid #3f688c;
-      background:#10263b;
-      font:700 .66rem 'JetBrains Mono',monospace;
-      text-transform:uppercase;
-      letter-spacing:.2px;
-    }
-    .vt-domain-badge.malicious{border-color:#a94a56;color:#ffd2d8;background:#3f1822}
-    .vt-domain-badge.suspicious{border-color:#8f7844;color:#ffebbe;background:#3e3014}
-    .vt-domain-badge.harmless_or_undetected{border-color:#377a57;color:#d7ffea;background:#123626}
-    .intel-timeline{
-      border:1px solid #2d5277;
-      border-radius:11px;
-      background:#0f2740;
-      padding:10px;
-      margin-top:10px;
-    }
-    .intel-timeline h3{margin:0 0 8px}
-    .intel-timeline-list{display:grid;gap:8px;max-height:380px;overflow:auto;padding-right:2px}
-    .intel-event-card{
-      border:1px solid #2e557b;
-      border-radius:10px;
-      background:#0b2135;
-      padding:8px;
-      display:grid;
-      gap:5px;
-    }
-    .intel-event-head{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:8px;
-      flex-wrap:wrap;
-      font:.72rem 'JetBrains Mono',monospace;
-      color:#b7d3eb;
-    }
-    .intel-event-action{
-      display:inline-flex;
-      align-items:center;
-      gap:4px;
-      padding:2px 7px;
-      border:1px solid #3a648b;
-      border-radius:999px;
-      background:#12304a;
-      color:#d6ecff;
-      font:.67rem 'JetBrains Mono',monospace;
-    }
-    .intel-event-detail{
-      font:.74rem 'JetBrains Mono',monospace;
-      color:#dceeff;
-      line-height:1.35;
-      white-space:pre-wrap;
-      word-break:break-word;
-    }
-    .intel-public{max-width:1760px;margin:18px auto;padding:0 12px}
-    .intel-public .card{margin-bottom:10px}
-    .intel-public-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-    .intel-public-meta .m{padding:8px;border:1px solid #2e5378;border-radius:9px;background:#102842}
-    .rbac{margin-top:8px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-    .rbac .item{padding:8px;border-radius:10px;border:1px solid #2f5579;background:#102842}
-    .rbac .item b{display:block;font-size:.82rem}
-    .rbac .item span{color:#bcdced;font-size:.78rem}
-    .geo-map{height:360px;border:1px solid #2e5378;border-radius:10px;overflow:hidden;background:#0f2236}
-    .geo-map-legend{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 0}
-    .geo-chip{padding:3px 8px;border-radius:999px;border:1px solid #355b82;background:#102742;font:.7rem 'JetBrains Mono',monospace}
-    .geo-chip b{color:#fff}
-    .geo-subtitle{margin:0 0 8px;color:#b8d1ea}
-    .geo-table-wrap{max-height:280px;overflow:auto;margin-top:8px}
-    .trend-bar{height:8px;border-radius:999px;background:#183f5d;overflow:hidden}
-    .trend-bar > span{display:block;height:100%;border-radius:999px}
-    .trend-bar.alerts > span{background:#14b8ff}
-    .trend-bar.blocks > span{background:#38d17a}
-    .mut-mini{font-size:.75rem;color:#9fb6d1}
-    .chart-stack{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0 10px}
-    .chart-card{
-      border:1px solid #2f5579;
-      border-radius:10px;
-      background:linear-gradient(160deg,#0f2a43,#0b2035);
-      padding:8px;
-    }
-    .analytics-kpi-grid{
-      display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:8px;
-      margin:8px 0;
-    }
-    .analytics-kpi{
-      border:1px solid #2f5579;
-      border-radius:10px;
-      background:linear-gradient(160deg,#102941,#0c2237);
-      padding:8px;
-    }
-    .analytics-kpi .k{font:.66rem 'JetBrains Mono',monospace;color:#a7c6e3}
-    .analytics-kpi .v{font:700 1.05rem 'Sora',sans-serif;color:#e6f3ff;margin-top:3px}
-    .analytics-search{
-      max-width:320px;
-      margin:6px 0 8px;
-    }
-    .analytics-table-wrap{
-      max-height:290px;
-      overflow:auto;
-      border:1px solid #2f5579;
-      border-radius:10px;
-      background:#0b2033;
-    }
-    .analytics-table-wrap table{margin:0}
-    .analytics-table-wrap thead th{
-      position:sticky;
-      top:0;
-      z-index:2;
-      background:linear-gradient(120deg,rgba(24,49,75,.95),rgba(17,34,54,.95));
-    }
-    .exposure-grid{
-      display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
-      gap:8px;
-      margin-top:8px;
-    }
-    .exposure-kpi-grid{
-      grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
-    }
-    .exposure-note{
-      margin:6px 0 0;
-      color:#a9c8e6;
-      font:.74rem 'JetBrains Mono',monospace;
-      line-height:1.45;
-    }
-    .exposure-flag-wrap{
-      display:flex;
-      flex-wrap:wrap;
-      gap:5px;
-    }
-    .exposure-flag{
-      display:inline-flex;
-      align-items:center;
-      gap:4px;
-      padding:2px 8px;
-      border-radius:999px;
-      border:1px solid #40688e;
-      background:#102842;
-      color:#dcefff;
-      font:.66rem 'JetBrains Mono',monospace;
-      text-transform:uppercase;
-      letter-spacing:.03em;
-    }
-    .exposure-flag.referrer_match{border-color:#7d5df6;color:#eadfff;background:#211642}
-    .exposure-flag.direct_ip_overlap{border-color:#c95f5f;color:#ffd8d8;background:#3a171e}
-    .exposure-flag.network_overlap{border-color:#d49a43;color:#ffe9bf;background:#3a2a14}
-    .exposure-flag.proxy,.exposure-flag.hosting{border-color:#b04f6a;color:#ffd8e4;background:#391524}
-    .exposure-flag.mobile{border-color:#3d7db4;color:#d2edff;background:#10293f}
-    .exposure-domains{
-      font:.68rem 'JetBrains Mono',monospace;
-      color:#bcdced;
-      line-height:1.4;
-      word-break:break-word;
-    }
-    .compact-table th,.compact-table td{padding:5px 7px;font-size:.74rem}
-    .chart-card .chart-title{margin:0 0 6px;font:.72rem 'JetBrains Mono',monospace;color:#bcd8f2}
-    .chart-canvas{width:100%;height:180px;display:block;border-radius:8px;background:#0a1d30}
-    .chart-legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
-    .chart-legend .dot{width:8px;height:8px;border-radius:999px;display:inline-block;margin-right:5px}
-    .chart-legend span{font:.68rem 'JetBrains Mono',monospace;color:#a7c6e3}
-    .profile-shell{display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:10px}
-    .profile-card{padding:12px;border:1px solid #355a82;border-radius:12px;background:#0c253d}
-    .profile-avatar{width:78px;height:78px;border-radius:999px;display:grid;place-items:center;font:800 1.5rem 'Sora',sans-serif;background:linear-gradient(145deg,#63d9ff,#57f0be);color:#032640;margin-bottom:10px}
-    .profile-avatar.has-image{background:#0d2036;padding:0;overflow:hidden}
-    .profile-avatar.has-image img{width:100%;height:100%;object-fit:cover;display:block}
-    .profile-name{margin:0;font-size:1.15rem}
-    .profile-nick{font:.8rem 'JetBrains Mono',monospace;color:#9cc6e5}
-    .profile-meta{display:grid;gap:6px;margin-top:10px}
-    .profile-meta .rowx{display:flex;justify-content:space-between;gap:8px;border:1px solid #2f557a;border-radius:9px;padding:6px 8px;background:#112d47}
-    .profile-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-    .profile-tab{padding:6px 10px;border-radius:10px;border:1px solid #335a80;background:#112b44;color:#d9ecff;text-decoration:none;font:.78rem 'JetBrains Mono',monospace}
-    .profile-tab.active{border-color:#58dcaf;background:#12483d;color:#d9fff3}
-    hr{border:none;border-top:1px solid #2a4b6d;margin:10px 0}
-    pre{white-space:pre-wrap;word-break:break-word}
-    input,select,textarea,button{max-width:100%}
-    @media(min-width:1700px){
-      .grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
-      .kpi{min-height:84px}
-      .kpi .mut{font-size:.67rem}
-    }
-    @media(min-width:1900px){
-      .workspace{grid-template-columns:minmax(0,1fr) clamp(320px,18vw,420px)}
-    }
-    @media(max-width:1320px){
-      .workspace{grid-template-columns:1fr}
-      .side-column{position:static}
-    }
-    @media(max-width:920px){
-      .wrap{
-        width:min(100%,99vw);
-        padding:
-          calc(8px + env(safe-area-inset-top))
-          max(6px, env(safe-area-inset-right))
-          calc(16px + env(safe-area-inset-bottom))
-          max(6px, env(safe-area-inset-left));
-      }
-      .top{
-        top:max(6px, env(safe-area-inset-top));
-        padding:12px;
-      }
-      .app-header-main{
-        gap:10px;
-        align-items:center;
-      }
-      .app-header-brand,
-      .top-status{
-        min-width:0;
-        width:100%;
-        flex-basis:100%;
-      }
-      .app-header-brand{
-        gap:4px;
-      }
-      .app-header-title{
-        gap:8px;
-      }
-      .app-header-title b{
-        font-size:.96rem;
-      }
-      .app-header-subline{
-        display:none;
-      }
-      .top-status{
-        justify-content:flex-start;
-        flex-wrap:nowrap;
-        overflow-x:auto;
-        -webkit-overflow-scrolling:touch;
-        scrollbar-width:none;
-        padding-bottom:2px;
-      }
-      .top-status::-webkit-scrollbar{
-        display:none;
-      }
-      .status-chip,
-      .module-chip{
-        flex:0 0 auto;
-        white-space:nowrap;
-      }
-      .nav-toggle{
-        display:inline-flex;
-        margin-left:auto;
-      }
-      .app-header-navrow{
-        display:none;
-        width:100%;
-        padding-top:8px;
-        margin-top:2px;
-        max-height:calc(100dvh - 132px - env(safe-area-inset-top));
-        overflow:auto;
-        -webkit-overflow-scrolling:touch;
-      }
-      .top.is-nav-open .app-header-navrow{
-        display:grid;
-        gap:10px;
-      }
-      .header-nav{
-        overflow:visible;
-        flex:0 1 auto;
-        width:100%;
-        display:grid;
-        grid-template-columns:repeat(2,minmax(0,1fr));
-        gap:8px;
-        padding-bottom:0;
-      }
-      .header-nav a,
-      .nav-actions .nav-btn,
-      .module-chip,
-      .status-chip{
-        min-height:44px;
-      }
-      .header-nav a{
-        width:100%;
-        justify-content:center;
-      }
-      .nav-actions{
-        width:100%;
-        justify-content:flex-start;
-        display:grid;
-        grid-template-columns:repeat(2,minmax(0,1fr));
-        gap:8px;
-      }
-      .nav-actions form{
-        margin:0;
-        display:contents;
-      }
-      .nav-actions .nav-btn{
-        width:100%;
-        justify-content:center;
-      }
-      input,
-      select,
-      textarea,
-      button{
-        font-size:16px;
-        min-height:44px;
-      }
-      textarea{min-height:110px}
-      .hero-main,
-      .hero-side,
-      .card,
-      .side-card,
-      .intel-editor-section,
-      .intel-selector-shell{
-        padding-left:10px;
-        padding-right:10px;
-      }
-      .geo-map{
-        height:300px !important;
-      }
-      .chart-canvas{
-        height:200px;
-      }
-    }
-    @media(max-width:1140px){
-      .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-      .hero,.row,.split,.event-workbench,.event-columns,.event-grid,.intel-layout,.intel-grid,.intel-side,.intel-public-meta,.rbac,.viz-grid,.profile-shell,.chart-stack,.analytics-kpi-grid,.intel-kpi-grid,.intel-stage-bar,.intel-selector-grid,.intel-cockpit,.intel-workbench-grid,.intel-workbench-kpis{grid-template-columns:1fr}
-      .app-header-navrow{align-items:flex-start}
-      .nav-actions{width:100%;justify-content:flex-start}
-      .intel-focus-hero{grid-template-columns:1fr}
-    }
-    @media(max-width:700px){
-      :root{--sticky-header-offset:12px}
-      .wrap{
-        width:min(100%,98vw);
-        padding:
-          max(8px, env(safe-area-inset-top))
-          max(4px, env(safe-area-inset-right))
-          calc(18px + env(safe-area-inset-bottom))
-          max(4px, env(safe-area-inset-left));
-      }
-      body{overflow-x:hidden}
-      .top{
-        top:max(6px, env(safe-area-inset-top));
-        padding:12px;
-        position:static;
-      }
-      .side-column{
-        position:static;
-      }
-      .grid{grid-template-columns:1fr}
-      .top-status{justify-content:flex-start}
-      .nav-actions{justify-content:flex-start}
-      .top,
-      .card,
-      .profile-card,
-      .intel-editor-section,
-      .event-detail-shell,
-      .intel-editor,
-      .intel-selector-shell,
-      .intel-cockpit-card,
-      .intel-topbar,
-      .intel-list,
-      .analytics-table-wrap{
-        border-radius:14px;
-      }
-      .intel-focus-tabs{gap:6px}
-      .intel-tab{flex:1 1 100%;text-align:center}
-      .intel-focus-meta{padding:10px}
-      .top,
-      .card{
-        padding-left:10px;
-        padding-right:10px;
-      }
-      .app-header-navrow{
-        gap:6px;
-      }
-      .header-nav{
-        grid-template-columns:1fr;
-      }
-      .header-nav a,
-      .nav-actions .nav-btn{
-        min-height:44px;
-      }
-      .intel-focus-bar,
-      .intel-workspace-nav{
-        position:static;
-        top:auto;
-      }
-      .nav-actions{
-        width:100%;
-        gap:6px;
-        grid-template-columns:1fr;
-      }
-      .nav-actions .nav-btn,
-      .bulk-review-toolbar .bulk-review-actions button,
-      .intel-toolbar button,
-      .intel-toolbar .btn,
-      .intel-map-toolbar button,
-      .intel-focus-actions .btn,
-      .intel-canvas-dock .btn{
-        min-height:44px;
-      }
-      input,
-      select,
-      textarea,
-      button{
-        font-size:16px;
-        min-height:44px;
-      }
-      textarea{min-height:110px}
-      .app-header-title b{font-size:.92rem}
-      .module-chip,
-      .status-chip,
-      .badge,
-      .event-chip,
-      .intel-chip{
-        font-size:.68rem;
-      }
-      table{
-        display:block;
-        width:100%;
-        max-width:100%;
-        overflow-x:auto;
-        -webkit-overflow-scrolling:touch;
-      }
-      table thead,
-      table tbody{
-        width:max-content;
-        min-width:100%;
-      }
-      th,
-      td{
-        white-space:nowrap;
-        vertical-align:top;
-      }
-      td .btn,
-      td button,
-      td select,
-      td input[type="text"],
-      td input[type="number"],
-      td input[type="file"]{
-        width:100%;
-        min-width:0;
-      }
-      td pre,
-      td .mono,
-      td .mut-mini,
-      .event-context pre,
-      .api-result pre{
-        white-space:pre-wrap;
-        word-break:break-word;
-      }
-      .event-feed{
-        max-height:none;
-        padding-right:0;
-      }
-      .event-feed-item,
-      .intel-item{
-        padding:10px;
-      }
-      .event-grid,
-      .event-columns,
-      .intel-grid,
-      .intel-side,
-      .profile-meta,
-      .intel-kpi-grid,
-      .intel-workbench-kpis,
-      .side-metrics,
-      .vt-stat-grid,
-      .intel-selector-grid,
-      .intel-cockpit{
-        grid-template-columns:1fr;
-      }
-      .workspace,
-      .row,
-      .split,
-      .event-workbench,
-      .intel-layout,
-      .intel-workbench-grid,
-      .profile-shell,
-      .chart-stack,
-      .intel-selector-grid,
-      .intel-cockpit{
-        gap:10px;
-      }
-      .event-detail-shell,
-      .intel-editor,
-      .intel-editor-section,
-      .profile-card{
-        overflow:hidden;
-      }
-      .intel-focus-bar,
-      .intel-map-toolbar,
-      .intel-selector-head,
-      .intel-section-head,
-      .bulk-review-toolbar,
-      .vt-summary-head,
-      .event-topline,
-      .event-related-head{
-        align-items:stretch;
-      }
-      .intel-map-toolbar-group,
-      .intel-focus-actions,
-      .intel-picker-actions,
-      .intel-quick-grid,
-      .intel-canvas-dock-actions,
-      .intel-canvas-dock-tools,
-      .bulk-review-toolbar .bulk-review-actions{
-        width:100%;
-      }
-      .intel-map-toolbar select,
-      .intel-map-toolbar button,
-      .intel-focus-actions .btn,
-      .intel-picker-actions .btn,
-      .intel-quick-grid .btn,
-      .intel-workspace-nav .btn,
-      .intel-canvas-dock .btn,
-      .intel-toolbar form,
-      .intel-toolbar a,
-      .event-quick-form,
-      td form,
-      .api-key-row-form,
-      .api-key-row-form input[type="password"],
-      .api-key-row-form input[type="text"]{
-        width:100%;
-        min-width:0;
-      }
-      .event-quick-form,
-      td form,
-      form[style*="display:flex"]{
-        display:flex !important;
-        flex-direction:column !important;
-        align-items:stretch !important;
-        gap:8px !important;
-      }
-      .event-quick-form > *,
-      td form > *,
-      form[style*="display:flex"] > *{
-        width:100% !important;
-        min-width:0 !important;
-      }
-      .intel-canvas-dock{
-        left:10px;
-        right:10px;
-        bottom:10px;
-        width:auto;
-        max-height:min(42vh, 360px);
-        overflow:auto;
-      }
-      .api-key-row-form{
-        flex-direction:column;
-        align-items:stretch;
-      }
-      .intel-canvas-wrap{
-        height:58vh;
-        min-height:320px;
-        max-height:520px;
-      }
-      .geo-map{
-        height:320px !important;
-      }
-      .chart-canvas{
-        height:210px;
-      }
-      .profile-avatar{
-        width:64px;
-        height:64px;
-      }
-      .announcement-aside summary{
-        align-items:center;
-      }
-    }
-    @media(max-width:520px){
-      .wrap{width:100%}
-      .top{
-        padding:10px;
-        gap:10px;
-      }
-      .app-header-main,
-      .app-header-navrow{
-        gap:10px;
-      }
-      .top-status,
-      .top .mut{
-        width:100%;
-      }
-      .side-card,
-      .profile-card,
-      .intel-editor-section,
-      .intel-selector-shell{
-        padding:9px;
-      }
-      .intel-cockpit-card.actions{
-        grid-column:auto;
-      }
-      .event-feed-host,
-      .event-kv span,
-      .intel-kpi span,
-      .profile-name{
-        word-break:break-word;
-      }
-      .intel-canvas-wrap{
-        height:52vh;
-        min-height:280px;
-      }
-      .intel-canvas-dock{
-        max-height:min(48vh, 340px);
-      }
-      .geo-map{
-        height:280px !important;
-      }
-      .compact-table th,
-      .compact-table td{
-        padding:6px;
-        font-size:.72rem;
-      }
-      .chart-legend span,
-      .mut,
-      .event-feed-meta,
-      .event-related-note{
-        font-size:.72rem;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="<?= clickfix_h($templateBaseUrl); ?>/vendors/mdi/css/materialdesignicons.min.css">
+  <link rel="stylesheet" href="<?= clickfix_h($templateBaseUrl); ?>/vendors/ti-icons/css/themify-icons.css">
+  <link rel="stylesheet" href="<?= clickfix_h($templateBaseUrl); ?>/vendors/css/vendor.bundle.base.css">
+  <link rel="stylesheet" href="<?= clickfix_h($templateBaseUrl); ?>/vendors/font-awesome/css/font-awesome.min.css">
+  <link rel="stylesheet" href="<?= clickfix_h($templateBaseUrl); ?>/vendors/flag-icon-css/css/flag-icons.min.css">
+  <link rel="stylesheet" href="<?= clickfix_h($templateBaseUrl); ?>/css/style.css">
+  <?php require __DIR__ . '/partials/dashboard_style.php'; ?>
+  <?php require __DIR__ . '/partials/dashboard_corona_overrides.php'; ?>
 </head>
 <body class="<?= clickfix_h($bodyClass); ?>">
-  <div class="wrap">
-    <header class="top" id="app-header">
-      <div class="app-header-main">
-        <div class="app-header-brand">
-          <div class="app-header-title">
-            <b>ClickFix Unified Operations Center</b>
-            <div class="module-chip"><?= clickfix_h(cft('label_module')); ?>: <?= clickfix_h($currentPageLabel); ?></div>
-          </div>
-          <div class="app-header-subline">
-            <span>telemetry intelligence</span>
-            <span class="sep">|</span>
-            <span>investigation workspace</span>
-            <span class="sep">|</span>
-            <span>secure operations</span>
-          </div>
-        </div>
-        <div class="top-status">
-          <span class="status-chip">records: <?= (int) ($metrics['total_alerts'] ?? 0); ?></span>
-          <span class="status-chip">module: <?= clickfix_h($currentPageLabel); ?></span>
-          <?php if ($loggedIn): ?><span class="status-chip">operator: <a class="user-link" href="<?= clickfix_h(cfprofileurl((int) ($user['id'] ?? 0), [], false)); ?>"><?= clickfix_h((string) $user['username']); ?></a></span><?php endif; ?>
-          <span class="status-chip">
-            <?= clickfix_h(cft('lang_label')); ?>:
-            <a href="<?= clickfix_h(cfurl($page, !$loggedIn, ['lang' => 'es'])); ?>">ES</a> |
-            <a href="<?= clickfix_h(cfurl($page, !$loggedIn, ['lang' => 'en'])); ?>">EN</a> |
-            <a href="<?= clickfix_h(cfurl($page, !$loggedIn, ['lang' => 'ca'])); ?>">CA</a> |
-            <a href="<?= clickfix_h(cfurl($page, !$loggedIn, ['lang' => 'de'])); ?>">DE</a> |
-            <a href="<?= clickfix_h(cfurl($page, !$loggedIn, ['lang' => 'fr'])); ?>">FR</a> |
-            <a href="<?= clickfix_h(cfurl($page, !$loggedIn, ['lang' => 'it'])); ?>">IT</a>
-          </span>
-        </div>
-        <button class="nav-toggle" type="button" id="nav-toggle" aria-expanded="false" aria-controls="app-header-navrow">
-          <span class="nav-toggle-lines" aria-hidden="true"><span></span><span></span><span></span></span>
-          <span>Menu</span>
-        </button>
-      </div>
-      <div class="app-header-navrow" id="app-header-navrow">
-        <nav class="header-nav" aria-label="Primary">
-          <a class="<?= $page === 'home' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('home', true)); ?>"><?= clickfix_h(cft('nav_home')); ?></a>
-          <a class="<?= $page === 'search' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('search', true)); ?>"><?= clickfix_h(cft('nav_search')); ?></a>
-          <a class="<?= $page === 'coverage' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('coverage', true)); ?>"><?= clickfix_h(cft('nav_coverage')); ?></a>
-          <a class="<?= $page === 'about' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('about', true)); ?>"><?= clickfix_h(cft('nav_about')); ?></a>
-          <?php if ($loggedIn): ?>
-            <a class="<?= $page === 'profile' ? 'active' : ''; ?>" href="<?= clickfix_h(cfprofileurl((int) ($user['id'] ?? 0), [], false)); ?>"><?= clickfix_h(cft('nav_profile')); ?></a>
-            <a class="<?= $page === 'settings' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('settings')); ?>"><?= clickfix_h(cft('nav_settings')); ?></a>
-            <a class="<?= $page === 'ops' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('ops')); ?>"><?= clickfix_h(cft('nav_ops')); ?></a>
-            <a class="<?= $page === 'analytics' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('analytics')); ?>"><?= clickfix_h(cft('nav_graphs')); ?></a>
-            <a class="<?= $page === 'intel_stats' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('intel_stats')); ?>"><?= clickfix_h(cft('nav_intel_stats')); ?></a>
-            <a class="<?= ($page === 'intel' || $page === 'investigation') ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('intel')); ?>"><?= clickfix_h(cft('nav_investigation')); ?></a>
-            <a class="<?= $page === 'community' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('community')); ?>"><?= clickfix_h(cft('nav_community')); ?></a>
-            <?php if (cfcan($user, 'analyst_sr')): ?>
-              <a class="<?= $page === 'extensions' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('extensions')); ?>"><?= clickfix_h(cft('nav_extensions')); ?></a>
-              <a class="<?= $page === 'lists' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('lists')); ?>"><?= clickfix_h(cft('nav_lists')); ?></a>
-              <a class="<?= $page === 'requests' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('requests')); ?>"><?= clickfix_h(cft('nav_requests')); ?></a>
-              <a class="<?= $page === 'messaging' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('messaging')); ?>"><?= clickfix_h(cft('nav_messaging')); ?></a>
-              <a class="<?= $page === 'data_center' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('data_center')); ?>"><?= clickfix_h(cft('nav_data_center')); ?></a>
-            <?php endif; ?>
-            <?php if (cfcan($user, 'admin')): ?>
-              <a class="<?= $page === 'configs' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('configs')); ?>"><?= clickfix_h(cft('nav_score_config')); ?></a>
-              <a class="<?= $page === 'reports' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('reports')); ?>"><?= clickfix_h(cft('nav_reports')); ?></a>
-              <a class="<?= $page === 'users' ? 'active' : ''; ?>" href="<?= clickfix_h(cfurl('users')); ?>"><?= clickfix_h(cft('nav_users')); ?></a>
-            <?php endif; ?>
-          <?php endif; ?>
-        </nav>
-        <div class="nav-actions">
-          <a class="nav-btn" href="/">⌂ /</a>
-          <button class="nav-btn" type="button" id="display-settings-toggle">Display</button>
-          <a class="nav-btn<?= $page === 'access' ? ' active' : ''; ?>" href="<?= clickfix_h(cfurl('access', true)); ?>"><?= clickfix_h(cft('nav_access')); ?></a>
-          <?php if ($loggedIn): ?>
-            <form method="post">
-              <input type="hidden" name="action" value="logout">
-              <button type="submit" class="nav-btn logout">Cerrar sesion</button>
-            </form>
-          <?php endif; ?>
-        </div>
-      </div>
-    </header>
-    <div class="display-settings-panel" id="display-settings-panel" aria-hidden="true">
-      <div class="display-settings-header">
-        <h4>Display Settings</h4>
-        <button class="nav-btn" type="button" id="display-settings-close">×</button>
-      </div>
-      <div class="display-settings-grid">
-        <div class="display-toggle">
-          <div class="label">Dark mode</div>
-          <label class="switch">
-            <input type="checkbox" data-setting="dark">
-            <span class="switch-track"><span class="switch-thumb"></span></span>
-          </label>
-        </div>
-        <div class="display-toggle">
-          <div class="label">Contrast</div>
-          <label class="switch">
-            <input type="checkbox" data-setting="contrast">
-            <span class="switch-track"><span class="switch-thumb"></span></span>
-          </label>
-        </div>
-        <div class="display-toggle">
-          <div class="label">Compact</div>
-          <label class="switch">
-            <input type="checkbox" data-setting="compact">
-            <span class="switch-track"><span class="switch-thumb"></span></span>
-          </label>
-        </div>
-        <div class="display-toggle">
-          <div class="label">Reduce Motion</div>
-          <label class="switch">
-            <input type="checkbox" data-setting="reducedMotion">
-            <span class="switch-track"><span class="switch-thumb"></span></span>
-          </label>
-        </div>
-        <div class="display-toggle">
-          <div class="label">Decorations</div>
-          <label class="switch">
-            <input type="checkbox" data-setting="decorations">
-            <span class="switch-track"><span class="switch-thumb"></span></span>
-          </label>
-        </div>
-      </div>
-      <div class="display-section">
-        <h5>Presets</h5>
-        <div class="preset-grid">
-          <button class="preset-btn" type="button" data-accent="blue"><span style="background:#5b8bff"></span></button>
-          <button class="preset-btn" type="button" data-accent="green"><span style="background:#37e3a7"></span></button>
-          <button class="preset-btn" type="button" data-accent="purple"><span style="background:#a685ff"></span></button>
-          <button class="preset-btn" type="button" data-accent="amber"><span style="background:#ffb454"></span></button>
-          <button class="preset-btn" type="button" data-accent="red"><span style="background:#ff7a86"></span></button>
-          <button class="preset-btn" type="button" data-accent="cyan"><span style="background:#5fd8ff"></span></button>
-        </div>
-      </div>
-      <div class="display-section">
-        <h5>Font</h5>
-        <div class="font-grid">
-          <button class="font-btn" type="button" data-font="public"><b>Public Sans</b><span>UI sans</span></button>
-          <button class="font-btn" type="button" data-font="dm"><b>DM Sans</b><span>Modern sans</span></button>
-          <button class="font-btn" type="button" data-font="nunito"><b>Nunito Sans</b><span>Rounded</span></button>
-          <button class="font-btn" type="button" data-font="sora"><b>Sora</b><span>Tech display</span></button>
-        </div>
-      </div>
-    </div>
-    <div class="workspace">
-      <main class="main-column">
+  <canvas id="fx-node-bg" class="fx-node-bg" aria-hidden="true"></canvas>
+  <div class="container-scroller">
+    <?php require __DIR__ . '/partials/dashboard_sidebar.php'; ?>
+    <div class="container-fluid page-body-wrapper">
+      <?php require __DIR__ . '/partials/dashboard_header.php'; ?>
+      <div class="main-panel">
+        <div class="content-wrapper">
+          <div class="wrap">
+            <div class="dashboard-shell-row">
+              <div class="dashboard-main-col">
+                <main class="main-column">
 
     
     <?php if ($flash): ?><div class="flash"><?= clickfix_h($flash); ?></div><?php endif; ?>
 
     <?php if ($page === 'home'): ?>
-      <section class="hero">
-        <article class="card hero-main">
-          <span class="hero-kicker">ClickFix Command Center</span>
-          <h1>Deteccion, explicabilidad y respuesta en una sola superficie de control.</h1>
-          <p>Fusion entre la version anterior y la actual: inteligencia publica, operaciones privadas, investigacion en grafo, listas de control y mensajeria con la extension.</p>
-          <div class="rbac">
-            <div class="item"><b>Busqueda forense</b><span>Filtra por dominio, comando, fecha y score para detectar patrones.</span></div>
-            <div class="item"><b>Operaciones</b><span>Actualiza revision, bloquea dominios y manda casos a investigacion.</span></div>
-            <div class="item"><b>Investigacion</b><span>Construye grafos con nodos, relaciones, notas y evidencias compartibles.</span></div>
-            <div class="item"><b>Cobertura</b><span>Revisa fuentes de inteligencia, listas y configuracion de scoring.</span></div>
+      <div class="row">
+        <div class="col-xl-8 col-lg-7 grid-margin stretch-card">
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
+                <div>
+                  <p class="text-muted mb-1">ClickFix Command Center</p>
+                  <h2 class="mb-2">Deteccion, explicabilidad y respuesta en una sola superficie de control.</h2>
+                  <p class="text-muted">FusiÃ³n entre la versiÃ³n anterior y la actual: inteligencia pÃºblica, operaciones privadas, investigaciÃ³n en grafo, listas de control y mensajerÃ­a con la extensión.</p>
+                </div>
+                <span class="badge <?= $loggedIn ? 'badge-outline-success' : 'badge-outline-warning'; ?>">
+                  <?= clickfix_h($loggedIn ? 'Workspace autenticado' : 'Vista pÃºblica'); ?>
+                </span>
+              </div>
+              <div class="row mt-4">
+                <div class="col-md-6 mb-3">
+                  <div class="d-flex gap-2">
+                    <i class="mdi mdi-magnify text-info home-feature-icon"></i>
+                    <div>
+                      <h6 class="mb-1">B?squeda forense</h6>
+                      <p class="text-muted mb-0">Filtra por dominio, comando, fecha y score para detectar patrones.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <div class="d-flex gap-2">
+                    <i class="mdi mdi-shield-check text-success home-feature-icon"></i>
+                    <div>
+                      <h6 class="mb-1">Operaciones</h6>
+                      <p class="text-muted mb-0">Actualiza revisiÃ³n, bloquea dominios y manda casos a investigaciÃ³n.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <div class="d-flex gap-2">
+                    <i class="mdi mdi-graph text-warning home-feature-icon"></i>
+                    <div>
+                      <h6 class="mb-1">InvestigaciÃ³n</h6>
+                      <p class="text-muted mb-0">Construye grafos con nodos, relaciones, notas y evidencias compartibles.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <div class="d-flex gap-2">
+                    <i class="mdi mdi-radar text-primary home-feature-icon"></i>
+                    <div>
+                      <h6 class="mb-1">Cobertura</h6>
+                      <p class="text-muted mb-0">Revisa fuentes de inteligencia, listas y configuracion de scoring.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </article>
-        <article class="card hero-side">
-          <div class="mut mono" style="margin-bottom:6px">Inicio rapido</div>
-          <div class="role-chip<?= $loggedIn ? '' : ' guest'; ?>"><?= clickfix_h($loggedIn ? 'Workspace autenticado' : 'Vista publica'); ?></div>
-          <p class="mut" style="margin:10px 0 0;">
-            <?php if ($loggedIn): ?>
-              Empieza en Inicio para metricas y mapas, sigue en Operaciones para triage y termina en Investigacion para documentar el caso.
-            <?php else: ?>
-              Vista publica activa. Puedes consultar cobertura y buscar eventos; inicia sesion para ejecutar acciones operativas.
-            <?php endif; ?>
-          </p>
-          <ul class="mut" style="margin:10px 0 0 16px;">
-            <li>1) Revisa KPIs y alertas recientes.</li>
-            <li>2) Filtra dominios/comandos sospechosos.</li>
-            <li>3) Ejecuta bloqueo o abre investigacion.</li>
-          </ul>
-        </article>
-      </section>
+        </div>
+        <div class="col-xl-4 col-lg-5 grid-margin stretch-card">
+          <div class="card">
+            <div class="card-body">
+              <h4 class="card-title">Inicio r?pido</h4>
+              <p class="text-muted mb-3">
+                <?php if ($loggedIn): ?>
+                  Empieza en Inicio para mÃ©tricas y mapas, sigue en Operaciones para triage y termina en InvestigaciÃ³n para documentar el caso.
+                <?php else: ?>
+                  Vista pÃºblica activa. Puedes consultar cobertura y buscar eventos; inicia SesiÃ³n para ejecutar acciones operativas.
+                <?php endif; ?>
+              </p>
+              <ol class="text-muted ps-3 mb-0">
+                <li>Revisa KPIs y alertas recientes.</li>
+                <li>Filtra dominios/comandos sospechosos.</li>
+                <li>Ejecuta bloqueo o abre investigaciÃ³n.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
     <?php endif; ?>
 
     <?php if ($page === 'home'): ?>
-    <section class="grid">
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">alertas totales</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0z"/></svg></span></div><b data-live-metric="total_alerts"><?= (int) $metrics['total_alerts']; ?></b></article>
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">bloqueos totales</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8a5 5 0 0 1 10 0v3"/></svg></span></div><b data-live-metric="total_blocks"><?= (int) $metrics['total_blocks']; ?></b></article>
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">dominios unicos</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg></span></div><b data-live-metric="unique_hosts"><?= (int) $metrics['unique_hosts']; ?></b></article>
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">regiones monitorizadas</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/><circle cx="12" cy="12" r="9"/></svg></span></div><b data-live-metric="countries_count"><?= (int) ($metrics['countries_count'] ?? 0); ?></b></article>
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">alertas 24h</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M3 12h5l2-4 4 8 2-4h5"/></svg></span></div><b data-live-metric="alerts_24h"><?= (int) $metrics['alerts_24h']; ?></b></article>
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">bloqueos 24h</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg></span></div><b data-live-metric="blocks_24h"><?= (int) $metrics['blocks_24h']; ?></b></article>
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">ratio bloqueo 24h</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20v-3"/></svg></span></div><b data-live-metric="block_rate_24h"><?= number_format((float) ($metrics['block_rate_24h'] ?? 0.0), 2); ?>%</b></article>
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">alto riesgo 24h</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M12 2v8"/><path d="M12 14v8"/><path d="m4.9 4.9 5.7 5.7"/><path d="m13.4 13.4 5.7 5.7"/><path d="M2 12h8"/><path d="M14 12h8"/><path d="m4.9 19.1 5.7-5.7"/><path d="m13.4 10.6 5.7-5.7"/></svg></span></div><b data-live-metric="high_risk_24h"><?= (int) ($metrics['high_risk_24h'] ?? 0); ?></b></article>
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">nuevos dominios 24h</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M3 12h18"/><path d="M4 7h16"/><path d="M4 17h16"/></svg></span></div><b data-live-metric="new_domains_24h"><?= (int) ($metrics['new_domains_24h'] ?? 0); ?></b></article>
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">pend. fuera listas</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M4 12h10"/><path d="M4 17h8"/><circle cx="18" cy="17" r="3"/></svg></span></div><b data-live-metric="pending_domains_outside_lists"><?= (int) ($metrics['pending_domains_outside_lists'] ?? 0); ?></b></article>
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">revisadas</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/><path d="M3 3h18v18H3z"/></svg></span></div><b data-live-metric="reviewed_total"><?= (int) ($metrics['reviewed_total'] ?? 0); ?></b></article>
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">cobertura revision</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 12 19 5"/></svg></span></div><b data-live-metric="review_coverage_pct"><?= number_format((float) ($metrics['review_coverage_pct'] ?? 0.0), 2); ?>%</b></article>
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">sitios manuales</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg></span></div><b data-live-metric="manual_sites_count"><?= (int) $metrics['manual_sites_count']; ?></b></article>
-      <article class="card kpi"><div class="kpi-top"><div class="mut mono">pend. revision</div><span class="kpi-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span></div><b data-live-metric="pending_review_total"><?= (int) ($metrics['pending_review_total'] ?? 0); ?></b></article>
-    </section>
+    <div class="row">
+      <div class="col-xl-3 col-sm-6 grid-margin stretch-card">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <p class="text-muted mb-0">alertas totales</p>
+              <i class="mdi mdi-alert text-danger kpi-icon"></i>
+            </div>
+            <h3 class="mb-0" data-live-metric="total_alerts"><?= (int) $metrics['total_alerts']; ?></h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-sm-6 grid-margin stretch-card">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <p class="text-muted mb-0">bloqueos totales</p>
+              <i class="mdi mdi-lock text-success kpi-icon"></i>
+            </div>
+            <h3 class="mb-0" data-live-metric="total_blocks"><?= (int) $metrics['total_blocks']; ?></h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-sm-6 grid-margin stretch-card">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <p class="text-muted mb-0">dominios Ãºnicos</p>
+              <i class="mdi mdi-earth text-info kpi-icon"></i>
+            </div>
+            <h3 class="mb-0" data-live-metric="unique_hosts"><?= (int) $metrics['unique_hosts']; ?></h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-sm-6 grid-margin stretch-card">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <p class="text-muted mb-0">regiones monitorizadas</p>
+              <i class="mdi mdi-map text-warning kpi-icon"></i>
+            </div>
+            <h3 class="mb-0" data-live-metric="countries_count"><?= (int) ($metrics['countries_count'] ?? 0); ?></h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-sm-6 grid-margin stretch-card">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <p class="text-muted mb-0">alertas 24h</p>
+              <i class="mdi mdi-timer text-danger kpi-icon"></i>
+            </div>
+            <h3 class="mb-0" data-live-metric="alerts_24h"><?= (int) $metrics['alerts_24h']; ?></h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-sm-6 grid-margin stretch-card">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <p class="text-muted mb-0">bloqueos 24h</p>
+              <i class="mdi mdi-shield-check text-success kpi-icon"></i>
+            </div>
+            <h3 class="mb-0" data-live-metric="blocks_24h"><?= (int) $metrics['blocks_24h']; ?></h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-sm-6 grid-margin stretch-card">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <p class="text-muted mb-0">ratio bloqueo 24h</p>
+              <i class="mdi mdi-chart-areaspline text-primary kpi-icon"></i>
+            </div>
+            <h3 class="mb-0" data-live-metric="block_rate_24h"><?= number_format((float) ($metrics['block_rate_24h'] ?? 0.0), 2); ?>%</h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-sm-6 grid-margin stretch-card">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <p class="text-muted mb-0">alto riesgo 24h</p>
+              <i class="mdi mdi-alert-circle text-warning kpi-icon"></i>
+            </div>
+            <h3 class="mb-0" data-live-metric="high_risk_24h"><?= (int) ($metrics['high_risk_24h'] ?? 0); ?></h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-sm-6 grid-margin stretch-card">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <p class="text-muted mb-0">nuevos dominios 24h</p>
+              <i class="mdi mdi-web text-info kpi-icon"></i>
+            </div>
+            <h3 class="mb-0" data-live-metric="new_domains_24h"><?= (int) ($metrics['new_domains_24h'] ?? 0); ?></h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-sm-6 grid-margin stretch-card">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <p class="text-muted mb-0">pend. fuera listas</p>
+              <i class="mdi mdi-playlist-alert text-warning kpi-icon"></i>
+            </div>
+            <h3 class="mb-0" data-live-metric="pending_domains_outside_lists"><?= (int) ($metrics['pending_domains_outside_lists'] ?? 0); ?></h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-sm-6 grid-margin stretch-card">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <p class="text-muted mb-0">revisadas</p>
+              <i class="mdi mdi-check-all text-success kpi-icon"></i>
+            </div>
+            <h3 class="mb-0" data-live-metric="reviewed_total"><?= (int) ($metrics['reviewed_total'] ?? 0); ?></h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-sm-6 grid-margin stretch-card">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <p class="text-muted mb-0">cobertura revisiÃ³n</p>
+              <i class="mdi mdi-radar text-primary kpi-icon"></i>
+            </div>
+            <h3 class="mb-0" data-live-metric="review_coverage_pct"><?= number_format((float) ($metrics['review_coverage_pct'] ?? 0.0), 2); ?>%</h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-sm-6 grid-margin stretch-card">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <p class="text-muted mb-0">sitios manuales</p>
+              <i class="mdi mdi-note-text text-info kpi-icon"></i>
+            </div>
+            <h3 class="mb-0" data-live-metric="manual_sites_count"><?= (int) $metrics['manual_sites_count']; ?></h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-sm-6 grid-margin stretch-card">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <p class="text-muted mb-0">pend. revisiÃ³n</p>
+              <i class="mdi mdi-timer-sand text-warning kpi-icon"></i>
+            </div>
+            <h3 class="mb-0" data-live-metric="pending_review_total"><?= (int) ($metrics['pending_review_total'] ?? 0); ?></h3>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <?php if ($loggedIn): ?>
       <section class="card" style="margin-bottom:8px">
-        <h2>Pendientes de revision (todas las alertas)</h2>
-        <p class="mut">Incluye alertas que ya estan en listas (allow/block). Los pendientes fuera de listas son un subconjunto para triage rapido.</p>
+        <h2>Pendientes de revisiÃ³n (todas las alertas)</h2>
+        <p class="mut">Incluye alertas que ya estan en listas (allow/block). Los pendientes fuera de listas son un subconjunto para triage r?pido.</p>
         <div class="analytics-kpi-grid" style="margin-bottom:10px">
-          <div class="analytics-kpi"><div class="k">pendientes revision</div><div class="v"><?= (int) ($metrics['pending_review_total'] ?? 0); ?></div></div>
+          <div class="analytics-kpi"><div class="k">pendientes revisiÃ³n</div><div class="v"><?= (int) ($metrics['pending_review_total'] ?? 0); ?></div></div>
           <div class="analytics-kpi"><div class="k">pendientes fuera de listas</div><div class="v"><?= (int) ($pendingOutsideSummary['alerts'] ?? 0); ?></div></div>
         </div>
         <?php if (empty($pendingReviewRows)): ?>
-          <p class="mut">No hay alertas pendientes de revision en este momento.</p>
+          <p class="mut">No hay alertas pendientes de revisiÃ³n en este momento.</p>
         <?php else: ?>
           <div class="analytics-table-wrap">
             <table class="compact-table">
-              <thead><tr><th>ID</th><th>Fecha</th><th>Dominio</th><th>Score</th><th>Tipo</th><th>Bloqueado</th><th>Accion</th></tr></thead>
+              <thead><tr><th>ID</th><th>Fecha</th><th>Dominio</th><th>Score</th><th>Tipo</th><th>Bloqueado</th><th>AcciÃ³n</th></tr></thead>
               <tbody>
                 <?php foreach (array_slice($pendingReviewRows, 0, 20) as $pendingRow): ?>
                   <?php $pendingReportId = (int) ($pendingRow['id'] ?? 0); ?>
@@ -7117,7 +5094,7 @@ ob_start();
         <?php else: ?>
           <div class="analytics-table-wrap">
             <table class="compact-table">
-              <thead><tr><th>ID</th><th>Fecha</th><th>Dominio</th><th>Score</th><th>Tipo</th><th>Bloqueado</th><th>Accion</th></tr></thead>
+              <thead><tr><th>ID</th><th>Fecha</th><th>Dominio</th><th>Score</th><th>Tipo</th><th>Bloqueado</th><th>AcciÃ³n</th></tr></thead>
               <tbody>
                 <?php foreach (array_slice($pendingOutsideReports, 0, 20) as $pendingRow): ?>
                   <?php $pendingReportId = (int) ($pendingRow['id'] ?? 0); ?>
@@ -7145,8 +5122,8 @@ ob_start();
         $scanApproved = is_array($latestScanAssetsApproved) ? $latestScanAssetsApproved : [];
         $scanReview = is_array($latestScanAssetsReview) ? $latestScanAssetsReview : [];
       ?>
-      <h2>Ultimo escaneo</h2>
-      <p class="mut">Vista previa: <b>Despues</b> llega desde la extension al detectar alerta y <b>Antes</b> se genera en servidor (Site-Shot) tras recibir ese after.</p>
+      <h2>Último escaneo</h2>
+      <p class="mut">Vista previa: <b>Después</b> llega desde la extensión al detectar alerta y <b>Antes</b> se genera en servidor (Site-Shot) tras recibir ese after.</p>
       <?php if ($scanLatest === null): ?>
         <p class="mut">Sin capturas disponibles.</p>
       <?php else: ?>
@@ -7171,12 +5148,12 @@ ob_start();
                 <p class="mut mono">estado: <?= clickfix_h($assetStatus); ?></p>
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
                   <button class="btn" type="button" data-scan-inline-src="<?= clickfix_h($adminPreviewUrl); ?>" data-scan-inline-target="<?= clickfix_h($inlineTarget); ?>">Ver aqui (manual)</button>
-                  <a class="btn" href="<?= clickfix_h($adminPreviewUrl); ?>" target="_blank" rel="noopener noreferrer">Abrir pestaña</a>
+                  <a class="btn" href="<?= clickfix_h($adminPreviewUrl); ?>" target="_blank" rel="noopener noreferrer">Abrir pestaa</a>
                   <a class="btn" href="<?= clickfix_h($adminDownloadUrl); ?>">Descargar</a>
                   <button class="btn" type="button" data-copy-text="<?= clickfix_h($adminPreviewUrl); ?>">Copiar URL admin</button>
                   <?php if ($publicApprovedUrl !== ''): ?>
-                    <a class="btn" href="<?= clickfix_h($publicApprovedUrl); ?>" target="_blank" rel="noopener noreferrer">Abrir URL publica</a>
-                    <button class="btn" type="button" data-copy-text="<?= clickfix_h($publicApprovedUrl); ?>">Copiar URL publica</button>
+                    <a class="btn" href="<?= clickfix_h($publicApprovedUrl); ?>" target="_blank" rel="noopener noreferrer">Abrir URL pÃºblica</a>
+                    <button class="btn" type="button" data-copy-text="<?= clickfix_h($publicApprovedUrl); ?>">Copiar URL pÃºblica</button>
                   <?php endif; ?>
                 </div>
                 <div id="<?= clickfix_h($inlineTarget); ?>" class="mut mono" style="margin-top:8px">Pulsa "Ver aqui (manual)" para cargar la captura en el panel.</div>
@@ -7188,7 +5165,7 @@ ob_start();
                   <input type="hidden" name="scan_status" value="approved">
                   <input type="hidden" name="scan_note" value="approved from home quick-use">
                   <input type="hidden" name="return_page" value="home">
-                  <button class="btn" type="submit">Aprobar y usar en publico</button>
+                  <button class="btn btn-primary btn-sm" type="submit">Aprobar y usar en PÃºblico</button>
                 </form>
                 <form method="post" style="margin-top:8px">
                   <input type="hidden" name="action" value="scan_image_review">
@@ -7201,8 +5178,8 @@ ob_start();
                     <option value="approved"<?= $assetStatus === 'approved' ? ' selected' : ''; ?>>approved</option>
                     <option value="rejected"<?= $assetStatus === 'rejected' ? ' selected' : ''; ?>>rejected</option>
                   </select>
-                  <input type="text" name="scan_note" maxlength="500" placeholder="nota de revision (opcional)">
-                  <button class="btn" type="submit">Guardar revision</button>
+                  <input type="text" name="scan_note" maxlength="500" placeholder="nota de revisiÃ³n (opcional)">
+                  <button class="btn btn-primary btn-sm" type="submit">Guardar revisiÃ³n</button>
                 </form>
                 <form method="post" style="margin-top:8px" onsubmit="return confirm('Eliminar captura <?= clickfix_h($scanKind); ?> del scan #<?= $scanReportId; ?>?');">
                   <input type="hidden" name="action" value="scan_image_delete">
@@ -7210,7 +5187,7 @@ ob_start();
                   <input type="hidden" name="scan_report_id" value="<?= $scanReportId; ?>">
                   <input type="hidden" name="scan_kind" value="<?= clickfix_h($scanKind); ?>">
                   <input type="hidden" name="return_page" value="home">
-                  <button class="btn" type="submit">Eliminar captura</button>
+                  <button class="btn btn-primary btn-sm" type="submit">Eliminar captura</button>
                 </form>
                 <form method="post" style="margin-top:8px">
                   <input type="hidden" name="action" value="scan_image_assign">
@@ -7219,9 +5196,9 @@ ob_start();
                   <input type="hidden" name="scan_source_kind" value="<?= clickfix_h($scanKind); ?>">
                   <input type="hidden" name="scan_target_kind" value="<?= $scanKind === 'before' ? 'after' : 'before'; ?>">
                   <input type="hidden" name="return_page" value="home">
-                  <button class="btn" type="submit">Usar esta como <?= $scanKind === 'before' ? 'AFTER' : 'BEFORE'; ?></button>
+                  <button class="btn btn-primary btn-sm" type="submit">Usar esta como <?= $scanKind === 'before' ? 'AFTER' : 'BEFORE'; ?></button>
                 </form>
-                <p class="mut" style="margin-top:6px">Cuando una captura queda en <b>approved</b>, se puede reutilizar en dashboard/index publico.</p>
+                <p class="mut" style="margin-top:6px">Cuando una captura queda en <b>approved</b>, se puede reutilizar en dashboard/index PÃºblico.</p>
               <?php else: ?>
                 <p class="mut">Sin capturas disponibles.</p>
               <?php endif; ?>
@@ -7233,7 +5210,7 @@ ob_start();
 
     <section class="card" style="margin-bottom:8px">
       <h2>Investigaciones destacadas en Inicio</h2>
-      <p class="mut">Las define admin desde Investigacion. En la portada publica solo salen si tambien estan compartidas en publico.</p>
+      <p class="mut">Las define admin desde InvestigaciÃ³n. En la portada pÃºblica solo salen si tambiÃ©n estÃ¡n compartidas en PÃºblico.</p>
       <?php if (empty($featuredHomeInvestigations)): ?>
         <p class="mut">Sin investigaciones destacadas en este momento.</p>
       <?php else: ?>
@@ -7245,21 +5222,21 @@ ob_start();
             $featuredAssets = is_array($featuredGraph['scan_assets'] ?? null) ? $featuredGraph['scan_assets'] : ['before' => null, 'after' => null];
             $featuredSummary = trim((string) ($featuredGraph['summary'] ?? ''));
             if ($featuredSummary === '') {
-                $featuredSummary = 'Sin resumen todavia.';
+                $featuredSummary = 'Sin resumen todavÃ­a.';
             }
           ?>
           <article class="card" style="margin-top:12px;padding:14px;border:1px solid #5dc8ff22;background:#07111a">
             <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start">
               <div style="flex:1 1 320px;min-width:280px">
-                <h3 style="margin:0 0 6px 0"><?= clickfix_h((string) ($featuredGraph['title'] ?? ('Investigacion #' . $featuredGraphId))); ?></h3>
-                <p class="mono" style="margin:0 0 8px 0">graph #<?= $featuredGraphId; ?> | dominio: <?= clickfix_h($featuredDomain); ?> | verdict: <?= clickfix_h((string) ($featuredGraph['verdict'] ?? 'unknown')); ?> | report_id: <?= $featuredSourceReportId > 0 ? $featuredSourceReportId : '-'; ?> | posicion: <?= (int) ($featuredGraph['home_position'] ?? 0); ?></p>
+                <h3 style="margin:0 0 6px 0"><?= clickfix_h((string) ($featuredGraph['title'] ?? ('InvestigaciÃ³n #' . $featuredGraphId))); ?></h3>
+                <p class="mono" style="margin:0 0 8px 0">graph #<?= $featuredGraphId; ?> | dominio: <?= clickfix_h($featuredDomain); ?> | verdict: <?= clickfix_h((string) ($featuredGraph['verdict'] ?? 'unknown')); ?> | report_id: <?= $featuredSourceReportId > 0 ? $featuredSourceReportId : '-'; ?> | posici?n: <?= (int) ($featuredGraph['home_position'] ?? 0); ?></p>
                 <div style="margin:0 0 10px 0;white-space:pre-line"><?= nl2br(clickfix_h(substr($featuredSummary, 0, 900))); ?></div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
-                  <a class="btn" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $featuredGraphId])); ?>">Abrir investigacion</a>
+                  <a class="btn" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $featuredGraphId])); ?>">Abrir investigaciÃ³n</a>
                   <?php if (!empty($featuredGraph['is_public']) && !empty($featuredGraph['share_token'])): ?>
-                    <a class="btn" href="<?= clickfix_h('dashboard.php?page=investigation&share=' . urlencode((string) $featuredGraph['share_token'])); ?>" target="_blank" rel="noreferrer">Abrir version publica</a>
+                    <a class="btn" href="<?= clickfix_h('dashboard.php?page=investigation&share=' . urlencode((string) $featuredGraph['share_token'])); ?>" target="_blank" rel="noreferrer">Abrir versiÃ³n pÃºblica</a>
                   <?php else: ?>
-                    <span class="mono mut">Aun no es publica.</span>
+                    <span class="mono mut">Aun no es pÃºblica.</span>
                   <?php endif; ?>
                 </div>
               </div>
@@ -7269,7 +5246,7 @@ ob_start();
                     <div>
                       <h3 class="mono"><?= clickfix_h($featuredLabel); ?></h3>
                       <?php if (!empty($featuredAssets[$featuredKind])): ?>
-                        <img src="<?= clickfix_h((string) $featuredAssets[$featuredKind]); ?>" alt="<?= clickfix_h($featuredLabel . ' investigacion'); ?>" loading="lazy" style="max-width:100%;border-radius:10px;border:1px solid #5dc8ff33">
+                        <img src="<?= clickfix_h((string) $featuredAssets[$featuredKind]); ?>" alt="<?= clickfix_h($featuredLabel . ' investigaciÃ³n'); ?>" loading="lazy" style="max-width:100%;border-radius:10px;border:1px solid #5dc8ff33">
                       <?php else: ?>
                         <p class="mut">Sin captura aprobada <?= strtolower($featuredLabel); ?>.</p>
                       <?php endif; ?>
@@ -7296,12 +5273,12 @@ ob_start();
       ?>
       <section class="row">
         <article class="card">
-          <h2>Mapa usuarios extension</h2>
-          <p class="geo-subtitle">Puntos rojos por pais con total de usuarios de la extension.</p>
+          <h2>Mapa usuarios extensi?n</h2>
+          <p class="geo-subtitle">Puntos rojos por paÃ­s con total de usuarios de la extensi?n.</p>
           <div id="home-extension-map" class="geo-map"></div>
           <div class="geo-map-legend">
             <span class="geo-chip"><b id="home-extension-total">0</b> usuarios geolocalizados</span>
-            <span class="geo-chip"><b id="home-extension-countries">0</b> paises con actividad</span>
+            <span class="geo-chip"><b id="home-extension-countries">0</b> paÃ­ses con actividad</span>
           </div>
           <div class="geo-table-wrap">
             <table>
@@ -7312,11 +5289,11 @@ ob_start();
         </article>
         <article class="card">
           <h2>Mapa webs detectadas</h2>
-          <p class="geo-subtitle">Ubicacion aproximada de webs detectadas con IP, ISP, pais e idioma principal.</p>
+          <p class="geo-subtitle">UbicaciÃ³n aproximada de webs detectadas con IP, ISP, paÃ­s e idioma principal.</p>
           <div id="home-web-map" class="geo-map"></div>
           <div class="geo-map-legend">
             <span class="geo-chip"><b id="home-web-count">0</b> webs con coordenadas</span>
-            <span class="geo-chip"><b id="home-web-last">-</b> ultima actualizacion</span>
+            <span class="geo-chip"><b id="home-web-last">-</b> Ãšltima actualizaciÃ³n</span>
           </div>
           <div class="geo-table-wrap">
             <table>
@@ -7333,18 +5310,131 @@ ob_start();
           $exposureNetworks = is_array($projectExposureOverview['top_networks'] ?? null) ? $projectExposureOverview['top_networks'] : [];
           $exposureEvents = is_array($projectExposureOverview['events'] ?? null) ? $projectExposureOverview['events'] : [];
         ?>
-        <section class="card">
-          <h2>Exposicion del proyecto y cruces de infraestructura</h2>
-          <p class="exposure-note">Senales inferidas a partir de visitas publicas al proyecto, referrers externos y solapamientos con dominios reportados o su infraestructura. Esto sirve como triage, no como atribucion definitiva.</p>
-          <div class="analytics-kpi-grid exposure-kpi-grid">
-            <div class="analytics-kpi"><div class="k">Hits publicos</div><div class="v"><?= (int) ($exposureSummary['hits_total'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">IPs unicas</div><div class="v"><?= (int) ($exposureSummary['unique_ips'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">Referrers externos</div><div class="v"><?= (int) ($exposureSummary['external_referrer_hits'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">Solapes referrer</div><div class="v"><?= (int) ($exposureSummary['referrer_overlap_hits'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">Solapes infra</div><div class="v"><?= (int) ($exposureSummary['infra_overlap_hits'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">Red sospechosa</div><div class="v"><?= (int) ($exposureSummary['suspicious_hits'] ?? 0); ?></div></div>
+              <section class="card analytics-hub">
+        <div class="analytics-hub-head">
+          <div>
+          <h2>GrÃ¡ficos operativos</h2>
+            <p class="mut-mini">Panel de telemetrÃ­a con foco SOC. Resumen 14 dÃ­as con KPIs y comparativas.</p>
           </div>
-        </section>
+          <div class="analytics-hub-actions">
+            <div class="range-chips">
+              <button type="button" class="chip is-active">14 dÃ­as</button>
+              <button type="button" class="chip">30 dÃ­as</button>
+              <button type="button" class="chip">90 dÃ­as</button>
+            </div>
+            <div class="kpi-pill">alertas 24h <b><?= (int) ($metrics['alerts_24h'] ?? 0); ?></b></div>
+            <div class="kpi-pill">bloqueos 24h <b><?= (int) ($metrics['blocks_24h'] ?? 0); ?></b></div>
+            <div class="kpi-pill">ratio 24h <b><?= number_format($blockRate24h ?? 0, 2); ?>%</b></div>
+          </div>
+        </div>
+        <div class="analytics-hub-grid">
+          <div class="analytics-panel analytics-panel--wide">
+            <div class="panel-head">
+              <div>
+                <h3>Tendencia diaria</h3>
+                <span class="mut">Alertas vs bloqueos</span>
+              </div>
+              <div class="panel-tags">
+                <span class="tag blue">Alertas</span>
+                <span class="tag green">Bloqueos</span>
+              </div>
+            </div>
+            <canvas
+              id="home-trend-chart"
+              class="chart-canvas"
+              data-labels='<?= clickfix_h(json_encode($homeLabels, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); ?>'
+              data-alerts='<?= clickfix_h(json_encode($homeAlerts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); ?>'
+              data-blocks='<?= clickfix_h(json_encode($homeBlocks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); ?>'
+            ></canvas>
+            <div class="chart-legend">
+              <span><i class="dot" style="background:#14b8ff"></i>alertas</span>
+              <span><i class="dot" style="background:#38d17a"></i>bloqueos</span>
+            </div>
+          </div>
+          <div class="analytics-panel">
+            <div class="panel-head">
+              <div>
+                <h3>Ratio de bloqueo</h3>
+                <span class="mut">% diario</span>
+              </div>
+              <div class="panel-tags">
+                <span class="tag amber">% bloqueo</span>
+              </div>
+            </div>
+            <canvas
+              id="home-ratio-chart"
+              class="chart-canvas"
+              data-labels='<?= clickfix_h(json_encode($homeLabels, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); ?>'
+              data-alerts='<?= clickfix_h(json_encode($homeAlerts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); ?>'
+              data-blocks='<?= clickfix_h(json_encode($homeBlocks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); ?>'
+            ></canvas>
+            <div class="chart-legend">
+              <span><i class="dot" style="background:#ffd166"></i>% bloqueo</span>
+            </div>
+          </div>
+          <div class="analytics-panel">
+            <div class="panel-head">
+              <div>
+                <h3>Estado operativo</h3>
+                <span class="mut">KPI principal</span>
+              </div>
+            </div>
+            <div class="panel-kpis">
+              <div><span class="mut">Alertas totales</span><b><?= (int) $metrics['total_alerts']; ?></b></div>
+              <div><span class="mut">Bloqueos totales</span><b><?= (int) $metrics['total_blocks']; ?></b></div>
+              <div><span class="mut">Dominios ?nicos</span><b><?= (int) $metrics['unique_hosts']; ?></b></div>
+              <div><span class="mut">Pend. revisiÃ³n</span><b><?= (int) ($metrics['pending_review_total'] ?? 0); ?></b></div>
+            </div>
+          </div>
+          <div class="analytics-panel">
+            <div class="panel-head">
+              <div>
+                <h3>Rendimiento</h3>
+                <span class="mut">Comparativa diaria</span>
+              </div>
+            </div>
+            <div class="panel-metrics">
+              <div class="panel-metric"><span class="mut">M?x alertas</span><b><?= (int) ($analyticsOverview['max_alerts'] ?? 0); ?></b></div>
+              <div class="panel-metric"><span class="mut">M?x bloqueos</span><b><?= (int) ($analyticsOverview['max_blocks'] ?? 0); ?></b></div>
+              <div class="panel-metric"><span class="mut">DÃ­as sin alertas</span><b><?= (int) ($analyticsOverview['quiet_days'] ?? 0); ?></b></div>
+              <div class="panel-metric"><span class="mut">Ratio medio</span><b><?= number_format($analyticsOverview['avg_block_rate'] ?? 0, 2); ?>%</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="analytics-table-card">
+          <div class="panel-head">
+            <div>
+              <h3>Detalle diario</h3>
+              <span class="mut">Alertas vs bloqueos por d?a</span>
+            </div>
+          </div>
+          <div class="analytics-table-wrap">
+            <table class="table table-striped settings-table">
+              <thead><tr><th>D?a</th><th>Alertas</th><th>Bloqueos</th><th>Tendencia</th></tr></thead>
+              <tbody>
+                <?php foreach ($homeLabels as $idx => $label): ?>
+                  <?php
+                    $a = isset($homeAlerts[$idx]) ? (int) $homeAlerts[$idx] : 0;
+                    $b = isset($homeBlocks[$idx]) ? (int) $homeBlocks[$idx] : 0;
+                    $aWidth = max(2, (int) round(($a / $homeTrendMax) * 100));
+                    $bWidth = max(2, (int) round(($b / $homeTrendMax) * 100));
+                  ?>
+                  <tr>
+                    <td class="mono"><?= clickfix_h((string) $label); ?></td>
+                    <td class="mono"><?= $a; ?></td>
+                    <td class="mono"><?= $b; ?></td>
+                    <td>
+                      <div class="trend-bar alerts"><span style="width:<?= $aWidth; ?>%"></span></div>
+                      <div class="trend-bar blocks" style="margin-top:4px"><span style="width:<?= $bWidth; ?>%"></span></div>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
         <section class="exposure-grid">
           <article class="card">
             <h2>Top referrers</h2>
@@ -7353,7 +5443,7 @@ ob_start();
             <?php else: ?>
               <div class="analytics-table-wrap">
                 <table class="compact-table">
-                  <thead><tr><th>Host</th><th>Hits</th><th>Reportes</th><th>Overlap</th><th>Ultimo</th></tr></thead>
+                  <thead><tr><th>Host</th><th>Hits</th><th>Reportes</th><th>Overlap</th><th>Ãšltimo</th></tr></thead>
                   <tbody>
                     <?php foreach ($exposureReferrers as $refRow): ?>
                       <tr>
@@ -7394,13 +5484,13 @@ ob_start();
           </article>
         </section>
         <section class="card">
-          <h2>Eventos de exposicion investigables</h2>
+          <h2>Eventos de exposici?n investigables</h2>
           <?php if (empty($exposureEvents)): ?>
             <p class="mut">No hay cruces suficientes para mostrar eventos investigables.</p>
           <?php else: ?>
             <div class="analytics-table-wrap">
               <table class="compact-table">
-                <thead><tr><th>Fecha</th><th>Path</th><th>IP</th><th>Ubicacion</th><th>Red</th><th>Referrer</th><th>Flags</th><th>Dominios relacionados</th></tr></thead>
+                <thead><tr><th>Fecha</th><th>Path</th><th>IP</th><th>UbicaciÃ³n</th><th>Red</th><th>Referrer</th><th>Flags</th><th>Dominios relacionados</th></tr></thead>
                 <tbody>
                   <?php foreach ($exposureEvents as $eventRow): ?>
                     <?php
@@ -7434,10 +5524,11 @@ ob_start();
               </table>
             </div>
           <?php endif; ?>
-        </section>
+          </div>
+      </section>
       <?php endif; ?>
       <section class="card">
-        <h2>Graficos globales (14 dias)</h2>
+        <h2>GrÃ¡ficos globales (14 dÃ­as)</h2>
         <p class="mut-mini">Vista resumida de alertas y bloqueos diarios para Inicio.</p>
         <div class="chart-stack">
           <div class="chart-card">
@@ -7455,7 +5546,7 @@ ob_start();
             </div>
           </div>
           <div class="chart-card">
-            <p class="chart-title">Ratio de bloqueo por dia</p>
+            <p class="chart-title">Ratio de bloqueo por dÃ­a</p>
             <canvas
               id="home-ratio-chart"
               class="chart-canvas"
@@ -7468,7 +5559,7 @@ ob_start();
             </div>
           </div>
         </div>
-        <table>
+        <table class="table table-striped settings-table">
           <thead><tr><th>Dia</th><th>Alertas</th><th>Bloqueos</th><th>Tendencia</th></tr></thead>
           <tbody>
             <?php foreach ($homeLabels as $idx => $label): ?>
@@ -7498,7 +5589,7 @@ ob_start();
             <p class="mut">No hay capturas pendientes.</p>
           <?php else: ?>
             <table>
-              <thead><tr><th>Report</th><th>Fecha</th><th>Dominio</th><th>Tipo</th><th>Preview</th><th>Accion</th></tr></thead>
+              <thead><tr><th>Report</th><th>Fecha</th><th>Dominio</th><th>Tipo</th><th>Preview</th><th>AcciÃ³n</th></tr></thead>
               <tbody>
                 <?php foreach (array_slice($scanReviewQueue, 0, 80) as $pendingScan): ?>
                   <?php
@@ -7531,7 +5622,7 @@ ob_start();
                         <input type="hidden" name="scan_status" value="approved">
                         <input type="hidden" name="scan_note" value="approved from queue quick-use">
                         <input type="hidden" name="return_page" value="home">
-                        <button class="btn" type="submit">Aprobar y usar</button>
+                        <button class="btn btn-primary btn-sm" type="submit">Aprobar y usar</button>
                       </form>
                       <form method="post">
                         <input type="hidden" name="action" value="scan_image_review">
@@ -7544,7 +5635,7 @@ ob_start();
                           <option value="rejected">rejected</option>
                           <option value="pending" selected>pending</option>
                         </select>
-                        <button class="btn" type="submit">Aplicar</button>
+                        <button class="btn btn-primary btn-sm" type="submit">Aplicar</button>
                       </form>
                       <form method="post" style="margin-top:6px" onsubmit="return confirm('Eliminar captura <?= clickfix_h($pendingKind); ?> del report #<?= $pendingReportId; ?>?');">
                         <input type="hidden" name="action" value="scan_image_delete">
@@ -7552,7 +5643,7 @@ ob_start();
                         <input type="hidden" name="scan_report_id" value="<?= $pendingReportId; ?>">
                         <input type="hidden" name="scan_kind" value="<?= clickfix_h($pendingKind); ?>">
                         <input type="hidden" name="return_page" value="home">
-                        <button class="btn" type="submit">Eliminar captura</button>
+                        <button class="btn btn-primary btn-sm" type="submit">Eliminar captura</button>
                       </form>
                     </td>
                   </tr>
@@ -7560,77 +5651,262 @@ ob_start();
               </tbody>
             </table>
           <?php endif; ?>
-        </section>
+          </div>
+      </section>
       <?php endif; ?>
     <?php endif; ?>
 
     <?php if ($page === 'about'): ?>
-      <section class="row">
-        <article class="card">
-          <h2><?= clickfix_h(cft('about_project_title')); ?></h2>
-          <p><?= clickfix_h(cft('about_project_intro')); ?></p>
-          <ul>
-            <li><?= clickfix_h(cft('about_project_p1')); ?></li>
-            <li><?= clickfix_h(cft('about_project_p2')); ?></li>
-            <li><?= clickfix_h(cft('about_project_p3')); ?></li>
-            <li><?= clickfix_h(cft('about_project_p4')); ?></li>
-            <li><?= clickfix_h(cft('about_project_p5')); ?></li>
-          </ul>
+      <section class="row about-hero">
+        <article class="col-12 col-xl-8 grid-margin stretch-card">
+          <div class="card">
+            <div class="card-body">
+              <p class="text-muted mb-1">ClickFix Command Center</p>
+              <h2 class="mb-2"><?= clickfix_h(cft('about_project_title')); ?></h2>
+              <p class="text-muted mb-3"><?= clickfix_h(cft('about_project_intro')); ?></p>
+              <div class="coverage-chip-row">
+                <span class="badge badge-outline-info">Trustware</span>
+                <span class="badge badge-outline-success">Ops-first</span>
+                <span class="badge badge-outline-warning">Investigation</span>
+                <span class="badge badge-outline-primary">Transparent</span>
+              </div>
+            </div>
+          </div>
         </article>
-        <article class="card">
-          <h2><?= clickfix_h(cft('about_owner_title')); ?></h2>
-          <p><b><?= clickfix_h($ownerName); ?></b></p>
-          <p><?= clickfix_h(cft('about_owner_text')); ?></p>
-          <p class="mut" style="margin-top:10px"><?= clickfix_h(cft('about_contact_links')); ?></p>
-          <div class="tags" style="margin-top:8px">
-            <?php if ($contactEmail !== ''): ?>
-              <a class="tag" href="mailto:<?= clickfix_h($contactEmail); ?>">Email</a>
-            <?php endif; ?>
-            <?php if ($contactWebsite !== ''): ?>
-              <a class="tag" href="<?= clickfix_h($contactWebsite); ?>" target="_blank" rel="noopener noreferrer">Web</a>
-            <?php endif; ?>
-            <?php if ($contactLinkedIn !== ''): ?>
-              <a class="tag" href="<?= clickfix_h($contactLinkedIn); ?>" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-            <?php endif; ?>
-            <?php if ($contactX !== ''): ?>
-              <a class="tag" href="<?= clickfix_h($contactX); ?>" target="_blank" rel="noopener noreferrer">X</a>
-            <?php endif; ?>
-            <?php if ($contactGitHub !== ''): ?>
-              <a class="tag" href="<?= clickfix_h($contactGitHub); ?>" target="_blank" rel="noopener noreferrer">GitHub</a>
-            <?php endif; ?>
+        <article class="col-12 col-xl-4 grid-margin stretch-card">
+          <div class="card">
+            <div class="card-body">
+              <h4 class="card-title">Impacto operativo</h4>
+              <div class="row">
+                <div class="col-6 mb-3">
+                  <p class="text-muted mb-1">Alertas totales</p>
+                  <h5 class="mb-0" data-live-metric="total_alerts"><?= (int) $metrics['total_alerts']; ?></h5>
+                </div>
+                <div class="col-6 mb-3">
+                  <p class="text-muted mb-1">Bloqueos totales</p>
+                  <h5 class="mb-0" data-live-metric="total_blocks"><?= (int) $metrics['total_blocks']; ?></h5>
+                </div>
+                <div class="col-6">
+                  <p class="text-muted mb-1">dominios Ãºnicos</p>
+                  <h5 class="mb-0" data-live-metric="unique_hosts"><?= (int) $metrics['unique_hosts']; ?></h5>
+                </div>
+                <div class="col-6">
+                  <p class="text-muted mb-1">Regiones</p>
+                  <h5 class="mb-0" data-live-metric="countries_count"><?= (int) ($metrics['countries_count'] ?? 0); ?></h5>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="row">
+        <article class="col-12 col-lg-7 grid-margin stretch-card">
+          <div class="card">
+            <div class="card-body">
+              <h4 class="card-title">Mision y capacidades</h4>
+              <ul class="coverage-list">
+                <li><span class="dot dot-primary"></span><?= clickfix_h(cft('about_project_p1')); ?></li>
+                <li><span class="dot dot-info"></span><?= clickfix_h(cft('about_project_p2')); ?></li>
+                <li><span class="dot dot-success"></span><?= clickfix_h(cft('about_project_p3')); ?></li>
+                <li><span class="dot dot-warning"></span><?= clickfix_h(cft('about_project_p4')); ?></li>
+                <li><span class="dot dot-danger"></span><?= clickfix_h(cft('about_project_p5')); ?></li>
+              </ul>
+            </div>
+          </div>
+        </article>
+        <article class="col-12 col-lg-5 grid-margin stretch-card">
+          <div class="card">
+            <div class="card-body">
+              <h4 class="card-title"><?= clickfix_h(cft('about_owner_title')); ?></h4>
+              <p class="mb-1"><b><?= clickfix_h($ownerName); ?></b></p>
+              <p class="text-muted"><?= clickfix_h(cft('about_owner_text')); ?></p>
+              <p class="text-muted mb-2"><?= clickfix_h(cft('about_contact_links')); ?></p>
+              <div class="tags">
+                <?php if ($contactEmail !== ''): ?>
+                  <a class="tag" href="mailto:<?= clickfix_h($contactEmail); ?>">Email</a>
+                <?php endif; ?>
+                <?php if ($contactWebsite !== ''): ?>
+                  <a class="tag" href="<?= clickfix_h($contactWebsite); ?>" target="_blank" rel="noopener noreferrer">Web</a>
+                <?php endif; ?>
+                <?php if ($contactLinkedIn !== ''): ?>
+                  <a class="tag" href="<?= clickfix_h($contactLinkedIn); ?>" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+                <?php endif; ?>
+                <?php if ($contactX !== ''): ?>
+                  <a class="tag" href="<?= clickfix_h($contactX); ?>" target="_blank" rel="noopener noreferrer">X</a>
+                <?php endif; ?>
+                <?php if ($contactGitHub !== ''): ?>
+                  <a class="tag" href="<?= clickfix_h($contactGitHub); ?>" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <?php endif; ?>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="row">
+        <article class="col-12 grid-margin stretch-card">
+          <div class="card">
+            <div class="card-body">
+              <h4 class="card-title">Principios de disenio</h4>
+              <div class="coverage-flow">
+                <div class="flow-step">
+                  <span class="step-index">01</span>
+                  <div>
+                    <b>Transparencia</b>
+                    <p class="text-muted mb-0">Cada alerta tiene contexto explicable y trazable.</p>
+                  </div>
+                </div>
+                <div class="flow-step">
+                  <span class="step-index">02</span>
+                  <div>
+                    <b>Control operativo</b>
+                    <p class="text-muted mb-0">Acciones rÃ¡pidas para bloquear, investigar y aprender.</p>
+                  </div>
+                </div>
+                <div class="flow-step">
+                  <span class="step-index">03</span>
+                  <div>
+                    <b>Privacidad</b>
+                    <p class="text-muted mb-0">Minimizamos datos y hacemos redaction por rol.</p>
+                  </div>
+                </div>
+                <div class="flow-step">
+                  <span class="step-index">04</span>
+                  <div>
+                    <b>Iteracion</b>
+                    <p class="text-muted mb-0">Feedback directo de analistas y respuesta en ciclos cortos.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </article>
       </section>
     <?php elseif ($page === 'coverage'): ?>
-      <section class="row">
-        <article class="card">
-          <h2>Fuentes de inteligencia</h2>
-          <table>
-            <thead><tr><th>Fuente</th><th>Cobertura</th><th>Uso</th></tr></thead>
-            <tbody>
-              <tr><td>Runtime Signals</td><td>ClickFix / command lures</td><td>Deteccion inline en extension</td></tr>
-              <tr><td>Server Scoring</td><td>Correlacion de eventos</td><td>Veredicto backend por riesgo</td></tr>
-              <tr><td>Listas de dominio</td><td>allow/block/alert/investigate</td><td>Contencion y excepciones</td></tr>
-              <tr><td>Investigaciones</td><td>Grafo explicativo</td><td>Trazabilidad analista por caso</td></tr>
-              <tr><td>YARA / reglas</td><td>Unsafe downloads</td><td>Prevencion pre-ejecucion</td></tr>
-            </tbody>
-          </table>
+      <section class="row coverage-hero">
+        <article class="col-12 col-xl-8 grid-margin stretch-card">
+          <div class="card">
+            <div class="card-body">
+              <p class="text-muted mb-1">Coverage Control Plane</p>
+              <h2 class="mb-2">Cobertura activa, explicable y accionable para detecciÃ³n y contenciÃ³n.</h2>
+              <p class="text-muted mb-3">Fusionamos telemetrÃ­a de extensión, scoring backend, inteligencia externa y workflow de investigaciÃ³n para acelerar el tiempo de detecciÃ³n y respuesta.</p>
+              <div class="coverage-chip-row">
+                <span class="badge badge-outline-info">Realtime</span>
+                <span class="badge badge-outline-success">Operational</span>
+                <span class="badge badge-outline-warning">Threat Intel</span>
+                <span class="badge badge-outline-primary">Case-ready</span>
+              </div>
+            </div>
+          </div>
         </article>
-        <article class="card">
-          <h2>Cobertura de amenazas</h2>
-          <ul>
-            <li>Phishing operativo y secuestro de confianza.</li>
-            <li>ClickFix y secuencias copiar-pegar-ejecutar.</li>
-            <li>Descargas inseguras con reglas preventivas.</li>
-            <li>Uso Shadow AI con riesgo de fuga de datos.</li>
-          </ul>
-          <p class="mut">La cobertura se enriquece con nuevas reglas, listas y feedback de analistas.</p>
+        <article class="col-12 col-xl-4 grid-margin stretch-card">
+          <div class="card">
+            <div class="card-body">
+              <h4 class="card-title">M?tricas clave</h4>
+              <div class="row">
+                <div class="col-6 mb-3">
+                  <p class="text-muted mb-1">Alertas 24h</p>
+                  <h5 class="mb-0" data-live-metric="alerts_24h"><?= (int) ($metrics['alerts_24h'] ?? 0); ?></h5>
+                </div>
+                <div class="col-6 mb-3">
+                  <p class="text-muted mb-1">Bloqueos 24h</p>
+                  <h5 class="mb-0" data-live-metric="blocks_24h"><?= (int) ($metrics['blocks_24h'] ?? 0); ?></h5>
+                </div>
+                <div class="col-6">
+                  <p class="text-muted mb-1">Cobertura revisiÃ³n</p>
+                  <h5 class="mb-0"><?= number_format((float) ($metrics['review_coverage_pct'] ?? 0.0), 2); ?>%</h5>
+                </div>
+                <div class="col-6">
+                  <p class="text-muted mb-1">pend. revisiÃ³n</p>
+                  <h5 class="mb-0"><?= (int) ($metrics['pending_review_total'] ?? 0); ?></h5>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="row">
+        <article class="col-12 grid-margin stretch-card">
+          <div class="card">
+            <div class="card-body">
+              <h4 class="card-title">Fuentes de inteligencia</h4>
+              <div class="table-responsive">
+                <table class="table table-striped">
+                  <thead><tr><th>Fuente</th><th>Cobertura</th><th>Uso</th><th>Estado</th></tr></thead>
+                  <tbody>
+                    <tr><td>Runtime Signals</td><td>ClickFix / command lures</td><td>Detecci?n inline en extensi?n</td><td><span class="badge badge-outline-success">Activo</span></td></tr>
+                    <tr><td>Server Scoring</td><td>Correlacion de eventos</td><td>Veredicto backend por riesgo</td><td><span class="badge badge-outline-success">Activo</span></td></tr>
+                    <tr><td>Listas de dominio</td><td>allow/block/alert/investigate</td><td>Contencion y excepciones</td><td><span class="badge badge-outline-info">Operativo</span></td></tr>
+                    <tr><td>Investigaciones</td><td>Grafo explicativo</td><td>Trazabilidad analista por caso</td><td><span class="badge badge-outline-primary">Case-ready</span></td></tr>
+                    <tr><td>YARA / reglas</td><td>Unsafe downloads</td><td>Prevencion pre-ejecucion</td><td><span class="badge badge-outline-warning">Endurecido</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="row">
+        <article class="col-12 col-lg-6 grid-margin stretch-card">
+          <div class="card">
+            <div class="card-body">
+              <h4 class="card-title">Cobertura de amenazas</h4>
+              <ul class="coverage-list">
+                <li><span class="dot dot-danger"></span>Phishing operativo y secuestro de confianza.</li>
+                <li><span class="dot dot-warning"></span>ClickFix y secuencias copiar-pegar-ejecutar.</li>
+                <li><span class="dot dot-info"></span>Descargas inseguras con reglas preventivas.</li>
+                <li><span class="dot dot-primary"></span>Uso Shadow AI con riesgo de fuga de datos.</li>
+                <li><span class="dot dot-success"></span>Abuso de infraestructura legitima y suplantacion.</li>
+              </ul>
+              <p class="text-muted mb-0">La cobertura se enriquece con nuevas reglas, listas y feedback de analistas.</p>
+            </div>
+          </div>
+        </article>
+        <article class="col-12 col-lg-6 grid-margin stretch-card">
+          <div class="card">
+            <div class="card-body">
+              <h4 class="card-title">Flujo operativo</h4>
+              <div class="coverage-flow">
+                <div class="flow-step">
+                  <span class="step-index">01</span>
+                  <div>
+                    <b>Deteccion</b>
+                    <p class="text-muted mb-0">Captura seÃ±ales runtime y patrones de comando.</p>
+                  </div>
+                </div>
+                <div class="flow-step">
+                  <span class="step-index">02</span>
+                  <div>
+                    <b>Enriquecimiento</b>
+                    <p class="text-muted mb-0">Cruce con listas, reputacion y fuentes externas.</p>
+                  </div>
+                </div>
+                <div class="flow-step">
+                  <span class="step-index">03</span>
+                  <div>
+                    <b>Respuesta</b>
+                    <p class="text-muted mb-0">Bloqueo, investigaciÃ³n y comunicaciÃ³n con analistas.</p>
+                  </div>
+                </div>
+                <div class="flow-step">
+                  <span class="step-index">04</span>
+                  <div>
+                    <b>Aprendizaje</b>
+                    <p class="text-muted mb-0">Feedback operativo para mejorar reglas y scoring.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </article>
       </section>
     <?php elseif ($page === 'search'): ?>
-      <section class="card">
-        <h2>Busqueda forense</h2>
-        <form method="get" class="split">
+      <section class="card search-forensic-card">
+        <h2>B?squeda forense</h2>
+        <form method="get" class="split search-forensic-form">
           <input type="hidden" name="public" value="1">
           <input type="hidden" name="page" value="search">
           <input name="q" maxlength="180" value="<?= clickfix_h($search); ?>" placeholder="texto libre">
@@ -7638,9 +5914,9 @@ ob_start();
           <input name="command" maxlength="180" value="<?= clickfix_h($commandFilter); ?>" placeholder="comando / snippet">
           <input type="date" name="date_from" value="<?= clickfix_h($dateFromFilter); ?>">
           <input type="date" name="date_to" value="<?= clickfix_h($dateToFilter); ?>">
-          <button class="btn" type="submit">Buscar</button>
+          <button class="btn btn-primary btn-sm search-submit-btn" type="submit">Buscar</button>
         </form>
-        <div style="margin-top:10px">
+        <div class="search-results-wrap" style="margin-top:10px">
           <?php
             $searchDetailBase = [
                 'q' => $search,
@@ -7650,8 +5926,8 @@ ob_start();
                 'date_to' => $dateToFilter,
             ];
           ?>
-          <table>
-            <thead><tr><th>Fecha</th><th>Dominio</th><th>Mensaje</th><th>Score</th><th>Detalle</th></tr></thead>
+          <table class="table table-striped search-table">
+            <thead><tr><th>Fecha</th><th>Dominio</th><th>Mensaje</th><th>Score</th><th>Detalle</th><th>Ver caso</th><th>Caso</th></tr></thead>
             <tbody>
               <?php foreach ($searchResults as $fr): ?>
                 <?php
@@ -7662,9 +5938,36 @@ ob_start();
                 <tr>
                   <td class="mono"><?= clickfix_h((string) ($fr['received_at'] ?? '')); ?></td>
                   <td class="mono"><?= clickfix_h((string) ($fr['hostname'] ?? '-')); ?></td>
-                  <td><?= clickfix_h((string) ($fr['message'] ?? '')); ?></td>
+                  <?php
+                    $rawMsg = (string) ($fr['message'] ?? '');
+                    $truncated = mb_substr($rawMsg, 0, 350, 'UTF-8');
+                    if (mb_strlen($rawMsg, 'UTF-8') > 350) {
+                        $truncated .= 'Ã¢Ã¢â€šÂ¬Â¦';
+                    }
+                    $formatted = preg_replace('/(?:\\.\\s+|\\s{2,}|\\|\\s*)/', "\n", $truncated);
+                  ?>
+                  <td class="message-cell"><?= nl2br(clickfix_h($formatted ?? $truncated)); ?></td>
                   <td class="mono"><?= isset($fr['score_total']) ? (int) $fr['score_total'] : 0; ?></td>
                   <td class="mono"><a class="event-related-link" href="<?= clickfix_h($detailUrl); ?>">Ver detalle</a></td>
+                  <td class="mono">
+                    <?php if (!empty($fr['investigation_id'])): ?>
+                      <a class="event-related-link" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => (int) $fr['investigation_id']])); ?>">Abrir caso</a>
+                    <?php else: ?>
+                      <span class="mut">-</span>
+                    <?php endif; ?>
+                  </td>
+                  <td>
+                    <?php if ($loggedIn && clickfix_user_has_min_role($user, 'analyst_jr')): ?>
+                      <form method="post">
+                        <input type="hidden" name="action" value="report_quick_action">
+                        <input type="hidden" name="quick_mode" value="create_investigation">
+                        <input type="hidden" name="report_id" value="<?= (int) ($fr['id'] ?? 0); ?>">
+                        <button class="btn btn-outline-light btn-sm" type="submit">Abrir caso</button>
+                      </form>
+                    <?php else: ?>
+                      <span class="mut">-</span>
+                    <?php endif; ?>
+                  </td>
                 </tr>
               <?php endforeach; ?>
               <?php if (empty($searchResults)): ?>
@@ -7675,41 +5978,137 @@ ob_start();
         </div>
       </section>
     <?php elseif ($page === 'access'): ?>
-      <section class="row">
-        <article class="card">
-          <h2>Acceso y login</h2>
-          <form method="post"><input type="hidden" name="action" value="request_access"><input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>"><input type="url" name="access_linkedin" required placeholder="https://www.linkedin.com/in/..."><input type="url" name="company_website" placeholder="https://company.com"><input type="email" name="access_email" required placeholder="email"><select name="request_lang"><option value="en" selected>en</option><option value="es">es</option><option value="ca">ca</option><option value="fr">fr</option><option value="de">de</option></select><button class="btn" type="submit">Solicitar acceso</button></form>
-          <hr>
-          <form method="post"><input type="hidden" name="action" value="login"><input type="text" name="username" required placeholder="usuario"><input type="password" name="password" required placeholder="password"><button class="btn" type="submit">Entrar</button></form>
-          <?php if ($loggedIn): ?><form method="post" style="margin-top:8px"><input type="hidden" name="action" value="logout"><button class="btn" type="submit">Cerrar sesion</button></form><?php endif; ?>
+      <section class="access-layout">
+        <article class="access-card access-card--half">
+          <div class="card">
+            <div class="card-body">
+              <h4 class="card-title">Solicitar acceso</h4>
+              <form method="post">
+                <input type="hidden" name="action" value="request_access">
+                <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <input class="form-control" type="url" name="access_linkedin" required placeholder="https://www.linkedin.com/in/...">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <input class="form-control" type="url" name="company_website" placeholder="https://company.com">
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <input class="form-control" type="email" name="access_email" required placeholder="email">
+                  </div>
+                  <div class="col-md-3 mb-3">
+                    <select class="form-control" name="request_lang">
+                      <option value="en" selected>en</option>
+                      <option value="es">es</option>
+                      <option value="ca">ca</option>
+                      <option value="fr">fr</option>
+                      <option value="de">de</option>
+                    </select>
+                  </div>
+                  <div class="col-md-5 mb-3 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" type="submit">Solicitar acceso</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
         </article>
-        <article class="card">
-          <h2>Desistimiento</h2>
-          <form method="post"><input type="hidden" name="action" value="submit_appeal"><input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>"><input type="text" name="appeal_domain" required placeholder="dominio"><input type="text" name="appeal_contact" placeholder="contacto opcional"><textarea name="appeal_reason" required placeholder="motivo"></textarea><button class="btn" type="submit">Enviar desistimiento</button></form>
+        <article class="access-card access-card--half">
+          <div class="card">
+            <div class="card-body">
+              <h4 class="card-title">Login</h4>
+              <form method="post">
+                <input type="hidden" name="action" value="login">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <input class="form-control" type="text" name="username" required placeholder="usuario">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <input class="form-control" type="password" name="password" required placeholder="password">
+                  </div>
+                  <div class="col-12">
+                    <button class="btn btn-success w-100" type="submit">Entrar</button>
+                  </div>
+                </div>
+              </form>
+              <?php if ($loggedIn): ?>
+                <form method="post" class="mt-3">
+                  <input type="hidden" name="action" value="logout">
+                  <button class="btn btn-outline-light w-100" type="submit">Cerrar SesiÃ³n</button>
+                </form>
+              <?php endif; ?>
+            </div>
+          </div>
+        </article>
+        <article class="access-card access-card--full">
+          <div class="card">
+            <div class="card-body">
+              <h4 class="card-title">Desistimiento</h4>
+              <form method="post">
+                <input type="hidden" name="action" value="submit_appeal">
+                <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                <div class="row">
+                  <div class="col-md-4 mb-3">
+                    <input class="form-control" type="text" name="appeal_domain" required placeholder="dominio">
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <input class="form-control" type="text" name="appeal_contact" placeholder="contacto opcional">
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <input class="form-control" type="text" name="appeal_reason" required placeholder="motivo">
+                  </div>
+                  <div class="col-12">
+                    <button class="btn btn-warning w-100" type="submit">Enviar desistimiento</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
         </article>
         <?php if ($loggedIn): ?>
-          <article class="card">
-            <h2>Mi cuenta</h2>
-            <p class="mut">Los ajustes de cuenta estan separados para mantener el acceso limpio y rapido.</p>
-            <div class="rbac">
-              <div class="item"><b>Usuario</b><span class="mono"><a class="user-link" href="<?= clickfix_h(cfprofileurl((int) ($user['id'] ?? 0), [], false)); ?>"><?= clickfix_h((string) ($user['username'] ?? '')); ?></a></span></div>
-              <div class="item"><b>Email</b><span class="mono"><?= clickfix_h((string) ($user['email'] ?? '-')); ?></span></div>
-              <div class="item"><b>Rol</b><span><?= clickfix_h((string) ($user['role_label'] ?? '-')); ?></span></div>
-              <div class="item"><b>REP</b><span class="mono"><?= (int) ($user['reputation'] ?? 0); ?></span></div>
-            </div>
-            <hr>
-            <div class="split">
-              <a class="btn" href="<?= clickfix_h(cfprofileurl((int) ($user['id'] ?? 0), [], false)); ?>">Abrir perfil</a>
-              <a class="btn" href="<?= clickfix_h(cfurl('settings')); ?>">Abrir settings</a>
+          <article class="col-12 grid-margin stretch-card">
+            <div class="card">
+              <div class="card-body">
+                <h4 class="card-title">Mi cuenta</h4>
+                <p class="text-muted">Los ajustes de cuenta estan separados para mantener el acceso limpio y r?pido.</p>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <p class="text-muted mb-1">Usuario</p>
+                    <a class="d-block" href="<?= clickfix_h(cfprofileurl((int) ($user['id'] ?? 0), [], false)); ?>"><?= clickfix_h((string) ($user['username'] ?? '')); ?></a>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <p class="text-muted mb-1">Email</p>
+                    <span><?= clickfix_h((string) ($user['email'] ?? '-')); ?></span>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <p class="text-muted mb-1">Rol</p>
+                    <span><?= clickfix_h((string) ($user['role_label'] ?? '-')); ?></span>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <p class="text-muted mb-1">REP</p>
+                    <span class="mono"><?= (int) ($user['reputation'] ?? 0); ?></span>
+                  </div>
+                </div>
+                <div class="d-flex gap-2">
+                  <a class="btn btn-outline-light" href="<?= clickfix_h(cfprofileurl((int) ($user['id'] ?? 0), [], false)); ?>">Abrir perfil</a>
+                  <a class="btn btn-outline-light" href="<?= clickfix_h(cfurl('settings')); ?>">Abrir settings</a>
+                </div>
+              </div>
             </div>
           </article>
         <?php endif; ?>
       </section>
     <?php elseif ($page === 'profile'): ?>
-      <section class="card">
+      <section class="row profile-page">
         <?php if ($profileUser === null): ?>
-          <h2>Perfil no encontrado</h2>
-          <p class="mut">No existe el usuario solicitado o no hay datos disponibles.</p>
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                <h2>Perfil no encontrado</h2>
+                <p class="mut">No existe el usuario solicitado o no hay datos disponibles.</p>
+              </div>
+            </div>
+          </div>
         <?php else: ?>
           <?php
             $avatarSeed = strtoupper(substr((string) ($profileUser['username'] ?? 'U'), 0, 1));
@@ -7717,139 +6116,258 @@ ob_start();
             $tabInvestigationUrl = cfprofileurl((int) ($profileUser['id'] ?? 0), ['tab' => 'investigations']);
             $tabReportsUrl = cfprofileurl((int) ($profileUser['id'] ?? 0), ['tab' => 'reports']);
             $tabSessionsUrl = cfprofileurl((int) ($profileUser['id'] ?? 0), ['tab' => 'sessions']);
+            $profilePublicEmail = (string) ($profileUser['email_visible'] !== '' ? $profileUser['email_visible'] : 'private');
           ?>
-          <div class="profile-shell">
-            <aside class="profile-card">
-              <div class="profile-avatar<?= $profileAvatarUrl !== '' ? ' has-image' : ''; ?>">
-                <?php if ($profileAvatarUrl !== ''): ?>
-                  <img src="<?= clickfix_h($profileAvatarUrl); ?>" alt="avatar">
-                <?php else: ?>
-                  <?= clickfix_h($avatarSeed); ?>
-                <?php endif; ?>
+          <div class="col-12 col-xxl-4">
+            <div class="card profile-hero">
+              <div class="card-body">
+                <div class="profile-hero-head">
+                  <div class="profile-avatar-lg<?php if ($profileAvatarUrl !== ''): ?> has-image<?php endif; ?>">
+                    <?php if ($profileAvatarUrl !== ''): ?>
+                      <img src="<?= clickfix_h($profileAvatarUrl); ?>" alt="avatar">
+                    <?php else: ?>
+                      <?= clickfix_h($avatarSeed); ?>
+                    <?php endif; ?>
+                  </div>
+                  <div class="profile-title">
+                    <h2><?= clickfix_h((string) ($profileUser['display_name'] ?? '')); ?></h2>
+                    <div class="text-muted">@<?= clickfix_h((string) ($profileUser['username'] ?? '')); ?></div>
+                  </div>
+                </div>
+                <div class="profile-chips">
+                  <span class="badge badge-outline-info">Rol: <?= clickfix_h((string) ($profileUser['role_label'] ?? '-')); ?></span>
+                  <span class="badge badge-outline-success">REP <?= (int) ($profileUser['reputation'] ?? 0); ?></span>
+                  <span class="badge badge-outline-primary"><?= clickfix_h((string) ($profileUser['preferred_lang'] ?? 'en')); ?></span>
+                  <span class="badge badge-outline-warning"><?= clickfix_h((string) ($profileUser['profile_theme'] ?? 'default')); ?></span>
+                </div>
+                <div class="profile-stat-grid">
+                  <div class="profile-stat">
+                  <span>Investigaciones</span>
+                    <strong><?= count($profileInvestigations); ?></strong>
+                  </div>
+                  <div class="profile-stat">
+                    <span>Reportes</span>
+                    <strong><?= count($profileReports); ?></strong>
+                  </div>
+                  <div class="profile-stat">
+                    <span>SesiÃ³nes</span>
+                    <strong><?= count($profileSessionHistory); ?></strong>
+                  </div>
+                  <div class="profile-stat">
+                    <span>Email</span>
+                    <strong class="mono"><?= clickfix_h($profilePublicEmail); ?></strong>
+                  </div>
+                </div>
+                <div class="profile-kv">
+                  <span class="label">Threat.rip</span>
+                  <span class="value mono">
+                    <?php if (!empty($profileUser['account_threatrip']['visible'])): ?>
+                      <a class="user-link" target="_blank" rel="noreferrer" href="<?= clickfix_h((string) ($profileUser['account_threatrip']['url'] ?? '')); ?>">#<?= clickfix_h((string) ($profileUser['account_threatrip']['id'] ?? '')); ?></a>
+                    <?php else: ?>
+                      private
+                    <?php endif; ?>
+                  </span>
+                </div>
+                <div class="profile-kv">
+                  <span class="label">VirusTotal</span>
+                  <span class="value mono">
+                    <?php if (!empty($profileUser['account_virustotal']['visible'])): ?>
+                      <a class="user-link" target="_blank" rel="noreferrer" href="<?= clickfix_h((string) ($profileUser['account_virustotal']['url'] ?? '')); ?>"><?= clickfix_h((string) ($profileUser['account_virustotal']['handle'] ?? '')); ?></a>
+                    <?php else: ?>
+                      private
+                    <?php endif; ?>
+                  </span>
+                </div>
+                <div class="profile-kv">
+                  <span class="label">AbuseIPDB</span>
+                  <span class="value mono">
+                    <?php if (!empty($profileUser['account_abuseipdb']['visible'])): ?>
+                      <a class="user-link" target="_blank" rel="noreferrer" href="<?= clickfix_h((string) ($profileUser['account_abuseipdb']['url'] ?? '')); ?>">#<?= clickfix_h((string) ($profileUser['account_abuseipdb']['id'] ?? '')); ?></a>
+                    <?php else: ?>
+                      private
+                    <?php endif; ?>
+                  </span>
+                </div>
+                <div class="profile-kv">
+                  <span class="label">GitHub</span>
+                  <span class="value mono">
+                    <?php if (!empty($profileUser['account_github']['visible'])): ?>
+                      <a class="user-link" target="_blank" rel="noreferrer" href="<?= clickfix_h((string) ($profileUser['account_github']['url'] ?? '')); ?>"><?= clickfix_h((string) ($profileUser['account_github']['handle'] ?? '')); ?></a>
+                    <?php else: ?>
+                      private
+                    <?php endif; ?>
+                  </span>
+                </div>
+                <div class="profile-actions">
+                  <?php if ($profileCanEdit): ?>
+                    <a class="btn btn-outline-light" href="<?= clickfix_h(cfurl('settings')); ?>">Settings de cuenta</a>
+                  <?php endif; ?>
+                  <a class="btn btn-primary" href="<?= clickfix_h(cfprofileurl((int) ($profileUser['id'] ?? 0), [], true)); ?>">Compartir perfil</a>
+                </div>
               </div>
-              <h3 class="profile-name"><?= clickfix_h((string) ($profileUser['display_name'] ?? '')); ?></h3>
-              <div class="profile-nick">@<?= clickfix_h((string) ($profileUser['username'] ?? '')); ?></div>
-              <div class="profile-meta">
-                <div class="rowx"><span>Rol</span><b><?= clickfix_h((string) ($profileUser['role_label'] ?? '-')); ?></b></div>
-                <div class="rowx"><span>REP</span><b class="mono"><?= (int) ($profileUser['reputation'] ?? 0); ?></b></div>
-                <div class="rowx"><span>Idioma</span><b class="mono"><?= clickfix_h((string) ($profileUser['preferred_lang'] ?? 'en')); ?></b></div>
-                <div class="rowx"><span>Theme</span><b class="mono"><?= clickfix_h((string) ($profileUser['profile_theme'] ?? 'default')); ?></b></div>
-                <div class="rowx"><span>Email</span><b class="mono"><?= clickfix_h((string) ($profileUser['email_visible'] !== '' ? $profileUser['email_visible'] : 'private')); ?></b></div>
-                <div class="rowx"><span>Threat.rip</span><b class="mono"><?php if (!empty($profileUser['account_threatrip']['visible'])): ?><a class="user-link" target="_blank" rel="noreferrer" href="<?= clickfix_h((string) ($profileUser['account_threatrip']['url'] ?? '')); ?>">#<?= clickfix_h((string) ($profileUser['account_threatrip']['id'] ?? '')); ?></a><?php else: ?>private<?php endif; ?></b></div>
-                <div class="rowx"><span>VirusTotal</span><b class="mono"><?php if (!empty($profileUser['account_virustotal']['visible'])): ?><a class="user-link" target="_blank" rel="noreferrer" href="<?= clickfix_h((string) ($profileUser['account_virustotal']['url'] ?? '')); ?>"><?= clickfix_h((string) ($profileUser['account_virustotal']['handle'] ?? '')); ?></a><?php else: ?>private<?php endif; ?></b></div>
-                <div class="rowx"><span>AbuseIPDB</span><b class="mono"><?php if (!empty($profileUser['account_abuseipdb']['visible'])): ?><a class="user-link" target="_blank" rel="noreferrer" href="<?= clickfix_h((string) ($profileUser['account_abuseipdb']['url'] ?? '')); ?>">#<?= clickfix_h((string) ($profileUser['account_abuseipdb']['id'] ?? '')); ?></a><?php else: ?>private<?php endif; ?></b></div>
-                <div class="rowx"><span>GitHub</span><b class="mono"><?php if (!empty($profileUser['account_github']['visible'])): ?><a class="user-link" target="_blank" rel="noreferrer" href="<?= clickfix_h((string) ($profileUser['account_github']['url'] ?? '')); ?>"><?= clickfix_h((string) ($profileUser['account_github']['handle'] ?? '')); ?></a><?php else: ?>private<?php endif; ?></b></div>
+            </div>
+          </div>
+          <div class="col-12 col-xxl-8">
+            <div class="card profile-tabs-card">
+              <div class="card-body profile-tabs-body">
+                <div>
+                  <h3 class="profile-section-title">Actividad y casos</h3>
+                  <p class="text-muted mb-0">Historial operativo, casos abiertos y seÃ±ales compartidas por el usuario.</p>
+                </div>
+                <div class="nav nav-pills profile-tabs">
+                  <a class="nav-link<?php if ($profileTab === 'investigations'): ?> active<?php endif; ?>" href="<?= clickfix_h($tabInvestigationUrl); ?>">Investigaciones (<?= count($profileInvestigations); ?>)</a>
+                  <a class="nav-link<?php if ($profileTab === 'reports'): ?> active<?php endif; ?>" href="<?= clickfix_h($tabReportsUrl); ?>">Reportes (<?= count($profileReports); ?>)</a>
+                  <a class="nav-link<?php if ($profileTab === 'sessions'): ?> active<?php endif; ?>" href="<?= clickfix_h($tabSessionsUrl); ?>">Sesines (<?= count($profileSessionHistory); ?>)</a>
+                  <?php if ($profileCanEdit): ?>
+                    <a class="nav-link" href="<?= clickfix_h(cfurl('settings')); ?>">Ir a settings</a>
+                  <?php endif; ?>
+                </div>
               </div>
-            </aside>
-            <section>
-              <div class="profile-tabs">
-                <a class="profile-tab<?= $profileTab === 'investigations' ? ' active' : ''; ?>" href="<?= clickfix_h($tabInvestigationUrl); ?>">Investigaciones (<?= count($profileInvestigations); ?>)</a>
-                <a class="profile-tab<?= $profileTab === 'reports' ? ' active' : ''; ?>" href="<?= clickfix_h($tabReportsUrl); ?>">Reportes (<?= count($profileReports); ?>)</a>
-                <a class="profile-tab<?= $profileTab === 'sessions' ? ' active' : ''; ?>" href="<?= clickfix_h($tabSessionsUrl); ?>">Sesiones (<?= count($profileSessionHistory); ?>)</a>
-                <?php if ($profileCanEdit): ?>
-                  <a class="profile-tab" href="<?= clickfix_h(cfurl('settings')); ?>">Ir a settings</a>
-                <?php endif; ?>
-              </div>
-              <?php if ($profileCanEdit): ?>
-                <article class="profile-card" style="margin-bottom:10px">
-                  <h3 style="margin-top:0">Editar perfil</h3>
-                  <p class="mut">Controla que informacion de contacto/cuentas se muestra publicamente. El tema, idioma, foto y contraseña se gestionan en Settings.</p>
-                  <form method="post">
+            </div>
+            <?php if ($profileCanEdit): ?>
+              <div class="card profile-edit-card">
+                <div class="card-body">
+                  <h4 class="profile-section-title">Editar perfil pÃºblico</h4>
+                  <p class="text-muted">Controla qu? informaciÃ³n de contacto y cuentas se expone pblicamente. El tema, idioma y contraseÃ±a se gestionan en Settings.</p>
+                  <form method="post" class="profile-edit-form">
                     <input type="hidden" name="action" value="user_self_profile_update">
                     <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                    <input type="text" name="full_name" maxlength="120" value="<?= clickfix_h((string) ($profileUser['full_name'] ?? '')); ?>" placeholder="Nombre visible">
-                    <label><input type="hidden" name="profile_email_public" value="0"><input type="checkbox" name="profile_email_public" value="1"<?= !empty($profileUser['email_is_public']) ? ' checked' : ''; ?>> Mostrar email</label>
-                    <div class="split">
-                      <div>
-                        <input type="text" name="profile_threatrip_id" value="<?= clickfix_h((string) ($profileUser['account_threatrip']['id'] ?? '')); ?>" placeholder="Threat.rip user ID">
-                        <label><input type="hidden" name="profile_threatrip_public" value="0"><input type="checkbox" name="profile_threatrip_public" value="1"<?= !empty($profileUser['account_threatrip']['is_public']) ? ' checked' : ''; ?>> Publico</label>
+                    <div class="row g-3">
+                      <div class="col-12">
+                        <label class="form-label">Nombre visible</label>
+                        <input class="form-control" type="text" name="full_name" maxlength="120" value="<?= clickfix_h((string) ($profileUser['full_name'] ?? '')); ?>" placeholder="Nombre visible">
                       </div>
-                      <div>
-                        <input type="text" name="profile_vt_handle" value="<?= clickfix_h((string) ($profileUser['account_virustotal']['handle'] ?? '')); ?>" placeholder="VirusTotal handle">
-                        <label><input type="hidden" name="profile_vt_public" value="0"><input type="checkbox" name="profile_vt_public" value="1"<?= !empty($profileUser['account_virustotal']['is_public']) ? ' checked' : ''; ?>> Publico</label>
+                      <div class="col-md-6">
+                        <label class="form-label">Threat.rip user ID</label>
+                        <input class="form-control" type="text" name="profile_threatrip_id" value="<?= clickfix_h((string) ($profileUser['account_threatrip']['id'] ?? '')); ?>" placeholder="Threat.rip user ID">
+                        <div class="form-check form-switch mt-2">
+                          <input type="hidden" name="profile_threatrip_public" value="0">
+                          <input class="form-check-input" type="checkbox" name="profile_threatrip_public" value="1"<?php if (!empty($profileUser['account_threatrip']['is_public'])): ?> checked<?php endif; ?>>
+                          <label class="form-check-label">PÃºblico</label>
+                        </div>
                       </div>
-                      <div>
-                        <input type="text" name="profile_abuseipdb_id" value="<?= clickfix_h((string) ($profileUser['account_abuseipdb']['id'] ?? '')); ?>" placeholder="AbuseIPDB user ID">
-                        <label><input type="hidden" name="profile_abuseipdb_public" value="0"><input type="checkbox" name="profile_abuseipdb_public" value="1"<?= !empty($profileUser['account_abuseipdb']['is_public']) ? ' checked' : ''; ?>> Publico</label>
+                      <div class="col-md-6">
+                        <label class="form-label">VirusTotal handle</label>
+                        <input class="form-control" type="text" name="profile_vt_handle" value="<?= clickfix_h((string) ($profileUser['account_virustotal']['handle'] ?? '')); ?>" placeholder="VirusTotal handle">
+                        <div class="form-check form-switch mt-2">
+                          <input type="hidden" name="profile_vt_public" value="0">
+                          <input class="form-check-input" type="checkbox" name="profile_vt_public" value="1"<?php if (!empty($profileUser['account_virustotal']['is_public'])): ?> checked<?php endif; ?>>
+                          <label class="form-check-label">PÃºblico</label>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">AbuseIPDB user ID</label>
+                        <input class="form-control" type="text" name="profile_abuseipdb_id" value="<?= clickfix_h((string) ($profileUser['account_abuseipdb']['id'] ?? '')); ?>" placeholder="AbuseIPDB user ID">
+                        <div class="form-check form-switch mt-2">
+                          <input type="hidden" name="profile_abuseipdb_public" value="0">
+                          <input class="form-check-input" type="checkbox" name="profile_abuseipdb_public" value="1"<?php if (!empty($profileUser['account_abuseipdb']['is_public'])): ?> checked<?php endif; ?>>
+                          <label class="form-check-label">PÃºblico</label>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">GitHub handle</label>
+                        <input class="form-control" type="text" name="profile_github_handle" value="<?= clickfix_h((string) ($profileUser['account_github']['handle'] ?? '')); ?>" placeholder="GitHub handle">
+                        <div class="form-check form-switch mt-2">
+                          <input type="hidden" name="profile_github_public" value="0">
+                          <input class="form-check-input" type="checkbox" name="profile_github_public" value="1"<?php if (!empty($profileUser['account_github']['is_public'])): ?> checked<?php endif; ?>>
+                          <label class="form-check-label">PÃºblico</label>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Email pÃºblico</label>
+                        <div class="form-check form-switch">
+                          <input type="hidden" name="profile_email_public" value="0">
+                          <input class="form-check-input" type="checkbox" name="profile_email_public" value="1"<?php if (!empty($profileUser['email_is_public'])): ?> checked<?php endif; ?>>
+                          <label class="form-check-label">Mostrar email</label>
+                        </div>
                       </div>
                     </div>
-                    <input type="text" name="profile_github_handle" value="<?= clickfix_h((string) ($profileUser['account_github']['handle'] ?? '')); ?>" placeholder="GitHub handle">
-                    <label><input type="hidden" name="profile_github_public" value="0"><input type="checkbox" name="profile_github_public" value="1"<?= !empty($profileUser['account_github']['is_public']) ? ' checked' : ''; ?>> GitHub publico</label>
-                    <button class="btn" type="submit">Guardar perfil</button>
+                    <div class="profile-edit-actions">
+                      <button class="btn btn-primary" type="submit">Guardar perfil</button>
+                      <a class="btn btn-outline-light" href="<?= clickfix_h(cfurl('settings')); ?>">Settings de cuenta</a>
+                    </div>
                   </form>
-                </article>
-              <?php endif; ?>
-              <article class="card">
+                </div>
+              </div>
+            <?php endif; ?>
+            <div class="card profile-panel">
+              <div class="card-body">
                 <?php if ($profileTab === 'sessions'): ?>
-                  <h2>Historial de sesiones del usuario</h2>
+                  <h4 class="profile-section-title">Historial de SesiÃ³nes</h4>
                   <?php if (!$profileCanViewPrivate): ?>
-                    <p class="mut">El historial de sesiones es privado.</p>
+                    <p class="mut">El historial de SesiÃ³nes es privado.</p>
                   <?php else: ?>
-                    <table>
-                      <thead><tr><th>Fecha</th><th>Evento</th><th>IP</th><th>Sesion</th><th>User-Agent</th></tr></thead>
-                      <tbody>
-                        <?php foreach ($profileSessionHistory as $sessionEvent): ?>
-                          <?php
-                            $sessionAction = strtolower((string) ($sessionEvent['event_type'] ?? 'unknown'));
-                            $sessionActionLabel = $sessionAction === 'login' ? 'login' : ($sessionAction === 'logout' ? 'logout' : $sessionAction);
-                          ?>
-                          <tr>
-                            <td class="mono"><?= clickfix_h((string) ($sessionEvent['created_at'] ?? '')); ?></td>
-                            <td class="mono"><?= clickfix_h($sessionActionLabel); ?></td>
-                            <td class="mono"><?= clickfix_h((string) ($sessionEvent['ip'] ?? '-')); ?></td>
-                            <td class="mono"><?= clickfix_h((string) ($sessionEvent['session_id'] ?? '-')); ?></td>
-                            <td><?= clickfix_h((string) ($sessionEvent['user_agent'] ?? '')); ?></td>
-                          </tr>
-                        <?php endforeach; ?>
-                        <?php if (empty($profileSessionHistory)): ?><tr><td colspan="5" class="mut">Sin sesiones registradas.</td></tr><?php endif; ?>
-                      </tbody>
-                    </table>
+                    <div class="table-responsive">
+                      <table class="table table-striped profile-table">
+                        <thead><tr><th>Fecha</th><th>Evento</th><th>IP</th><th>SesiÃ³n</th><th>User-Agent</th></tr></thead>
+                        <tbody>
+                          <?php foreach ($profileSessionHistory as $sessionEvent): ?>
+                            <?php
+                              $sessionAction = strtolower((string) ($sessionEvent['event_type'] ?? 'unknown'));
+                              $sessionActionLabel = $sessionAction === 'login' ? 'login' : ($sessionAction === 'logout' ? 'logout' : $sessionAction);
+                            ?>
+                            <tr>
+                              <td class="mono"><?= clickfix_h((string) ($sessionEvent['created_at'] ?? '')); ?></td>
+                              <td class="mono"><?= clickfix_h($sessionActionLabel); ?></td>
+                              <td class="mono"><?= clickfix_h((string) ($sessionEvent['ip'] ?? '-')); ?></td>
+                              <td class="mono"><?= clickfix_h((string) ($sessionEvent['session_id'] ?? '-')); ?></td>
+                              <td class="text-wrap"><?= clickfix_h((string) ($sessionEvent['user_agent'] ?? '')); ?></td>
+                            </tr>
+                          <?php endforeach; ?>
+                          <?php if (empty($profileSessionHistory)): ?><tr><td colspan="5" class="mut">Sin Sesines registradas.</td></tr><?php endif; ?>
+                        </tbody>
+                      </table>
+                    </div>
                   <?php endif; ?>
                 <?php elseif ($profileTab === 'reports'): ?>
-                  <h2>Reportes del usuario</h2>
+                  <h4 class="profile-section-title">Reportes del usuario</h4>
                   <?php if (!$profileCanViewPrivate): ?>
                     <p class="mut">Los reportes del usuario son privados.</p>
                   <?php endif; ?>
-                  <table>
-                    <thead><tr><th>Fecha</th><th>Dominio</th><th>Mensaje</th><th>Estado</th><th>Accion</th></tr></thead>
-                    <tbody>
-                      <?php foreach ($profileReports as $pr): ?>
-                        <?php
-                          $actionLabel = ((int) ($pr['reviewed_by'] ?? 0) === (int) ($profileUser['id'] ?? 0))
-                              ? ('review:' . (string) ($pr['review_status'] ?? 'pending'))
-                              : 'accepted';
-                        ?>
-                        <tr>
-                          <td class="mono"><?= clickfix_h((string) ($pr['received_at'] ?? '')); ?></td>
-                          <td class="mono"><?= clickfix_h((string) ($pr['hostname'] ?? '-')); ?></td>
-                          <td><?= clickfix_h((string) ($pr['message'] ?? '')); ?></td>
-                          <td class="mono"><?= clickfix_h((string) ($pr['review_status'] ?? 'pending')); ?></td>
-                          <td class="mono"><?= clickfix_h($actionLabel); ?></td>
-                        </tr>
-                      <?php endforeach; ?>
-                      <?php if (empty($profileReports)): ?><tr><td colspan="5" class="mut">Sin reportes asociados.</td></tr><?php endif; ?>
-                    </tbody>
-                  </table>
+                  <div class="table-responsive">
+                    <table class="table table-striped profile-table">
+                      <thead><tr><th>Fecha</th><th>Dominio</th><th>Mensaje</th><th>Estado</th><th>AcciÃ³n</th></tr></thead>
+                      <tbody>
+                        <?php foreach ($profileReports as $pr): ?>
+                          <?php
+                            $actionLabel = ((int) ($pr['reviewed_by'] ?? 0) === (int) ($profileUser['id'] ?? 0))
+                                ? ('review:' . (string) ($pr['review_status'] ?? 'pending'))
+                                : 'accepted';
+                          ?>
+                          <tr>
+                            <td class="mono"><?= clickfix_h((string) ($pr['received_at'] ?? '')); ?></td>
+                            <td class="mono"><?= clickfix_h((string) ($pr['hostname'] ?? '-')); ?></td>
+                            <td class="text-wrap"><?= clickfix_h((string) ($pr['message'] ?? '')); ?></td>
+                            <td class="mono"><?= clickfix_h((string) ($pr['review_status'] ?? 'pending')); ?></td>
+                            <td class="mono"><?= clickfix_h($actionLabel); ?></td>
+                          </tr>
+                        <?php endforeach; ?>
+                        <?php if (empty($profileReports)): ?><tr><td colspan="5" class="mut">Sin reportes asociados.</td></tr><?php endif; ?>
+                      </tbody>
+                    </table>
+                  </div>
                 <?php else: ?>
-                  <h2>Investigaciones del usuario</h2>
-                  <table>
-                    <thead><tr><th>Actualizada</th><th>Titulo</th><th>Dominio</th><th>Veredicto</th><th>Estado</th></tr></thead>
-                    <tbody>
-                      <?php foreach ($profileInvestigations as $pi): ?>
-                        <tr>
-                          <td class="mono"><?= clickfix_h((string) ($pi['updated_at'] ?? '')); ?></td>
-                          <td><?= clickfix_h((string) ($pi['title'] ?? '')); ?></td>
-                          <td class="mono"><?= clickfix_h((string) ($pi['site_domain'] ?? '-')); ?></td>
-                          <td class="mono"><?= clickfix_h((string) ($pi['verdict'] ?? 'unknown')); ?></td>
-                          <td class="mono"><?= clickfix_h((string) (!empty($pi['is_public']) ? 'public' : 'private')); ?></td>
-                        </tr>
-                      <?php endforeach; ?>
-                      <?php if (empty($profileInvestigations)): ?><tr><td colspan="5" class="mut">Sin investigaciones visibles.</td></tr><?php endif; ?>
-                    </tbody>
-                  </table>
+                  <h4 class="profile-section-title">Investigaciones del usuario</h4>
+                  <div class="table-responsive">
+                    <table class="table table-striped profile-table">
+                      <thead><tr><th>Actualizada</th><th>TÃ­tulo</th><th>Dominio</th><th>Veredicto</th><th>Estado</th></tr></thead>
+                      <tbody>
+                        <?php foreach ($profileInvestigations as $pi): ?>
+                          <tr>
+                            <td class="mono"><?= clickfix_h((string) ($pi['updated_at'] ?? '')); ?></td>
+                            <td><?= clickfix_h((string) ($pi['title'] ?? '')); ?></td>
+                            <td class="mono"><?= clickfix_h((string) ($pi['site_domain'] ?? '-')); ?></td>
+                            <td class="mono"><?= clickfix_h((string) ($pi['verdict'] ?? 'unknown')); ?></td>
+                            <td class="mono"><?= clickfix_h((string) (!empty($pi['is_public']) ? 'public' : 'private')); ?></td>
+                          </tr>
+                        <?php endforeach; ?>
+                        <?php if (empty($profileInvestigations)): ?><tr><td colspan="5" class="mut">Sin investigaciones visibles.</td></tr><?php endif; ?>
+                      </tbody>
+                    </table>
+                  </div>
                 <?php endif; ?>
-              </article>
-            </section>
+              </div>
+            </div>
           </div>
         <?php endif; ?>
       </section>
@@ -7861,57 +6379,173 @@ ob_start();
         $settingsLookupProviderDefault = (string) ($intelApiLookupResult['provider'] ?? 'virustotal');
         $settingsLookupTargetDefault = trim((string) ($intelApiLookupResult['target'] ?? ''));
       ?>
-      <section class="row">
-        <article class="card">
-          <h2>Settings de cuenta</h2>
-          <p class="mut">Gestiona idioma, theme y foto de usuario para tu cuenta.</p>
-          <form method="post">
-            <input type="hidden" name="action" value="user_self_update_account">
-            <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-            <label for="self-lang">Idioma por defecto</label>
-            <select id="self-lang" name="self_lang">
-              <option value="en"<?= $selfLang === 'en' ? ' selected' : ''; ?>>en</option>
-              <option value="es"<?= $selfLang === 'es' ? ' selected' : ''; ?>>es</option>
-              <option value="ca"<?= $selfLang === 'ca' ? ' selected' : ''; ?>>ca</option>
-              <option value="de"<?= $selfLang === 'de' ? ' selected' : ''; ?>>de</option>
-              <option value="fr"<?= $selfLang === 'fr' ? ' selected' : ''; ?>>fr</option>
-            </select>
-            <label for="self-theme">Theme</label>
-            <select id="self-theme" name="self_theme">
-              <option value="default"<?= $selfTheme === 'default' ? ' selected' : ''; ?>>default</option>
-              <option value="teal"<?= $selfTheme === 'teal' ? ' selected' : ''; ?>>teal</option>
-              <option value="sunset"<?= $selfTheme === 'sunset' ? ' selected' : ''; ?>>sunset</option>
-              <option value="mono"<?= $selfTheme === 'mono' ? ' selected' : ''; ?>>mono</option>
-            </select>
-            <label for="self-avatar-url">Foto de usuario (URL)</label>
-            <input type="url" id="self-avatar-url" name="self_avatar_url" maxlength="420" value="<?= clickfix_h($selfAvatarUrl); ?>" placeholder="https://example.com/avatar.png">
-            <button class="btn" type="submit">Guardar ajustes</button>
-          </form>
-        </article>
-        <article class="card">
-          <h2>Seguridad</h2>
-          <p class="mut">Cambio de contraseña para tu cuenta.</p>
-          <form method="post">
-            <input type="hidden" name="action" value="user_self_change_password">
-            <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-            <input type="password" name="self_current_password" required placeholder="Contraseña actual">
-            <input type="password" name="self_new_password" minlength="10" required placeholder="Nueva contraseña (min 10 chars)">
-            <button class="btn" type="submit">Cambiar contraseña</button>
-          </form>
-        </article>
+      <section class="row settings-page">
+        <div class="col-12 col-xl-7">
+          <div class="card settings-card">
+            <div class="card-body">
+              <div class="settings-head">
+                <div>
+                  <h2>Settings de cuenta</h2>
+                  <p class="text-muted">Gestiona idioma, tema visual y foto de usuario para tu cuenta.</p>
+                </div>
+                <span class="settings-pill">Cuenta</span>
+              </div>
+              <form method="post" class="settings-form">
+                <input type="hidden" name="action" value="user_self_update_account">
+                <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label" for="self-lang">Idioma por defecto</label>
+                    <select id="self-lang" name="self_lang" class="form-select">
+                      <option value="en"<?= $selfLang === 'en' ? ' selected' : ''; ?>>en</option>
+                      <option value="es"<?= $selfLang === 'es' ? ' selected' : ''; ?>>es</option>
+                      <option value="ca"<?= $selfLang === 'ca' ? ' selected' : ''; ?>>ca</option>
+                      <option value="de"<?= $selfLang === 'de' ? ' selected' : ''; ?>>de</option>
+                      <option value="fr"<?= $selfLang === 'fr' ? ' selected' : ''; ?>>fr</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label" for="self-theme">Tema visual</label>
+                    <select id="self-theme" name="self_theme" class="form-select">
+                      <option value="default"<?= $selfTheme === 'default' ? ' selected' : ''; ?>>default</option>
+                      <option value="teal"<?= $selfTheme === 'teal' ? ' selected' : ''; ?>>teal</option>
+                      <option value="sunset"<?= $selfTheme === 'sunset' ? ' selected' : ''; ?>>sunset</option>
+                      <option value="mono"<?= $selfTheme === 'mono' ? ' selected' : ''; ?>>mono</option>
+                    </select>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label" for="self-avatar-url">Foto de usuario (URL)</label>
+                    <input type="url" class="form-control" id="self-avatar-url" name="self_avatar_url" maxlength="420" value="<?= clickfix_h($selfAvatarUrl); ?>" placeholder="https://example.com/avatar.png">
+                    <div class="settings-avatar-actions">
+                      <button class="btn btn-outline-light btn-sm" type="button" data-avatar-source="github" data-avatar-handle="<?= clickfix_h((string) ($user['profile_github_handle'] ?? '')); ?>">Usar avatar GitHub</button>
+                      <button class="btn btn-outline-light btn-sm" type="button" data-avatar-source="threatrip" data-avatar-handle="<?= clickfix_h((string) ($user['profile_threatrip_id'] ?? '')); ?>">Usar avatar ThreatRip</button>
+                      <button class="btn btn-outline-light btn-sm" type="button" data-avatar-source="virustotal" data-avatar-handle="<?= clickfix_h((string) ($user['profile_vt_handle'] ?? '')); ?>">Usar avatar VirusTotal</button>
+                      <span class="mut mini" id="avatar-source-help">Si ThreatRip/VirusTotal no exponen URL pÃºblica, pega la URL directamente.</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="settings-actions">
+                  <button class="btn btn-primary" type="submit">Guardar ajustes</button>
+                </div>
+              </form>
+            </div>
+          </div>
+          <div class="card settings-card">
+            <div class="card-body">
+              <div class="settings-head">
+                <div>
+                  <h2>Seguridad</h2>
+                  <p class="text-muted">Actualiza tu contraseÃ±a para proteger el acceso.</p>
+                </div>
+                <span class="settings-pill">Acceso</span>
+              </div>
+              <form method="post" class="settings-form">
+                <input type="hidden" name="action" value="user_self_change_password">
+                <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                <div class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label">ContraseÃ±a actual</label>
+                    <input type="password" class="form-control" name="self_current_password" required placeholder="ContraseÃ±a actual">
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Nueva contraseÃ±a</label>
+                    <input type="password" class="form-control" name="self_new_password" minlength="10" required placeholder="Nueva contraseÃ±a (mÃ­nimo 10 caracteres)">
+                  </div>
+                </div>
+                <div class="settings-actions">
+                  <button class="btn btn-outline-light" type="submit">Cambiar contraseÃ±a</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-xl-5">
+          <div class="card settings-card settings-summary">
+            <div class="card-body">
+              <div class="settings-head">
+                <div>
+                  <h2>Resumen de cuenta</h2>
+                  <p class="text-muted">Vista r?pida de tu estado dentro de la plataforma.</p>
+                </div>
+                <span class="settings-pill">Perfil</span>
+              </div>
+              <div class="settings-kv">
+                <span>Usuario</span>
+                <strong class="mono"><?= clickfix_h((string) ($user['username'] ?? '')); ?></strong>
+              </div>
+              <div class="settings-kv">
+                <span>Rol</span>
+                <strong><?= clickfix_h((string) ($user['role_label'] ?? '')); ?></strong>
+              </div>
+              <div class="settings-kv">
+                <span>REP</span>
+                <strong class="mono"><?= (int) ($user['reputation'] ?? 0); ?></strong>
+              </div>
+              <div class="settings-kv">
+                <span>Idioma</span>
+                <strong class="mono"><?= clickfix_h((string) ($user['preferred_lang'] ?? 'en')); ?></strong>
+              </div>
+              <div class="settings-kv">
+                <span>Tema</span>
+                <strong class="mono"><?= clickfix_h((string) ($user['profile_theme'] ?? 'default')); ?></strong>
+              </div>
+              <div class="settings-kv">
+                <span>Estado</span>
+                <strong><?= !empty($user['is_admin']) ? 'Administrador' : 'Operador'; ?></strong>
+              </div>
+              <div class="settings-actions">
+                <a class="btn btn-outline-light" href="<?= clickfix_h(cfprofileurl((int) ($user['id'] ?? 0), [], false)); ?>">Abrir perfil</a>
+              </div>
+            </div>
+          </div>
+          <?php if ($canManageConfigs): ?>
+          <div class="card settings-card">
+            <div class="card-body">
+              <div class="settings-head">
+                <div>
+                  <h2>Mapa p?blico</h2>
+                  <p class="text-muted">Evita saturar el globo de <code>index.php</code> limitando cu?ntos puntos se representan por pa?s.</p>
+                </div>
+                <span class="settings-pill">Landing</span>
+              </div>
+              <form method="post" class="settings-form">
+                <input type="hidden" name="action" value="public_preview_settings_save">
+                <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                <div class="row g-3">
+                  <div class="col-12">
+                    <label class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" name="preview_limit_points_per_country" value="1"<?= !empty($publicPreviewSettings['limit_points_per_country']) ? ' checked' : ''; ?>>
+                      <span class="form-check-label">Limitar puntos por pa?s en el mapa global</span>
+                    </label>
+                    <div class="mut mini" style="margin-top:6px">Si est? activo, el globo mostrar? como m?ximo el n?mero indicado por pa?s para evitar sobrecarga visual.</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label" for="preview-max-points-per-country">M?ximo de puntos por pa?s</label>
+                    <input type="number" class="form-control" id="preview-max-points-per-country" name="preview_max_points_per_country" min="1" max="12" value="<?= (int) ($publicPreviewSettings['max_points_per_country'] ?? 2); ?>">
+                  </div>
+                </div>
+                <div class="settings-actions">
+                  <button class="btn btn-primary" type="submit">Guardar mapa p?blico</button>
+                </div>
+              </form>
+            </div>
+          </div>
+          <?php endif; ?>
+        </div>
       </section>
       <?php if ($showApiUi): ?>
-      <section class="card">
-        <h2>APIs de investigacion y plataforma</h2>
+      <section class="card settings-api-card">
+        <div class="card-body">
+          <h2>APIs de investigaciÃ³n y plataforma</h2>
         <p class="mut">Las API keys son por usuario: solo tu puedes verlas, cambiarlas y usarlas.</p>
-        <table>
+        <table class="table table-striped settings-table">
           <thead>
             <tr>
               <th>Proveedor</th>
               <th>API key</th>
               <th><?= clickfix_h(cft('intel_api_key_masked')); ?></th>
               <th><?= clickfix_h(cft('intel_api_key_updated')); ?></th>
-              <th>Accion</th>
+              <th>AcciÃ³n</th>
             </tr>
           </thead>
           <tbody>
@@ -7939,7 +6573,7 @@ ob_start();
                     <input
                       type="text"
                       id="<?= clickfix_h($providerInputId); ?>"
-                      name="api_key"
+                      class="form-control" name="api_key"
                       value="<?= clickfix_h($providerMasked); ?>"
                       data-api-key-masked="<?= clickfix_h($providerMasked); ?>"
                       data-api-key-plain="<?= clickfix_h($providerPlain); ?>"
@@ -7948,8 +6582,8 @@ ob_start();
                       autocomplete="off"
                       placeholder="API key"
                     >
-                    <button type="button" class="api-key-toggle" data-toggle-api-key="<?= clickfix_h($providerInputId); ?>">ver</button>
-                    <button class="btn" type="submit"><?= clickfix_h(cft('intel_api_key_save')); ?></button>
+                    <button type="button" class="btn btn-outline-light btn-sm api-key-toggle" data-toggle-api-key="<?= clickfix_h($providerInputId); ?>">ver</button>
+                    <button class="btn btn-primary btn-sm" type="submit"><?= clickfix_h(cft('intel_api_key_save')); ?></button>
                   </form>
                 </td>
                 <td class="mono"><?= !empty($apiRow['has_key']) ? clickfix_h((string) ($apiRow['masked'] ?? '')) : '-'; ?></td>
@@ -7962,7 +6596,7 @@ ob_start();
                       <input type="hidden" name="return_page" value="settings">
                       <input type="hidden" name="graph_id" value="0">
                       <input type="hidden" name="provider" value="<?= clickfix_h($providerKey); ?>">
-                      <button type="submit"><?= clickfix_h(cft('intel_api_key_delete')); ?></button>
+                      <button type="submit" class="btn btn-outline-light btn-sm"><?= clickfix_h(cft('intel_api_key_delete')); ?></button>
                     </form>
                   <?php else: ?>
                     <span class="mut">-</span>
@@ -7979,7 +6613,7 @@ ob_start();
         <?php if (is_array($platformApiKeyJustCreated) && !empty($platformApiKeyJustCreated['api_key'])): ?>
           <div class="api-result">
             <b>API key nueva (se muestra una sola vez)</b>
-            <div class="mut">Copiala ahora y guardala en un vault seguro.</div>
+            <div class="mut">CÃ³piala ahora y guÃ¡rdala en un vault seguro.</div>
             <pre><?= clickfix_h((string) ($platformApiKeyJustCreated['api_key'] ?? '')); ?></pre>
           </div>
         <?php endif; ?>
@@ -7992,24 +6626,24 @@ ob_start();
           <div class="intel-grid">
             <div>
               <label>Etiqueta</label>
-              <input type="text" name="platform_api_label" maxlength="80" placeholder="opencti-main">
+              <input class="form-control" type="text" name="platform_api_label" maxlength="80" placeholder="opencti-main">
             </div>
             <div>
-              <label>Expira en dias (1-365)</label>
-              <input type="number" name="platform_api_expires_days" min="1" max="365" value="90">
+              <label>Expira en dÃ­as (1-365)</label>
+              <input class="form-control" type="number" name="platform_api_expires_days" min="1" max="365" value="90">
             </div>
             <div>
               <label>Rate limit RPM (30-2000)</label>
-              <input type="number" name="platform_api_max_rpm" min="30" max="2000" value="120">
+              <input class="form-control" type="number" name="platform_api_max_rpm" min="30" max="2000" value="120">
             </div>
           </div>
           <div class="intel-toolbar">
-            <button class="btn" type="submit">Generar API key segura</button>
+            <button class="btn btn-primary btn-sm" type="submit">Generar API key segura</button>
           </div>
         </form>
 
         <div style="margin-top:10px;overflow:auto">
-          <table>
+          <table class="table table-striped settings-table">
             <thead>
               <tr>
                 <th>ID</th>
@@ -8017,10 +6651,10 @@ ob_start();
                 <th>Prefijo</th>
                 <th>Scopes</th>
                 <th>RPM</th>
-                <th>Ultimo uso</th>
+                <th>?Â¡ltimo uso</th>
                 <th>Expira</th>
                 <th>Estado</th>
-                <th>Accion</th>
+                <th>AcciÃ³n</th>
               </tr>
             </thead>
             <tbody>
@@ -8048,7 +6682,7 @@ ob_start();
                           <input type="hidden" name="return_page" value="settings">
                           <input type="hidden" name="graph_id" value="0">
                           <input type="hidden" name="platform_api_key_id" value="<?= $pkId; ?>">
-                          <button type="submit">Revocar</button>
+                          <button type="submit" class="btn btn-outline-light btn-sm">Revocar</button>
                         </form>
                       <?php else: ?>
                         <span class="mut">-</span>
@@ -8062,9 +6696,11 @@ ob_start();
             </tbody>
           </table>
         </div>
+      </div>
       </section>
-      <section class="card">
-        <h2>Consulta IOC (con tus APIs)</h2>
+      <section class="card settings-api-card">
+        <div class="card-body">
+          <h2>Consulta IOC (con tus APIs)</h2>
         <form method="post">
           <input type="hidden" name="action" value="investigation_api_lookup">
           <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
@@ -8073,7 +6709,7 @@ ob_start();
           <div class="intel-grid">
             <div>
               <label>Proveedor</label>
-              <select name="provider">
+              <select name="provider" class="form-select">
                 <?php foreach ($intelUserApiKeys as $apiRow): ?>
                   <?php
                     $providerKey = (string) ($apiRow['provider'] ?? '');
@@ -8085,16 +6721,16 @@ ob_start();
             </div>
             <div>
               <label>Indicador (dominio, IP o URL)</label>
-              <input type="text" name="lookup_target" maxlength="500" value="<?= clickfix_h($settingsLookupTargetDefault); ?>" placeholder="example.com | 1.2.3.4 | https://example.com/path">
+              <input class="form-control" type="text" name="lookup_target" maxlength="500" value="<?= clickfix_h($settingsLookupTargetDefault); ?>" placeholder="example.com | 1.2.3.4 | https://example.com/path">
             </div>
           </div>
           <div class="intel-toolbar">
-            <button class="btn" type="submit">Consultar</button>
+            <button class="btn btn-primary btn-sm" type="submit">Consultar</button>
           </div>
         </form>
         <?php if (is_array($intelApiLookupResult)): ?>
           <div class="api-result">
-            <b>Ultimo resultado</b>
+            <b>?Â¡ltimo resultado</b>
             <div class="mono">provider: <?= clickfix_h((string) ($intelApiLookupResult['provider'] ?? '-')); ?> | status: <?= (int) ($intelApiLookupResult['status'] ?? 0); ?> | target: <?= clickfix_h((string) ($intelApiLookupResult['target'] ?? '')); ?> | at: <?= clickfix_h((string) ($intelApiLookupResult['captured_at'] ?? '')); ?></div>
             <?php if (!empty($intelApiLookupResult['error'])): ?>
               <div class="mut">error: <?= clickfix_h((string) ($intelApiLookupResult['error'] ?? '')); ?></div>
@@ -8104,7 +6740,7 @@ ob_start();
         <?php endif; ?>
         <?php if (!empty($intelApiLookupHistory)): ?>
           <h3>Historial reciente</h3>
-          <table>
+          <table class="table table-striped settings-table">
             <thead><tr><th>Fecha</th><th>Proveedor</th><th>Target</th><th>Status</th><th>OK</th></tr></thead>
             <tbody>
               <?php foreach ($intelApiLookupHistory as $historyRow): ?>
@@ -8119,20 +6755,223 @@ ob_start();
             </tbody>
           </table>
         <?php endif; ?>
+        </div>
       </section>
       <?php else: ?>
-      <section class="card">
-        <h2>Integraciones de inteligencia</h2>
+      <section class="card settings-api-card">
+        <div class="card-body">
+          <h2>Integraciones de inteligencia</h2>
         <p class="mut">
           La gestion de credenciales e integraciones avanzadas esta oculta en esta interfaz.
           Los proveedores (por ejemplo VirusTotal, AbuseIPDB y URLScan) siguen operativos desde backend.
         </p>
+        </div>
       </section>
       <?php endif; ?>
+      <section class="card settings-api-card" id="settings-llm-profiles">
+        <div class="card-body">
+          <div class="settings-head">
+            <div>
+              <h2>LLM Profiles</h2>
+              <p class="text-muted">Configure OpenAI, LM Studio, Anthropic or custom LLM providers for AI-powered investigation analysis. Supports custom Bearer tokens, User-Agent, and arbitrary headers.</p>
+            </div>
+            <span class="settings-pill">AI</span>
+          </div>
+          <div style="margin-top:14px">
+            <?php
+              $llmSettingsProfiles = [];
+              if (clickfix_has_table($pdo, 'user_llm_profiles')) {
+                  require_once __DIR__ . '/src/clickfix_llm.php';
+                  clickfix_llm_ensure_table($pdo);
+                  $llmSettingsProfiles = clickfix_llm_configured_providers($pdo, (int) ($user['id'] ?? 0));
+              }
+            ?>
+            <h3>Saved Profiles</h3>
+            <table class="table table-striped settings-table">
+              <thead><tr><th>ID</th><th>Label</th><th>Provider</th><th>Base URL</th><th>Model</th><th>Active</th><th>Action</th></tr></thead>
+              <tbody>
+                <?php foreach ($llmSettingsProfiles as $lsp): ?>
+                  <tr>
+                    <td class="mono"><?= (int) ($lsp['id'] ?? 0); ?></td>
+                    <td><?= clickfix_h((string) ($lsp['label'] ?? '')); ?></td>
+                    <td><?= clickfix_h(clickfix_llm_provider_label((string) ($lsp['provider'] ?? 'custom'))); ?></td>
+                    <td class="mono" style="max-width:200px;overflow:hidden;text-overflow:ellipsis"><?= clickfix_h((string) ($lsp['base_url'] ?? '')); ?></td>
+                    <td class="mono"><?= clickfix_h((string) ($lsp['model'] ?? '-')); ?></td>
+                    <td><?= !empty($lsp['is_active']) ? 'Yes' : 'No'; ?></td>
+                    <td>
+                      <?php if ((int) ($lsp['id'] ?? 0) > 0): ?>
+                        <form method="post" onsubmit="return confirm('Delete this LLM profile?');">
+                          <input type="hidden" name="action" value="llm_profile_delete">
+                          <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                          <input type="hidden" name="profile_id" value="<?= (int) ($lsp['id'] ?? 0); ?>">
+                          <button type="submit" class="btn btn-outline-light btn-sm">Delete</button>
+                        </form>
+                      <?php else: ?>
+                        <span class="mut">env</span>
+                      <?php endif; ?>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+                <?php if (empty($llmSettingsProfiles)): ?>
+                  <tr><td colspan="7" class="mut">No LLM profiles configured. Add one below or set environment variables.</td></tr>
+                <?php endif; ?>
+              </tbody>
+            </table>
+            <h3 style="margin-top:18px">Add / Edit Profile</h3>
+            <form method="post" style="margin-top:8px">
+              <input type="hidden" name="action" value="llm_profile_save">
+              <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+              <div class="intel-grid">
+                <div><label>Label</label><input class="form-control" type="text" name="llm_label" maxlength="80" placeholder="My OpenAI Profile" required></div>
+                <div><label>Provider</label><select name="llm_provider" class="form-select">
+                  <option value="openai">OpenAI Compatible</option>
+                  <option value="lmstudio">LM Studio</option>
+                  <option value="anthropic">Anthropic Compatible</option>
+                  <option value="custom">Custom Endpoint</option>
+                </select></div>
+                <div><label>Base URL</label><input class="form-control" type="url" name="llm_base_url" maxlength="400" placeholder="https://api.openai.com" required></div>
+                <div><label>Model</label><input class="form-control" type="text" name="llm_model" maxlength="120" placeholder="gpt-4o"></div>
+                <div><label>API Key</label><input class="form-control" type="password" name="llm_api_key" maxlength="400" placeholder="sk-..." autocomplete="off"></div>
+                <div><label>Extra Headers (JSON)</label><input class="form-control" type="text" name="llm_extra_headers" maxlength="1000" placeholder='{"X-Custom":"value"}'></div>
+                <div><label>Active</label><select name="llm_is_active" class="form-select"><option value="1">Yes</option><option value="0">No</option></select></div>
+              </div>
+              <div class="intel-toolbar" style="margin-top:10px">
+                <button class="btn btn-primary btn-sm" type="submit">Save Profile</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+      <section class="card settings-api-card" id="settings-auto-inv">
+        <div class="card-body">
+          <div class="settings-head">
+            <div>
+              <h2>Auto-Investigation Engine</h2>
+              <p class="text-muted">Automatic pipeline that scans pending alerts, creates investigations, runs correlation, and enriches with LLM.</p>
+            </div>
+            <span class="settings-pill">Automation</span>
+          </div>
+          <div style="margin-top:14px">
+            <?php
+              $autoInvEnabled = false;
+              $autoInvMinScore = 60;
+              $autoInvMaxDepth = 3;
+              $autoInvLlmEnrich = false;
+              $autoInvLlmProfileId = 0;
+              $autoInvInterval = 15;
+              if (clickfix_has_table($pdo, 'auto_investigation_settings')) {
+                  require_once __DIR__ . '/src/clickfix_auto_investigation.php';
+                  clickfix_llm_ensure_table($pdo);
+                  $autoInvEnabled = clickfix_auto_investigation_is_enabled($pdo);
+                  $autoInvMinScore = (int) clickfix_auto_investigation_setting($pdo, 'min_score', '60');
+                  $autoInvMaxDepth = (int) clickfix_auto_investigation_setting($pdo, 'max_depth', '3');
+                  $autoInvLlmEnrich = clickfix_auto_investigation_setting($pdo, 'llm_enrich', '0') === '1';
+                  $autoInvLlmProfileId = (int) clickfix_auto_investigation_setting($pdo, 'llm_profile_id', '0');
+                  $autoInvInterval = (int) clickfix_auto_investigation_setting($pdo, 'schedule_interval_minutes', '15');
+              }
+            ?>
+            <form method="post">
+              <input type="hidden" name="action" value="auto_investigation_settings_save">
+              <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+              <div class="intel-grid">
+                <div><label>Enabled</label><select name="auto_inv_enabled" class="form-select"><option value="1"<?= $autoInvEnabled ? ' selected' : ''; ?>>Yes</option><option value="0"<?= !$autoInvEnabled ? ' selected' : ''; ?>>No</option></select></div>
+                <div><label>Min Alert Score</label><input class="form-control" type="number" name="auto_inv_min_score" min="0" max="100" value="<?= $autoInvMinScore; ?>"></div>
+                <div><label>Max Correlation Depth</label><input class="form-control" type="number" name="auto_inv_max_depth" min="1" max="8" value="<?= $autoInvMaxDepth; ?>"></div>
+                <div><label>LLM Enrichment</label><select name="auto_inv_llm_enrich" class="form-select"><option value="1"<?= $autoInvLlmEnrich ? ' selected' : ''; ?>>Yes</option><option value="0"<?= !$autoInvLlmEnrich ? ' selected' : ''; ?>>No</option></select></div>
+                <div><label>LLM Profile</label><select name="auto_inv_llm_profile_id" class="form-select">
+                  <option value="0">-- None --</option>
+                  <?php foreach ($llmSettingsProfiles as $lsp): ?>
+                    <option value="<?= (int) ($lsp['id'] ?? 0); ?>"<?= ($autoInvLlmProfileId === (int) ($lsp['id'] ?? 0)) ? ' selected' : ''; ?>><?= clickfix_h((string) ($lsp['label'] ?? 'Profile')); ?></option>
+                  <?php endforeach; ?>
+                </select></div>
+                <div><label>Schedule Interval (min)</label><input class="form-control" type="number" name="auto_inv_schedule_interval" min="5" max="1440" value="<?= $autoInvInterval; ?>"></div>
+              </div>
+              <div class="intel-toolbar" style="margin-top:10px">
+                <button class="btn btn-primary btn-sm" type="submit">Save Settings</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+    <?php endif; ?>
+
+    <?php if ($page === 'clickfix_domain_list'): ?>
+      <?php
+        require_once __DIR__ . '/src/clickfix_domain_feeds.php';
+        clickfix_domain_feeds_ensure_table($pdo);
+        $domainListPage = max(1, (int) ($_GET['p'] ?? 1));
+        $domainListPerPage = 100;
+        $domainListSearch = trim((string) ($_GET['q'] ?? ''));
+        $domainListSource = trim((string) ($_GET['source'] ?? ''));
+        $blocklist = clickfix_load_list_file('blocklist');
+        $allFeedEntries = clickfix_domain_feeds_get_entries($pdo, 5000, $domainListSource, $domainListSearch);
+        $firstSeenCache = [];
+        if (!empty($allFeedEntries)) {
+            $lookupDomains = array_map(function($e) { return clickfix_normalize_domain((string) ($e['domain'] ?? '')); }, $allFeedEntries);
+            $lookupDomains = array_unique(array_filter($lookupDomains));
+            $lookupDomains = array_merge($lookupDomains, array_map(function($d) { return clickfix_normalize_domain((string) $d); }, $blocklist));
+            $lookupDomains = array_unique(array_filter($lookupDomains));
+            $placeholders = implode(',', array_fill(0, count($lookupDomains), '?'));
+            if ($placeholders !== '') {
+                $stmt = $pdo->prepare("SELECT LOWER(TRIM(hostname)) as d, MIN(received_at) as first_alert FROM reports WHERE LOWER(TRIM(hostname)) IN ({$placeholders}) GROUP BY LOWER(TRIM(hostname))");
+                $stmt->execute(array_values($lookupDomains));
+                while ($row = $stmt->fetch()) {
+                    $firstSeenCache[strtolower(trim((string) ($row['d'] ?? '')))] = (string) ($row['first_alert'] ?? '');
+                }
+            }
+        }
+        $unifiedDomains = []; $seenDomains = [];
+        $now = gmdate('c');
+        foreach ($blocklist as $domain) {
+            $d = clickfix_normalize_domain((string) $domain);
+            if ($d === '' || isset($seenDomains[$d])) continue;
+            if ($domainListSearch !== '' && stripos($d, $domainListSearch) === false) continue;
+            $seenDomains[$d] = true;
+            $firstSeen = $firstSeenCache[strtolower($d)] ?? $firstSeenCache[$d] ?? $now;
+            $unifiedDomains[] = ['domain' => $d, 'source' => 'Blocklist', 'source_key' => 'blocklist', 'first_seen' => $firstSeen, 'details' => []];
+        }
+        foreach ($allFeedEntries as $entry) {
+            $d = clickfix_normalize_domain((string) ($entry['domain'] ?? ''));
+            if ($d === '' || isset($seenDomains[$d])) continue;
+            if ($domainListSearch !== '' && stripos($d, $domainListSearch) === false) continue;
+            $seenDomains[$d] = true;
+            $firstSeen = $firstSeenCache[strtolower($d)] ?? $firstSeenCache[$d] ?? ($entry['first_seen'] !== '' ? $entry['first_seen'] : $now);
+            $unifiedDomains[] = ['domain' => $d, 'source' => $entry['source_label'] ?? $entry['source_key'] ?? 'External Feed', 'source_key' => $entry['source_key'] ?? '', 'first_seen' => $firstSeen, 'details' => $entry['details'] ?? []];
+        }
+        usort($unifiedDomains, function($a, $b) { return strcmp($a['domain'], $b['domain']); });
+        $domainListTotal = count($unifiedDomains);
+        $domainListPages = max(1, (int) ceil($domainListTotal / $domainListPerPage));
+        $domainListPage = min($domainListPage, $domainListPages);
+        $domainListSlice = array_slice($unifiedDomains, ($domainListPage - 1) * $domainListPerPage, $domainListPerPage);
+      ?>
+      <div style="max-width:1200px;margin:0 auto;padding:20px 16px">
+        <div class="intel-topbar" style="margin-bottom:18px">
+          <div class="intel-topline"><div class="intel-title-wrap"><h1 style="font-size:1.4rem;margin:0">ClickFix Domain List</h1><p class="mut">Unified list of all known ClickFix-related domains from URLHaus, ThreatFox, GitHub, Carson, SOC Defenders and internal blocklists. <a href="<?= clickfix_h(cfurl('domain_feeds')); ?>" style="color:var(--brand)">Manage feeds &rarr;</a></p></div><div class="intel-chip-row"><span class="intel-chip ok"><?= $domainListTotal; ?> domains</span><span class="intel-chip">page <?= $domainListPage; ?>/<?= $domainListPages; ?></span></div></div>
+        </div>
+        <form method="get" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <input type="hidden" name="page" value="clickfix_domain_list">
+          <input type="search" name="q" value="<?= clickfix_h($domainListSearch); ?>" placeholder="Search domain..." style="padding:8px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--txt);max-width:280px">
+          <select name="source" style="padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--txt)"><option value="">All Sources</option><option value="blocklist"<?= $domainListSource==='blocklist'?' selected':''; ?>>Blocklist</option><option value="github_gist"<?= $domainListSource==='github_gist'?' selected':''; ?>>GitHub Gist</option><option value="carson_list"<?= $domainListSource==='carson_list'?' selected':''; ?>>Carson</option><option value="socdefenders"<?= $domainListSource==='socdefenders'?' selected':''; ?>>SOC Defenders</option><option value="urlhaus"<?= str_starts_with($domainListSource,'urlhaus')?' selected':''; ?>>URLHaus</option><option value="threatfox"<?= str_starts_with($domainListSource,'threatfox')?' selected':''; ?>>ThreatFox</option></select>
+          <button class="btn btn-primary btn-sm" type="submit">Filter</button>
+          <?php if ($domainListSearch !== '' || $domainListSource !== ''): ?><a class="btn btn-sm" href="<?= clickfix_h(cfurl('clickfix_domain_list', true)); ?>">Clear</a><?php endif; ?>
+        </form>
+        <div class="analytics-table-wrap" style="max-height:70vh;overflow-y:auto">
+          <table class="compact-table">
+            <thead><tr><th>#</th><th>Domain</th><th>Source</th><th>First Seen</th><th>Threat Info</th></tr></thead>
+            <tbody>
+              <?php $rowNum = ($domainListPage - 1) * $domainListPerPage; foreach ($domainListSlice as $row): $rowNum++; ?>
+                <tr><td class="mono"><?= $rowNum; ?></td><td class="mono" style="word-break:break-all"><?= clickfix_h($row['domain']); ?></td><td><span class="badge <?= $row['source']==='Blocklist'?'blocked':'accepted'; ?>"><?= clickfix_h($row['source']); ?></span></td><td class="mono"><?= clickfix_h((string) ($row['first_seen'] ?? '')); ?></td><td style="font-size:.74rem;max-width:280px"><?php $det = is_array($row['details'] ?? null) ? $row['details'] : []; echo clickfix_h((string) ($det['threat'] ?? $det['malware'] ?? $det['threat_type'] ?? '')); if (!empty($det['tags'])) echo '<br><span class="mut">' . clickfix_h(implode(', ', array_slice((array) $det['tags'], 0, 5))) . '</span>'; ?></td></tr>
+              <?php endforeach; ?>
+              <?php if (empty($domainListSlice)): ?><tr><td colspan="5" class="mut">No domains found. Fetch external feeds first.</td></tr><?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+        <?php if ($domainListPages > 1): ?><div style="display:flex;gap:6px;justify-content:center;margin-top:16px;flex-wrap:wrap"><?php for ($p = 1; $p <= min($domainListPages, 50); $p++): ?><a class="btn btn-sm<?= $p===$domainListPage?' btn-primary':''; ?>" href="<?= clickfix_h(cfurl('clickfix_domain_list', true, ['p' => $p, 'q' => $domainListSearch, 'source' => $domainListSource])); ?>"><?= $p; ?></a><?php endfor; ?><?php if ($domainListPages > 50): ?><span class="mut">... <?= $domainListPages; ?> pages</span><?php endif; ?></div><?php endif; ?>
+      </div>
     <?php elseif ($page === 'investigation'): ?>
       <section class="intel-public">
         <?php if ($sharedGraph === null): ?>
-          <article class="card"><h2>Investigacion no disponible</h2><p>El enlace compartido no existe o ha sido desactivado.</p></article>
+          <article class="card"><h2>InvestigaciÃ³n no disponible</h2><p>El enlace compartido no existe o ha sido desactivado.</p></article>
         <?php else: ?>
           <?php
             $sharedGraphData = is_array($sharedGraph['graph'] ?? null) ? $sharedGraph['graph'] : ['nodes' => [], 'edges' => []];
@@ -8153,11 +6992,13 @@ ob_start();
             }
             $sharedInvestigationMitreText = trim(implode("\n", array_filter($sharedInvestigationMitreSources)));
           ?>
-          <div class="intel-shell">
+          <div class="intel-public-grid">
+            <div class="intel-public-main">
+              <div class="intel-shell">
           <article class="intel-topbar">
             <div class="intel-topline">
               <div class="intel-title-wrap">
-                <h2><?= clickfix_h((string) ($sharedGraph['title'] ?? 'Investigacion')); ?></h2>
+                <h2><?= clickfix_h((string) ($sharedGraph['title'] ?? 'InvestigaciÃ³n')); ?></h2>
                 <p><?= clickfix_h((string) ($sharedGraph['summary'] ?? 'Sin resumen.')); ?></p>
               </div>
               <div class="intel-chip-row">
@@ -8173,13 +7014,13 @@ ob_start();
               <div class="intel-kpi"><b>Actualizado</b><span class="mono"><?= clickfix_h((string) ($sharedGraph['updated_at'] ?? '-')); ?></span></div>
             </div>
             <div class="mitre-blueprint" id="shared-mitre" data-mitre-source="<?= clickfix_h($sharedInvestigationMitreText); ?>">
-              <h4>MITRE ATT&CK Blueprint (publico)</h4>
+              <h4>MITRE ATT&CK Blueprint (PÃºblico)</h4>
               <div class="mitre-blueprint-grid" id="shared-mitre-grid"></div>
-              <div class="mitre-empty" id="shared-mitre-empty" hidden>Sin TTPs detectadas para esta investigacion.</div>
+              <div class="mitre-empty" id="shared-mitre-empty" hidden>Sin TTPs detectadas para esta investigaciÃ³n.</div>
             </div>
           </article>
           <article class="card">
-            <h2>Grafo de investigacion</h2>
+            <h2>Grafo de investigaciÃ³n</h2>
             <div class="intel-map-shell">
               <div class="intel-map-toolbar">
                 <div class="intel-map-toolbar-group">
@@ -8217,6 +7058,42 @@ ob_start();
               </div>
             </div>
           </article>
+              </div>
+            </div>
+            <aside class="intel-public-side">
+              <div class="card intel-side-card">
+                <div class="card-body">
+                  <h3>Resumen operativo</h3>
+                  <div class="intel-side-kv"><span>Dominio</span><b class="mono"><?= clickfix_h((string) ($sharedGraph['site_domain'] ?? '-')); ?></b></div>
+                  <div class="intel-side-kv"><span>Veredicto</span><b><?= clickfix_h((string) ($sharedGraph['verdict'] ?? 'unknown')); ?></b></div>
+                  <div class="intel-side-kv"><span>Actualizado</span><b class="mono"><?= clickfix_h((string) ($sharedGraph['updated_at'] ?? '-')); ?></b></div>
+                  <div class="intel-side-kv"><span>Nodos</span><b><?= $sharedNodeCount; ?></b></div>
+                  <div class="intel-side-kv"><span>Conexiones</span><b><?= $sharedEdgeCount; ?></b></div>
+                </div>
+              </div>
+              <div class="card intel-side-card">
+                <div class="card-body">
+                  <h3>Acciones</h3>
+                  <div class="intel-side-actions">
+                    <button type="button" class="btn btn-primary btn-sm" id="shared-fit-graph-alt" onclick="var b=document.getElementById('shared-fit-graph'); if(b){b.click();}">Encajar grafo</button>
+                    <button type="button" class="btn btn-outline-light btn-sm" id="shared-fullscreen-alt" onclick="var b=document.getElementById('shared-fullscreen'); if(b){b.click();}">Pantalla completa</button>
+                    <?php if (!empty($sharedGraph['site_domain'])): ?>
+                      <a class="btn btn-outline-light btn-sm" href="<?= clickfix_h(cfurl('search', false, ['q' => (string) $sharedGraph['site_domain']])); ?>">Buscar dominio</a>
+                    <?php endif; ?>
+                  </div>
+                  <div class="mut" style="margin-top:8px">Usa los controles de layout para reorganizar el grafo y revisar dependencias.</div>
+                </div>
+              </div>
+              <div class="card intel-side-card">
+                <div class="card-body">
+                  <h3>Contexto compartido</h3>
+                  <div class="mut"><?= clickfix_h((string) ($sharedGraph['summary'] ?? 'Sin resumen disponible.')); ?></div>
+                  <?php if (!empty($sharedGraph['notes'])): ?>
+                    <div class="intel-side-note mono"><?= clickfix_h((string) $sharedGraph['notes']); ?></div>
+                  <?php endif; ?>
+                </div>
+              </div>
+            </aside>
           </div>
         <?php endif; ?>
       </section>
@@ -8243,7 +7120,7 @@ ob_start();
         $activeNodeCount = count(is_array($activeGraphData['nodes'] ?? null) ? $activeGraphData['nodes'] : []);
         $activeEdgeCount = count(is_array($activeGraphData['edges'] ?? null) ? $activeGraphData['edges'] : []);
         $activeWorkflowStatus = clickfix_investigation_workflow_status((string) ($selectedInvestigation['workflow_status'] ?? 'draft'));
-        $intelFocusLabel = $activeGraphId > 0 ? ('Investigacion #' . $activeGraphId) : 'Nueva investigacion';
+        $intelFocusLabel = $activeGraphId > 0 ? ('InvestigaciÃ³n #' . $activeGraphId) : 'Nueva investigaciÃ³n';
         $intelFocusDomain = trim((string) ($selectedInvestigation['site_domain'] ?? ''));
       ?>
       <section class="card intel-shell">
@@ -8251,9 +7128,9 @@ ob_start();
           <div class="intel-selector-shell intel-selector-v2" data-intel-focus="1">
             <div class="intel-focus-hero">
               <div class="intel-focus-copy">
-                <div class="intel-focus-eyebrow">Workspace de investigacion</div>
+                <div class="intel-focus-eyebrow">Workspace de investigaciÃ³n</div>
                 <h3>Selecciona el foco antes de investigar</h3>
-                <p class="mut">Primero elige una investigacion existente, una alerta para abrir un caso nuevo o un lienzo vacio. Hasta que no escojas foco no se cargan datos de otras investigaciones dentro del workspace.</p>
+                <p class="mut">Primero elige una investigaciÃ³n existente, una alerta para abrir un caso nuevo o un lienzo vacÃ­o. Hasta que no escojas foco no se cargan datos de otras investigaciones dentro del workspace.</p>
                 <div class="intel-focus-steps">
                   <span class="intel-step active">1. Elegir foco</span>
                   <span class="intel-step">2. Enriquecer datos</span>
@@ -8271,12 +7148,12 @@ ob_start();
                 </div>
                 <label class="intel-focus-search">
                   <span class="mut">Buscar</span>
-                  <input id="intel-focus-search" type="search" placeholder="Dominio, titulo, alerta, veredicto..." autocomplete="off">
+                  <input id="intel-focus-search" type="search" placeholder="Dominio, t?tulo, alerta, veredicto..." autocomplete="off">
                 </label>
               </div>
             </div>
             <div class="intel-focus-tabs" role="tablist" aria-label="Seleccion de foco">
-              <button type="button" class="intel-tab is-active" data-intel-tab="investigations" aria-selected="true">Continuar investigacion</button>
+              <button type="button" class="intel-tab is-active" data-intel-tab="investigations" aria-selected="true">Continuar investigaciÃ³n</button>
               <button type="button" class="intel-tab" data-intel-tab="alerts" aria-selected="false">Crear desde alerta</button>
               <button type="button" class="intel-tab" data-intel-tab="new" aria-selected="false">Empezar desde cero</button>
             </div>
@@ -8284,7 +7161,7 @@ ob_start();
               <section class="intel-focus-panel" data-intel-panel="investigations">
                 <div class="intel-panel-head">
                   <div>
-                    <h4>Continuar investigacion</h4>
+                    <h4>Continuar investigaciÃ³n</h4>
                     <p class="mut">Retoma un caso existente y entra directamente en su workspace aislado.</p>
                   </div>
                   <div class="intel-panel-chip">Mostrando <?= min(12, count($investigations)); ?> recientes</div>
@@ -8294,11 +7171,11 @@ ob_start();
                     <?php foreach (array_slice($investigations, 0, 12) as $graphRow): ?>
                       <?php
                         $graphRowId = (int) ($graphRow['id'] ?? 0);
-                        $graphTitle = (string) ($graphRow['title'] ?? 'Investigacion');
+                        $graphTitle = (string) ($graphRow['title'] ?? 'InvestigaciÃ³n');
                         $graphDomain = (string) ($graphRow['site_domain'] ?? '-');
                         $graphVerdict = (string) ($graphRow['verdict'] ?? 'unknown');
                         $graphWorkflow = (string) ($graphRow['workflow_status'] ?? 'draft');
-                        $graphSummary = (string) ($graphRow['summary'] ?? 'Sin resumen todavia.');
+                        $graphSummary = (string) ($graphRow['summary'] ?? 'Sin resumen todavÃ­a.');
                         $graphSearch = strtolower(trim($graphTitle . ' ' . $graphDomain . ' ' . $graphVerdict . ' ' . $graphWorkflow . ' ' . $graphSummary));
                       ?>
                       <article class="intel-focus-card" data-search="<?= clickfix_h($graphSearch); ?>">
@@ -8326,7 +7203,7 @@ ob_start();
                       </article>
                     <?php endforeach; ?>
                   <?php else: ?>
-                    <div class="intel-empty-state">No tienes investigaciones guardadas todavia.</div>
+                    <div class="intel-empty-state">No tienes investigaciones guardadas todavÃ­a.</div>
                   <?php endif; ?>
                 </div>
               </section>
@@ -8334,7 +7211,7 @@ ob_start();
                 <div class="intel-panel-head">
                   <div>
                     <h4>Crear desde alerta</h4>
-                    <p class="mut">Convierte una alerta reciente en una investigacion con contexto inicial y grafo base.</p>
+                    <p class="mut">Convierte una alerta reciente en una investigaciÃ³n con contexto inicial y grafo base.</p>
                   </div>
                   <div class="intel-panel-chip">Alertas listas: <?= count($intelSelectionReports); ?></div>
                 </div>
@@ -8374,7 +7251,7 @@ ob_start();
                             <input type="hidden" name="return_page" value="intel">
                             <input type="hidden" name="report_id" value="<?= $reportId; ?>">
                             <input type="hidden" name="quick_mode" value="create_investigation">
-                            <button class="btn" type="submit">Crear caso</button>
+                            <button class="btn btn-primary btn-sm" type="submit">Crear caso</button>
                           </form>
                         </div>
                       </article>
@@ -8388,12 +7265,12 @@ ob_start();
                 <div class="intel-panel-head">
                   <div>
                     <h4>Empezar desde cero</h4>
-                    <p class="mut">Abre un lienzo vacio cuando quieras modelar una investigacion sin depender de una alerta previa.</p>
+                    <p class="mut">Abre un lienzo vacÃ­o cuando quieras modelar una investigaciÃ³n sin depender de una alerta previa.</p>
                   </div>
                 </div>
                 <article class="intel-focus-card hero">
                   <div class="intel-focus-main">
-                    <strong>Investigacion vacia</strong>
+                    <strong>InvestigaciÃ³n vacÃ­a</strong>
                     <div class="intel-meta-row">
                       <span class="intel-badge soft">workspace limpio</span>
                       <span class="intel-badge soft">sin timeline</span>
@@ -8411,11 +7288,13 @@ ob_start();
             </div>
           </div>
         <?php else: ?>
+          <div class="intel-workspace-grid">
+            <div class="intel-workspace-main">
           <div class="intel-topbar">
             <div class="intel-topline">
               <div class="intel-title-wrap">
                 <h2>Investigaciones de sitios</h2>
-                <p class="mut">Workspace de analisis centrado en un unico caso, entidades, relaciones y evidencia trazable.</p>
+                <p class="mut">Workspace de an?lisis centrado en un unico caso, entidades, relaciones y evidencia trazable.</p>
               </div>
               <div class="intel-chip-row">
                 <span class="intel-chip<?= $activeGraphId > 0 ? ' ok' : ''; ?>"><?= clickfix_h($intelFocusLabel); ?></span>
@@ -8446,10 +7325,12 @@ ob_start();
             <div class="intel-focus-main">
               <strong><?= clickfix_h((string) ($selectedInvestigation['title'] ?? 'Nueva investigacion')); ?></strong>
               <span><?= clickfix_h($intelFocusDomain !== '' ? $intelFocusDomain : 'Sin dominio principal definido'); ?><?php if ($activeGraphId > 0): ?> | grafo #<?= $activeGraphId; ?><?php endif; ?></span>
+              <?php $activeVerdict = (string) ($selectedInvestigation['verdict'] ?? 'investigating'); $verdictIcons = ['confirmed_malicious' => '&#9762;','suspicious' => '&#9888;','investigating' => '&#128269;','false_positive' => '&#9989;','unknown' => '&#8265;']; ?>
+              <span class="verdict-badge <?= clickfix_h($activeVerdict); ?>" style="margin-left:12px"><span class="verdict-icon"><?= $verdictIcons[$activeVerdict] ?? '&#8265;'; ?></span> <?= clickfix_h(strtoupper(str_replace('_', ' ', $activeVerdict))); ?></span>
             </div>
             <div class="intel-focus-actions">
               <a class="btn" href="<?= clickfix_h(cfurl('intel')); ?>">Cambiar foco</a>
-              <button class="btn" type="submit" form="intel-save-form">Guardar</button>
+              <button class="btn btn-primary btn-sm" type="submit" form="intel-save-form">Guardar</button>
               <button class="btn" type="button" id="intel-workspace-fullscreen">Pantalla completa</button>
               <?php if ($activeGraphId > 0): ?>
                 <a class="btn" id="intel-export-json-link" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $activeGraphId, 'export_iocs' => 'json'])); ?>">Export IOCs JSON</a>
@@ -8460,7 +7341,7 @@ ob_start();
             <article class="intel-cockpit-card">
               <div class="k">Caso activo</div>
               <div class="v"><?= clickfix_h($intelFocusLabel); ?></div>
-              <p class="mut"><?= clickfix_h((string) ($selectedInvestigation['title'] ?? 'Sin titulo')); ?></p>
+              <p class="mut"><?= clickfix_h((string) ($selectedInvestigation['title'] ?? 'Sin t?tulo')); ?></p>
             </article>
             <article class="intel-cockpit-card">
               <div class="k">Workflow</div>
@@ -8483,7 +7364,7 @@ ob_start();
               <p class="mut">Actualizado: <?= clickfix_h((string) ($selectedInvestigation['updated_at'] ?? '')); ?></p>
             </article>
             <article class="intel-cockpit-card actions">
-              <div class="k">Acciones rapidas</div>
+              <div class="k">Acciones rÃ¡pidas</div>
               <div class="v">Cockpit operativo</div>
               <div class="intel-quick-grid">
                 <button type="button" class="btn" data-scroll-target="intel-section-briefing">Briefing</button>
@@ -8509,6 +7390,8 @@ ob_start();
             <button type="button" class="btn" data-scroll-target="intel-section-entities">Entidades</button>
             <button type="button" class="btn" data-scroll-target="intel-section-actions">Distribucion</button>
             <?php if ($activeGraphId > 0): ?>
+              <button type="button" class="btn" data-scroll-target="intel-section-llm">LLM Chat</button>
+              <button type="button" class="btn" data-scroll-target="intel-section-auto-inv">Auto-Inv</button>
               <button type="button" class="btn" data-scroll-target="intel-section-timeline">Timeline</button>
             <?php endif; ?>
           </div>
@@ -8582,7 +7465,7 @@ ob_start();
                   </div>
                 </div>
                 <?php if (!is_array($sourceEvent)): ?>
-                  <p class="mut">No se encontro la alerta origen o no hay permisos para verla.</p>
+                  <p class="mut">No se encontrÃ³ la alerta origen o no hay permisos para verla.</p>
                 <?php else: ?>
                   <?php
                     $sourceBadges = [
@@ -8627,16 +7510,16 @@ ob_start();
                       <div class="event-kv"><b>URL</b><span><?= clickfix_h((string) ($sourceEvent['url'] ?? '-')); ?></span></div>
                       <div class="event-kv"><b>URL previa</b><span><?= clickfix_h((string) ($sourceEvent['previous_url'] ?? '-')); ?></span></div>
                       <div class="event-kv"><b>IP (manual report)</b><span><?= clickfix_h((string) ($sourceEvent['ip'] ?? '-')); ?></span></div>
-                      <div class="event-kv"><b>Extension (manual report)</b><span><?= clickfix_h((string) ($sourceEvent['extension_version'] ?? '-')); ?></span></div>
+                      <div class="event-kv"><b>ExtensiÃ³n (manual report)</b><span><?= clickfix_h((string) ($sourceEvent['extension_version'] ?? '-')); ?></span></div>
                       <div class="event-kv"><b>Dominio ya bloqueado</b><span>
                         <?= !empty($sourceEvent['host_blocked_before'])
-                          ? ('SI (' . (int) ($sourceEvent['host_blocked_count'] ?? 0) . ' bloqueos / ' . (int) ($sourceEvent['host_total_count'] ?? 0) . ' reportes' . (!empty($sourceEvent['host_last_blocked_at']) ? ', ultimo ' . (string) $sourceEvent['host_last_blocked_at'] : '') . ')')
+                          ? ('SI (' . (int) ($sourceEvent['host_blocked_count'] ?? 0) . ' bloqueos / ' . (int) ($sourceEvent['host_total_count'] ?? 0) . ' reportes' . (!empty($sourceEvent['host_last_blocked_at']) ? ', Ãšltimo ' . (string) $sourceEvent['host_last_blocked_at'] : '') . ')')
                           : ('No (' . (int) ($sourceEvent['host_total_count'] ?? 0) . ' reportes)'); ?>
                       </span></div>
                       <?php if ($canSrViewer): ?>
                         <div class="event-kv"><b>IP ya bloqueada</b><span>
                           <?= !empty($sourceEvent['ip_blocked_before'])
-                            ? ('SI (' . (int) ($sourceEvent['ip_blocked_count'] ?? 0) . ' bloqueos / ' . (int) ($sourceEvent['ip_total_count'] ?? 0) . ' reportes' . (!empty($sourceEvent['ip_last_blocked_at']) ? ', ultimo ' . (string) $sourceEvent['ip_last_blocked_at'] : '') . ')')
+                            ? ('SI (' . (int) ($sourceEvent['ip_blocked_count'] ?? 0) . ' bloqueos / ' . (int) ($sourceEvent['ip_total_count'] ?? 0) . ' reportes' . (!empty($sourceEvent['ip_last_blocked_at']) ? ', Ãšltimo ' . (string) $sourceEvent['ip_last_blocked_at'] : '') . ')')
                             : ('No (' . (int) ($sourceEvent['ip_total_count'] ?? 0) . ' reportes)'); ?>
                         </span></div>
                       <?php endif; ?>
@@ -8711,7 +7594,7 @@ ob_start();
                   <div class="intel-grid-full"><label><?= clickfix_h(cft('intel_briefing_summary_label')); ?></label><textarea name="summary" id="intel-summary" maxlength="5000" placeholder="<?= clickfix_h(cft('intel_briefing_summary_placeholder')); ?>"><?= clickfix_h((string) ($selectedInvestigation['summary'] ?? '')); ?></textarea></div>
                 </div>
                 <div class="intel-toolbar">
-                  <button class="btn" type="submit"><?= clickfix_h(cft('intel_briefing_save')); ?></button>
+                  <button class="btn btn-primary btn-sm" type="submit"><?= clickfix_h(cft('intel_briefing_save')); ?></button>
                 </div>
               </form>
             </div>
@@ -8815,9 +7698,9 @@ ob_start();
                             </div>
                           <?php endif; ?>
                         </details>
-                        <p class="intel-workbench-note">El batch se limita a 15 IOCs reutilizables por ejecucion y solo usa proveedores compatibles con cada tipo. Los resultados se guardan tambien en tu historial de enrichment.</p>
+                        <p class="intel-workbench-note">El batch se limita a 15 IOCs reutilizables por ejecuci?n y solo usa proveedores compatibles con cada tipo. Los resultados se guardan tambi?n en tu historial de enrichment.</p>
                         <div class="intel-toolbar" style="margin-top:auto">
-                          <button class="btn" type="submit">Procesar intake</button>
+                          <button class="btn btn-primary btn-sm" type="submit">Procesar intake</button>
                         </div>
                       </div>
                     </div>
@@ -8928,7 +7811,7 @@ ob_start();
                 <div style="margin-top:10px">
                   <h3><?= clickfix_h(cft('intel_iocs_title')); ?></h3>
                   <p class="mut"><?= clickfix_h(cft('intel_iocs_sub')); ?></p>
-                  <?php if (clickfix_user_has_min_role($actor, 'analyst_jr')): ?>
+                  <?php if (clickfix_user_has_min_role($user, 'analyst_jr')): ?>
                     <div class="card-box" style="margin-bottom:14px">
                       <h4><?= clickfix_h(cft('intel_manual_ioc_title')); ?></h4>
                       <p class="mut"><?= clickfix_h(cft('intel_manual_ioc_sub')); ?></p>
@@ -8952,7 +7835,7 @@ ob_start();
                           </div>
                         </div>
                         <div class="intel-toolbar">
-                          <button class="btn" type="submit"><?= clickfix_h(cft('intel_manual_ioc_button')); ?></button>
+                          <button class="btn btn-primary btn-sm" type="submit"><?= clickfix_h(cft('intel_manual_ioc_button')); ?></button>
                         </div>
                       </form>
                     </div>
@@ -8980,7 +7863,7 @@ ob_start();
                               <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
                               <input type="hidden" name="provider" value="virustotal">
                               <input type="hidden" name="lookup_target" value="<?= clickfix_h($iocValue); ?>">
-                              <button class="btn" type="submit">VT</button>
+                              <button class="btn btn-primary btn-sm" type="submit">VT</button>
                             </form>
                             <?php if ($abuseAllowed): ?>
                               <form method="post" style="display:inline-flex;gap:6px;align-items:center">
@@ -8989,7 +7872,7 @@ ob_start();
                                 <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
                                 <input type="hidden" name="provider" value="abuseipdb">
                                 <input type="hidden" name="lookup_target" value="<?= clickfix_h($iocValue); ?>">
-                                <button class="btn" type="submit">AbuseIPDB</button>
+                                <button class="btn btn-primary btn-sm" type="submit">AbuseIPDB</button>
                               </form>
                             <?php endif; ?>
                             <?php if ($iocType === 'url' || $iocType === 'domain'): ?>
@@ -8999,7 +7882,7 @@ ob_start();
                                 <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
                                 <input type="hidden" name="provider" value="urlscan">
                                 <input type="hidden" name="lookup_target" value="<?= clickfix_h($iocValue); ?>">
-                                <button class="btn" type="submit">urlscan</button>
+                                <button class="btn btn-primary btn-sm" type="submit">urlscan</button>
                               </form>
                             <?php endif; ?>
                           </div>
@@ -9017,7 +7900,7 @@ ob_start();
                     <div class="intel-grid">
                       <div>
                         <label>Proveedor</label>
-                        <select name="provider">
+                        <select name="provider" class="form-select">
                           <?php foreach ($intelUserApiKeys as $apiRow): ?>
                             <?php
                               $providerKey = (string) ($apiRow['provider'] ?? '');
@@ -9029,11 +7912,11 @@ ob_start();
                       </div>
                       <div>
                         <label><?= clickfix_h(cft('intel_api_lookup_target')); ?></label>
-                        <input type="text" name="lookup_target" maxlength="500" value="<?= clickfix_h($lookupTargetDefault); ?>" placeholder="example.com | 1.2.3.4 | https://example.com/path">
+                        <input class="form-control" type="text" name="lookup_target" maxlength="500" value="<?= clickfix_h($lookupTargetDefault); ?>" placeholder="example.com | 1.2.3.4 | https://example.com/path">
                       </div>
                     </div>
                     <div class="intel-toolbar">
-                      <button class="btn" type="submit"><?= clickfix_h(cft('intel_api_lookup_button')); ?></button>
+                      <button class="btn btn-primary btn-sm" type="submit"><?= clickfix_h(cft('intel_api_lookup_button')); ?></button>
                     </div>
                   </form>
                 </div>
@@ -9176,7 +8059,7 @@ ob_start();
                       </details>
                     <?php endforeach; ?>
                   <?php else: ?>
-                    <div class="mut">Sin historial todavia para esta investigacion.</div>
+                    <div class="mut">Sin historial todavÃ­a para esta investigaciÃ³n.</div>
                   <?php endif; ?>
                 </details>
                 <?php endif; ?>
@@ -9192,9 +8075,9 @@ ob_start();
                 <div class="vt-reported-wrap">
                   <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap">
                     <h4 style="margin:0">Resultados VT de webs reportadas</h4>
-                    <button type="button" class="btn" id="vt-reported-generate">Generar graficos VT</button>
+                    <button type="button" class="btn" id="vt-reported-generate">Generar gr?ficos VT</button>
                   </div>
-                  <p class="mut" style="margin:0">Cruza webs reportadas en plataforma con el ultimo lookup guardado de VirusTotal por dominio.</p>
+                  <p class="mut" style="margin:0">Cruza webs reportadas en plataforma con el Ãšltimo lookup guardado de VirusTotal por dominio.</p>
                   <div id="vt-reported-panel" hidden>
                     <div class="vt-reported-kpis">
                       <div class="vt-reported-kpi"><div class="k">reportadas</div><div class="v"><?= (int) ($vtStats['reported_domains_total'] ?? 0); ?></div></div>
@@ -9204,7 +8087,7 @@ ob_start();
                     </div>
                     <div class="chart-stack">
                       <div class="chart-card">
-                        <p class="chart-title">Clasificacion por dominio reportado</p>
+                        <p class="chart-title">ClasificaciÃ³n por dominio reportado</p>
                         <canvas
                           id="vt-reported-class-chart"
                           class="chart-canvas"
@@ -9230,7 +8113,7 @@ ob_start();
                     </div>
                     <div class="vt-reported-domain-table">
                       <table class="compact-table">
-                        <thead><tr><th>Dominio</th><th>Veredicto VT</th><th>Mal</th><th>Sus</th><th>Har</th><th>Und</th><th>Motores</th><th>Ultimo lookup</th></tr></thead>
+                        <thead><tr><th>Dominio</th><th>Veredicto VT</th><th>Mal</th><th>Sus</th><th>Har</th><th>Und</th><th>Motores</th><th>Ãšltimo lookup</th></tr></thead>
                         <tbody>
                           <?php foreach ($vtTopDomains as $vtRow): ?>
                             <?php $vtVerdict = (string) ($vtRow['verdict'] ?? 'harmless_or_undetected'); ?>
@@ -9271,7 +8154,7 @@ ob_start();
               <div class="intel-api-map-insights">
                 <div class="intel-api-map-head">
                   <b>Resultados de proveedores en el mapa</b>
-                  <span class="mono mut" id="intel-api-map-meta">Sin consultas recientes de proveedores para esta investigacion.</span>
+                  <span class="mono mut" id="intel-api-map-meta">Sin consultas recientes de proveedores para esta investigaciÃ³n.</span>
                 </div>
                 <div class="intel-api-keywords" id="intel-api-keywords">
                   <span class="mut">Sin keywords comunes detectadas.</span>
@@ -9307,13 +8190,13 @@ ob_start();
                     <div class="intel-canvas-dock-head">
                       <div class="intel-canvas-dock-title">
                         <b>Acciones del workspace</b>
-                        <span>Siguen visibles tambien en pantalla completa.</span>
+                        <span>Siguen visibles tambi?n en pantalla completa.</span>
                       </div>
                       <span class="map-stat" id="intel-dock-zoom-status">zoom 100%</span>
                     </div>
                     <div class="intel-canvas-dock-actions">
                       <a class="btn" href="<?= clickfix_h(cfurl('intel')); ?>">Cambiar foco</a>
-                      <button class="btn" type="submit" form="intel-save-form">Guardar</button>
+                      <button class="btn btn-primary btn-sm" type="submit" form="intel-save-form">Guardar</button>
                       <?php if ($activeGraphId > 0): ?>
                         <a class="btn" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $activeGraphId, 'export_iocs' => 'json'])); ?>">Export JSON</a>
                       <?php endif; ?>
@@ -9379,14 +8262,14 @@ ob_start();
                 </div>
                 <div class="intel-share">
                   <?php if ($shareUrl !== ''): ?>
-                    <div><b>Enlace publico:</b> <a href="<?= clickfix_h($shareUrl); ?>" target="_blank" rel="noreferrer"><?= clickfix_h($shareUrl); ?></a></div>
+                    <div><b>Enlace p?blico:</b> <a href="<?= clickfix_h($shareUrl); ?>" target="_blank" rel="noreferrer"><?= clickfix_h($shareUrl); ?></a></div>
                   <?php endif; ?>
                   <div class="intel-toolbar">
                     <form method="post" style="display:flex;gap:8px;align-items:center;width:auto;">
                       <input type="hidden" name="action" value="investigation_submit_community">
                       <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                       <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
-                      <button class="btn" type="submit">
+                      <button class="btn btn-primary btn-sm" type="submit">
                         <?= !empty($selectedInvestigation['submitted_to_community']) ? 'Reenviar a Community' : 'Enviar a Community'; ?>
                       </button>
                     </form>
@@ -9395,20 +8278,20 @@ ob_start();
                       <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                       <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
                       <input type="hidden" name="share_mode" value="on">
-                      <button class="btn" type="submit">Compartir publico</button>
+                      <button class="btn btn-primary btn-sm" type="submit">Compartir PÃºblico</button>
                     </form>
                     <form method="post" style="display:flex;gap:8px;align-items:center;width:auto;">
                       <input type="hidden" name="action" value="investigation_share">
                       <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                       <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
                       <input type="hidden" name="share_mode" value="off">
-                      <button type="submit">Quitar comparticion</button>
+                      <button type="submit" class="btn btn-outline-light btn-sm">Quitar comparticion</button>
                     </form>
-                    <form method="post" style="display:flex;gap:8px;align-items:center;width:auto;" onsubmit="return confirm('Eliminar investigacion?');">
+                    <form method="post" style="display:flex;gap:8px;align-items:center;width:auto;" onsubmit="return confirm('Eliminar investigaciÃ³n?');">
                       <input type="hidden" name="action" value="investigation_delete">
                       <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                       <input type="hidden" name="graph_id" value="<?= $activeGraphId; ?>">
-                      <button type="submit">Eliminar investigacion</button>
+                      <button type="submit" class="btn btn-outline-light btn-sm">Eliminar investigaciÃ³n</button>
                     </form>
                     <?php if ($canAdminViewer): ?>
                       <form method="post" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:auto;">
@@ -9420,9 +8303,9 @@ ob_start();
                           <input type="checkbox" name="show_on_home" value="1"<?= !empty($selectedInvestigation['show_on_home']) ? ' checked' : ''; ?>>
                           Mostrar en Inicio
                         </label>
-                        <input type="number" name="home_position" min="0" max="9999" value="<?= (int) ($selectedInvestigation['home_position'] ?? 0); ?>" placeholder="posicion" style="width:96px">
+                        <input type="number" name="home_position" min="0" max="9999" value="<?= (int) ($selectedInvestigation['home_position'] ?? 0); ?>" placeholder="posici?n" style="width:96px">
                         <input type="number" name="source_report_id" min="0" value="<?= $selectedInvestigationSourceReportId; ?>" placeholder="report_id capturas" style="width:148px">
-                        <button type="submit">Guardar Inicio</button>
+                        <button type="submit" class="btn btn-outline-light btn-sm">Guardar Inicio</button>
                       </form>
                     <?php endif; ?>
                   </div>
@@ -9434,8 +8317,93 @@ ob_start();
                   </div>
                   <div class="mut mono" style="margin-top:8px">Exporta los IOCs deduplicados del caso actual en TXT, CSV, JSON o evento MISP listo para importar.</div>
                   <?php if ($canAdminViewer): ?>
-                    <div class="mut mono" style="margin-top:8px">Inicio reutiliza las capturas aprobadas del `source_report_id`. Si la investigacion no esta compartida en publico, solo se vera en el dashboard interno.</div>
+                    <div class="mut mono" style="margin-top:8px">Inicio reutiliza las capturas aprobadas del `source_report_id`. Si la investigaciÃ³n no esta compartida en PÃºblico, solo se vera en el dashboard interno.</div>
                   <?php endif; ?>
+                </div>
+              </div>
+            <?php endif; ?>
+
+            <?php if ($activeGraphId > 0): ?>
+              <div class="intel-editor-section" id="intel-section-llm" data-intel-section="intel-section-llm">
+                <div class="intel-section-head">
+                  <div>
+                    <span class="intel-section-kicker">AI Analysis</span>
+                    <h3>LLM Chat - AI-Powered Investigation Assistant</h3>
+                    <p class="mut">Conecta a OpenAI, LM Studio, Anthropic o cualquier endpoint compatible. Analiza IOCs, genera resumenes y asiste en la investigacion.</p>
+                  </div>
+                </div>
+                <div class="llm-chat-panel" id="llm-chat-panel">
+                  <div class="llm-chat-header">
+                    <strong>AI Analyst Chat</strong>
+                    <div class="llm-header-actions">
+                      <select id="llm-profile-select">
+                        <option value="0">-- Select LLM Profile --</option>
+                        <?php foreach ($llmProfiles as $llmProfile): ?>
+                          <option value="<?= (int) ($llmProfile['id'] ?? 0); ?>"><?= clickfix_h((string) ($llmProfile['label'] ?? 'Profile ' . ($llmProfile['id'] ?? 0))); ?> (<?= clickfix_h(clickfix_llm_provider_label((string) ($llmProfile['provider'] ?? 'custom'))); ?>)</option>
+                        <?php endforeach; ?>
+                      </select>
+                      <input type="text" id="llm-model-override" placeholder="Model override (optional)" style="min-width:140px" list="llm-models-datalist">
+                      <datalist id="llm-models-datalist"></datalist>
+                      <input type="text" id="llm-bearer-override" placeholder="Bearer token (optional)" style="min-width:140px">
+                      <input type="text" id="llm-agent-override" placeholder="User-Agent (optional)" style="min-width:140px">
+                      <input type="hidden" id="llm-graph-id" value="<?= $activeGraphId; ?>">
+                      <button type="button" class="btn btn-sm" id="llm-action-summarize">Summarize</button>
+                      <button type="button" class="btn btn-sm" id="llm-action-extract-ioc">Extract IOCs</button>
+                      <button type="button" class="btn btn-sm" id="llm-chat-clear">Clear</button>
+                    </div>
+                  </div>
+                  <div class="llm-chat-messages" id="llm-chat-messages">
+                    <div class="llm-msg assistant">
+                      <div class="msg-body">Welcome! I am your ClickFix investigation AI assistant. Select an LLM profile above, then:<br><br>- <b>Chat</b>: Ask me anything about the investigation<br>- <b>Summarize</b>: Generate an executive summary<br>- <b>Extract IOCs</b>: Find IOCs in the investigation data<br><br>Supported providers: OpenAI, LM Studio, Anthropic, and custom OpenAI-compatible endpoints. You can override the model, Bearer token, and User-Agent per request.</div>
+                    </div>
+                  </div>
+                  <div class="llm-chat-input">
+                    <textarea id="llm-chat-input-textarea" placeholder="Ask about this investigation... (Enter to send, Shift+Enter for new line)" rows="2"></textarea>
+                    <button type="button" id="llm-chat-send">Send</button>
+                  </div>
+                </div>
+              </div>
+              <div class="intel-editor-section" id="intel-section-auto-inv" data-intel-section="intel-section-auto-inv">
+                <div class="intel-section-head">
+                  <div>
+                    <span class="intel-section-kicker">Automation</span>
+                    <h3>Auto-Investigation Pipeline</h3>
+                    <p class="mut">Motor automatico que escanea alertas pendientes, crea investigaciones, ejecuta correlacion y enriquece con LLM.</p>
+                  </div>
+                </div>
+                <div class="auto-inv-panel" id="auto-inv-panel">
+                  <div class="auto-inv-status-bar">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <span class="status-dot off" id="auto-inv-status-dot"></span>
+                      <strong>Auto-Investigation Status</strong>
+                    </div>
+                    <div class="auto-inv-controls">
+                      <button type="button" class="btn btn-primary btn-sm" id="auto-inv-toggle">Enable</button>
+                      <button type="button" class="btn btn-sm" id="auto-inv-run">Run Now</button>
+                      <button type="button" class="btn btn-sm" id="auto-inv-refresh">Refresh</button>
+                    </div>
+                  </div>
+                  <div class="auto-inv-stats">
+                    <div class="auto-inv-stat"><div class="k">Recent Jobs</div><div class="v" id="auto-inv-jobs-count"><?= count($autoInvJobs); ?></div></div>
+                    <div class="auto-inv-stat"><div class="k">Min Score</div><div class="v"><?= (int) clickfix_auto_investigation_setting($pdo, 'min_score', '60'); ?>/100</div></div>
+                    <div class="auto-inv-stat"><div class="k">Max Depth</div><div class="v"><?= (int) clickfix_auto_investigation_setting($pdo, 'max_depth', '3'); ?></div></div>
+                    <div class="auto-inv-stat"><div class="k">LLM Enrich</div><div class="v"><?= clickfix_auto_investigation_setting($pdo, 'llm_enrich', '0') === '1' ? 'ON' : 'OFF'; ?></div></div>
+                  </div>
+                  <div class="auto-inv-jobs-list" id="auto-inv-jobs-list">
+                    <?php foreach ($autoInvJobs as $job): ?>
+                      <div class="auto-inv-job">
+                        <span class="job-id">#<?= (int) ($job['id'] ?? 0); ?></span>
+                        <span class="job-title"><?= clickfix_h((string) ($job['graph_title'] ?? $job['report_hostname'] ?? 'Job #' . (int) ($job['id'] ?? 0))); ?></span>
+                        <span class="job-stage <?= clickfix_h((string) ($job['status'] ?? 'queued')); ?>"><?= clickfix_h((string) ($job['status'] ?? 'queued')); ?></span>
+                        <?php if (!empty($job['report_score'])): ?>
+                          <span class="job-score"><?= (int) ($job['report_score'] ?? 0); ?>/100</span>
+                        <?php endif; ?>
+                      </div>
+                    <?php endforeach; ?>
+                    <?php if (empty($autoInvJobs)): ?>
+                      <div class="mut" style="padding:12px">No auto-investigation jobs yet. Enable the engine and click "Run Now".</div>
+                    <?php endif; ?>
+                  </div>
                 </div>
               </div>
             <?php endif; ?>
@@ -9445,8 +8413,8 @@ ob_start();
                 <div class="intel-section-head">
                   <div>
                     <span class="intel-section-kicker">Timeline</span>
-                    <h3>Timeline de investigacion (que y cuando)</h3>
-                    <p class="mut">Seguimiento cronologico de cambios, revisiones y decisiones sobre este caso.</p>
+                    <h3>Timeline de investigaciÃ³n (que y cuando)</h3>
+                    <p class="mut">Seguimiento cronologico de cambios, revisiÃ³nes y decisiones sobre este caso.</p>
                   </div>
                 </div>
                 <?php
@@ -9474,9 +8442,9 @@ ob_start();
                   $investigationMitreText = trim(implode("\n", array_filter($investigationMitreSources)));
                 ?>
                 <div class="mitre-blueprint" id="investigation-mitre" data-mitre-source="<?= clickfix_h($investigationMitreText); ?>">
-                  <h4>MITRE ATT&CK Blueprint (investigacion)</h4>
+                  <h4>MITRE ATT&CK Blueprint (investigaciÃ³n)</h4>
                   <div class="mitre-blueprint-grid" id="investigation-mitre-grid"></div>
-                  <div class="mitre-empty" id="investigation-mitre-empty" hidden>Sin TTPs detectadas para esta investigacion.</div>
+                  <div class="mitre-empty" id="investigation-mitre-empty" hidden>Sin TTPs detectadas para esta investigaciÃ³n.</div>
                 </div>
                 <div class="intel-timeline-list">
                   <?php foreach ($investigationEvents as $event): ?>
@@ -9535,6 +8503,69 @@ ob_start();
             <?php endif; ?>
           </section>
         </div>
+            </div>
+            <aside class="intel-workspace-side">
+              <div class="card intel-side-card">
+                <div class="card-body">
+                  <h3>Estado del caso</h3>
+                  <div class="intel-side-kv"><span>Workflow</span><b><?= clickfix_h(cfworkflowlabel($activeWorkflowStatus, $lang)); ?></b></div>
+                  <div class="intel-side-kv"><span>Veredicto</span><b><?= clickfix_h((string) ($selectedInvestigation['verdict'] ?? 'unknown')); ?></b></div>
+                  <div class="intel-side-kv"><span>Origen</span><b><?= $selectedInvestigationSourceReportId > 0 ? ('Alerta #' . $selectedInvestigationSourceReportId) : 'Manual'; ?></b></div>
+                  <div class="intel-side-kv"><span>Actualizado</span><b class="mono"><?= clickfix_h((string) ($selectedInvestigation['updated_at'] ?? '')); ?></b></div>
+                </div>
+              </div>
+              <div class="card intel-side-card">
+                <div class="card-body">
+                  <h3>M?tricas clave</h3>
+                  <div class="intel-side-kpi-grid">
+                    <div><span>Nodos</span><b><?= $activeNodeCount; ?></b></div>
+                    <div><span>Conexiones</span><b><?= $activeEdgeCount; ?></b></div>
+                    <div><span>Eventos</span><b><?= count($investigationEvents); ?></b></div>
+                    <div><span>IOCs</span><b><?= count($investigationQuickTargets); ?></b></div>
+                  </div>
+                  <div class="mut" style="margin-top:8px">Monitorea la salud del caso y la cobertura de evidencias.</div>
+                </div>
+              </div>
+              <div class="card intel-side-card">
+                <div class="card-body">
+                  <h3>Acciones rÃ¡pidas</h3>
+                  <div class="intel-side-actions">
+                    <button type="button" class="btn btn-primary btn-sm" data-scroll-target="intel-section-briefing">Ir a briefing</button>
+                    <button type="button" class="btn btn-outline-light btn-sm" data-scroll-target="intel-section-graph">Ver grafo</button>
+                    <button type="button" class="btn btn-outline-light btn-sm" data-scroll-target="intel-section-enrichment">Enrichment</button>
+                    <?php if ($activeGraphId > 0): ?>
+                      <a class="btn btn-outline-light btn-sm" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $activeGraphId, 'export_iocs' => 'json'])); ?>">Export IOCs JSON</a>
+                    <?php endif; ?>
+                  </div>
+                </div>
+              </div>
+              <?php if (!empty($selectedInvestigation['summary'])): ?>
+                <div class="card intel-side-card">
+                  <div class="card-body">
+                    <h3>Resumen</h3>
+                    <div class="mut"><?= clickfix_h((string) $selectedInvestigation['summary']); ?></div>
+                  </div>
+                </div>
+              <?php endif; ?>
+              <div class="card intel-side-card">
+                <div class="card-body">
+                  <h3>Blog & Intel Feed</h3>
+                  <div class="blog-feed-panel" id="blog-feed-panel">
+                    <p class="mut" style="margin-top:0">Latest posts from inteltracker.jordiserrano.me and jordiserrano.me</p>
+                    <div class="blog-feed-grid" id="blog-feed-grid" style="grid-template-columns:1fr;max-height:420px;overflow-y:auto">
+                      <div class="mut">Loading feeds...</div>
+                    </div>
+                    <div class="blog-feed-crosslinks">
+                      <h4>Related Blog Posts</h4>
+                      <div id="blog-crosslinks-grid">
+                        <div class="mut">Cross-linking investigations...</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
         <?php endif; ?>
       </section>
     <?php endif; ?>
@@ -9559,39 +8590,47 @@ ob_start();
                 $communityVerified++;
             }
         }
+        $communityGraphData = is_array($selectedCommunityInvestigation['graph'] ?? null) ? $selectedCommunityInvestigation['graph'] : ['nodes' => [], 'edges' => []];
+        $communityNodeCount = count(is_array($communityGraphData['nodes'] ?? null) ? $communityGraphData['nodes'] : []);
+        $communityEdgeCount = count(is_array($communityGraphData['edges'] ?? null) ? $communityGraphData['edges'] : []);
+        $communityShareUrl = (!empty($selectedCommunityInvestigation['is_public']) && !empty($selectedCommunityInvestigation['share_token']))
+            ? ('dashboard.php?page=investigation&share=' . urlencode((string) $selectedCommunityInvestigation['share_token']))
+            : '';
       ?>
       <section class="card intel-shell">
-        <div class="intel-topbar">
-          <div class="intel-topline">
-            <div class="intel-title-wrap">
-              <h2>Community Investigations</h2>
-              <p class="mut">Pipeline: [JR] envia a comunidad, [MID] valida y escala, [SR] verifica y decide [PUB]/[INT]. Todos los usuarios pueden votar [M+]/[L-].</p>
+        <div class="community-grid">
+          <div class="community-main">
+            <div class="intel-topbar">
+              <div class="intel-topline">
+                <div class="intel-title-wrap">
+                  <h2>Community Investigations</h2>
+                  <p class="mut">Pipeline: [JR] envia a comunidad, [MID] valida y escala, [SR] verifica y decide [PUB]/[INT]. Todos los usuarios pueden votar [M+]/[L-].</p>
+                </div>
+                <div class="intel-chip-row">
+                  <span class="intel-chip">queue: <?= $communityTotal; ?></span>
+                  <span class="intel-chip warn">mid: <?= $communityMidVerified; ?></span>
+                  <span class="intel-chip critical">sr: <?= $communitySrReview; ?></span>
+                  <span class="intel-chip ok">verified: <?= $communityVerified; ?></span>
+                </div>
+              </div>
+              <div class="intel-stage-bar">
+                <div class="intel-stage<?= $communitySelectedStatus === 'draft' ? ' active' : ''; ?>">jr submit</div>
+                <div class="intel-stage<?= $communitySelectedStatus === 'mid_verified' ? ' active' : ''; ?>">mid triage</div>
+                <div class="intel-stage<?= $communitySelectedStatus === 'sr_review' ? ' active' : ''; ?>">sr review</div>
+                <div class="intel-stage<?= $communitySelectedStatus === 'verified_public' ? ' active' : ''; ?>">verified public</div>
+                <div class="intel-stage<?= in_array($communitySelectedStatus, ['verified_internal', 'rejected'], true) ? ' active' : ''; ?>"><?= $communitySelectedStatus === 'rejected' ? 'rejected' : 'verified internal'; ?></div>
+              </div>
             </div>
-            <div class="intel-chip-row">
-              <span class="intel-chip">queue: <?= $communityTotal; ?></span>
-              <span class="intel-chip warn">mid: <?= $communityMidVerified; ?></span>
-              <span class="intel-chip critical">sr: <?= $communitySrReview; ?></span>
-              <span class="intel-chip ok">verified: <?= $communityVerified; ?></span>
-            </div>
-          </div>
-          <div class="intel-stage-bar">
-            <div class="intel-stage<?= $communitySelectedStatus === 'draft' ? ' active' : ''; ?>">jr submit</div>
-            <div class="intel-stage<?= $communitySelectedStatus === 'mid_verified' ? ' active' : ''; ?>">mid triage</div>
-            <div class="intel-stage<?= $communitySelectedStatus === 'sr_review' ? ' active' : ''; ?>">sr review</div>
-            <div class="intel-stage<?= $communitySelectedStatus === 'verified_public' ? ' active' : ''; ?>">verified public</div>
-            <div class="intel-stage<?= in_array($communitySelectedStatus, ['verified_internal', 'rejected'], true) ? ' active' : ''; ?>"><?= $communitySelectedStatus === 'rejected' ? 'rejected' : 'verified internal'; ?></div>
-          </div>
-        </div>
-        <div class="intel-layout">
+            <div class="intel-layout">
           <aside class="intel-list">
             <div class="intel-list-head">
               <b>Community queue</b>
-              <span>Votacion, verificacion y trazabilidad por rol.</span>
+              <span>Votacion, verificaciÃ³n y trazabilidad por rol.</span>
             </div>
             <?php if (empty($communityInvestigations)): ?>
               <div class="intel-item active">
                 <b>Sin investigaciones en Community</b>
-                <div class="summary">Envia una investigacion desde el modulo Investigacion.</div>
+                <div class="summary">EnvÃ­a una investigaciÃ³n desde el mÃ³dulo InvestigaciÃ³n.</div>
               </div>
             <?php endif; ?>
             <?php foreach ($communityInvestigations as $communityRow): ?>
@@ -9604,7 +8643,7 @@ ob_start();
                     : ($communityClassification === 'legit' ? 'L-' : 'N=');
               ?>
               <a class="intel-item<?= $communityRowId === $communityActiveId ? ' active' : ''; ?>" href="<?= clickfix_h(cfurl('community', false, ['graph_id' => $communityRowId])); ?>">
-                <b><?= clickfix_h((string) ($communityRow['title'] ?? 'Investigacion')); ?></b>
+                <b><?= clickfix_h((string) ($communityRow['title'] ?? 'InvestigaciÃ³n')); ?></b>
                 <div class="meta mono"><?= clickfix_h((string) ($communityRow['site_domain'] ?? '-')); ?></div>
                 <div class="meta mono"><?= clickfix_h(cfworkflowlabel($communityWorkflow, $lang)); ?> | <?= clickfix_h(clickfix_role_label((string) ($communityRow['community_origin_role'] ?? 'analyst_jr'))); ?></div>
                 <div class="meta mono"><?= $classificationSymbol; ?> | score <?= (int) ($communityRow['vote_score'] ?? 0); ?> | +<?= (int) ($communityRow['upvotes'] ?? 0); ?> / -<?= (int) ($communityRow['downvotes'] ?? 0); ?></div>
@@ -9614,7 +8653,7 @@ ob_start();
           </aside>
           <section class="intel-editor">
             <?php if ($selectedCommunityInvestigation === null): ?>
-              <div class="event-empty">Selecciona una investigacion de la lista para revisar.</div>
+              <div class="event-empty">Selecciona una investigaciÃ³n de la lista para revisar.</div>
             <?php else: ?>
               <?php
                 $communityStatus = clickfix_investigation_workflow_status((string) ($selectedCommunityInvestigation['workflow_status'] ?? 'draft'));
@@ -9627,7 +8666,7 @@ ob_start();
               ?>
               <div class="intel-editor-section">
                 <div class="intel-grid">
-                  <div><label>Titulo</label><div class="mono"><?= clickfix_h((string) ($selectedCommunityInvestigation['title'] ?? '')); ?></div></div>
+                  <div><label>Título</label><div class="mono"><?= clickfix_h((string) ($selectedCommunityInvestigation['title'] ?? '')); ?></div></div>
                   <div><label>Dominio principal</label><div class="mono"><?= clickfix_h((string) ($selectedCommunityInvestigation['site_domain'] ?? '')); ?></div></div>
                   <div><label>Veredicto</label><div class="mono"><?= clickfix_h((string) ($selectedCommunityInvestigation['verdict'] ?? 'unknown')); ?></div></div>
                   <div><label>Estado workflow</label><div class="mono"><?= clickfix_h(cfworkflowlabel($communityStatus, $lang)); ?></div></div>
@@ -9636,7 +8675,7 @@ ob_start();
                   <div><label>Malware scoring</label><div class="mono"><?= $classSymbol; ?> <?= clickfix_h($classLabel); ?> | score <?= (int) ($selectedCommunityVote['score'] ?? 0); ?> | +<?= (int) ($selectedCommunityVote['upvotes'] ?? 0); ?> / -<?= (int) ($selectedCommunityVote['downvotes'] ?? 0); ?></div></div>
                   <div><label>Actualizado</label><div class="mono"><?= clickfix_h((string) ($selectedCommunityInvestigation['updated_at'] ?? '')); ?></div></div>
                   <?php if (!empty($selectedCommunityInvestigation['is_public']) && !empty($selectedCommunityInvestigation['share_token'])): ?>
-                    <div class="intel-grid-full"><label>Link publico</label><div class="mono"><a href="<?= clickfix_h(cfurl('investigation', true, ['share' => (string) $selectedCommunityInvestigation['share_token']])); ?>" target="_blank" rel="noreferrer">Abrir investigacion publica</a></div></div>
+                    <div class="intel-grid-full"><label>Link pÃºblico</label><div class="mono"><a href="<?= clickfix_h(cfurl('investigation', true, ['share' => (string) $selectedCommunityInvestigation['share_token']])); ?>" target="_blank" rel="noreferrer">Abrir investigaciÃ³n pÃºblica</a></div></div>
                   <?php endif; ?>
                   <div class="intel-grid-full"><label>Resumen</label><pre class="mono"><?= clickfix_h((string) ($selectedCommunityInvestigation['summary'] ?? '')); ?></pre></div>
                 </div>
@@ -9646,21 +8685,21 @@ ob_start();
                     <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                     <input type="hidden" name="graph_id" value="<?= $communityActiveId; ?>">
                     <input type="hidden" name="vote" value="1">
-                    <button class="btn" type="submit">[M+] +1 Malware</button>
+                    <button class="btn btn-primary btn-sm" type="submit">[M+] +1 Malware</button>
                   </form>
                   <form method="post" style="display:flex;gap:8px;align-items:center;width:auto;">
                     <input type="hidden" name="action" value="investigation_vote">
                     <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                     <input type="hidden" name="graph_id" value="<?= $communityActiveId; ?>">
                     <input type="hidden" name="vote" value="-1">
-                    <button type="submit">[L-] -1 Legit</button>
+                    <button type="submit" class="btn btn-outline-light btn-sm">[L-] -1 Legit</button>
                   </form>
-                  <a class="btn" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $communityActiveId])); ?>">Abrir editor de investigacion</a>
+                  <a class="btn" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $communityActiveId])); ?>">Abrir editor de investigaciÃ³n</a>
                 </div>
               </div>
               <?php if ($canMidReview): ?>
                 <div class="intel-editor-section">
-                  <h3>Revision Mid</h3>
+                  <h3>RevisiÃ³n Mid</h3>
                   <div class="intel-toolbar">
                     <form method="post" style="display:flex;gap:8px;align-items:center;width:auto;">
                       <input type="hidden" name="action" value="investigation_workflow">
@@ -9668,7 +8707,7 @@ ob_start();
                       <input type="hidden" name="graph_id" value="<?= $communityActiveId; ?>">
                       <input type="hidden" name="workflow_status" value="mid_verified">
                       <input type="text" name="workflow_note" placeholder="nota de validacion mid (opcional)">
-                      <button class="btn" type="submit">[MID] Validar</button>
+                      <button class="btn btn-primary btn-sm" type="submit">[MID] Validar</button>
                     </form>
                     <form method="post" style="display:flex;gap:8px;align-items:center;width:auto;">
                       <input type="hidden" name="action" value="investigation_workflow">
@@ -9676,7 +8715,7 @@ ob_start();
                       <input type="hidden" name="graph_id" value="<?= $communityActiveId; ?>">
                       <input type="hidden" name="workflow_status" value="sr_review">
                       <input type="text" name="workflow_note" placeholder="nota para senior (opcional)">
-                      <button type="submit">[MID->SR] Escalar</button>
+                      <button type="submit" class="btn btn-outline-light btn-sm">[MID->SR] Escalar</button>
                     </form>
                   </div>
                 </div>
@@ -9690,16 +8729,16 @@ ob_start();
                       <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                       <input type="hidden" name="graph_id" value="<?= $communityActiveId; ?>">
                       <input type="hidden" name="workflow_status" value="verified_public">
-                      <input type="text" name="workflow_note" placeholder="nota de verificacion publica (opcional)">
-                      <button class="btn" type="submit">[SR][PUB] Verificar y publicar</button>
+                      <input type="text" name="workflow_note" placeholder="nota de verificaciÃ³n pÃºblica (opcional)">
+                      <button class="btn btn-primary btn-sm" type="submit">[SR][PUB] Verificar y pÃºblicar</button>
                     </form>
                     <form method="post" style="display:flex;gap:8px;align-items:center;width:auto;">
                       <input type="hidden" name="action" value="investigation_workflow">
                       <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                       <input type="hidden" name="graph_id" value="<?= $communityActiveId; ?>">
                       <input type="hidden" name="workflow_status" value="verified_internal">
-                      <input type="text" name="workflow_note" placeholder="nota de verificacion interna (opcional)">
-                      <button type="submit">[SR][INT] Verificar interno</button>
+                      <input type="text" name="workflow_note" placeholder="nota de verificaciÃ³n interna (opcional)">
+                      <button type="submit" class="btn btn-outline-light btn-sm">[SR][INT] Verificar interno</button>
                     </form>
                     <form method="post" style="display:flex;gap:8px;align-items:center;width:auto;">
                       <input type="hidden" name="action" value="investigation_workflow">
@@ -9707,13 +8746,58 @@ ob_start();
                       <input type="hidden" name="graph_id" value="<?= $communityActiveId; ?>">
                       <input type="hidden" name="workflow_status" value="rejected">
                       <input type="text" name="workflow_note" placeholder="motivo de rechazo">
-                      <button type="submit">[SR][X] Rechazar</button>
+                      <button type="submit" class="btn btn-outline-light btn-sm">[SR][X] Rechazar</button>
                     </form>
                   </div>
                 </div>
               <?php endif; ?>
             <?php endif; ?>
           </section>
+            </div>
+          </div>
+          <aside class="community-side">
+            <div class="card intel-side-card">
+              <div class="card-body">
+                <h3>Resumen de cola</h3>
+                <div class="intel-side-kv"><span>Total</span><b><?= $communityTotal; ?></b></div>
+                <div class="intel-side-kv"><span>Mid</span><b><?= $communityMidVerified; ?></b></div>
+                <div class="intel-side-kv"><span>SR</span><b><?= $communitySrReview; ?></b></div>
+                <div class="intel-side-kv"><span>Verificadas</span><b><?= $communityVerified; ?></b></div>
+              </div>
+            </div>
+            <div class="card intel-side-card">
+              <div class="card-body">
+                <h3>Seleccion actual</h3>
+                <div class="intel-side-kv"><span>Dominio</span><b class="mono"><?= clickfix_h((string) ($selectedCommunityInvestigation['site_domain'] ?? '-')); ?></b></div>
+                <div class="intel-side-kv"><span>Veredicto</span><b><?= clickfix_h((string) ($selectedCommunityInvestigation['verdict'] ?? 'unknown')); ?></b></div>
+                <div class="intel-side-kv"><span>Nodos</span><b><?= $communityNodeCount; ?></b></div>
+                <div class="intel-side-kv"><span>Conexiones</span><b><?= $communityEdgeCount; ?></b></div>
+                <div class="intel-side-kv"><span>Actualizado</span><b class="mono"><?= clickfix_h((string) ($selectedCommunityInvestigation['updated_at'] ?? '-')); ?></b></div>
+              </div>
+            </div>
+            <div class="card intel-side-card">
+              <div class="card-body">
+                <h3>Acciones</h3>
+                <div class="intel-side-actions">
+                  <?php if ($communityActiveId > 0): ?>
+                    <a class="btn btn-primary btn-sm" href="<?= clickfix_h(cfurl('intel', false, ['graph_id' => $communityActiveId])); ?>">Abrir en InvestigaciÃ³n</a>
+                  <?php endif; ?>
+                  <?php if ($communityShareUrl !== ''): ?>
+                    <a class="btn btn-outline-light btn-sm" href="<?= clickfix_h($communityShareUrl); ?>" target="_blank" rel="noreferrer noopener">Abrir link p?blico</a>
+                  <?php endif; ?>
+                  <a class="btn btn-outline-light btn-sm" href="<?= clickfix_h(cfurl('community')); ?>">Refrescar cola</a>
+                </div>
+              </div>
+            </div>
+            <?php if (!empty($selectedCommunityInvestigation['summary'])): ?>
+              <div class="card intel-side-card">
+                <div class="card-body">
+                  <h3>Resumen</h3>
+                  <div class="mut"><?= clickfix_h((string) $selectedCommunityInvestigation['summary']); ?></div>
+                </div>
+              </div>
+            <?php endif; ?>
+          </aside>
         </div>
       </section>
     <?php endif; ?>
@@ -9721,42 +8805,254 @@ ob_start();
     <?php if ($page === 'ops' || $page === 'home' || $page === 'search'): ?>
       <section class="row">
         <article class="card" id="event-workbench">
-          <h2><?= $page === 'search' ? 'Resultados de busqueda' : 'Eventos recientes'; ?></h2>
-          <div class="event-workbench">
+          <div class="card-body">
+            <div class="ops-header">
+              <div>
+                <h1 class="mb-1" style="font-size:1.3rem"><?= $page === 'search' ? 'Search Results' : 'Events'; ?></h1>
+                <p class="text-muted mb-0">Triage workspace with event feed, detail panel, and quick actions.</p>
+              </div>
+              <div class="ops-badges">
+                <span class="badge badge-outline-info">24h alerts <?= (int) ($metrics['alerts_24h'] ?? 0); ?></span>
+                <span class="badge badge-outline-success">24h blocks <?= (int) ($metrics['blocks_24h'] ?? 0); ?></span>
+                <span class="badge badge-outline-warning">pending <?= (int) ($metrics['pending_review_total'] ?? 0); ?></span>
+              </div>
+            </div>
+            <?php if ($page === 'ops'): ?>
+              <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:10px 0 14px">
+                <input type="search" id="ops-feed-search" placeholder="Filter by domain, snippet..." style="padding:8px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--txt);min-width:240px;font-size:.84rem">
+                <div class="ops-sev-filter" id="ops-severity-filter" style="margin:0">
+                  <button type="button" class="ops-sev-filter-btn is-active" data-ops-severity="all">All</button>
+                  <button type="button" class="ops-sev-filter-btn" data-ops-severity="high">High (<?= $opsHigh; ?>)</button>
+                  <button type="button" class="ops-sev-filter-btn" data-ops-severity="medium">Med (<?= $opsMed; ?>)</button>
+                  <button type="button" class="ops-sev-filter-btn" data-ops-severity="low">Low (<?= $opsLow; ?>)</button>
+                </div>
+                <span class="mut" style="font-size:.78rem"><?= count($eventWorkbenchRows); ?> events in feed</span>
+              </div>
+              <?php
+                $opsHigh = 0;
+                $opsMed = 0;
+                $opsLow = 0;
+                foreach ($eventWorkbenchRows as $opsRow) {
+                    $opsScore = isset($opsRow['score_total']) ? (int) $opsRow['score_total'] : 0;
+                    if ($opsScore >= 70) {
+                        $opsHigh++;
+                    } elseif ($opsScore >= 40) {
+                        $opsMed++;
+                    } else {
+                        $opsLow++;
+                    }
+                }
+                $opsTopDomainGroups = array_slice($eventDomainGroups ?? [], 0, 6);
+                $opsTopReasons = [];
+                foreach ($eventWorkbenchRows as $opsRow) {
+                    $reason = !empty($opsRow['reason_list']) ? (string) $opsRow['reason_list'][0] : (string) ($opsRow['message'] ?? '');
+                    $reason = trim($reason);
+                    if ($reason === '') {
+                        continue;
+                    }
+                    if (!isset($opsTopReasons[$reason])) {
+                        $opsTopReasons[$reason] = 0;
+                    }
+                    $opsTopReasons[$reason]++;
+                }
+                arsort($opsTopReasons);
+                $opsTopReasons = array_slice($opsTopReasons, 0, 6, true);
+              ?>
+              <div class="ops-grid">
+                <div class="ops-main">
+                  <aside class="ops-side">
+                    <div class="card ops-panel">
+                      <div class="card-body">
+                        <div class="ops-panel-head">
+                          <h3>Resumen operativo</h3>
+                          <span class="badge badge-outline-primary">Status</span>
+                        </div>
+                        <div class="ops-mini">
+                          <div><span>Ãšltima actualizaciÃ³n</span><strong><?= clickfix_h((string) ($metrics['last_update'] ?? '')); ?></strong></div>
+                          <div><span>PaÃ­ses activos</span><strong><?= is_array($metrics['countries'] ?? null) ? count($metrics['countries']) : 0; ?></strong></div>
+                        </div>
+                        <div class="ops-mini">
+                          <div><span>Alertas 24h</span><strong><?= (int) ($metrics['alerts_24h'] ?? 0); ?></strong></div>
+                          <div><span>Bloqueos 24h</span><strong><?= (int) ($metrics['blocks_24h'] ?? 0); ?></strong></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="card ops-panel">
+                      <div class="card-body">
+                        <div class="ops-panel-head">
+                          <h3>Radar operativo</h3>
+                          <span class="badge badge-outline-info">Ops</span>
+                        </div>
+                        <div class="ops-kpi-grid">
+                          <div class="ops-kpi"><span>alertas 24h</span><strong><?= (int) ($metrics['alerts_24h'] ?? 0); ?></strong></div>
+                          <div class="ops-kpi"><span>bloqueos 24h</span><strong><?= (int) ($metrics['blocks_24h'] ?? 0); ?></strong></div>
+                          <div class="ops-kpi"><span>dominios Ãºnicos</span><strong><?= (int) ($metrics['unique_hosts'] ?? 0); ?></strong></div>
+                          <div class="ops-kpi"><span>pend. revisiÃ³n</span><strong><?= (int) ($metrics['pending_review_total'] ?? 0); ?></strong></div>
+                        </div>
+                        <div class="ops-mini">
+                          <div><span>ratio bloqueo 24h</span><strong><?= number_format((float) ($metrics['block_rate'] ?? 0), 2); ?>%</strong></div>
+                          <div><span>pend. fuera listas</span><strong><?= (int) ($metrics['pending_domains_outside_lists'] ?? 0); ?></strong></div>
+                        </div>
+                        <div class="ops-actions">
+                          <a class="btn btn-outline-light btn-sm" href="<?= clickfix_h(cfurl('search')); ?>">Ir a bÃºsqueda</a>
+                          <a class="btn btn-outline-light btn-sm" href="<?= clickfix_h(cfurl('coverage')); ?>">Ver cobertura</a>
+                          <a class="btn btn-primary btn-sm" href="<?= clickfix_h(cfurl('intel')); ?>">Nueva investigaciÃ³n</a>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="ops-side-grid">
+                        <div class="card ops-panel">
+                        <div class="card-body">
+                          <div class="ops-panel-head">
+                            <h3>Top Reasons</h3>
+                            <span class="badge badge-outline-info">Signals</span>
+                          </div>
+                          <div class="ops-sev">
+                            <div class="ops-sev-row high"><span>Alta</span><strong><?= $opsHigh; ?></strong></div>
+                            <div class="ops-sev-row med"><span>Media</span><strong><?= $opsMed; ?></strong></div>
+                            <div class="ops-sev-row low"><span>Baja</span><strong><?= $opsLow; ?></strong></div>
+                          </div>
+                          <div class="ops-sev-filter" id="ops-severity-filter">
+                            <button type="button" class="ops-sev-filter-btn is-active" data-ops-severity="all">Todas</button>
+                            <button type="button" class="ops-sev-filter-btn" data-ops-severity="high">Alta</button>
+                            <button type="button" class="ops-sev-filter-btn" data-ops-severity="medium">Media</button>
+                            <button type="button" class="ops-sev-filter-btn" data-ops-severity="low">Baja</button>
+                          </div>
+                          <p class="mut" style="margin:0;font-size:.8rem">Basado en score de la cola actual.</p>
+                        </div>
+                      </div>
+                      <div class="card ops-panel">
+                        <div class="card-body">
+                          <div class="ops-panel-head">
+                            <h3>Motivos dominantes</h3>
+                            <span class="badge badge-outline-info">SeÃ±ales</span>
+                          </div>
+                          <?php if (empty($opsTopReasons)): ?>
+                            <p class="mut">Sin motivos dominantes.</p>
+                          <?php else: ?>
+                            <div class="ops-domain-list">
+                              <?php foreach ($opsTopReasons as $reason => $hits): ?>
+                                <div class="ops-domain-item">
+                                  <span class="mut"><?= clickfix_h($reason); ?></span>
+                                  <span class="mono"><?= (int) $hits; ?>x</span>
+                                </div>
+                              <?php endforeach; ?>
+                            </div>
+                          <?php endif; ?>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="card ops-panel">
+                      <div class="card-body">
+                        <div class="ops-panel-head">
+                          <h3>Dominios reincidentes</h3>
+                          <span class="badge badge-outline-success">Top</span>
+                        </div>
+                        <?php if (empty($opsTopDomainGroups)): ?>
+                          <p class="mut">Sin dominios reincidentes.</p>
+                        <?php else: ?>
+                          <div class="ops-domain-list">
+                            <?php foreach ($opsTopDomainGroups as $opsDom): ?>
+                              <div class="ops-domain-item">
+                                <span class="mono"><?= clickfix_h((string) ($opsDom['hostname'] ?? '-')); ?></span>
+                                <span class="mono"><?= (int) ($opsDom['events'] ?? 0); ?> ev</span>
+                              </div>
+                            <?php endforeach; ?>
+                          </div>
+                        <?php endif; ?>
+                      </div>
+                    </div>
+                  </aside>
+            <?php endif; ?>
+            <div class="event-workbench">
             <aside class="event-feed" id="event-feed">
               <?php if (empty($eventWorkbenchRows)): ?>
-                <div class="event-empty"><?= $page === 'search' ? 'Sin resultados de busqueda.' : 'Sin eventos recientes.'; ?></div>
+                <div class="event-empty"><?= $page === 'search' ? 'Sin resultados de bÃºsqueda.' : 'Sin eventos recientes.'; ?></div>
               <?php else: ?>
-                <?php foreach ($eventWorkbenchRows as $eventIndex => $eventRow): ?>
+                <?php
+                  $eventFeedGroups = [];
+                  foreach ($eventWorkbenchRows as $eventIndex => $eventRow) {
+                      $scoreValue = isset($eventRow['score_total']) && is_numeric($eventRow['score_total']) ? (int) $eventRow['score_total'] : 0;
+                      $firstReason = !empty($eventRow['reason_list']) ? (string) $eventRow['reason_list'][0] : (string) ($eventRow['message'] ?? '');
+                      $hostLabel = (string) ($eventRow['hostname'] ?: '-');
+                      $groupKey = strtolower($hostLabel . '|' . $firstReason);
+                      $eventTime = (string) ($eventRow['activity_at'] ?? $eventRow['received_at'] ?? '');
+                      $eventBlockedFeed = !empty($eventRow['blocked']) || !empty($eventRow['host_blocked_before']) || ($canSrViewer && !empty($eventRow['ip_blocked_before']));
+                      if (!isset($eventFeedGroups[$groupKey])) {
+                          $eventFeedGroups[$groupKey] = [
+                              'host' => $hostLabel,
+                              'reason' => $firstReason,
+                              'items' => [],
+                              'primary' => $eventIndex,
+                              'maxScore' => $scoreValue,
+                              'latestTime' => $eventTime,
+                              'blocked' => $eventBlockedFeed,
+                          ];
+                      }
+                      $eventFeedGroups[$groupKey]['items'][] = [
+                          'index' => $eventIndex,
+                          'score' => $scoreValue,
+                          'time' => $eventTime,
+                          'blocked' => $eventBlockedFeed,
+                          'row' => $eventRow,
+                      ];
+                      if ($scoreValue > $eventFeedGroups[$groupKey]['maxScore']) {
+                          $eventFeedGroups[$groupKey]['maxScore'] = $scoreValue;
+                      }
+                      if (!$eventFeedGroups[$groupKey]['blocked'] && $eventBlockedFeed) {
+                          $eventFeedGroups[$groupKey]['blocked'] = true;
+                      }
+                  }
+                ?>
+                <?php foreach ($eventFeedGroups as $group): ?>
                   <?php
-                    $scoreValue = isset($eventRow['score_total']) && is_numeric($eventRow['score_total']) ? (int) $eventRow['score_total'] : 0;
+                    $items = $group['items'];
+                    $primaryItem = $items[0];
+                    $eventIndex = (int) $primaryItem['index'];
+                    $scoreValue = (int) $primaryItem['score'];
                     $severityClass = cfseverityclass($scoreValue);
-                    $firstReason = !empty($eventRow['reason_list']) ? (string) $eventRow['reason_list'][0] : (string) ($eventRow['message'] ?? '');
-                    $eventBlockedFeed = !empty($eventRow['blocked']) || !empty($eventRow['host_blocked_before']) || ($canSrViewer && !empty($eventRow['ip_blocked_before']));
+                    $eventBlockedFeed = !empty($group['blocked']);
+                    $count = count($items);
                   ?>
-                  <button type="button" class="event-feed-item<?= $eventIndex === 0 ? ' is-active' : ''; ?><?= $eventBlockedFeed ? ' is-blocked' : ''; ?>" data-event-index="<?= (int) $eventIndex; ?>">
-                    <span class="event-feed-sev <?= clickfix_h($severityClass); ?>"></span>
-                    <span class="event-feed-main">
-                      <span class="event-feed-host"><?= clickfix_h((string) ($eventRow['hostname'] ?: '-')); ?></span>
-                      <span class="event-feed-meta"><?= clickfix_h((string) ($eventRow['activity_at'] ?? $eventRow['received_at'] ?? '')); ?> | <?= $scoreValue; ?>/100</span>
-                      <span class="event-feed-reason"><?= clickfix_h($firstReason); ?></span>
-                      <?php if ($eventBlockedFeed): ?>
-                        <span class="event-feed-flag">BLOQUEADO</span>
+                  <div class="event-group<?= $eventBlockedFeed ? ' is-blocked' : ''; ?>" data-severity="<?= clickfix_h($severityClass); ?>">
+                    <div class="event-group-head">
+                      <button type="button" class="event-feed-item<?= $eventIndex === 0 ? ' is-active' : ''; ?><?= $eventBlockedFeed ? ' is-blocked' : ''; ?>" data-event-index="<?= $eventIndex; ?>">
+                        <span class="event-feed-sev <?= clickfix_h($severityClass); ?>"></span>
+                        <span class="event-feed-main">
+                          <span class="event-feed-host"><?= clickfix_h($group['host']); ?></span>
+                          <span class="event-feed-meta"><?= clickfix_h($group['latestTime']); ?> | <?= (int) $group['maxScore']; ?>/100</span>
+                          <span class="event-feed-reason"><?= clickfix_h($group['reason']); ?></span>
+                          <?php if ($eventBlockedFeed): ?>
+                            <span class="event-feed-flag">BLOQUEADO</span>
+                          <?php endif; ?>
+                          <?php if ($count > 1): ?>
+                            <span class="event-feed-count">x<?= $count; ?></span>
+                          <?php endif; ?>
+                        </span>
+                      </button>
+                      <?php if ($count > 1): ?>
+                        <button type="button" class="event-group-toggle" data-group-toggle aria-expanded="false">Ver <?= $count - 1; ?> mÃ¡s</button>
                       <?php endif; ?>
-                      <?php if (!empty($eventRow['host_blocked_before']) || (!empty($eventRow['ip_blocked_before']) && $canSrViewer)): ?>
-                        <?php
-                          $feedFlags = [];
-                          if (!empty($eventRow['host_blocked_before'])) {
-                              $feedFlags[] = 'DOM x' . (int) ($eventRow['host_blocked_count'] ?? 0);
-                          }
-                          if ($canSrViewer && !empty($eventRow['ip_blocked_before'])) {
-                              $feedFlags[] = 'IP x' . (int) ($eventRow['ip_blocked_count'] ?? 0);
-                          }
-                        ?>
-                        <span class="event-feed-flag">REINCIDENTE <?= clickfix_h(implode(' | ', $feedFlags)); ?></span>
-                      <?php endif; ?>
-                    </span>
-                  </button>
+                    </div>
+                    <?php if ($count > 1): ?>
+                      <div class="event-group-items" hidden>
+                        <?php foreach ($items as $itemIndex => $item): ?>
+                          <?php if ($itemIndex === 0) continue; ?>
+                          <?php
+                            $childScore = (int) $item['score'];
+                            $childSeverity = cfseverityclass($childScore);
+                          ?>
+                          <button type="button" class="event-feed-item event-feed-item--child<?= !empty($item['blocked']) ? ' is-blocked' : ''; ?>" data-event-index="<?= (int) $item['index']; ?>">
+                            <span class="event-feed-sev <?= clickfix_h($childSeverity); ?>"></span>
+                            <span class="event-feed-main">
+                              <span class="event-feed-meta"><?= clickfix_h($item['time']); ?> | <?= $childScore; ?>/100</span>
+                              <span class="event-feed-reason"><?= clickfix_h($group['reason']); ?></span>
+                            </span>
+                          </button>
+                        <?php endforeach; ?>
+                      </div>
+                    <?php endif; ?>
+                  </div>
                 <?php endforeach; ?>
               <?php endif; ?>
             </aside>
@@ -9769,9 +9065,17 @@ ob_start();
                   <h3 id="event-title" class="event-title"></h3>
                   <div id="event-badges" class="event-badges"></div>
                 </div>
+                <section class="event-ai-summary" id="event-ai-summary">
+                  <div class="event-ai-summary-head">
+                    <h3>Resumen asistido</h3>
+                    <span class="event-ai-summary-tag">local</span>
+                  </div>
+                  <p id="event-ai-summary-text" class="event-ai-summary-text">Selecciona un evento para ver un resumen corto.</p>
+                  <div id="event-ai-summary-points" class="event-ai-summary-points"></div>
+                </section>
                 <div class="event-grid">
                   <div class="event-kv"><b>Fecha</b><span id="event-time"></span></div>
-                  <div class="event-kv"><b>Pais</b><span id="event-country"></span></div>
+                    <div class="event-kv"><b>PaÃ­s</b><span id="event-country"></span></div>
                   <div class="event-kv"><b>URL</b><span id="event-url"></span></div>
                   <div class="event-kv"><b>URL previa</b><span id="event-prev-url"></span></div>
                   <div class="event-kv"><b>IP (manual report)</b><span id="event-ip"></span></div>
@@ -9790,7 +9094,7 @@ ob_start();
                       <div class="event-kv"><b>Ruta</b><span id="event-ioc-path"></span></div>
                       <div class="event-kv"><b>Sitio descarga</b><span id="event-ioc-site"></span></div>
                     </div>
-                    <div class="mut" style="margin-top:6px;font-size:.78rem">Fecha de deteccion: <span id="event-ioc-date"></span></div>
+                    <div class="mut" style="margin-top:6px;font-size:.78rem">Fecha de detecciÃ³n: <span id="event-ioc-date"></span></div>
                   </div>
                 <?php endif; ?>
                 <div class="event-columns">
@@ -9819,7 +9123,7 @@ ob_start();
                       <h3 style="margin:0">Alertas relacionadas (dominio/IP)</h3>
                       <button class="btn" id="event-related-load" type="button">Ver relacionadas</button>
                     </div>
-                    <div id="event-related-status" class="event-related-note">No se cargan automaticamente. Pulsa "Ver relacionadas" para consultar historial relacionado.</div>
+                    <div id="event-related-status" class="event-related-note">No se cargan autom?ticamente. Pulsa "Ver relacionadas" para consultar historial relacionado.</div>
                     <div id="event-related-wrap" class="event-related-table-wrap" hidden>
       <table>
         <thead>
@@ -9851,26 +9155,37 @@ ob_start();
                 </div>
                 <?php if ($loggedIn && cfcan($user, 'analyst_mid')): ?>
                   <form id="event-review-form" method="post" class="mono" style="margin-top:10px;">
-                    <input type="hidden" name="action" value="review">
+                    <input type="hidden" id="event-review-action" name="action" value="review">
                     <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                     <input type="hidden" id="event-review-id" name="report_id" value="">
-                    <select id="event-review-status" name="status">
-                      <option value="pending"><?= clickfix_h(cft('review_pending')); ?></option>
-                      <option value="accepted"><?= clickfix_h(cft('review_accepted')); ?></option>
-                      <option value="rejected"><?= clickfix_h(cft('review_rejected')); ?></option>
-                    </select>
-                    <button class="btn" type="submit">Actualizar revision</button>
+                    <div id="event-review-bulk-ids"></div>
+                    <div id="event-review-scope" class="event-scope-picker" hidden>
+                      <span class="event-scope-label">Aplicar veredicto a</span>
+                      <div class="event-scope-toggle" role="group" aria-label="Alcance del veredicto">
+                        <button type="button" class="is-active" data-review-scope="single">Solo este evento</button>
+                        <button type="button" data-review-scope="group">Todo el grupo</button>
+                      </div>
+                      <div id="event-review-scope-note" class="event-scope-note"></div>
+                    </div>
+	                    <select id="event-review-status" name="status">
+	                      <option value="pending"><?= clickfix_h(cft('review_pending')); ?></option>
+	                      <option value="accepted"><?= clickfix_h(cft('review_accepted')); ?></option>
+	                      <option value="rejected"><?= clickfix_h(cft('review_rejected')); ?></option>
+	                      <option value="allowlisted"><?= clickfix_h(cft('review_allowlisted')); ?></option>
+	                    </select>
+                    <button class="btn btn-primary btn-sm" type="submit">Actualizar revisiÃ³n</button>
                   </form>
                   <div class="mut" style="margin-top:8px;font-size:.76rem;line-height:1.45">
                     <b><?= clickfix_h(cft('review_legend_title')); ?></b><br>
-                    <?= clickfix_h(cft('review_legend_pending')); ?><br>
-                    <?= clickfix_h(cft('review_legend_accepted')); ?><br>
-                    <?= clickfix_h(cft('review_legend_rejected')); ?>
-                  </div>
+	                    <?= clickfix_h(cft('review_legend_pending')); ?><br>
+	                    <?= clickfix_h(cft('review_legend_accepted')); ?><br>
+	                    <?= clickfix_h(cft('review_legend_rejected')); ?><br>
+	                    <?= clickfix_h(cft('review_legend_allowlisted')); ?>
+	                  </div>
                 <?php endif; ?>
                 <?php if ($loggedIn && (cfcan($user, 'analyst_jr') || cfcan($user, 'analyst_sr'))): ?>
                   <div class="event-ops" style="margin-top:10px">
-                    <h3 style="margin:0 0 6px">Operaciones rapidas</h3>
+                    <h3 style="margin:0 0 6px">Operaciones rÃ¡pidas</h3>
                     <div class="intel-toolbar">
                       <?php if (cfcan($user, 'analyst_sr')): ?>
                         <form method="post" class="event-quick-form" style="display:flex;gap:8px;align-items:center;width:auto;">
@@ -9878,14 +9193,14 @@ ob_start();
                           <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                           <input type="hidden" data-event-report-id name="report_id" value="">
                           <input type="hidden" name="quick_mode" value="block_domain">
-                          <button type="submit">Bloquear dominio</button>
+                          <button type="submit" class="btn btn-outline-light btn-sm">Bloquear dominio</button>
                         </form>
                         <form method="post" class="event-quick-form" style="display:flex;gap:8px;align-items:center;width:auto;">
                           <input type="hidden" name="action" value="report_quick_action">
                           <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                           <input type="hidden" data-event-report-id name="report_id" value="">
                           <input type="hidden" name="quick_mode" value="send_investigation_list">
-                          <button type="submit">Mandar a investigacion</button>
+                          <button type="submit" class="btn btn-outline-light btn-sm">Mandar a investigaciÃ³n</button>
                         </form>
                       <?php endif; ?>
                       <?php if (cfcan($user, 'analyst_jr')): ?>
@@ -9894,16 +9209,27 @@ ob_start();
                           <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                           <input type="hidden" data-event-report-id name="report_id" value="">
                           <input type="hidden" name="quick_mode" value="create_investigation">
-                          <button class="btn" type="submit">Generar investigacion</button>
+                          <button class="btn btn-primary btn-sm" type="submit">Generar investigacion</button>
+                        </form>
+                        <form method="post" class="event-quick-form" style="display:flex;gap:8px;align-items:center;width:auto;">
+                          <input type="hidden" name="action" value="report_quick_action_llm">
+                          <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                          <input type="hidden" data-event-report-id name="report_id" value="">
+                          <input type="hidden" name="quick_mode" value="create_investigation_llm">
+                          <select name="llm_profile_id" class="form-select" style="width:auto;min-width:130px;font-size:.76rem;padding:4px 8px">
+                            <option value="0">-- LLM profile --</option>
+                            <?php foreach ($llmProfiles as $lp): ?><option value="<?= (int) ($lp['id'] ?? 0); ?>"><?= clickfix_h((string) ($lp['label'] ?? 'Profile')); ?></option><?php endforeach; ?>
+                          </select>
+                          <button class="btn btn-primary btn-sm" type="submit" style="background:var(--accent);border-color:var(--accent)">Investigar con LLM</button>
                         </form>
                       <?php endif; ?>
                       <?php if (cfcan($user, 'admin')): ?>
-                        <form method="post" class="event-quick-form" style="display:flex;gap:8px;align-items:center;width:auto;" onsubmit="return confirm('Eliminar esta deteccion de forma permanente?');">
+                        <form method="post" class="event-quick-form" style="display:flex;gap:8px;align-items:center;width:auto;" onsubmit="return confirm('Eliminar esta detecciÃ³n de forma permanente?');">
                           <input type="hidden" name="action" value="report_quick_action">
                           <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                           <input type="hidden" data-event-report-id name="report_id" value="">
                           <input type="hidden" name="quick_mode" value="delete_report">
-                          <button class="btn" type="submit">Eliminar deteccion</button>
+                          <button class="btn btn-primary btn-sm" type="submit">Eliminar detecciÃ³n</button>
                         </form>
                       <?php endif; ?>
                     </div>
@@ -9916,10 +9242,11 @@ ob_start();
               </div>
             </section>
           </div>
-          <details class="legacy-events">
+          <?php if ($page === 'ops'): ?><div class="ops-lower-grid"><?php endif; ?>
+          <details class="legacy-events legacy-card">
             <summary>Eventos por dominio (agrupados)</summary>
             <table>
-              <thead><tr><th>Dominio</th><th>Eventos</th><th>Impactos (dup)</th><th>Bloqueos</th><th>Score max</th><th>Ultima actividad</th></tr></thead>
+              <thead><tr><th>Dominio</th><th>Eventos</th><th>Impactos (dup)</th><th>Bloqueos</th><th>Score max</th><th>Ãšltima actividad</th></tr></thead>
               <tbody>
                 <?php foreach ($eventDomainGroups as $domainGroup): ?>
                   <tr>
@@ -9937,118 +9264,185 @@ ob_start();
               </tbody>
             </table>
           </details>
-          <details class="legacy-events">
+          <details class="legacy-events legacy-card">
             <summary>Capturas web (before/after)</summary>
             <?php
               $opsScan = is_array($latestScanPreview) ? $latestScanPreview : null;
               $opsAssets = is_array($latestScanAssetsApproved) ? $latestScanAssetsApproved : ['before' => null, 'after' => null];
               $opsAssetsReview = is_array($latestScanAssetsReview) ? $latestScanAssetsReview : ['before_exists' => false, 'after_exists' => false];
               $opsScanId = (int) ($opsScan['id'] ?? 0);
+              $opsScanQueue = [];
+              if (!empty($scanReviewQueue) && $opsScanId > 0) {
+                  foreach ($scanReviewQueue as $queueRow) {
+                      if ((int) ($queueRow['report_id'] ?? 0) === $opsScanId) {
+                          $opsScanQueue[] = $queueRow;
+                      }
+                  }
+              }
             ?>
             <?php if ($opsScan === null): ?>
-              <p class="mut">Sin capturas aprobadas disponibles.</p>
+              <p class="mut">Sin capturas disponibles.</p>
             <?php else: ?>
-              <p class="mono">scan_id: <?= (int) ($opsScan['id'] ?? 0); ?> | <?= clickfix_h((string) ($opsScan['hostname'] ?? '-')); ?> | <?= clickfix_h((string) ($opsScan['received_at'] ?? '')); ?></p>
-              <div class="split">
+              <div class="scan-capture-head">
                 <div>
-                  <h3 class="mono">ANTES</h3>
-                  <?php if (!empty($opsAssets['before'])): ?>
-                    <img src="<?= clickfix_h((string) $opsAssets['before']); ?>" alt="before scan" loading="lazy" style="max-width:100%;border-radius:10px;border:1px solid #5dc8ff33">
-                  <?php else: ?>
-                    <p class="mut">Sin captura before aprobada.</p>
-                  <?php endif; ?>
-                  <?php if ($canAdminViewer && !empty($opsAssetsReview['before_exists']) && $opsScanId > 0): ?>
-                    <form method="post" style="margin-top:8px" onsubmit="return confirm('Eliminar captura before del scan #<?= $opsScanId; ?>?');">
-                      <input type="hidden" name="action" value="scan_image_delete">
-                      <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                      <input type="hidden" name="scan_report_id" value="<?= $opsScanId; ?>">
-                      <input type="hidden" name="scan_kind" value="before">
-                      <input type="hidden" name="return_page" value="ops">
-                      <button class="btn" type="submit">Eliminar captura before</button>
-                    </form>
-                    <form method="post" style="margin-top:8px">
-                      <input type="hidden" name="action" value="scan_image_assign">
-                      <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                      <input type="hidden" name="scan_report_id" value="<?= $opsScanId; ?>">
-                      <input type="hidden" name="scan_source_kind" value="before">
-                      <input type="hidden" name="scan_target_kind" value="after">
-                      <input type="hidden" name="return_page" value="ops">
-                      <button class="btn" type="submit">Usar este BEFORE como AFTER</button>
-                    </form>
-                  <?php endif; ?>
-                  <?php if ($canAdminViewer && $opsScanId > 0): ?>
-                    <form method="post" enctype="multipart/form-data" style="margin-top:8px">
-                      <input type="hidden" name="action" value="scan_image_upload">
-                      <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                      <input type="hidden" name="scan_report_id" value="<?= $opsScanId; ?>">
-                      <input type="hidden" name="scan_kind" value="before">
-                      <input type="hidden" name="return_page" value="ops">
-                      <input type="file" name="scan_upload_file" accept="image/png,image/jpeg,image/webp" required>
-                      <select name="scan_upload_status" style="margin-top:6px">
-                        <option value="approved" selected>approved</option>
-                        <option value="pending">pending</option>
-                        <option value="rejected">rejected</option>
-                      </select>
-                      <button class="btn" type="submit" style="margin-top:6px">Subir BEFORE manual</button>
-                    </form>
-                  <?php endif; ?>
+                  <h3 class="scan-title">Último escaneo</h3>
+                  <p class="mono">scan_id: <?= (int) ($opsScan['id'] ?? 0); ?> | <?= clickfix_h((string) ($opsScan['hostname'] ?? '-')); ?> | <?= clickfix_h((string) ($opsScan['received_at'] ?? '')); ?></p>
                 </div>
-                <div>
-                  <h3 class="mono">DESPUES</h3>
-                  <?php if (!empty($opsAssets['after'])): ?>
-                    <img src="<?= clickfix_h((string) $opsAssets['after']); ?>" alt="after scan" loading="lazy" style="max-width:100%;border-radius:10px;border:1px solid #5dc8ff33">
-                  <?php else: ?>
-                    <p class="mut">Sin captura after aprobada.</p>
-                  <?php endif; ?>
-                  <?php if ($canAdminViewer && !empty($opsAssetsReview['after_exists']) && $opsScanId > 0): ?>
-                    <form method="post" style="margin-top:8px" onsubmit="return confirm('Eliminar captura after del scan #<?= $opsScanId; ?>?');">
-                      <input type="hidden" name="action" value="scan_image_delete">
-                      <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                      <input type="hidden" name="scan_report_id" value="<?= $opsScanId; ?>">
-                      <input type="hidden" name="scan_kind" value="after">
-                      <input type="hidden" name="return_page" value="ops">
-                      <button class="btn" type="submit">Eliminar captura after</button>
-                    </form>
-                    <form method="post" style="margin-top:8px">
-                      <input type="hidden" name="action" value="scan_image_assign">
-                      <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                      <input type="hidden" name="scan_report_id" value="<?= $opsScanId; ?>">
-                      <input type="hidden" name="scan_source_kind" value="after">
-                      <input type="hidden" name="scan_target_kind" value="before">
-                      <input type="hidden" name="return_page" value="ops">
-                      <button class="btn" type="submit">Usar este AFTER como BEFORE</button>
-                    </form>
-                  <?php endif; ?>
-                  <?php if ($canAdminViewer && $opsScanId > 0): ?>
-                    <form method="post" enctype="multipart/form-data" style="margin-top:8px">
-                      <input type="hidden" name="action" value="scan_image_upload">
-                      <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                      <input type="hidden" name="scan_report_id" value="<?= $opsScanId; ?>">
-                      <input type="hidden" name="scan_kind" value="after">
-                      <input type="hidden" name="return_page" value="ops">
-                      <input type="file" name="scan_upload_file" accept="image/png,image/jpeg,image/webp" required>
-                      <select name="scan_upload_status" style="margin-top:6px">
-                        <option value="approved" selected>approved</option>
-                        <option value="pending">pending</option>
-                        <option value="rejected">rejected</option>
-                      </select>
-                      <button class="btn" type="submit" style="margin-top:6px">Subir AFTER manual</button>
-                    </form>
-                  <?php endif; ?>
-                </div>
+                <?php if ($canAdminViewer && $opsScanId > 0): ?>
+                  <form method="post" class="scan-swap" onsubmit="return confirm('Intercambiar BEFORE y AFTER del scan #<?= $opsScanId; ?>?');">
+                    <input type="hidden" name="action" value="scan_image_swap">
+                    <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                    <input type="hidden" name="scan_report_id" value="<?= $opsScanId; ?>">
+                    <input type="hidden" name="return_page" value="ops">
+                    <button class="btn btn-primary btn-sm" type="submit">Intercambiar orden</button>
+                  </form>
+                <?php endif; ?>
               </div>
-              <?php if ($canAdminViewer && $opsScanId > 0): ?>
-                <form method="post" style="margin-top:10px" onsubmit="return confirm('Intercambiar BEFORE y AFTER del scan #<?= $opsScanId; ?>?');">
-                  <input type="hidden" name="action" value="scan_image_swap">
-                  <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-                  <input type="hidden" name="scan_report_id" value="<?= $opsScanId; ?>">
-                  <input type="hidden" name="return_page" value="ops">
-                  <button class="btn" type="submit">Intercambiar BEFORE <-> AFTER</button>
-                </form>
+              <div class="scan-capture-grid">
+                <?php foreach (['before' => 'Antes', 'after' => 'Después'] as $scanKind => $scanLabel): ?>
+                  <?php
+                    $approvedUrl = (string) ($opsAssets[$scanKind] ?? '');
+                    $assetExists = !empty($opsAssetsReview[$scanKind . '_exists']);
+                    $assetStatus = (string) ($opsAssetsReview[$scanKind . '_status'] ?? 'missing');
+                    $adminPreviewUrl = $opsScanId > 0 ? clickfix_scan_image_url($opsScanId, $scanKind, true) : '';
+                  ?>
+                  <div class="scan-card">
+                    <div class="scan-card-head">
+                      <h4 class="mono"><?= clickfix_h($scanLabel); ?></h4>
+                      <span class="badge badge-outline-light"><?= clickfix_h($assetStatus); ?></span>
+                    </div>
+                    <div class="scan-card-media">
+                      <?php if (!empty($approvedUrl)): ?>
+                        <img src="<?= clickfix_h($approvedUrl); ?>" alt="<?= clickfix_h($scanKind . ' scan'); ?>" loading="lazy">
+                      <?php else: ?>
+                        <div class="scan-placeholder">Sin captura aprobada</div>
+                      <?php endif; ?>
+                    </div>
+                    <?php if ($canAdminViewer && $opsScanId > 0 && $assetExists): ?>
+                      <div class="scan-card-actions">
+                        <a class="btn btn-outline-light btn-sm" href="<?= clickfix_h($adminPreviewUrl); ?>" target="_blank" rel="noopener noreferrer">Abrir admin</a>
+                        <form method="post" class="scan-inline-form">
+                          <input type="hidden" name="action" value="scan_image_review">
+                          <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                          <input type="hidden" name="scan_report_id" value="<?= $opsScanId; ?>">
+                          <input type="hidden" name="scan_kind" value="<?= clickfix_h($scanKind); ?>">
+                          <input type="hidden" name="scan_status" value="approved">
+                          <input type="hidden" name="scan_note" value="approved from ops capture">
+                          <input type="hidden" name="return_page" value="ops">
+                          <button class="btn btn-primary btn-sm" type="submit">Aprobar y fijar</button>
+                        </form>
+                        <form method="post" class="scan-inline-form" onsubmit="return confirm('Eliminar captura <?= clickfix_h($scanKind); ?> del scan #<?= $opsScanId; ?>?');">
+                          <input type="hidden" name="action" value="scan_image_delete">
+                          <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                          <input type="hidden" name="scan_report_id" value="<?= $opsScanId; ?>">
+                          <input type="hidden" name="scan_kind" value="<?= clickfix_h($scanKind); ?>">
+                          <input type="hidden" name="return_page" value="ops">
+                          <button class="btn btn-outline-light btn-sm" type="submit">Eliminar</button>
+                        </form>
+                        <form method="post" class="scan-inline-form">
+                          <input type="hidden" name="action" value="scan_image_assign">
+                          <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                          <input type="hidden" name="scan_report_id" value="<?= $opsScanId; ?>">
+                          <input type="hidden" name="scan_source_kind" value="<?= clickfix_h($scanKind); ?>">
+                          <input type="hidden" name="scan_target_kind" value="<?= $scanKind === 'before' ? 'after' : 'before'; ?>">
+                          <input type="hidden" name="return_page" value="ops">
+                          <button class="btn btn-outline-light btn-sm" type="submit">Usar como <?= $scanKind === 'before' ? 'Después' : 'Antes'; ?></button>
+                        </form>
+                      </div>
+                    <?php elseif ($canAdminViewer && $opsScanId > 0): ?>
+                      <div class="scan-card-actions">
+                        <form method="post" enctype="multipart/form-data" class="scan-inline-form">
+                          <input type="hidden" name="action" value="scan_image_upload">
+                          <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                          <input type="hidden" name="scan_report_id" value="<?= $opsScanId; ?>">
+                          <input type="hidden" name="scan_kind" value="<?= clickfix_h($scanKind); ?>">
+                          <input type="hidden" name="return_page" value="ops">
+                          <input type="file" name="scan_upload_file" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/avif" required>
+                          <select name="scan_upload_status">
+                            <option value="approved" selected>approved</option>
+                            <option value="pending">pending</option>
+                            <option value="rejected">rejected</option>
+                          </select>
+                          <button class="btn btn-primary btn-sm" type="submit">Subir <?= clickfix_h($scanLabel); ?></button>
+                        </form>
+                      </div>
+                    <?php endif; ?>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+              <?php if ($canAdminViewer): ?>
+                <div class="scan-gallery">
+                  <h4 class="scan-subtitle">Capturas recibidas</h4>
+                  <?php if (empty($scanReviewQueue)): ?>
+                    <p class="mut">No hay capturas pendientes.</p>
+                  <?php else: ?>
+                    <?php $queueView = !empty($opsScanQueue) ? $opsScanQueue : array_slice($scanReviewQueue, 0, 40); ?>
+                    <div class="scan-gallery-grid">
+                      <?php foreach ($queueView as $pendingScan): ?>
+                        <?php
+                          $pendingReportId = (int) ($pendingScan['report_id'] ?? 0);
+                          $pendingKind = (string) ($pendingScan['kind'] ?? '');
+                          $pendingExists = !empty($pendingScan['asset_exists']);
+                          $pendingPreviewUrl = (string) ($pendingScan['preview_url'] ?? '');
+                          $pendingStatus = (string) ($pendingScan['status'] ?? 'pending');
+                        ?>
+                        <div class="scan-thumb-card">
+                          <div class="scan-thumb-head">
+                            <span class="mono">#<?= $pendingReportId; ?></span>
+                            <span class="badge badge-outline-light"><?= clickfix_h($pendingKind); ?></span>
+                          </div>
+                          <div class="scan-thumb-media">
+                            <?php if ($pendingExists): ?>
+                              <img src="<?= clickfix_h($pendingPreviewUrl); ?>" alt="preview scan" loading="lazy">
+                            <?php else: ?>
+                              <div class="scan-placeholder">Sin preview</div>
+                            <?php endif; ?>
+                          </div>
+                          <div class="scan-thumb-meta">
+                            <span class="mono"><?= clickfix_h((string) ($pendingScan['hostname'] ?? '-')); ?></span>
+                            <span class="mut"><?= clickfix_h((string) ($pendingScan['received_at'] ?? '')); ?></span>
+                            <span class="badge badge-outline-light"><?= clickfix_h($pendingStatus); ?></span>
+                          </div>
+                          <div class="scan-thumb-actions">
+                            <?php if ($pendingExists): ?>
+                              <a class="btn btn-outline-light btn-sm" href="<?= clickfix_h($pendingPreviewUrl); ?>" target="_blank" rel="noopener noreferrer">Abrir</a>
+                            <?php endif; ?>
+                            <form method="post" class="scan-inline-form">
+                              <input type="hidden" name="action" value="scan_image_review">
+                              <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                              <input type="hidden" name="scan_report_id" value="<?= $pendingReportId; ?>">
+                              <input type="hidden" name="scan_kind" value="<?= clickfix_h($pendingKind); ?>">
+                              <input type="hidden" name="scan_status" value="approved">
+                              <input type="hidden" name="scan_note" value="approved from ops gallery">
+                              <input type="hidden" name="return_page" value="ops">
+                              <button class="btn btn-primary btn-sm" type="submit">Aprobar</button>
+                            </form>
+                            <form method="post" class="scan-inline-form">
+                              <input type="hidden" name="action" value="scan_image_review">
+                              <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                              <input type="hidden" name="scan_report_id" value="<?= $pendingReportId; ?>">
+                              <input type="hidden" name="scan_kind" value="<?= clickfix_h($pendingKind); ?>">
+                              <input type="hidden" name="return_page" value="ops">
+                              <select name="scan_status">
+                                <option value="approved">approved</option>
+                                <option value="rejected">rejected</option>
+                                <option value="pending" selected>pending</option>
+                              </select>
+                              <button class="btn btn-outline-light btn-sm" type="submit">Aplicar</button>
+                            </form>
+                          </div>
+                        </div>
+                      <?php endforeach; ?>
+                    </div>
+                    <?php if (empty($opsScanQueue)): ?>
+                      <p class="mut" style="margin-top:10px">Mostrando capturas recientes. Filtra por scan seleccionando un evento del feed.</p>
+                    <?php endif; ?>
+                  <?php endif; ?>
+                </div>
               <?php endif; ?>
             <?php endif; ?>
           </details>
-          <details class="legacy-events">
+          <details class="legacy-events legacy-card">
             <summary>Vista tabular clasica</summary>
             <?php
               $canTableReview = $loggedIn && cfcan($user, 'analyst_mid');
@@ -10059,19 +9453,21 @@ ob_start();
                 <input type="hidden" name="action" value="review_bulk">
                 <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                 <div class="bulk-review-count" id="bulk-review-count">0 seleccionadas</div>
-                <select name="status" id="bulk-review-status" style="max-width:260px">
-                  <option value="pending"><?= clickfix_h(cft('review_pending')); ?></option>
-                  <option value="accepted"><?= clickfix_h(cft('review_accepted')); ?></option>
-                  <option value="rejected"><?= clickfix_h(cft('review_rejected')); ?></option>
-                </select>
+	                <select name="status" id="bulk-review-status" style="max-width:260px">
+	                  <option value="pending"><?= clickfix_h(cft('review_pending')); ?></option>
+	                  <option value="accepted"><?= clickfix_h(cft('review_accepted')); ?></option>
+	                  <option value="rejected"><?= clickfix_h(cft('review_rejected')); ?></option>
+	                  <option value="allowlisted"><?= clickfix_h(cft('review_allowlisted')); ?></option>
+	                </select>
                 <div class="bulk-review-actions">
                   <button type="button" class="secondary" id="bulk-review-select-pending">Solo pendientes</button>
                   <button type="button" class="secondary" id="bulk-review-clear">Limpiar</button>
-                  <button class="btn" type="submit" id="bulk-review-submit" disabled>Aplicar veredicto masivo</button>
+                  <button class="btn btn-primary btn-sm" type="submit" id="bulk-review-submit" disabled>Aplicar veredicto masivo</button>
                 </div>
               </form>
             <?php endif; ?>
-            <table id="alerts-classic-table"><thead><tr><?php if ($canTableReview): ?><th class="bulk-review-select-cell" data-sortable="false"><input type="checkbox" id="bulk-review-select-all" aria-label="Seleccionar todas"></th><?php endif; ?><th>Fecha</th><th>Dominio</th><th>Marcado</th><?php if ($canSrViewer): ?><th>IP (manual)</th><th>Extension (manual)</th><?php endif; ?><th>Mensaje</th><th>Estado</th><?php if ($canTableReview): ?><th>Revision</th><?php endif; ?><?php if ($canTableOps): ?><th>Operaciones</th><?php endif; ?></tr></thead><tbody>
+            <div class="legacy-table-wrap">
+            <table id="alerts-classic-table" class="table table-striped ops-table legacy-table"><thead><tr><?php if ($canTableReview): ?><th class="bulk-review-select-cell" data-sortable="false"><input type="checkbox" id="bulk-review-select-all" aria-label="Seleccionar todas"></th><?php endif; ?><th>Fecha</th><th>Dominio</th><th>Marcado</th><?php if ($canSrViewer): ?><th>IP (manual)</th><th>Extension (manual)</th><?php endif; ?><th>Mensaje</th><th>Estado</th><?php if ($canTableReview): ?><th>RevisiÃ³n</th><?php endif; ?><?php if ($canTableOps): ?><th>Operaciones</th><?php endif; ?></tr></thead><tbody>
             <?php foreach ($reports as $r): ?>
               <?php
                 $tableEventType = strtolower((string) ($r['event_type'] ?? 'clickfix_alert'));
@@ -10121,9 +9517,9 @@ ob_start();
                   <td class="mono"><?= clickfix_h($manualReportIp !== '' ? $manualReportIp : '-'); ?></td>
                   <td class="mono"><?= clickfix_h($manualReportExt !== '' ? $manualReportExt : '-'); ?></td>
                 <?php endif; ?>
-                <td><?= clickfix_h((string) ($r['message'] ?? '')); ?></td>
+                <td class="message-cell"><?= nl2br(clickfix_h((string) ($r['message'] ?? ''))); ?></td>
                 <td><span class="badge <?= clickfix_h((string) ($r['review_status'] ?? 'pending')); ?>"><?= clickfix_h((string) ($r['review_status'] ?? 'pending')); ?></span></td>
-                <?php if ($canTableReview): ?><td><form method="post" class="mono"><input type="hidden" name="action" value="review"><input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>"><input type="hidden" name="report_id" value="<?= (int) ($r['id'] ?? 0); ?>"><select name="status"><option value="pending"<?= (($r['review_status'] ?? 'pending') === 'pending') ? ' selected' : ''; ?>><?= clickfix_h(cft('review_pending')); ?></option><option value="accepted"<?= (($r['review_status'] ?? 'pending') === 'accepted') ? ' selected' : ''; ?>><?= clickfix_h(cft('review_accepted')); ?></option><option value="rejected"<?= (($r['review_status'] ?? 'pending') === 'rejected') ? ' selected' : ''; ?>><?= clickfix_h(cft('review_rejected')); ?></option></select><button class="btn" type="submit">OK</button></form></td><?php endif; ?>
+                <?php if ($canTableReview): ?><td><form method="post" class="mono"><input type="hidden" name="action" value="review"><input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>"><input type="hidden" name="report_id" value="<?= (int) ($r['id'] ?? 0); ?>"><select name="status"><option value="pending"<?= (($r['review_status'] ?? 'pending') === 'pending') ? ' selected' : ''; ?>><?= clickfix_h(cft('review_pending')); ?></option><option value="accepted"<?= (($r['review_status'] ?? 'pending') === 'accepted') ? ' selected' : ''; ?>><?= clickfix_h(cft('review_accepted')); ?></option><option value="rejected"<?= (($r['review_status'] ?? 'pending') === 'rejected') ? ' selected' : ''; ?>><?= clickfix_h(cft('review_rejected')); ?></option><option value="allowlisted"<?= (($r['review_status'] ?? 'pending') === 'allowlisted') ? ' selected' : ''; ?>><?= clickfix_h(cft('review_allowlisted')); ?></option></select><button class="btn btn-primary btn-sm" type="submit">OK</button></form></td><?php endif; ?>
                 <?php if ($canTableOps): ?>
                   <td>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -10133,14 +9529,14 @@ ob_start();
                           <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                           <input type="hidden" name="report_id" value="<?= (int) ($r['id'] ?? 0); ?>">
                           <input type="hidden" name="quick_mode" value="block_domain">
-                          <button type="submit">Bloquear</button>
+                          <button type="submit" class="btn btn-outline-light btn-sm">Bloquear</button>
                         </form>
                         <form method="post" class="mono" style="display:flex;gap:6px;align-items:center;width:auto">
                           <input type="hidden" name="action" value="report_quick_action">
                           <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                           <input type="hidden" name="report_id" value="<?= (int) ($r['id'] ?? 0); ?>">
                           <input type="hidden" name="quick_mode" value="send_investigation_list">
-                          <button type="submit">A investigatelist</button>
+                          <button type="submit" class="btn btn-outline-light btn-sm">A investigatelist</button>
                         </form>
                       <?php endif; ?>
                       <?php if (cfcan($user, 'analyst_jr')): ?>
@@ -10149,16 +9545,23 @@ ob_start();
                           <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                           <input type="hidden" name="report_id" value="<?= (int) ($r['id'] ?? 0); ?>">
                           <input type="hidden" name="quick_mode" value="create_investigation">
-                          <button class="btn" type="submit">Generar investigacion</button>
+                          <button class="btn btn-primary btn-sm" type="submit">Generar investigacion</button>
+                        </form>
+                        <form method="post" class="mono" style="display:flex;gap:6px;align-items:center;width:auto">
+                          <input type="hidden" name="action" value="report_quick_action_llm">
+                          <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                          <input type="hidden" name="report_id" value="<?= (int) ($r['id'] ?? 0); ?>">
+                          <input type="hidden" name="quick_mode" value="create_investigation_llm">
+                          <button class="btn btn-primary btn-sm" type="submit" style="background:var(--accent);border-color:var(--accent)">LLM</button>
                         </form>
                       <?php endif; ?>
                       <?php if (cfcan($user, 'admin')): ?>
-                        <form method="post" class="mono" style="display:flex;gap:6px;align-items:center;width:auto" onsubmit="return confirm('Eliminar esta deteccion de forma permanente?');">
+                        <form method="post" class="mono" style="display:flex;gap:6px;align-items:center;width:auto" onsubmit="return confirm('Eliminar esta detecciÃ³n de forma permanente?');">
                           <input type="hidden" name="action" value="report_quick_action">
                           <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                           <input type="hidden" name="report_id" value="<?= (int) ($r['id'] ?? 0); ?>">
                           <input type="hidden" name="quick_mode" value="delete_report">
-                          <button class="btn" type="submit">Eliminar deteccion</button>
+                          <button class="btn btn-primary btn-sm" type="submit">Eliminar detecciÃ³n</button>
                         </form>
                       <?php endif; ?>
                     </div>
@@ -10167,9 +9570,15 @@ ob_start();
               </tr>
             <?php endforeach; ?>
             </tbody></table>
+            </div>
           </details>
+          <?php if ($page === 'ops'): ?></div><?php endif; ?>
         </article>
-        <article class="card"><h2>Resumen</h2><p class="mono">last_update: <?= clickfix_h((string) $metrics['last_update']); ?></p><p class="mono">alerts_24h: <?= (int) $metrics['alerts_24h']; ?></p><p class="mono">blocks_24h: <?= (int) $metrics['blocks_24h']; ?></p><p class="mono">countries: <?= count($metrics['countries']); ?></p></article>
+        
+        <?php if ($page === 'ops'): ?>
+                </div>
+              </div>
+            <?php endif; ?>
       </section>
     <?php endif; ?>
 
@@ -10206,7 +9615,7 @@ ob_start();
       <section class="row" style="margin-bottom:8px">
         <article class="card">
           <h2>Correlation / Investigation Stats</h2>
-          <p class="mut">Vista consolidada del pipeline de correlacion: veredictos, familias, artefactos, stages y ejecucion de jobs.</p>
+          <p class="mut">Vista consolidada del pipeline de correlaciÃ³n: veredictos, familias, artefactos, stages y ejecucion de jobs.</p>
           <div class="analytics-kpi-grid">
             <div class="analytics-kpi"><div class="k">jobs totales</div><div class="v"><?= (int) ($corrJobs['total'] ?? 0); ?></div></div>
             <div class="analytics-kpi"><div class="k">jobs completados</div><div class="v"><?= (int) ($corrJobs['completed'] ?? 0); ?></div></div>
@@ -10215,7 +9624,8 @@ ob_start();
             <div class="analytics-kpi"><div class="k">investigaciones con pipeline</div><div class="v"><?= (int) ($corrInvestigations['with_pipeline'] ?? 0); ?></div></div>
             <div class="analytics-kpi"><div class="k">media stages</div><div class="v"><?= number_format((float) ($corrStages['avg'] ?? 0), 2); ?></div></div>
             <div class="analytics-kpi"><div class="k">max stages</div><div class="v"><?= (int) ($corrStages['max'] ?? 0); ?></div></div>
-            <div class="analytics-kpi"><div class="k">analisis hechos</div><div class="v"><?= (int) ($corrArtifacts['analysis_done'] ?? 0); ?></div></div>
+            <div class="analytics-kpi"><div class="k">an?lisis hechos</div><div class="v"><?= (int) ($corrArtifacts['analysis_done'] ?? 0); ?></div></div>
+            </div>
           </div>
         </article>
       </section>
@@ -10275,7 +9685,7 @@ ob_start();
               </div>
             <?php endforeach; ?>
             <?php if (empty($corrMalwareTypes)): ?>
-              <p class="mut">Sin tags de malware todavia.</p>
+              <p class="mut">Sin tags de malware todavÃ­a.</p>
             <?php endif; ?>
           </div>
         </article>
@@ -10296,7 +9706,7 @@ ob_start();
 
       <section class="row" style="margin-bottom:8px">
         <article class="card">
-          <h2>Distribucion de stages</h2>
+          <h2>DistribuciÃ³n de stages</h2>
           <div class="mini-chart">
             <?php foreach ($corrStageDistribution as $row): ?>
               <?php $width = max(2, (int) round(((int) ($row['investigations'] ?? 0) / $corrStageMax) * 100)); ?>
@@ -10307,7 +9717,7 @@ ob_start();
               </div>
             <?php endforeach; ?>
             <?php if (empty($corrStageDistribution)): ?>
-              <p class="mut">Sin datos de stages todavia.</p>
+              <p class="mut">Sin datos de stages todavÃ­a.</p>
             <?php endif; ?>
           </div>
         </article>
@@ -10323,7 +9733,7 @@ ob_start();
               </div>
             <?php endforeach; ?>
             <?php if (empty($corrTopCommands)): ?>
-              <p class="mut">Sin comandos correlacionados todavia.</p>
+              <p class="mut">Sin comandos correlacionados todavÃ­a.</p>
             <?php endif; ?>
           </div>
         </article>
@@ -10334,7 +9744,7 @@ ob_start();
           <h2>Top cadenas por numero de stages</h2>
           <div class="analytics-table-wrap">
             <table class="compact-table">
-              <thead><tr><th>Graph</th><th>Titulo</th><th>Dominio</th><th>Stages</th><th>Artefactos</th><th>Accion</th></tr></thead>
+              <thead><tr><th>Graph</th><th>Título</th><th>Dominio</th><th>Stages</th><th>Artefactos</th><th>AcciÃ³n</th></tr></thead>
               <tbody>
                 <?php foreach ($corrTopChains as $row): ?>
                   <tr>
@@ -10347,7 +9757,7 @@ ob_start();
                   </tr>
                 <?php endforeach; ?>
                 <?php if (empty($corrTopChains)): ?>
-                  <tr><td colspan="6" class="mut">Sin cadenas calculadas todavia.</td></tr>
+                  <tr><td colspan="6" class="mut">Sin cadenas calculadas todavÃ­a.</td></tr>
                 <?php endif; ?>
               </tbody>
             </table>
@@ -10457,11 +9867,11 @@ ob_start();
         $mlHistoricalKeywords = is_array($mlHistoricalInsights['top_keywords'] ?? null) ? $mlHistoricalInsights['top_keywords'] : [];
         $mlKeywordsWindows = is_array($mlInsights['keywords_windows'] ?? null) ? $mlInsights['keywords_windows'] : [];
         $mlWindowLabels = [
-            'total_historico' => 'Total historico',
-            'ultima_semana' => 'Ultima semana',
-            'ultimo_mes' => 'Ultimo mes',
-            'ultimos_3_meses' => 'Ultimos 3 meses',
-            'ultimos_6_meses' => 'Ultimos 6 meses',
+            'total_histÃ³rico' => 'Total histÃ³rico',
+            '?ltima_semana' => 'Ãšltima semana',
+            'Ãšltimo_mes' => 'ltimo mes',
+            'Ãšltimos_3_meses' => 'ltimos 3 meses',
+            'Ãšltimos_6_meses' => 'ltimos 6 meses',
         ];
         $mlTopPredictions = is_array($mlInsights['top_predictions'] ?? null) ? $mlInsights['top_predictions'] : [];
         $mlBurstDomains = is_array($mlInsights['burst_domains'] ?? null) ? $mlInsights['burst_domains'] : [];
@@ -10495,17 +9905,34 @@ ob_start();
             }
         }
       ?>
+      <section class="analytics-shell">
+        <div class="analytics-header">
+          <div>
+            <h1>Centro de m?tricas operativas</h1>
+            <p class="mut">Vista tipo OpenCTI: rendimiento, riesgo, backlog y actividad de analistas.</p>
+          </div>
+          <div class="analytics-header-actions">
+            <div class="range-chips">
+              <button type="button" class="chip is-active">14 dÃ­as</button>
+              <button type="button" class="chip">30 dÃ­as</button>
+              <button type="button" class="chip">90 dÃ­as</button>
+            </div>
+            <div class="kpi-pill">alertas 24h <b><?= (int) ($metrics['alerts_24h'] ?? 0); ?></b></div>
+            <div class="kpi-pill">bloqueos 24h <b><?= (int) ($metrics['blocks_24h'] ?? 0); ?></b></div>
+            <div class="kpi-pill">ratio 24h <b><?= number_format($blockRate24h ?? 0, 2); ?>%</b></div>
+          </div>
+        </div>
       <section class="row">
         <article class="card">
-          <h2>Graficos y metricas operativas</h2>
-          <p class="mut">Alertas, bloqueos, revision, riesgo, actividad manual y capacidad de respuesta diaria.</p>
+          <h2>GrÃ¡ficos y mÃ©tricas operativas</h2>
+          <p class="mut">Alertas, bloqueos, revisiÃ³n, riesgo, actividad manual y capacidad de respuesta diaria.</p>
           <div class="analytics-kpi-grid">
-            <div class="analytics-kpi"><div class="k">alertas / dia (media)</div><div class="v"><?= number_format($avgAlertsPerDay, 2); ?></div></div>
-            <div class="analytics-kpi"><div class="k">bloqueos / dia (media)</div><div class="v"><?= number_format($avgBlocksPerDay, 2); ?></div></div>
+            <div class="analytics-kpi"><div class="k">alertas / da (media)</div><div class="v"><?= number_format($avgAlertsPerDay, 2); ?></div></div>
+            <div class="analytics-kpi"><div class="k">bloqueos / da (media)</div><div class="v"><?= number_format($avgBlocksPerDay, 2); ?></div></div>
             <div class="analytics-kpi"><div class="k">score medio periodo</div><div class="v"><?= number_format($avgRiskScorePeriod, 2); ?></div></div>
             <div class="analytics-kpi"><div class="k">pico alertas</div><div class="v"><?= (int) $peakAlerts; ?> <span class="mut-mini">(<?= clickfix_h($peakAlertsDay); ?>)</span></div></div>
             <div class="analytics-kpi"><div class="k">mejor ratio bloqueo</div><div class="v"><?= number_format($bestBlockRate, 2); ?>% <span class="mut-mini">(<?= clickfix_h($bestBlockRateDay); ?>)</span></div></div>
-            <div class="analytics-kpi"><div class="k">dias sin alertas</div><div class="v"><?= (int) $zeroAlertDays; ?>/<?= $trendCount; ?></div></div>
+            <div class="analytics-kpi"><div class="k">das sin alertas</div><div class="v"><?= (int) $zeroAlertDays; ?>/<?= $trendCount; ?></div></div>
           </div>
           <div class="chart-stack">
             <div class="chart-card">
@@ -10523,7 +9950,7 @@ ob_start();
               </div>
             </div>
             <div class="chart-card">
-              <p class="chart-title">Ratio de bloqueo por dia</p>
+              <p class="chart-title">Ratio de bloqueo por dÃ­a</p>
               <canvas
                 id="analytics-ratio-chart"
                 class="chart-canvas"
@@ -10536,7 +9963,7 @@ ob_start();
               </div>
             </div>
             <div class="chart-card">
-              <p class="chart-title">Revision diaria (revisado vs pendiente)</p>
+              <p class="chart-title">RevisiÃ³n diaria (revisado vs pendiente)</p>
               <canvas
                 id="analytics-review-chart"
                 class="chart-canvas"
@@ -10561,6 +9988,56 @@ ob_start();
               <div class="chart-legend">
                 <span><i class="dot" style="background:#ff9f4a"></i>high risk (score &gt;= 80)</span>
                 <span><i class="dot" style="background:#7dd3fc"></i>manual report</span>
+              </div>
+            </div>
+          </div>
+          <div class="chart-grid-advanced">
+            <div class="chart-card">
+              <p class="chart-title">Hosts Ãºnicos (tendencia)</p>
+              <canvas
+                id="analytics-hosts-chart"
+                class="chart-canvas"
+                data-labels='<?= clickfix_h(json_encode($trendLabels, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); ?>'
+                data-series='<?= clickfix_h(json_encode($trendUniqueHosts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); ?>'
+              ></canvas>
+              <div class="chart-legend">
+                <span><i class="dot" style="background:#a78bfa"></i>hosts Ãºnicos</span>
+              </div>
+            </div>
+            <div class="chart-card">
+              <p class="chart-title">Score medio diario</p>
+              <canvas
+                id="analytics-score-chart"
+                class="chart-canvas"
+                data-labels='<?= clickfix_h(json_encode($trendLabels, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); ?>'
+                data-series='<?= clickfix_h(json_encode($trendAvgScore, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); ?>'
+              ></canvas>
+              <div class="chart-legend">
+                <span><i class="dot" style="background:#f97316"></i>avg score</span>
+              </div>
+            </div>
+            <div class="chart-card">
+              <p class="chart-title">Backlog de revisiÃ³n (pendiente)</p>
+              <canvas
+                id="analytics-pending-chart"
+                class="chart-canvas"
+                data-labels='<?= clickfix_h(json_encode($trendLabels, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); ?>'
+                data-counts='<?= clickfix_h(json_encode($trendReviewPending, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); ?>'
+              ></canvas>
+              <div class="chart-legend">
+                <span><i class="dot" style="background:#ff8e9f"></i>pendientes</span>
+              </div>
+            </div>
+            <div class="chart-card">
+              <p class="chart-title">Manual vs alto riesgo (comparativa)</p>
+              <canvas
+                id="analytics-manual-chart"
+                class="chart-canvas"
+                data-labels='<?= clickfix_h(json_encode($trendLabels, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); ?>'
+                data-counts='<?= clickfix_h(json_encode($trendManualReports, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); ?>'
+              ></canvas>
+              <div class="chart-legend">
+                <span><i class="dot" style="background:#7dd3fc"></i>manual</span>
               </div>
             </div>
           </div>
@@ -10604,7 +10081,7 @@ ob_start();
           </div>
         </article>
         <article class="card">
-          <h2>Distribucion por tipo y nuevos dominios</h2>
+          <h2>DistribuciÃ³n por tipo y nuevos dominios</h2>
           <div class="chart-card" style="margin-bottom:8px">
             <p class="chart-title">Tipos de evento (periodo)</p>
             <canvas
@@ -10635,8 +10112,8 @@ ob_start();
       </section>
       <section class="row" style="margin-bottom:8px">
         <article class="card">
-          <h2>Detector de anomalias (24h vs baseline)</h2>
-          <p class="mut">Comparativa de hoy frente al comportamiento historico reciente.</p>
+          <h2>Detector de anomalÃ­as (24h vs baseline)</h2>
+          <p class="mut">Comparativa de hoy frente al comportamiento histÃ³rico reciente.</p>
           <div class="analytics-table-wrap">
             <table class="compact-table">
               <thead><tr><th>Metrica</th><th>Actual</th><th>Media baseline</th><th>Std baseline</th><th>Z-score</th><th>Delta %</th><th>Anomalia</th></tr></thead>
@@ -10661,14 +10138,15 @@ ob_start();
                 <?php endforeach; ?>
                 <?php if (empty($anomalySummaryRows)): ?>
                   <tr><td colspan="7" class="mut">Sin datos suficientes para calcular anomalias.</td></tr>
-                <?php endif; ?>
+                      </section>
+    <?php endif; ?>
               </tbody>
             </table>
           </div>
         </article>
         <article class="card">
-          <h2>Picos anomalos por dominio</h2>
-          <p class="mut">Dominios con subida anormal en 24h respecto a los 6 dias previos.</p>
+          <h2>Picos anÃ³malos por dominio</h2>
+          <p class="mut">Dominios con subida anormal en 24h respecto a los 6 dÃ­as previos.</p>
           <div class="analytics-table-wrap">
             <table class="compact-table">
               <thead><tr><th>Dominio</th><th>Hits 24h</th><th>Baseline/24h</th><th>Ratio</th><th>Z-score</th><th>High risk 24h</th><th>Bloqueados 24h</th></tr></thead>
@@ -10685,7 +10163,7 @@ ob_start();
                   </tr>
                 <?php endforeach; ?>
                 <?php if (empty($anomalyDomainSpikes)): ?>
-                  <tr><td colspan="7" class="mut">No se detectaron picos anomalos en 24h.</td></tr>
+                  <tr><td colspan="7" class="mut">No se detectaron picos anÃ³malos en 24h.</td></tr>
                 <?php endif; ?>
               </tbody>
             </table>
@@ -10694,7 +10172,7 @@ ob_start();
       </section>
       <section class="card" style="margin-bottom:8px">
         <h2>Pendientes reales fuera de allowlist/blocklist</h2>
-        <p class="mut">Alertas pendientes que no estan cubiertas por listas, para vaciar backlog real.</p>
+        <p class="mut">Alertas pendientes que no est?n cubiertas por listas, para vaciar backlog real.</p>
         <div class="analytics-kpi-grid" style="margin-bottom:10px">
           <div class="analytics-kpi"><div class="k">alertas pendientes reales</div><div class="v"><?= (int) ($pendingOutsideSummary['alerts'] ?? 0); ?></div></div>
           <div class="analytics-kpi"><div class="k">dominios pendientes reales</div><div class="v"><?= (int) ($pendingOutsideSummary['domains'] ?? 0); ?></div></div>
@@ -10702,7 +10180,7 @@ ob_start();
         <input class="analytics-search" id="analytics-pending-search" type="text" placeholder="Buscar pendiente (id, dominio, mensaje, score, tipo)">
         <div class="analytics-table-wrap">
           <table class="compact-table">
-            <thead><tr><th>ID</th><th>Fecha</th><th>Dominio</th><th>Score</th><th>Tipo</th><th>Bloqueado</th><th>Mensaje</th><th>Accion</th></tr></thead>
+            <thead><tr><th>ID</th><th>Fecha</th><th>Dominio</th><th>Score</th><th>Tipo</th><th>Bloqueado</th><th>Mensaje</th><th>AcciÃ³n</th></tr></thead>
             <tbody id="analytics-pending-body">
               <?php foreach ($analyticsPendingRows as $pendingRow): ?>
                 <?php $pendingReportId = (int) ($pendingRow['id'] ?? 0); ?>
@@ -10727,8 +10205,8 @@ ob_start();
       </section>
       <section class="viz-grid" style="margin-bottom:8px">
         <article class="card">
-          <h2>ML Insights (ultimas 300)</h2>
-          <p class="mut">Clasificacion heuristica sobre las ultimas <?= (int) ($mlSampleInsights['sample_size'] ?? 0); ?> alertas.</p>
+          <h2>ML Insights (Ãšltimas 300)</h2>
+          <p class="mut">ClasificaciÃ³n heurÃ­stica sobre las Ãšltimas <?= (int) ($mlSampleInsights['sample_size'] ?? 0); ?> alertas.</p>
           <div class="mini-chart">
             <?php
               $mlDist = [
@@ -10749,8 +10227,8 @@ ob_start();
           <p class="mut mono" style="margin-top:8px">avg_risk_score: <?= number_format((float) ($mlSampleInsights['avg_risk_score'] ?? 0.0), 2); ?> | high_confidence: <?= (int) ($mlSampleInsights['high_confidence_count'] ?? 0); ?></p>
         </article>
         <article class="card">
-          <h2>ML Insights (historico total)</h2>
-          <p class="mut">Clasificacion heuristica sobre todo el historico de alertas.</p>
+          <h2>ML Insights (histÃ³rico total)</h2>
+          <p class="mut">ClasificaciÃ³n heurÃ­stica sobre todo el histÃ³rico de alertas.</p>
           <div class="mini-chart">
             <?php
               $mlHistoricalDist = [
@@ -10772,7 +10250,7 @@ ob_start();
         </article>
         <article class="card">
           <h2>Anomalias de volumen</h2>
-          <table>
+          <table class="table table-striped settings-table">
             <thead><tr><th>Dominio</th><th>Hits 24h</th><th>Burst ratio</th></tr></thead>
             <tbody>
               <?php foreach (array_slice($mlBurstDomains, 0, 10) as $burstRow): ?>
@@ -10788,7 +10266,7 @@ ob_start();
       </section>
       <section class="row" style="margin-bottom:8px">
         <article class="card">
-          <h2>Keywords dominantes (ultimas 300)</h2>
+          <h2>Keywords dominantes (Ãšltimas 300)</h2>
           <p class="mut mono" style="margin-top:0">Enrichment: para eventos con score &gt; 20 se analiza HTML y recursos enlazados (cacheado).</p>
           <div class="mini-chart">
             <?php foreach (array_slice($mlTopKeywords, 0, 10) as $keywordRow): ?>
@@ -10805,7 +10283,7 @@ ob_start();
           </div>
         </article>
         <article class="card">
-          <h2>Keywords dominantes (historico total)</h2>
+          <h2>Keywords dominantes (histÃ³rico total)</h2>
           <div class="mini-chart">
             <?php foreach (array_slice($mlHistoricalKeywords, 0, 10) as $keywordRow): ?>
               <?php
@@ -10823,7 +10301,7 @@ ob_start();
       </section>
       <section class="card" style="margin-bottom:8px">
         <h2>Keywords por ventana temporal</h2>
-        <p class="mut">Top keywords para historico total, ultima semana, ultimo mes, ultimos 3 meses y ultimos 6 meses.</p>
+        <p class="mut">Top keywords para histÃ³rico total, Ãšltima semana, Ãšltimo mes, Ãšltimos 3 meses y Ãšltimos 6 meses.</p>
         <div class="analytics-table-wrap">
           <table class="compact-table">
             <thead><tr><th>Ventana</th><th>Top keywords</th></tr></thead>
@@ -10853,8 +10331,8 @@ ob_start();
       </section>
       <section class="card" style="margin-bottom:8px">
         <h2>Predicciones de riesgo (Top)</h2>
-        <p class="mut mono" style="margin-top:0">Thresholds: low_risk &lt; 15 | suspicious 15-38 | malicious &gt; 38 (ultimas 300 alertas)</p>
-        <table>
+        <p class="mut mono" style="margin-top:0">Thresholds: low_risk &lt; 15 | suspicious 15-38 | malicious &gt; 38 (Ãšltimas 300 alertas)</p>
+        <table class="table table-striped settings-table">
           <thead><tr><th>ID</th><th>Fecha</th><th>Dominio</th><th>Score actual</th><th>ML score</th><th>Etiqueta</th><th>Bloqueado</th></tr></thead>
           <tbody>
             <?php foreach (array_slice($mlTopPredictions, 0, 20) as $predRow): ?>
@@ -10873,13 +10351,13 @@ ob_start();
       </section>
       <section class="row">
         <article class="card">
-          <h2>Ultimo escaneo (antes / despues)</h2>
+          <h2>Último escaneo (antes / despues)</h2>
           <?php if ($latestScan === null): ?>
             <p class="mut">No hay escaneos disponibles.</p>
           <?php else: ?>
             <p class="mono">scan_id: <?= (int) ($latestScan['id'] ?? 0); ?> | <?= clickfix_h((string) ($latestScan['hostname'] ?? '-')); ?> | <?= clickfix_h((string) ($latestScan['received_at'] ?? '')); ?></p>
             <div class="split">
-              <?php foreach (['before' => 'ANTES', 'after' => 'DESPUES'] as $scanKind => $scanLabel): ?>
+              <?php foreach (['before' => 'ANTES', 'after' => 'DESPUÃ‰S'] as $scanKind => $scanLabel): ?>
                 <?php
                   $approvedUrl = (string) ($latestAssets[$scanKind] ?? '');
                   $assetExists = !empty($latestAssetsReviewState[$scanKind . '_exists']);
@@ -10898,12 +10376,12 @@ ob_start();
                     <p class="mut mono">estado: <?= clickfix_h($assetStatus); ?></p>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
                       <button class="btn" type="button" data-scan-inline-src="<?= clickfix_h($adminPreviewUrl); ?>" data-scan-inline-target="<?= clickfix_h($inlineTarget); ?>">Ver aqui (manual)</button>
-                      <a class="btn" href="<?= clickfix_h($adminPreviewUrl); ?>" target="_blank" rel="noopener noreferrer">Abrir pestaña</a>
+                      <a class="btn" href="<?= clickfix_h($adminPreviewUrl); ?>" target="_blank" rel="noopener noreferrer">Abrir pestaa</a>
                       <a class="btn" href="<?= clickfix_h($adminDownloadUrl); ?>">Descargar</a>
                       <button class="btn" type="button" data-copy-text="<?= clickfix_h($adminPreviewUrl); ?>">Copiar URL admin</button>
                       <?php if ($publicApprovedUrl !== ''): ?>
-                        <a class="btn" href="<?= clickfix_h($publicApprovedUrl); ?>" target="_blank" rel="noopener noreferrer">Abrir URL publica</a>
-                        <button class="btn" type="button" data-copy-text="<?= clickfix_h($publicApprovedUrl); ?>">Copiar URL publica</button>
+                        <a class="btn" href="<?= clickfix_h($publicApprovedUrl); ?>" target="_blank" rel="noopener noreferrer">Abrir URL pÃºblica</a>
+                        <button class="btn" type="button" data-copy-text="<?= clickfix_h($publicApprovedUrl); ?>">Copiar URL pÃºblica</button>
                       <?php endif; ?>
                     </div>
                     <div id="<?= clickfix_h($inlineTarget); ?>" class="mut mono" style="margin-top:8px">Pulsa "Ver aqui (manual)" para cargar la captura en el panel.</div>
@@ -10915,7 +10393,7 @@ ob_start();
                       <input type="hidden" name="scan_status" value="approved">
                       <input type="hidden" name="scan_note" value="approved from analytics quick-use">
                       <input type="hidden" name="return_page" value="analytics">
-                      <button class="btn" type="submit">Aprobar y usar en publico</button>
+                      <button class="btn btn-primary btn-sm" type="submit">Aprobar y usar en PÃºblico</button>
                     </form>
                     <form method="post" style="margin-top:8px">
                       <input type="hidden" name="action" value="scan_image_review">
@@ -10928,8 +10406,8 @@ ob_start();
                         <option value="approved"<?= $assetStatus === 'approved' ? ' selected' : ''; ?>>approved</option>
                         <option value="rejected"<?= $assetStatus === 'rejected' ? ' selected' : ''; ?>>rejected</option>
                       </select>
-                      <input type="text" name="scan_note" maxlength="500" placeholder="nota de revision (opcional)">
-                      <button class="btn" type="submit">Guardar revision</button>
+                      <input type="text" name="scan_note" maxlength="500" placeholder="nota de revisiÃ³n (opcional)">
+                      <button class="btn btn-primary btn-sm" type="submit">Guardar revisiÃ³n</button>
                     </form>
                     <form method="post" style="margin-top:8px" onsubmit="return confirm('Eliminar captura <?= clickfix_h($scanKind); ?> del scan #<?= $scanReportId; ?>?');">
                       <input type="hidden" name="action" value="scan_image_delete">
@@ -10937,7 +10415,7 @@ ob_start();
                       <input type="hidden" name="scan_report_id" value="<?= $scanReportId; ?>">
                       <input type="hidden" name="scan_kind" value="<?= clickfix_h($scanKind); ?>">
                       <input type="hidden" name="return_page" value="analytics">
-                      <button class="btn" type="submit">Eliminar captura</button>
+                      <button class="btn btn-primary btn-sm" type="submit">Eliminar captura</button>
                     </form>
                     <form method="post" style="margin-top:8px">
                       <input type="hidden" name="action" value="scan_image_assign">
@@ -10946,9 +10424,9 @@ ob_start();
                       <input type="hidden" name="scan_source_kind" value="<?= clickfix_h($scanKind); ?>">
                       <input type="hidden" name="scan_target_kind" value="<?= $scanKind === 'before' ? 'after' : 'before'; ?>">
                       <input type="hidden" name="return_page" value="analytics">
-                      <button class="btn" type="submit">Usar esta como <?= $scanKind === 'before' ? 'AFTER' : 'BEFORE'; ?></button>
+                      <button class="btn btn-primary btn-sm" type="submit">Usar esta como <?= $scanKind === 'before' ? 'AFTER' : 'BEFORE'; ?></button>
                     </form>
-                    <p class="mut" style="margin-top:6px">Cuando una captura queda en <b>approved</b>, se puede reutilizar en dashboard/index publico.</p>
+                    <p class="mut" style="margin-top:6px">Cuando una captura queda en <b>approved</b>, se puede reutilizar en dashboard/index PÃºblico.</p>
                   <?php else: ?>
                     <p class="mut">Sin capturas disponibles.</p>
                   <?php endif; ?>
@@ -10958,18 +10436,18 @@ ob_start();
           <?php endif; ?>
         </article>
         <article class="card">
-          <h2>Busqueda avanzada</h2>
+          <h2>BÃºsqueda avanzada</h2>
           <form method="get">
             <input type="hidden" name="page" value="analytics">
             <input name="domain" value="<?= clickfix_h($domainFilter); ?>" placeholder="dominio">
             <input name="command" value="<?= clickfix_h($commandFilter); ?>" placeholder="comando">
             <input type="date" name="date_from" value="<?= clickfix_h($dateFromFilter); ?>">
             <input type="date" name="date_to" value="<?= clickfix_h($dateToFilter); ?>">
-            <button class="btn" type="submit">Filtrar</button>
+            <button class="btn btn-primary btn-sm" type="submit">Filtrar</button>
           </form>
           <div style="margin-top:10px;max-height:280px;overflow:auto">
             <table>
-              <thead><tr><th>Fecha</th><th>Dominio</th><th>Score</th><?php if ($canAdminViewer): ?><th>Accion</th><?php endif; ?></tr></thead>
+              <thead><tr><th>Fecha</th><th>Dominio</th><th>Score</th><?php if ($canAdminViewer): ?><th>AcciÃ³n</th><?php endif; ?></tr></thead>
               <tbody>
                 <?php foreach (array_slice($filteredReports, 0, 40) as $fr): ?>
                   <tr>
@@ -10978,13 +10456,13 @@ ob_start();
                     <td class="mono"><?= isset($fr['score_total']) ? (int) $fr['score_total'] : 0; ?></td>
                     <?php if ($canAdminViewer): ?>
                       <td>
-                        <form method="post" class="mono" onsubmit="return confirm('Eliminar alerta/deteccion #<?= (int) ($fr['id'] ?? 0); ?> de forma permanente?');">
+                        <form method="post" class="mono" onsubmit="return confirm('Eliminar alerta/detecciÃ³n #<?= (int) ($fr['id'] ?? 0); ?> de forma permanente?');">
                           <input type="hidden" name="action" value="report_quick_action">
                           <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                           <input type="hidden" name="report_id" value="<?= (int) ($fr['id'] ?? 0); ?>">
                           <input type="hidden" name="quick_mode" value="delete_alert">
                           <input type="hidden" name="return_page" value="analytics">
-                          <button class="btn" type="submit">Eliminar</button>
+                          <button class="btn btn-primary btn-sm" type="submit">Eliminar</button>
                         </form>
                       </td>
                     <?php endif; ?>
@@ -11000,13 +10478,82 @@ ob_start();
     <?php if ($loggedIn && $page === 'extensions' && cfcan($user, 'analyst_sr')): ?>
       <section class="row">
         <article class="card">
+          <div class="extensions-group-grid">
+            <section class="extensions-group-card">
+              <div class="extensions-group-head">
+                <h3>Agrupado por huella</h3>
+                <span class="mut">Versi?n + canal + source + user agent</span>
+              </div>
+              <div class="extensions-group-list">
+                <?php foreach (array_slice(array_values($extensionFingerprintGroups), 0, 8) as $groupRow): ?>
+                  <div class="extensions-group-item">
+                    <div>
+                      <strong class="mono"><?= clickfix_h((string) ($groupRow['fingerprint'] ?? 'Sin firma')); ?></strong>
+                      <div class="mut">
+                        <?= clickfix_h((string) ($groupRow['version'] ?? '-')); ?>
+                        ? <?= clickfix_h((string) ($groupRow['channel'] ?? '-')); ?>
+                        ? <?= clickfix_h((string) ($groupRow['source'] ?? '-')); ?>
+                      </div>
+                    </div>
+                    <div class="mono extensions-group-metrics">
+                      <span><?= (int) ($groupRow['client_count'] ?? 0); ?> clientes</span>
+                      <span><?= (int) ($groupRow['total_events'] ?? 0); ?> ev</span>
+                    </div>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+            </section>
+            <section class="extensions-group-card">
+              <div class="extensions-group-head">
+                <h3>IPs compartidas</h3>
+                <span class="mut">Pivot r?pido entre instalaciones</span>
+              </div>
+              <div class="extensions-group-list">
+                <?php foreach (array_slice(array_values($extensionIpGroups), 0, 8) as $groupRow): ?>
+                  <div class="extensions-group-item">
+                    <div>
+                      <strong class="mono"><?= clickfix_h((string) ($groupRow['ip'] ?? '-')); ?></strong>
+                      <div class="mut">
+                        <?= clickfix_h(implode(', ', array_slice(array_map('strval', (array) ($groupRow['client_ids'] ?? [])), 0, 3))); ?><?= count((array) ($groupRow['client_ids'] ?? [])) > 3 ? '?' : ''; ?>
+                      </div>
+                    </div>
+                    <div class="mono extensions-group-metrics">
+                      <span><?= (int) ($groupRow['client_count'] ?? 0); ?> clientes</span>
+                      <span><?= (int) ($groupRow['total_blocks'] ?? 0); ?> bloq</span>
+                    </div>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+            </section>
+            <section class="extensions-group-card">
+              <div class="extensions-group-head">
+                <h3>Versiones</h3>
+                <span class="mut">Detecci?n de rollouts y outliers</span>
+              </div>
+              <div class="extensions-group-list">
+                <?php foreach (array_slice(array_values($extensionVersionGroups), 0, 8) as $groupRow): ?>
+                  <div class="extensions-group-item">
+                    <div>
+                      <strong class="mono"><?= clickfix_h((string) ($groupRow['version'] ?? 'desconocida')); ?></strong>
+                    </div>
+                    <div class="mono extensions-group-metrics">
+                      <span><?= (int) ($groupRow['client_count'] ?? 0); ?> clientes</span>
+                      <span><?= (int) ($groupRow['total_events'] ?? 0); ?> ev</span>
+                    </div>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+            </section>
+          </div>
           <h2>Usuarios de extensiones</h2>
-          <table>
-            <thead><tr><th>Client ID</th><th>Version</th><th>Dias activo</th><th>Total eventos</th><th>Bloqueos</th><th>IPs</th><th>Asociado</th><th>Ultimo seen</th><th>Detalle</th></tr></thead>
+          <div class="table-responsive extensions-table-wrap">
+          <table class="table table-striped settings-table extensions-clients-table">
+            <thead><tr><th>Huella</th><th>Client ID</th><th>Versi?n</th><th>D?as activo</th><th>Total eventos</th><th>Bloqueos</th><th>IPs</th><th>Asociado</th><th>?ltimo seen</th><th>Detalle</th></tr></thead>
             <tbody>
               <?php foreach ($extensionClients as $ec): ?>
                 <?php $cid = (string) ($ec['client_id'] ?? 'unknown'); ?>
                 <tr>
+                  <td class="mono"><?= clickfix_h((string) ($ec['fingerprint_label'] ?? 'Sin firma')); ?><div class="mut"><?= (int) ($extensionFingerprintCounts[(string) ($ec['fingerprint_key'] ?? '')] ?? 1); ?> clientes</div></td>
                   <td class="mono"><?= clickfix_h($cid); ?></td>
                   <td class="mono"><?= clickfix_h((string) ($ec['extension_version'] ?? '')); ?></td>
                   <td class="mono"><?= (int) ($ec['days_active'] ?? 0); ?></td>
@@ -11025,6 +10572,7 @@ ob_start();
               <?php endforeach; ?>
             </tbody>
           </table>
+          </div>
         </article>
         <article class="card">
           <h2>Historial de cliente</h2>
@@ -11043,7 +10591,7 @@ ob_start();
               $ipHistory = trim((string) ($selectedMeta['ip_history'] ?? ''));
             ?>
             <?php if ($selectedMeta !== null): ?>
-              <p class="mono">Version: <?= clickfix_h((string) ($selectedMeta['extension_version'] ?? '')); ?> | Channel: <?= clickfix_h((string) ($selectedMeta['install_channel'] ?? '-')); ?> | Source: <?= clickfix_h((string) ($selectedMeta['install_source'] ?? '-')); ?></p>
+              <p class="mono">VersiÃ³n: <?= clickfix_h((string) ($selectedMeta['extension_version'] ?? '')); ?> | Channel: <?= clickfix_h((string) ($selectedMeta['install_channel'] ?? '-')); ?> | Source: <?= clickfix_h((string) ($selectedMeta['install_source'] ?? '-')); ?></p>
             <?php endif; ?>
             <?php if (!empty($selectedClientLinks)): ?>
               <details>
@@ -11092,13 +10640,71 @@ ob_start();
                 <?php endif; ?>
               </tbody>
             </table>
+            <h3 style="margin-top:14px">Baseline privado del cliente</h3>
+            <p class="mut">Solo guarda hosts habituales por <span class="mono">client_id</span>, con agregados de uso y revisiones. No expone rutas, querystrings ni identidad real.</p>
+            <table>
+              <thead><tr><th>Host</th><th>Trust</th><th>Visitas</th><th>Dias</th><th>Alertas</th><th>Bloq.</th><th>Revisiones</th><th>Estado</th></tr></thead>
+              <tbody>
+                <?php foreach ($selectedClientBaselineHosts as $baselineRow): ?>
+                  <?php
+                    $acceptedHits = (int) ($baselineRow['accepted_count'] ?? 0);
+                    $rejectedHits = (int) ($baselineRow['rejected_count'] ?? 0);
+                    $allowlistedHits = (int) ($baselineRow['allowlisted_count'] ?? 0);
+                    $reviewSummary = 'A:' . $acceptedHits . ' / FP:' . $rejectedHits . ' / WL:' . $allowlistedHits;
+                    $stateSummary = !empty($baselineRow['local_allowlisted'])
+                        ? 'Allowlist local'
+                        : ((string) ($baselineRow['last_verdict'] ?? '') !== '' ? (string) ($baselineRow['last_verdict'] ?? '') : '-');
+                  ?>
+                  <tr>
+                    <td class="mono"><?= clickfix_h((string) ($baselineRow['hostname'] ?? '')); ?></td>
+                    <td class="mono"><?= (int) ($baselineRow['trust_score'] ?? 0); ?></td>
+                    <td class="mono"><?= (int) ($baselineRow['visits_count'] ?? 0); ?></td>
+                    <td class="mono"><?= (int) ($baselineRow['days_seen'] ?? 0); ?></td>
+                    <td class="mono"><?= (int) ($baselineRow['alert_count'] ?? 0); ?></td>
+                    <td class="mono"><?= (int) ($baselineRow['blocked_count'] ?? 0); ?></td>
+                    <td class="mono"><?= clickfix_h($reviewSummary); ?></td>
+                    <td class="mono"><?= clickfix_h($stateSummary); ?></td>
+                  </tr>
+                <?php endforeach; ?>
+                <?php if (empty($selectedClientBaselineHosts)): ?>
+                  <tr><td colspan="8" class="mut">Todavia no hay baseline agregado para este cliente.</td></tr>
+                <?php endif; ?>
+              </tbody>
+            </table>
           <?php endif; ?>
         </article>
       </section>
       <section class="row">
         <article class="card">
-          <h2>Asociar usuario web con extension</h2>
-          <p class="mut">Relaciona un usuario del dashboard con uno o varios <span class="mono">client_id</span> de extension para mensajeria individual.</p>
+          <h2>Hosts habituales y candidatos benignos</h2>
+          <p class="mut">Este listado sirve para bajar falsos positivos sin rastrear usuarios reales: agrupa por host y por <span class="mono">client_id</span> pseudonimo.</p>
+          <table class="table table-striped settings-table">
+            <thead><tr><th>Host</th><th>Clientes</th><th>Trust medio</th><th>Visitas</th><th>Alertas</th><th>Aceptadas</th><th>FP</th><th>Allowlist</th><th>Ultimo seen</th></tr></thead>
+            <tbody>
+              <?php foreach ($globalBaselineCandidates as $candidate): ?>
+                <tr>
+                  <td class="mono"><?= clickfix_h((string) ($candidate['hostname'] ?? '')); ?></td>
+                  <td class="mono"><?= (int) ($candidate['clients'] ?? 0); ?></td>
+                  <td class="mono"><?= (int) round((float) ($candidate['avg_trust'] ?? 0)); ?></td>
+                  <td class="mono"><?= (int) ($candidate['visits'] ?? 0); ?></td>
+                  <td class="mono"><?= (int) ($candidate['alerts'] ?? 0); ?></td>
+                  <td class="mono"><?= (int) ($candidate['accepted'] ?? 0); ?></td>
+                  <td class="mono"><?= (int) ($candidate['rejected'] ?? 0); ?></td>
+                  <td class="mono"><?= (int) ($candidate['allowlisted'] ?? 0); ?></td>
+                  <td class="mono"><?= clickfix_h((string) ($candidate['last_seen_at'] ?? '')); ?></td>
+                </tr>
+              <?php endforeach; ?>
+              <?php if (empty($globalBaselineCandidates)): ?>
+                <tr><td colspan="9" class="mut">Sin datos globales de baseline todavia.</td></tr>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </article>
+      </section>
+      <section class="row">
+        <article class="card">
+          <h2>Asociar usuario web con extensi?n</h2>
+          <p class="mut">Relaciona un usuario del dashboard con uno o varios <span class="mono">client_id</span> de extensión para mensajerÃ­a individual.</p>
           <form method="post">
             <input type="hidden" name="action" value="extension_link_add">
             <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
@@ -11113,7 +10719,7 @@ ob_start();
                 </option>
               <?php endforeach; ?>
             </select>
-            <input type="text" name="link_client_id" list="known-extension-clients" required placeholder="client_id de extension" value="<?= clickfix_h($selectedClientId); ?>">
+            <input type="text" name="link_client_id" list="known-extension-clients" required placeholder="client_id de extensi?n" value="<?= clickfix_h($selectedClientId); ?>">
             <datalist id="known-extension-clients">
               <?php foreach ($extensionClients as $knownClient): ?>
                 <?php $knownClientId = (string) ($knownClient['client_id'] ?? ''); ?>
@@ -11123,13 +10729,13 @@ ob_start();
               <?php endforeach; ?>
             </datalist>
             <input type="text" name="link_note" maxlength="280" placeholder="nota (opcional)">
-            <button class="btn" type="submit">Guardar asociacion</button>
+            <button class="btn btn-primary btn-sm" type="submit">Guardar asociaci?n</button>
           </form>
         </article>
         <article class="card">
-          <h2>Asociaciones activas</h2>
-          <table>
-            <thead><tr><th>Usuario web</th><th>Client ID</th><th>Eventos</th><th>Bloqueos</th><th>Ultimo seen</th><th>Nota</th><th>Accion</th></tr></thead>
+          <h2>Asociaci?nes activas</h2>
+          <table class="table table-striped settings-table">
+            <thead><tr><th>Usuario web</th><th>Client ID</th><th>Eventos</th><th>Bloqueos</th><th>Ãšltimo seen</th><th>Nota</th><th>AcciÃ³n</th></tr></thead>
             <tbody>
               <?php foreach ($extensionUserLinks as $link): ?>
                 <tr>
@@ -11149,17 +10755,115 @@ ob_start();
                       <input type="hidden" name="action" value="extension_link_remove">
                       <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                       <input type="hidden" name="link_id" value="<?= (int) ($link['id'] ?? 0); ?>">
-                      <button class="btn" type="submit">Quitar</button>
+                      <button class="btn btn-primary btn-sm" type="submit">Quitar</button>
                     </form>
                   </td>
                 </tr>
               <?php endforeach; ?>
               <?php if (empty($extensionUserLinks)): ?>
-                <tr><td colspan="7" class="mut">Sin asociaciones activas.</td></tr>
+                <tr><td colspan="7" class="mut">Sin asociaci?nes activas.</td></tr>
               <?php endif; ?>
             </tbody>
           </table>
         </article>
+      </section>
+    <?php endif; ?>
+
+    <?php if ($loggedIn && $page === 'domain_feeds' && cfcan($user, 'analyst_mid')): ?>
+      <?php
+        require_once __DIR__ . '/src/clickfix_domain_feeds.php';
+        clickfix_domain_feeds_ensure_table($pdo);
+        $feedStats = clickfix_domain_feeds_get_stats($pdo);
+        $feedEntries = clickfix_domain_feeds_get_entries($pdo, 200);
+        $feedLog = clickfix_domain_feeds_log_recent($pdo, 10);
+      ?>
+      <section class="row">
+        <article class="card">
+          <div class="settings-head">
+            <div>
+              <h2>ClickFix Domain Feeds</h2>
+              <p class="text-muted">External domain intelligence from GitHub Gist (cdup07) and Carson ClickFix tracker. Auto-fetched every 12-24h. Import to blocklist with one click.</p>
+            </div>
+            <span class="settings-pill">Intel</span>
+          </div>
+          <div class="intel-kpi-grid" style="margin:14px 0">
+            <div class="intel-kpi"><b>Total Domains</b><span><?= (int) ($feedStats['total'] ?? 0); ?></span></div>
+            <div class="intel-kpi"><b>Imported</b><span><?= (int) ($feedStats['imported'] ?? 0); ?></span></div>
+            <div class="intel-kpi"><b>Pending Import</b><span><?= (int) ($feedStats['not_imported'] ?? 0); ?></span></div>
+            <?php foreach (($feedStats['by_source'] ?? []) as $src): ?>
+              <div class="intel-kpi"><b><?= clickfix_h((string) ($src['source_label'] ?? $src['source_key'] ?? '')); ?></b><span><?= (int) ($src['cnt'] ?? 0); ?></span></div>
+            <?php endforeach; ?>
+          </div>
+          <div class="intel-toolbar" style="margin-bottom:12px">
+            <form method="post" style="display:flex;gap:8px;align-items:center">
+              <input type="hidden" name="action" value="domain_feed_fetch">
+              <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+              <button class="btn btn-primary btn-sm" type="submit">Fetch Now</button>
+            </form>
+            <form method="post" style="display:flex;gap:8px;align-items:center">
+              <input type="hidden" name="action" value="domain_feed_import_all">
+              <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+              <button class="btn btn-sm" type="submit">Import All New to Blocklist</button>
+            </form>
+          </div>
+          <div class="analytics-table-wrap" style="max-height:540px;overflow-y:auto">
+            <table class="compact-table">
+              <thead><tr><th>Domain</th><th>Source</th><th>First Seen</th><th>Last Seen</th><th>Hits</th><th>Imported</th><th>Action</th></tr></thead>
+              <tbody>
+                <?php foreach ($feedEntries as $entry): ?>
+                  <tr>
+                    <td class="mono"><?= clickfix_h((string) ($entry['domain'] ?? '')); ?></td>
+                    <td><?= clickfix_h((string) ($entry['source_label'] ?? '')); ?></td>
+                    <td class="mono"><?= clickfix_h((string) ($entry['first_seen'] ?? '')); ?></td>
+                    <td class="mono"><?= clickfix_h((string) ($entry['last_seen'] ?? '')); ?></td>
+                    <td class="mono"><?= (int) ($entry['hits'] ?? 0); ?></td>
+                    <td><?= !empty($entry['imported_to_blocklist']) ? '<span class="badge accepted">YES</span>' : '<span class="badge pending">NO</span>'; ?></td>
+                    <td>
+                      <?php if (empty($entry['imported_to_blocklist'])): ?>
+                        <div style="display:flex;gap:6px">
+                          <form method="post">
+                            <input type="hidden" name="action" value="domain_feed_import_one">
+                            <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+                            <input type="hidden" name="feed_entry_id" value="<?= (int) ($entry['id'] ?? 0); ?>">
+                            <button class="btn btn-primary btn-sm" type="submit">Block</button>
+                          </form>
+                          <?php $entryUrl = (string) ($entry['url'] ?? ''); if ($entryUrl !== ''): ?>
+                            <a class="btn btn-sm" href="<?= clickfix_h($entryUrl); ?>" target="_blank" rel="noopener">Details</a>
+                          <?php endif; ?>
+                        </div>
+                      <?php else: ?>
+                        <a class="btn btn-sm" href="<?= clickfix_h(cfurl('search', false, ['q' => (string) ($entry['domain'] ?? '')])); ?>">Search</a>
+                      <?php endif; ?>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+                <?php if (empty($feedEntries)): ?>
+                  <tr><td colspan="7" class="mut">No domain feeds fetched yet. Click "Fetch Now" to pull data from external sources.</td></tr>
+                <?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+        </article>
+        <?php if (!empty($feedLog)): ?>
+        <article class="card" style="margin-top:14px">
+          <h3>Fetch History</h3>
+          <table class="compact-table">
+            <thead><tr><th>Source</th><th>Status</th><th>Items</th><th>New</th><th>Error</th><th>Fetched At</th></tr></thead>
+            <tbody>
+              <?php foreach ($feedLog as $logEntry): ?>
+                <tr>
+                  <td class="mono"><?= clickfix_h((string) ($logEntry['source_key'] ?? '')); ?></td>
+                  <td><span class="badge <?= ($logEntry['status'] ?? 'ok') === 'ok' ? 'accepted' : 'rejected'; ?>"><?= clickfix_h((string) ($logEntry['status'] ?? 'ok')); ?></span></td>
+                  <td class="mono"><?= (int) ($logEntry['items_fetched'] ?? 0); ?></td>
+                  <td class="mono"><?= (int) ($logEntry['items_new'] ?? 0); ?></td>
+                  <td><?= clickfix_h((string) ($logEntry['error'] ?? '')); ?></td>
+                  <td class="mono"><?= clickfix_h((string) ($logEntry['fetched_at'] ?? '')); ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </article>
+        <?php endif; ?>
       </section>
     <?php endif; ?>
 
@@ -11183,7 +10887,7 @@ ob_start();
             </select>
             <input type="text" name="domain" required placeholder="domain.tld">
             <input type="text" name="reason" value="manual dashboard update">
-            <button class="btn" type="submit">Aplicar accion individual</button>
+            <button class="btn btn-primary btn-sm" type="submit">Aplicar acciÃ³n individual</button>
           </form>
           <hr>
           <form method="post">
@@ -11201,7 +10905,7 @@ ob_start();
             </select>
             <textarea name="domains_raw" placeholder="uno por linea o separados por coma&#10;bad-example.tld&#10;phishing.site"></textarea>
             <input type="text" name="reason" value="bulk dashboard update">
-            <button class="btn" type="submit">Aplicar accion masiva</button>
+            <button class="btn btn-primary btn-sm" type="submit">Aplicar acciÃ³n masiva</button>
           </form>
         </article>
         <article class="card">
@@ -11228,9 +10932,9 @@ ob_start();
       </section>
       <section class="card">
         <h2>Alertas fuera de allowlist/blocklist</h2>
-        <p class="mut">Dominios detectados en alertas que no estan cubiertos por allowlist ni blocklist, para triage rapido.</p>
-        <table>
-          <thead><tr><th>Dominio</th><th>Alertas</th><th>Ultima alerta</th><th>Acciones</th></tr></thead>
+        <p class="mut">Dominios detectados en alertas que no estan cubiertos por allowlist ni blocklist, para triage r?pido.</p>
+        <table class="table table-striped settings-table">
+          <thead><tr><th>Dominio</th><th>Alertas</th><th>Ãšltima alerta</th><th>Acciones</th></tr></thead>
           <tbody>
             <?php foreach ($unlistedAlertDomains as $row): ?>
               <?php $pendingDomain = (string) ($row['hostname'] ?? ''); ?>
@@ -11246,7 +10950,7 @@ ob_start();
                     <input type="hidden" name="operation" value="add">
                     <input type="hidden" name="domain" value="<?= clickfix_h($pendingDomain); ?>">
                     <input type="hidden" name="reason" value="triage pending alert domain">
-                    <button class="btn" type="submit">Bloquear</button>
+                    <button class="btn btn-primary btn-sm" type="submit">Bloquear</button>
                   </form>
                   <form method="post" style="display:inline-block">
                     <input type="hidden" name="action" value="list_action">
@@ -11255,7 +10959,7 @@ ob_start();
                     <input type="hidden" name="operation" value="add">
                     <input type="hidden" name="domain" value="<?= clickfix_h($pendingDomain); ?>">
                     <input type="hidden" name="reason" value="triage pending alert domain">
-                    <button class="btn" type="submit">Permitir</button>
+                    <button class="btn btn-primary btn-sm" type="submit">Permitir</button>
                   </form>
                   <form method="post" style="display:inline-block">
                     <input type="hidden" name="action" value="list_action">
@@ -11264,7 +10968,7 @@ ob_start();
                     <input type="hidden" name="operation" value="add">
                     <input type="hidden" name="domain" value="<?= clickfix_h($pendingDomain); ?>">
                     <input type="hidden" name="reason" value="triage pending alert domain">
-                    <button class="btn" type="submit">Investigar</button>
+                    <button class="btn btn-primary btn-sm" type="submit">Investigar</button>
                   </form>
                 </td>
               </tr>
@@ -11281,7 +10985,7 @@ ob_start();
         <input class="analytics-search" id="pending-outside-search" type="text" placeholder="Buscar pendiente (id, fecha, dominio, mensaje, tipo...)">
         <div class="analytics-table-wrap">
           <table class="compact-table">
-            <thead><tr><th>ID</th><th>Fecha</th><th>Dominio</th><th>Score</th><th>Tipo</th><th>Bloqueado</th><th>Mensaje</th><th>Accion</th></tr></thead>
+            <thead><tr><th>ID</th><th>Fecha</th><th>Dominio</th><th>Score</th><th>Tipo</th><th>Bloqueado</th><th>Mensaje</th><th>AcciÃ³n</th></tr></thead>
             <tbody id="pending-outside-body">
               <?php foreach (array_slice($pendingOutsideReports, 0, 260) as $pendingRow): ?>
                 <?php $pendingReportId = (int) ($pendingRow['id'] ?? 0); ?>
@@ -11304,7 +11008,7 @@ ob_start();
           </table>
         </div>
       </section>
-      <section class="card"><h2>Auditoria</h2><table><thead><tr><th>Fecha</th><th>Usuario</th><th>Tipo</th><th>Accion</th><th>Dominio</th></tr></thead><tbody><?php foreach ($actions as $a): ?><tr><td class="mono"><?= clickfix_h((string) ($a['created_at'] ?? '')); ?></td><td><?php if (!empty($a['user_id'])): ?><a class="user-link" href="<?= clickfix_h(cfprofileurl((int) ($a['user_id'] ?? 0))); ?>"><?= clickfix_h((string) ($a['username'] ?? 'system')); ?></a><?php else: ?><?= clickfix_h((string) ($a['username'] ?? 'system')); ?><?php endif; ?></td><td class="mono"><?= clickfix_h((string) ($a['list_type'] ?? '')); ?></td><td class="mono"><?= clickfix_h((string) ($a['action'] ?? '')); ?></td><td class="mono"><?= clickfix_h((string) ($a['domain'] ?? '')); ?></td></tr><?php endforeach; ?></tbody></table></section>
+      <section class="card"><h2>Auditoria</h2><table><thead><tr><th>Fecha</th><th>Usuario</th><th>Tipo</th><th>AcciÃ³n</th><th>Dominio</th></tr></thead><tbody><?php foreach ($actions as $a): ?><tr><td class="mono"><?= clickfix_h((string) ($a['created_at'] ?? '')); ?></td><td><?php if (!empty($a['user_id'])): ?><a class="user-link" href="<?= clickfix_h(cfprofileurl((int) ($a['user_id'] ?? 0))); ?>"><?= clickfix_h((string) ($a['username'] ?? 'system')); ?></a><?php else: ?><?= clickfix_h((string) ($a['username'] ?? 'system')); ?><?php endif; ?></td><td class="mono"><?= clickfix_h((string) ($a['list_type'] ?? '')); ?></td><td class="mono"><?= clickfix_h((string) ($a['action'] ?? '')); ?></td><td class="mono"><?= clickfix_h((string) ($a['domain'] ?? '')); ?></td></tr><?php endforeach; ?></tbody></table></section>
     <?php endif; ?>
 
     <?php if ($loggedIn && $page === 'messaging' && cfcan($user, 'analyst_sr')): ?>
@@ -11317,7 +11021,7 @@ ob_start();
             <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
             <select name="msg_scope" id="msg-scope">
               <option value="all">Masivo (todos)</option>
-              <option value="client">Por extension ID (uno o varios)</option>
+              <option value="client">Por extensi?n ID (uno o varios)</option>
               <option value="user">Por usuario web (uno o varios)</option>
               <option value="linked">Todas las extensiones con usuario</option>
               <option value="unlinked">No asociadas (sin usuario web)</option>
@@ -11346,7 +11050,7 @@ ob_start();
                 </option>
               <?php endforeach; ?>
             </select>
-            <input type="text" name="msg_title" maxlength="180" required placeholder="Titulo del mensaje">
+            <input type="text" name="msg_title" maxlength="180" required placeholder="Título del mensaje">
             <textarea name="msg_body" maxlength="5000" required placeholder="Contenido"></textarea>
             <select name="msg_severity">
               <option value="info">info</option>
@@ -11357,13 +11061,13 @@ ob_start();
             <input type="date" name="msg_expires_at" id="msg-expires-at" min="<?= clickfix_h(gmdate('Y-m-d')); ?>" value="<?= clickfix_h(gmdate('Y-m-d', time() + 7 * 86400)); ?>">
             <label for="msg-expires-days">Dias de vigencia (fallback si no hay fecha fin)</label>
             <input type="number" name="msg_expires_days" min="1" max="90" value="7">
-            <button class="btn" type="submit">Enviar mensaje</button>
+            <button class="btn btn-primary btn-sm" type="submit">Enviar mensaje</button>
           </form>
           <p class="mut" style="margin-top:8px">Si seleccionas <b>scope=client</b>, puedes indicar uno o varios <span class="mono">client_id</span> separados por coma o espacio.</p>
           <p class="mut">Si seleccionas <b>scope=user</b>, puedes seleccionar uno o varios usuarios; se notificara a todos sus clientes asociados.</p>
           <p class="mut">Si seleccionas <b>scope=linked</b>, se notificara a todas las extensiones con usuario asociado (actualmente: <b><?= (int) $linkedExtensionClientCount; ?></b>).</p>
           <p class="mut">Si seleccionas <b>scope=unlinked</b>, se notificara a extensiones sin usuario asociado (actualmente: <b><?= (int) $unlinkedExtensionClientCount; ?></b>).</p>
-          <p class="mut">La <b>fecha fin</b> aplica a cualquier scope; pasada esa fecha, el mensaje deja de entregarse a la extension.</p>
+          <p class="mut">La <b>fecha fin</b> aplica a cualquier scope; pasada esa fecha, el mensaje deja de entregarse a la extensi?n.</p>
         </article>
         <article class="card">
           <h2>Historial de mensajes</h2>
@@ -11377,10 +11081,10 @@ ob_start();
                 <option value="all">Todo el historial</option>
               </select>
             </label>
-            <button class="btn" type="submit" onclick="return confirm('Limpiar historial de mensajes?');">Limpiar historial</button>
+            <button class="btn btn-primary btn-sm" type="submit" onclick="return confirm('Limpiar historial de mensajes?');">Limpiar historial</button>
           </form>
-          <table>
-            <thead><tr><th>Fecha</th><th>Scope</th><th>Target</th><th>Severidad</th><th>Titulo</th><th>Expira</th><th>Activo</th><th>By</th><th>Accion</th></tr></thead>
+          <table class="table table-striped settings-table">
+            <thead><tr><th>Fecha</th><th>Scope</th><th>Target</th><th>Severidad</th><th>Título</th><th>Expira</th><th>Activo</th><th>By</th><th>AcciÃ³n</th></tr></thead>
             <tbody>
               <?php foreach ($extensionMessages as $msg): ?>
                 <?php
@@ -11410,14 +11114,14 @@ ob_start();
                         <input type="hidden" name="action" value="message_delete">
                         <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                         <input type="hidden" name="message_id" value="<?= $msgId; ?>">
-                        <button class="btn" type="submit">Detener entrega</button>
+                        <button class="btn btn-primary btn-sm" type="submit">Detener entrega</button>
                       </form>
                     <?php else: ?><span class="mut">inactivo</span><?php endif; ?>
                     <form method="post" onsubmit="return confirm('Eliminar este mensaje definitivamente de la plataforma?');" style="margin-bottom:6px">
                       <input type="hidden" name="action" value="message_hard_delete">
                       <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                       <input type="hidden" name="message_id" value="<?= $msgId; ?>">
-                      <button class="btn" type="submit">Eliminar de plataforma</button>
+                      <button class="btn btn-primary btn-sm" type="submit">Eliminar de plataforma</button>
                     </form>
                     <details style="margin-top:6px">
                       <summary>Rectificar</summary>
@@ -11438,7 +11142,7 @@ ob_start();
                           <option value="1"<?= $msgActive ? ' selected' : ''; ?>>activo</option>
                           <option value="0"<?= !$msgActive ? ' selected' : ''; ?>>inactivo (no enviar)</option>
                         </select>
-                        <button class="btn" type="submit">Guardar rectificacion</button>
+                        <button class="btn btn-primary btn-sm" type="submit">Guardar rectificacion</button>
                       </form>
                     </details>
                   </td>
@@ -11457,8 +11161,8 @@ ob_start();
       <section class="card">
         <h2><?= clickfix_h(cft('dc_title')); ?></h2>
         <p class="mut"><?= clickfix_h(cft('dc_sub')); ?></p>
-        <table>
-          <thead><tr><th>Tabla</th><th>Registros</th><th>Ultima actividad</th><th>Abrir</th></tr></thead>
+        <table class="table table-striped settings-table">
+          <thead><tr><th>Tabla</th><th>Registros</th><th>Ãšltima actividad</th><th>Abrir</th></tr></thead>
           <tbody>
             <?php foreach ($dataCenterSnapshot as $snapshot): ?>
               <?php $tableName = (string) ($snapshot['table'] ?? ''); ?>
@@ -11475,7 +11179,7 @@ ob_start();
       <section class="card">
         <h2>Vista de tabla: <span class="mono"><?= clickfix_h($dataTable); ?></span></h2>
         <div style="overflow:auto">
-          <table>
+          <table class="table table-striped settings-table">
             <thead>
               <tr>
                 <?php if (!empty($dataCenterRows)): ?>
@@ -11523,7 +11227,7 @@ ob_start();
             <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
             <input type="hidden" name="config_tier" value="basic">
             <textarea name="config_json" style="min-height:420px"><?= clickfix_h($scoreConfigBasicJson); ?></textarea>
-            <button class="btn" type="submit">Guardar basic</button>
+            <button class="btn btn-primary btn-sm" type="submit">Guardar basic</button>
           </form>
         </article>
         <article class="card">
@@ -11534,7 +11238,7 @@ ob_start();
             <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
             <input type="hidden" name="config_tier" value="premium">
             <textarea name="config_json" style="min-height:420px"><?= clickfix_h($scoreConfigPremiumJson); ?></textarea>
-            <button class="btn" type="submit">Guardar premium</button>
+            <button class="btn btn-primary btn-sm" type="submit">Guardar premium</button>
           </form>
         </article>
       </section>
@@ -11551,7 +11255,7 @@ ob_start();
             <label><input type="checkbox" name="ads_show_analyst_mid" value="1"<?= !empty($internalAdSettings['show_analyst_mid']) ? ' checked' : ''; ?>> Mostrar a analyst_mid</label><br>
             <label><input type="checkbox" name="ads_show_analyst_sr" value="1"<?= !empty($internalAdSettings['show_analyst_sr']) ? ' checked' : ''; ?>> Mostrar a analyst_sr</label><br>
             <label><input type="checkbox" name="ads_show_admin" value="1"<?= !empty($internalAdSettings['show_admin']) ? ' checked' : ''; ?>> Mostrar a admin</label><br>
-            <button class="btn" type="submit">Guardar politica</button>
+            <button class="btn btn-primary btn-sm" type="submit">Guardar politica</button>
           </form>
         </article>
         <article class="card">
@@ -11560,7 +11264,7 @@ ob_start();
           <form method="post">
             <input type="hidden" name="action" value="internal_ad_save">
             <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-            <input type="text" name="ad_title" maxlength="180" required placeholder="Titulo del anuncio">
+            <input type="text" name="ad_title" maxlength="180" required placeholder="Título del anuncio">
             <textarea name="ad_body" maxlength="2000" required placeholder="Texto del anuncio"></textarea>
             <div class="split">
               <select name="ad_placement">
@@ -11590,27 +11294,27 @@ ob_start();
               <div></div>
             </div>
             <div class="rbac" style="grid-template-columns:repeat(5,minmax(0,1fr))">
-              <label class="item"><b><input type="checkbox" name="ad_target_guest" value="1" checked> guest</b><span>Index y publico</span></label>
+              <label class="item"><b><input type="checkbox" name="ad_target_guest" value="1" checked> guest</b><span>Index y PÃºblico</span></label>
               <label class="item"><b><input type="checkbox" name="ad_target_analyst_jr" value="1" checked> analyst_jr</b><span>Junior</span></label>
               <label class="item"><b><input type="checkbox" name="ad_target_analyst_mid" value="1" checked> analyst_mid</b><span>Mid</span></label>
               <label class="item"><b><input type="checkbox" name="ad_target_analyst_sr" value="1"> analyst_sr</b><span>Senior</span></label>
               <label class="item"><b><input type="checkbox" name="ad_target_admin" value="1"> admin</b><span>Administrador</span></label>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-              <button class="btn" type="submit">Guardar anuncio</button>
+              <button class="btn btn-primary btn-sm" type="submit">Guardar anuncio</button>
             </div>
           </form>
           <form method="post" style="margin-top:10px">
             <input type="hidden" name="action" value="internal_ads_seed_test">
             <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-            <button class="btn" type="submit">Generar anuncios de test</button>
+            <button class="btn btn-primary btn-sm" type="submit">Generar anuncios de test</button>
           </form>
         </article>
       </section>
       <section class="card">
         <h2>Inventario de anuncios internos</h2>
-        <table>
-          <thead><tr><th>ID</th><th>Titulo</th><th>Placement</th><th>Targets</th><th>Priority</th><th>Ventana</th><th>Activo</th><th>By</th><th>Acciones</th></tr></thead>
+        <table class="table table-striped settings-table">
+          <thead><tr><th>ID</th><th>TÃ­tulo</th><th>Placement</th><th>Targets</th><th>Priority</th><th>Ventana</th><th>Activo</th><th>By</th><th>Acciones</th></tr></thead>
           <tbody>
             <?php foreach ($internalAdsAdminList as $adRow): ?>
               <?php
@@ -11639,13 +11343,13 @@ ob_start();
                     <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                     <input type="hidden" name="ad_id" value="<?= (int) ($adRow['id'] ?? 0); ?>">
                     <input type="hidden" name="ad_active" value="<?= !empty($adRow['active']) ? '0' : '1'; ?>">
-                    <button class="btn" type="submit"><?= !empty($adRow['active']) ? 'Desactivar' : 'Activar'; ?></button>
+                    <button class="btn btn-primary btn-sm" type="submit"><?= !empty($adRow['active']) ? 'Desactivar' : 'Activar'; ?></button>
                   </form>
                   <form method="post" style="display:inline-block" onsubmit="return confirm('Eliminar anuncio interno?');">
                     <input type="hidden" name="action" value="internal_ad_delete">
                     <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                     <input type="hidden" name="ad_id" value="<?= (int) ($adRow['id'] ?? 0); ?>">
-                    <button class="btn" type="submit">Eliminar</button>
+                    <button class="btn btn-primary btn-sm" type="submit">Eliminar</button>
                   </form>
                 </td>
               </tr>
@@ -11662,8 +11366,8 @@ ob_start();
       <section class="row">
         <article class="card">
           <h2>Panel de borrado confidencial</h2>
-          <p class="mut">Elimina alertas y evidencias asociadas a un dominio. Esta accion es irreversible.</p>
-          <form method="post" class="stack" onsubmit="return confirm('Esta accion elimina reportes y caches del dominio. Continuar?');">
+          <p class="mut">Elimina alertas y evidencias asociadas a un dominio. Esta acciÃ³n es irreversible.</p>
+          <form method="post" class="stack" onsubmit="return confirm('Esta acciÃ³n elimina reportes y caches del dominio. Â¿Continuar?');">
             <input type="hidden" name="action" value="domain_purge">
             <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
             <input type="text" name="purge_domain" placeholder="dominio o URL (ej: ejemplo.com)" required>
@@ -11673,14 +11377,14 @@ ob_start();
             <label class="item"><b><input type="checkbox" name="purge_delete_caches" value="1" checked> borrar caches de dominio</b><span>domain_intel_cache y whatweb_cache</span></label>
             <label class="item"><b><input type="checkbox" name="purge_delete_investigations" value="1"> borrar investigaciones con site_domain</b><span>borra investigaciones internas ligadas al dominio</span></label>
             <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
-              <button class="btn" type="submit">Borrar dominio</button>
+              <button class="btn btn-primary btn-sm" type="submit">Borrar dominio</button>
             </div>
           </form>
         </article>
         <article class="card">
           <h2>Dominios frecuentes</h2>
-          <table>
-            <thead><tr><th>Dominio</th><th>Alertas</th><th>Ultima vez</th><th>Accion</th></tr></thead>
+          <table class="table table-striped settings-table">
+            <thead><tr><th>Dominio</th><th>Alertas</th><th>Ãšltima vez</th><th>AcciÃ³n</th></tr></thead>
             <tbody>
               <?php foreach ($purgeDomainCandidates as $row): ?>
                 <tr>
@@ -11696,7 +11400,7 @@ ob_start();
                       <input type="hidden" name="purge_include_url" value="1">
                       <input type="hidden" name="purge_include_previous_url" value="1">
                       <input type="hidden" name="purge_delete_caches" value="1">
-                      <button class="btn" type="submit">Borrar</button>
+                      <button class="btn btn-primary btn-sm" type="submit">Borrar</button>
                     </form>
                   </td>
                 </tr>
@@ -11725,19 +11429,19 @@ ob_start();
               <option value="1">enabled</option>
               <option value="0">disabled</option>
             </select>
-            <button class="btn" type="submit">Guardar programacion</button>
+            <button class="btn btn-primary btn-sm" type="submit">Guardar programacion</button>
           </form>
           <form method="post" style="margin-top:10px">
             <input type="hidden" name="action" value="report_run_now">
             <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-            <button class="btn" type="submit">Ejecutar ahora</button>
+            <button class="btn btn-primary btn-sm" type="submit">Ejecutar ahora</button>
           </form>
           <p class="mut" style="margin-top:8px">Cron recomendado: <span class="mono">*/15 * * * * php /home/parthenoun/ClickFix/scripts/run_scheduled_reports.php</span></p>
         </article>
         <article class="card">
           <h2>Programaciones activas</h2>
-          <table>
-            <thead><tr><th>Periodo</th><th>Destino</th><th>Enabled</th><th>Ultima</th><th>Proxima</th></tr></thead>
+          <table class="table table-striped settings-table">
+            <thead><tr><th>Periodo</th><th>Destino</th><th>Enabled</th><th>Ãšltima</th><th>PrÃ³xima</th></tr></thead>
             <tbody>
               <?php foreach ($reportSchedules as $rs): ?>
                 <tr>
@@ -11761,10 +11465,10 @@ ob_start();
             <option value="weekly"<?= $reportPeriodPreview === 'weekly' ? ' selected' : ''; ?>>weekly</option>
             <option value="monthly"<?= $reportPeriodPreview === 'monthly' ? ' selected' : ''; ?>>monthly</option>
           </select>
-          <button class="btn" type="submit">Actualizar preview</button>
+          <button class="btn btn-primary btn-sm" type="submit">Actualizar preview</button>
         </form>
         <p class="mono">period: <?= clickfix_h((string) ($reportPreview['period'] ?? 'daily')); ?> | from: <?= clickfix_h((string) ($reportPreview['from'] ?? '')); ?> | generated_at: <?= clickfix_h((string) ($reportPreview['generated_at'] ?? '')); ?></p>
-        <table>
+        <table class="table table-striped settings-table">
           <thead><tr><th>Total alertas</th><th>Total bloqueos</th><th>Hosts unicos</th><th>Clientes activos</th></tr></thead>
           <tbody>
             <tr>
@@ -11775,18 +11479,55 @@ ob_start();
             </tr>
           </tbody>
         </table>
-        <h3 style="margin-top:8px">Top dominios</h3>
-        <table>
-          <thead><tr><th>Dominio</th><th>Hits</th></tr></thead>
+        <h3 style="margin-top:8px">Top Sources of Attack</h3>
+        <table class="table table-striped settings-table">
+          <thead><tr><th>Attacking Host</th><th>Number of Attacks</th><th>Percent Total</th><th>Blocked</th><th>Last seen</th></tr></thead>
           <tbody>
-            <?php foreach ((array) ($reportPreview['top_domains'] ?? []) as $domainRow): ?>
+            <?php foreach ((array) ($reportPreview['top_sources_of_attack'] ?? $reportPreview['top_domains'] ?? []) as $domainRow): ?>
               <tr>
-                <td class="mono"><?= clickfix_h((string) ($domainRow['hostname'] ?? '')); ?></td>
-                <td class="mono"><?= (int) ($domainRow['hits'] ?? 0); ?></td>
+                <td class="mono"><?= clickfix_h((string) ($domainRow['attacking_host'] ?? $domainRow['hostname'] ?? '')); ?></td>
+                <td class="mono"><?= (int) ($domainRow['number_of_attacks'] ?? $domainRow['hits'] ?? 0); ?></td>
+                <td class="mono"><?= number_format((float) ($domainRow['percent_total'] ?? 0), 2); ?>%</td>
+                <td class="mono"><?= (int) ($domainRow['blocked_attacks'] ?? $domainRow['blocked_hits'] ?? 0); ?></td>
+                <td class="mono"><?= clickfix_h((string) ($domainRow['last_seen'] ?? '')); ?></td>
               </tr>
             <?php endforeach; ?>
           </tbody>
         </table>
+        <div class="row" style="margin-top:8px">
+          <article class="card">
+            <h3>Event Type Distribution</h3>
+            <table class="table table-striped settings-table">
+              <thead><tr><th>Event Type</th><th>Hits</th><th>Percent Total</th><th>Blocked</th></tr></thead>
+              <tbody>
+                <?php foreach ((array) ($reportPreview['event_type_distribution'] ?? []) as $eventRow): ?>
+                  <tr>
+                    <td class="mono"><?= clickfix_h((string) ($eventRow['event_type'] ?? '')); ?></td>
+                    <td class="mono"><?= (int) ($eventRow['hits'] ?? 0); ?></td>
+                    <td class="mono"><?= number_format((float) ($eventRow['percent_total'] ?? 0), 2); ?>%</td>
+                    <td class="mono"><?= (int) ($eventRow['blocked_hits'] ?? 0); ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </article>
+          <article class="card">
+            <h3>Severity Distribution</h3>
+            <table class="table table-striped settings-table">
+              <thead><tr><th>Severity</th><th>Hits</th><th>Percent Total</th><th>Blocked</th></tr></thead>
+              <tbody>
+                <?php foreach ((array) ($reportPreview['severity_distribution'] ?? []) as $severityRow): ?>
+                  <tr>
+                    <td class="mono"><?= clickfix_h((string) ($severityRow['severity'] ?? '')); ?></td>
+                    <td class="mono"><?= (int) ($severityRow['hits'] ?? 0); ?></td>
+                    <td class="mono"><?= number_format((float) ($severityRow['percent_total'] ?? 0), 2); ?>%</td>
+                    <td class="mono"><?= (int) ($severityRow['blocked_hits'] ?? 0); ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </article>
+        </div>
       </section>
     <?php endif; ?>
 
@@ -11794,8 +11535,8 @@ ob_start();
       <section class="row">
         <article class="card">
           <h2>Desistimientos</h2>
-          <table>
-            <thead><tr><th>Fecha</th><th>Dominio</th><th>Estado</th><th>Accion</th></tr></thead>
+          <table class="table table-striped settings-table">
+            <thead><tr><th>Fecha</th><th>Dominio</th><th>Estado</th><th>AcciÃ³n</th></tr></thead>
             <tbody>
               <?php foreach ($appeals as $ap): ?>
                 <tr>
@@ -11808,7 +11549,7 @@ ob_start();
                       <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                       <input type="hidden" name="appeal_id" value="<?= (int) ($ap['id'] ?? 0); ?>">
                       <select name="status"><option>pending</option><option>approved</option><option>rejected</option></select>
-                      <button class="btn" type="submit">OK</button>
+                      <button class="btn btn-primary btn-sm" type="submit">OK</button>
                     </form>
                   </td>
                 </tr>
@@ -11818,7 +11559,7 @@ ob_start();
         </article>
         <article class="card">
           <h2>Solicitudes de eliminacion</h2>
-          <table>
+          <table class="table table-striped settings-table">
             <thead><tr><th>Fecha</th><th>Host</th><th>URL</th><th>Motivo</th><th>Cliente</th></tr></thead>
             <tbody>
               <?php foreach ($deleteRequests as $req): ?>
@@ -11835,8 +11576,8 @@ ob_start();
         </article>
         <article class="card">
           <h2>Solicitudes de acceso</h2>
-          <table>
-            <thead><tr><th>Email</th><th>LinkedIn</th><th>Veces</th><th>Ultima</th><th>Accion</th></tr></thead>
+          <table class="table table-striped settings-table">
+            <thead><tr><th>Email</th><th>LinkedIn</th><th>Veces</th><th>Ãšltima</th><th>AcciÃ³n</th></tr></thead>
             <tbody>
               <?php foreach ($requestsPending as $rq): ?>
                 <tr>
@@ -11854,7 +11595,7 @@ ob_start();
                         <option value="denied">denegar</option>
                         <option value="pending">pendiente</option>
                       </select>
-                      <button class="btn" type="submit">OK</button>
+                      <button class="btn btn-primary btn-sm" type="submit">OK</button>
                     </form>
                   </td>
                 </tr>
@@ -11864,8 +11605,8 @@ ob_start();
         </article>
         <article class="card">
           <h2>Accesos denegados</h2>
-          <table>
-            <thead><tr><th>Email</th><th>LinkedIn</th><th>Veces</th><th>Ultima</th></tr></thead>
+          <table class="table table-striped settings-table">
+            <thead><tr><th>Email</th><th>LinkedIn</th><th>Veces</th><th>Ãšltima</th></tr></thead>
             <tbody>
               <?php foreach ($requestsDenied as $rq): ?>
                 <tr>
@@ -11882,46 +11623,108 @@ ob_start();
     <?php endif; ?>
 
     <?php if ($loggedIn && $page === 'users' && cfcan($user, 'admin')): ?>
+      <?php
+        $usersTotal = count($users);
+        $usersVerified = 0;
+        $usersPendingCount = 0;
+        $usersAdminCount = 0;
+        foreach ($users as $uRow) {
+            if (!empty($uRow['verified'])) {
+                $usersVerified++;
+            } else {
+                $usersPendingCount++;
+            }
+            if (($uRow['role'] ?? '') === 'admin') {
+                $usersAdminCount++;
+            }
+        }
+      ?>
       <section class="row">
-        <article class="card">
-          <h2>Nuevo usuario</h2>
-          <p class="mut">Solo administradores pueden crear cuentas y definir el rol operativo.</p>
-          <form method="post">
-            <input type="hidden" name="action" value="user_create">
-            <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
-            <input type="text" name="new_username" maxlength="80" required placeholder="username">
-            <input type="email" name="new_email" maxlength="190" required placeholder="email">
-            <input type="password" name="new_password" minlength="10" required placeholder="password minimo 10 chars">
-            <select name="new_role">
-              <option value="analyst_jr">Analista Jr</option>
-              <option value="analyst_mid">Analista Mid</option>
-              <option value="analyst_sr">Analista Sr</option>
-              <option value="admin">Administrador</option>
-            </select>
-            <select name="new_verified">
-              <option value="1">Verificado</option>
-              <option value="0">Pendiente</option>
-            </select>
-            <select name="new_lang">
-              <option value="en" selected>Idioma en</option>
-              <option value="es">Idioma es</option>
-            </select>
-            <button class="btn" type="submit">Crear usuario</button>
-          </form>
+        <article class="card users-admin-hero">
+          <div class="card-body">
+            <div class="users-hero-head">
+              <div>
+                <h2>AdministraciÃ³n de usuarios</h2>
+                <p class="mut">Alta, roles, verificaciÃ³n y control de reputaciÃ³n en un panel centralizado.</p>
+              </div>
+              <span class="badge badge-outline-info">Admin only</span>
+            </div>
+            <div class="users-kpi-grid">
+              <div class="users-kpi">
+                <span>Total</span>
+                <strong><?= $usersTotal; ?></strong>
+              </div>
+              <div class="users-kpi">
+                <span>Verificados</span>
+                <strong><?= $usersVerified; ?></strong>
+              </div>
+              <div class="users-kpi">
+                <span>Pendientes</span>
+                <strong><?= $usersPendingCount; ?></strong>
+              </div>
+              <div class="users-kpi">
+                <span>Admins</span>
+                <strong><?= $usersAdminCount; ?></strong>
+              </div>
+            </div>
+          </div>
         </article>
-        <article class="card">
-          <h2>Guia rapida de administracion</h2>
-          <div class="rbac">
-            <div class="item"><b>Solicitudes</b><span>Revisa peticiones de acceso desde index y valida legitimidad.</span></div>
-            <div class="item"><b>Alta de cuenta</b><span>Crea usuario con email, password y permisos de trabajo.</span></div>
-            <div class="item"><b>Mantenimiento</b><span>Actualiza estado, credenciales y email cuando sea necesario.</span></div>
-            <div class="item"><b>Auditoria</b><span>Corrobora actividad en paneles de datos, reportes y trazabilidad.</span></div>
+        <article class="card users-card">
+          <div class="card-body">
+            <h2>Nuevo usuario</h2>
+            <p class="mut">Solo administradores pueden crear cuentas y definir el rol operativo.</p>
+            <form method="post" class="users-form-grid">
+              <input type="hidden" name="action" value="user_create">
+              <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
+              <input type="text" name="new_username" maxlength="80" required placeholder="username">
+              <input type="email" name="new_email" maxlength="190" required placeholder="email">
+              <input type="password" name="new_password" minlength="10" required placeholder="password mÃ­nimo 10 chars">
+              <select name="new_role">
+                <option value="analyst_jr">Analista Jr</option>
+                <option value="analyst_mid">Analista Mid</option>
+                <option value="analyst_sr">Analista Sr</option>
+                <option value="admin">Administrador</option>
+              </select>
+              <select name="new_verified">
+                <option value="1">Verificado</option>
+                <option value="0">Pendiente</option>
+              </select>
+              <select name="new_lang">
+                <option value="en" selected>Idioma EN</option>
+                <option value="es">Idioma ES</option>
+                <option value="ca">Idioma CA</option>
+                <option value="de">Idioma DE</option>
+                <option value="fr">Idioma FR</option>
+              </select>
+              <button class="btn btn-primary btn-sm" type="submit">Crear usuario</button>
+            </form>
+          </div>
+        </article>
+        <article class="card users-card">
+          <div class="card-body">
+            <h2>GuÃ­a rÃ¡pida de administraciÃ³n</h2>
+            <div class="rbac">
+              <div class="item"><b>Solicitudes</b><span>Revisa peticiones de acceso desde index y valida legitimidad.</span></div>
+              <div class="item"><b>Alta de cuenta</b><span>Crea usuario con email, password y permisos de trabajo.</span></div>
+              <div class="item"><b>Mantenimiento</b><span>Actualiza estado, credenciales y email cuando sea necesario.</span></div>
+              <div class="item"><b>AuditorÃ­a</b><span>Corrobora actividad en paneles de datos, reportes y trazabilidad.</span></div>
+            </div>
           </div>
         </article>
       </section>
-      <section class="card">
-        <h2>Usuarios</h2>
-        <table>
+      <section class="card users-card">
+        <div class="card-body">
+        <div class="users-table-head">
+          <div>
+            <h2>Usuarios</h2>
+            <p class="mut">Gestiona roles, verificaciÃ³n, idioma y reputaciÃ³n desde un solo panel.</p>
+          </div>
+          <div class="users-table-actions">
+            <input class="form-control" id="admin-users-search" type="text" placeholder="Buscar usuario, email, rol...">
+          </div>
+        </div>
+        <div class="analytics-table-wrap users-table-wrap">
+        <table class="table table-striped settings-table users-table">
           <thead>
             <tr>
               <th>ID</th>
@@ -11935,9 +11738,9 @@ ob_start();
               <th>Actualizar</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="admin-users-body">
             <?php foreach ($users as $u): ?>
-              <tr>
+              <tr data-user-row="1">
                 <td class="mono"><?= (int) ($u['id'] ?? 0); ?></td>
                 <td class="mono"><a class="user-link" href="<?= clickfix_h(cfprofileurl((int) ($u['id'] ?? 0), [], false)); ?>"><?= clickfix_h((string) ($u['username'] ?? '')); ?></a></td>
                 <td class="mono"><?= clickfix_h((string) ($u['email'] ?? '')); ?></td>
@@ -11947,7 +11750,7 @@ ob_start();
                 <td><?= !empty($u['verified']) ? 'verificado' : 'pendiente'; ?></td>
                 <td class="mono"><?= clickfix_h((string) ($u['created_at'] ?? '')); ?></td>
                 <td>
-                  <form method="post" class="mono">
+                  <form method="post" class="mono user-inline-form">
                     <input type="hidden" name="action" value="user_update">
                     <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                     <input type="hidden" name="edit_user_id" value="<?= (int) ($u['id'] ?? 0); ?>">
@@ -11972,19 +11775,22 @@ ob_start();
                     <input type="number" name="edit_reputation" value="<?= (int) ($u['reputation'] ?? 0); ?>" min="-1000" max="100000" placeholder="REP">
                     <input type="email" name="edit_email" maxlength="190" value="<?= clickfix_h((string) ($u['email'] ?? '')); ?>" placeholder="email">
                     <input type="password" name="edit_password" minlength="10" placeholder="nuevo password (opcional)">
-                    <button class="btn" type="submit">Guardar</button>
+                    <button class="btn btn-primary btn-sm" type="submit">Guardar</button>
                   </form>
                 </td>
               </tr>
             <?php endforeach; ?>
+            <tr id="admin-users-empty" hidden><td colspan="9" class="mut">Sin coincidencias para el filtro.</td></tr>
           </tbody>
         </table>
+        </div>
+        </div>
       </section>
       <section class="card">
         <h2>Solicitudes de acceso desde index.php (Trabaja con nosotros)</h2>
-        <p class="mut">Estas solicitudes no crean usuarios automaticamente. Solo Admin crea cuenta y rol desde el panel superior.</p>
-        <table>
-          <thead><tr><th>Email</th><th>LinkedIn</th><th>Web</th><th>Veces</th><th>Primera</th><th>Ultima</th><th>Idioma</th><th>IP</th></tr></thead>
+        <p class="mut">Estas solicitudes no crean usuarios automÃ¡ticamente. Solo Admin crea cuenta y rol desde el panel superior.</p>
+        <table class="table table-striped settings-table">
+          <thead><tr><th>Email</th><th>LinkedIn</th><th>Web</th><th>Veces</th><th>Primera</th><th>Ãšltima</th><th>Idioma</th><th>IP</th></tr></thead>
           <tbody>
             <?php foreach ($requests as $rq): ?>
               <tr>
@@ -12003,14 +11809,39 @@ ob_start();
       </section>
     <?php endif; ?>
       </main>
+    </div>
+    <div class="dashboard-side-col">
       <aside class="side-column">
-        <section class="card side-card">
-          <h3>Radar rapido</h3>
-          <div class="side-metrics">
-            <div class="side-metric"><span>alertas 24h</span><b data-live-metric="alerts_24h"><?= (int) ($metrics['alerts_24h'] ?? 0); ?></b></div>
-            <div class="side-metric"><span>bloqueos 24h</span><b data-live-metric="blocks_24h"><?= (int) ($metrics['blocks_24h'] ?? 0); ?></b></div>
-            <div class="side-metric"><span>dominios unicos</span><b data-live-metric="unique_hosts"><?= (int) ($metrics['unique_hosts'] ?? 0); ?></b></div>
-            <div class="side-metric"><span>pend. revision</span><b data-live-metric="pending_review_total"><?= (int) ($metrics['pending_review_total'] ?? 0); ?></b></div>
+        <?php if ($page === 'ops'): ?>
+        <div class="side-card-grid side-card-grid--ops">
+        <?php endif; ?>
+        <section class="card side-card side-card--geo">
+          <div class="side-card-head side-card-head--geo">
+            <div>
+              <h3>Top pa&iacute;ses</h3>
+              <p class="mut side-card-subtitle">Mapa mundial de afectaci&oacute;n por volumen de eventos.</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <h4 class="card-title">Radar rÃ¡pido</h4>
+            <div class="row">
+              <div class="col-6 mb-3">
+                <p class="text-muted mb-1">alertas 24h</p>
+                <h5 class="mb-0" data-live-metric="alerts_24h"><?= (int) ($metrics['alerts_24h'] ?? 0); ?></h5>
+              </div>
+              <div class="col-6 mb-3">
+                <p class="text-muted mb-1">bloqueos 24h</p>
+                <h5 class="mb-0" data-live-metric="blocks_24h"><?= (int) ($metrics['blocks_24h'] ?? 0); ?></h5>
+              </div>
+              <div class="col-6">
+                <p class="text-muted mb-1">dominios Ãºnicos</p>
+                <h5 class="mb-0" data-live-metric="unique_hosts"><?= (int) ($metrics['unique_hosts'] ?? 0); ?></h5>
+              </div>
+              <div class="col-6">
+                <p class="text-muted mb-1">pend. revisiÃ³n</p>
+                <h5 class="mb-0" data-live-metric="pending_review_total"><?= (int) ($metrics['pending_review_total'] ?? 0); ?></h5>
+              </div>
+            </div>
           </div>
         </section>
         <?php if ($showAnnouncementAside): ?>
@@ -12074,64 +11905,129 @@ ob_start();
           </details>
         </section>
         <?php endif; ?>
-        <section class="card side-card">
-          <h3>Top paises</h3>
-          <ul class="mini-list">
+        <section class="card side-card side-card--geo">
+          <div class="side-card-head side-card-head--geo">
+            <div>
+              <h3>Top pa&iacute;ses</h3>
+              <p class="mut side-card-subtitle">Mapa mundial de afectaci&oacute;n por volumen de eventos.</p>
+            </div>
+          </div>
+          <div class="side-geo-layout">
+          <div class="geo-mini-wrap">
             <?php
-              $sideCountries = [];
+              $sideCountriesAll = [];
               if (is_array($metrics['countries'] ?? null)) {
                   foreach ((array) $metrics['countries'] as $countryKey => $countryValue) {
                       if (is_array($countryValue)) {
                           $name = (string) ($countryValue['country'] ?? $countryValue['code'] ?? $countryKey);
+                          $code = (string) ($countryValue['code'] ?? '');
                           $hits = (int) ($countryValue['hits'] ?? $countryValue['count'] ?? 0);
                       } else {
                           $name = (string) $countryKey;
+                          $code = '';
                           $hits = (int) $countryValue;
                       }
+                      if ($code === '' && preg_match('/^[A-Z]{2}$/', strtoupper($name))) {
+                          $code = strtoupper($name);
+                      }
                       if ($name !== '') {
-                          $sideCountries[] = ['name' => strtoupper($name), 'hits' => $hits];
+                          $sideCountriesAll[] = ['name' => strtoupper($name), 'code' => strtoupper($code), 'hits' => $hits];
                       }
                   }
               }
-              usort($sideCountries, static function (array $a, array $b): int {
+              usort($sideCountriesAll, static function (array $a, array $b): int {
                   return $b['hits'] <=> $a['hits'];
               });
-              $sideCountries = array_slice($sideCountries, 0, 6);
+              $sideCountries = array_slice($sideCountriesAll, 0, 6);
+              $sideMaxHits = 0;
+              foreach ($sideCountriesAll as $countryRow) {
+                  if ((int) $countryRow['hits'] > $sideMaxHits) {
+                      $sideMaxHits = (int) $countryRow['hits'];
+                  }
+              }
+              $sideTopCode = '';
+              $sideTopName = '';
+              if (!empty($sideCountries)) {
+                  $sideTopCode = (string) ($sideCountries[0]['code'] ?? '');
+                  $sideTopName = (string) ($sideCountries[0]['name'] ?? '');
+              }
+              $sideCountryHits = [];
+              foreach ($sideCountriesAll as $countryRow) {
+                  $code = (string) ($countryRow['code'] ?? '');
+                  if ($code !== '') {
+                      $sideCountryHits[$code] = (int) ($countryRow['hits'] ?? 0);
+                  }
+              }
             ?>
-            <?php if (empty($sideCountries)): ?>
-              <li><span class="mut">Sin datos recientes</span><span class="mono">-</span></li>
+            <div class="geo-map-meta">
+              <div class="geo-map-stat">
+                <span class="label">Pa&iacute;s m&aacute;s afectado</span>
+                <b><?= $sideTopCode !== '' ? clickfix_h($sideTopCode) : '-'; ?><?= $sideTopName !== '' ? ' - ' . clickfix_h($sideTopName) : ''; ?></b>
+              </div>
+              <div class="geo-map-stat">
+                <span class="label">Pa&iacute;ses afectados</span>
+                <b><?= count($sideCountryHits); ?></b>
+              </div>
+            </div>
+            <div id="sidebar-geo-map" class="geo-mini-map"
+                 data-top-country="<?= clickfix_h($sideTopCode); ?>"
+                 data-countries='<?= clickfix_h(json_encode($sideCountryHits, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)); ?>'
+                 data-max="<?= (int) $sideMaxHits; ?>"></div>
+            <div class="geo-mini-scale" aria-hidden="true">
+              <span>Baja</span>
+              <i></i>
+              <span>Alta</span>
+            </div>
+            <div class="geo-mini-legend">
+              <span class="mut">Intensidad por volumen de eventos detectados.</span>
+            </div>
+          </div>
+          <div class="side-country-ranking">
+            <ul class="mini-list mini-list--countries">
+              <?php if (empty($sideCountries)): ?>
+                <li><span class="mut">Sin datos recientes</span><span class="mono">-</span></li>
+              <?php else: ?>
+                <?php foreach ($sideCountries as $countryRow): ?>
+                  <?php
+                    $countryCode = strtolower((string) ($countryRow['code'] ?? ''));
+                    $barWidth = $sideMaxHits > 0 ? (int) round(($countryRow['hits'] / $sideMaxHits) * 100) : 0;
+                  ?>
+                  <li class="country-row">
+                    <span class="country-label">
+                      <?php if ($countryCode !== ''): ?>
+                        <span class="flag-icon flag-icon-<?= clickfix_h($countryCode); ?> country-flag" title="<?= clickfix_h((string) $countryRow['name']); ?>"></span>
+                      <?php endif; ?>
+                      <span class="mono"><?= clickfix_h((string) $countryRow['name']); ?></span>
+                    </span>
+                    <span class="mono"><?= (int) $countryRow['hits']; ?></span>
+                    <div class="country-bar"><span style="width:<?= $barWidth; ?>%"></span></div>
+                  </li>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </ul>
+          </div>
+          </div>
+        </section>
+        <?php if ($page === 'ops'): ?>
+        </div>
+        <?php endif; ?>
+        <section class="card side-card">
+          <h3>Estado de sesi&oacute;n</h3>
+          <ul class="mini-list">
+            <li><span>Modo</span><span class="mono"><?= $loggedIn ? 'Autenticado' : 'P&uacute;blico'; ?></span></li>
+            <li><span>Rol</span><span class="mono"><?= clickfix_h($viewerRoleLabel); ?></span></li>
+            <li><span>Idioma</span><span class="mono"><?= clickfix_h(strtoupper($lang)); ?></span></li>
+            <?php if ($loggedIn && $sessionExpiresAt > 0): ?>
+              <li><span>Sesi&oacute;n</span><span class="mono"><?= clickfix_h(gmdate('H:i', $sessionExpiresAt)); ?> UTC</span></li>
             <?php else: ?>
-              <?php foreach ($sideCountries as $countryRow): ?>
-                <li><span class="mono"><?= clickfix_h((string) $countryRow['name']); ?></span><span class="mono"><?= (int) $countryRow['hits']; ?></span></li>
-              <?php endforeach; ?>
+              <li><span>Sesi&oacute;n</span><span class="mono">-</span></li>
             <?php endif; ?>
           </ul>
-        </section>
-        <section class="card side-card">
-          <h3>Atajos</h3>
-          <div class="mini-links">
-            <a href="<?= clickfix_h(cfurl('home', !$loggedIn)); ?>"><?= clickfix_h(cft('nav_home')); ?></a>
-            <a href="<?= clickfix_h(cfurl('search', true)); ?>"><?= clickfix_h(cft('nav_search')); ?></a>
-            <a href="<?= clickfix_h(cfurl('coverage', true)); ?>"><?= clickfix_h(cft('nav_coverage')); ?></a>
-            <?php if ($loggedIn): ?>
-              <a href="<?= clickfix_h(cfprofileurl((int) ($user['id'] ?? 0), [], false)); ?>"><?= clickfix_h(cft('nav_profile')); ?></a>
-              <a href="<?= clickfix_h(cfurl('settings')); ?>"><?= clickfix_h(cft('nav_settings')); ?></a>
-              <a href="<?= clickfix_h(cfurl('ops')); ?>"><?= clickfix_h(cft('nav_ops')); ?></a>
-              <a href="<?= clickfix_h(cfurl('analytics')); ?>"><?= clickfix_h(cft('nav_graphs')); ?></a>
-              <a href="<?= clickfix_h(cfurl('intel')); ?>"><?= clickfix_h(cft('nav_investigation')); ?></a>
-              <a href="<?= clickfix_h(cfurl('community')); ?>"><?= clickfix_h(cft('nav_community')); ?></a>
-              <?php if (cfcan($user, 'analyst_sr')): ?>
-                <a href="<?= clickfix_h(cfurl('extensions')); ?>"><?= clickfix_h(cft('nav_extensions')); ?></a>
-                <a href="<?= clickfix_h(cfurl('lists')); ?>"><?= clickfix_h(cft('nav_lists')); ?></a>
-              <?php endif; ?>
-              <?php if (cfcan($user, 'admin')): ?>
-                <a href="<?= clickfix_h(cfurl('users')); ?>"><?= clickfix_h(cft('nav_users')); ?></a>
-                <a href="<?= clickfix_h(cfurl('reports')); ?>"><?= clickfix_h(cft('nav_reports')); ?></a>
-              <?php endif; ?>
-            <?php else: ?>
+          <?php if (!$loggedIn): ?>
+            <div class="mini-links" style="margin-top:8px">
               <a href="<?= clickfix_h(cfurl('access', true)); ?>"><?= clickfix_h(cft('nav_access')); ?></a>
-            <?php endif; ?>
-          </div>
+            </div>
+          <?php endif; ?>
         </section>
         <?php if ($loggedIn && cfcan($user, 'admin')): ?>
           <section class="card side-card">
@@ -12143,7 +12039,7 @@ ob_start();
                   }
               }
             ?>
-            <h3>Reportes automaticos</h3>
+            <h3>Reportes automÃ¡ticos</h3>
             <ul class="mini-list">
               <li><span>programaciones</span><span class="mono"><?= count($reportSchedules); ?></span></li>
               <li><span>activas</span><span class="mono"><?= (int) $enabledSchedules; ?></span></li>
@@ -12214,14 +12110,18 @@ ob_start();
       </aside>
     </div>
   </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div id="session-timeout-modal" class="session-timeout-modal" hidden>
     <div class="session-timeout-card">
-      <h3>Sesion a punto de expirar</h3>
-      <p class="mut">Tu sesion expira en <span id="session-timeout-countdown">00:00</span>. Puedes extender <?= (int) $sessionExtendMinutes; ?> minutos o cerrar ahora.</p>
+      <h3>SesiÃ³n a punto de expirar</h3>
+      <p class="mut">Tu Sesin expira en <span id="session-timeout-countdown">00:00</span>. Puedes extender <?= (int) $sessionExtendMinutes; ?> minutos o cerrar ahora.</p>
       <div class="split" style="margin-top:10px">
         <button class="btn" type="button" id="session-extend-btn">Seguir <?= (int) $sessionExtendMinutes; ?> min</button>
-        <button class="btn secondary" type="button" id="session-logout-btn">Cerrar sesion</button>
+        <button class="btn secondary" type="button" id="session-logout-btn">Cerrar SesiÃ³n</button>
       </div>
     </div>
   </div>
@@ -12232,3803 +12132,703 @@ ob_start();
       (adsbygoogle = window.adsbygoogle || []).push({});
     </script>
   <?php endif; ?>
-  <?php if ($enableHomeGeoPanels): ?>
+  <?php if ($enableHomeGeoPanels || $enableSidebarGeoMap): ?>
     <script src="<?= clickfix_h($leafletJsUrl); ?>"></script>
   <?php endif; ?>
 
+  <script src="<?= clickfix_h($templateBaseUrl); ?>/vendors/js/vendor.bundle.base.js"></script>
+  <script src="<?= clickfix_h($templateBaseUrl); ?>/js/off-canvas.js"></script>
+  <script src="<?= clickfix_h($templateBaseUrl); ?>/js/misc.js"></script>
+  <script src="<?= clickfix_h($templateBaseUrl); ?>/js/settings.js"></script>
+  <script src="<?= clickfix_h($templateBaseUrl); ?>/js/todolist.js"></script>
+  <?php require __DIR__ . '/partials/dashboard_scripts.php'; ?>
+  <script id="cf-event-workbench-data" type="application/json"><?= $eventWorkbenchJson; ?></script>
   <script>
-    const appHeader = document.getElementById('app-header');
-    const navToggle = document.getElementById('nav-toggle');
-    const headerNavRow = document.getElementById('app-header-navrow');
-
-    function syncStickyHeaderOffset() {
-      if (!appHeader) {
+    (function () {
+      const dataNode = document.getElementById('cf-event-workbench-data');
+      const feed = document.getElementById('event-feed');
+      const empty = document.getElementById('event-empty');
+      const detail = document.getElementById('event-detail');
+      const title = document.getElementById('event-title');
+      const severityFilter = document.getElementById('ops-severity-filter');
+      if (!dataNode || !feed || !empty || !detail || !title) {
         return;
       }
-      const rect = appHeader.getBoundingClientRect();
-      const computed = window.getComputedStyle(appHeader);
-      const marginBottom = parseFloat(computed.marginBottom || '0') || 0;
-      const offset = Math.ceil(rect.height + marginBottom + 20);
-      document.documentElement.style.setProperty('--sticky-header-offset', `${offset}px`);
-    }
 
-    syncStickyHeaderOffset();
-    window.addEventListener('resize', syncStickyHeaderOffset);
-    window.addEventListener('load', syncStickyHeaderOffset);
-
-    function syncMobileHeaderState(forceOpen = null) {
-      if (!appHeader || !navToggle || !headerNavRow) {
-        return;
-      }
-      if (window.innerWidth > 920) {
-        appHeader.classList.remove('is-nav-open');
-        document.body.classList.remove('nav-open-mobile');
-        navToggle.setAttribute('aria-expanded', 'false');
-        syncStickyHeaderOffset();
-        return;
-      }
-      const nextOpen = typeof forceOpen === 'boolean'
-        ? forceOpen
-        : !appHeader.classList.contains('is-nav-open');
-      appHeader.classList.toggle('is-nav-open', nextOpen);
-      document.body.classList.toggle('nav-open-mobile', nextOpen);
-      navToggle.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
-      syncStickyHeaderOffset();
-    }
-
-    if (navToggle) {
-      navToggle.addEventListener('click', () => {
-        syncMobileHeaderState();
-      });
-    }
-    if (headerNavRow) {
-      headerNavRow.querySelectorAll('a, button').forEach((node) => {
-        node.addEventListener('click', () => {
-          if (window.innerWidth <= 920) {
-            syncMobileHeaderState(false);
-          }
-        });
-      });
-    }
-    window.addEventListener('resize', () => {
-      if (window.innerWidth > 920) {
-        syncMobileHeaderState(false);
-      } else {
-        syncStickyHeaderOffset();
-      }
-    });
-    document.addEventListener('click', (event) => {
-      if (window.innerWidth > 920 || !appHeader || !appHeader.classList.contains('is-nav-open')) {
-        return;
-      }
-      const target = event.target;
-      if (target instanceof Node && !appHeader.contains(target)) {
-        syncMobileHeaderState(false);
-      }
-    });
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && window.innerWidth <= 920) {
-        syncMobileHeaderState(false);
-      }
-    });
-
-    const selectedInvestigation = <?= $selectedInvestigationJson; ?>;
-    const sharedInvestigation = <?= $sharedGraphJson; ?>;
-    const eventWorkbenchData = <?= $eventWorkbenchJson; ?>;
-    const intelApiLookupMapRows = <?= $intelApiLookupMapRowsJson; ?>;
-    const intelApiCommonKeywords = <?= $intelApiCommonKeywordsJson; ?>;
-    const eventFeed = document.getElementById('event-feed');
-    const eventItems = eventFeed ? Array.from(eventFeed.querySelectorAll('.event-feed-item')) : [];
-    const eventEmpty = document.getElementById('event-empty');
-    const eventDetail = document.getElementById('event-detail');
-    const eventTitle = document.getElementById('event-title');
-    const eventBadges = document.getElementById('event-badges');
-    const eventTime = document.getElementById('event-time');
-    const eventCountry = document.getElementById('event-country');
-    const eventUrl = document.getElementById('event-url');
-    const eventPrevUrl = document.getElementById('event-prev-url');
-    const eventIp = document.getElementById('event-ip');
-    const eventExtension = document.getElementById('event-extension');
-    const eventDomainHistory = document.getElementById('event-domain-history');
-    const eventIpHistory = document.getElementById('event-ip-history');
-    const eventIoc = document.getElementById('event-ioc');
-    const eventIocHash = document.getElementById('event-ioc-hash');
-    const eventIocName = document.getElementById('event-ioc-name');
-    const eventIocPath = document.getElementById('event-ioc-path');
-    const eventIocSite = document.getElementById('event-ioc-site');
-    const eventIocDate = document.getElementById('event-ioc-date');
-    const eventReasons = document.getElementById('event-reasons');
-    const eventSnippets = document.getElementById('event-snippets');
-    const eventContextTitle = document.getElementById('event-context-title');
-    const eventContext = document.getElementById('event-context');
-    const eventRaw = document.getElementById('event-raw');
-    const eventSignals = document.getElementById('event-signals');
-    const eventScoreDetails = document.getElementById('event-score-details');
-    const eventRelatedLoad = document.getElementById('event-related-load');
-    const eventRelatedStatus = document.getElementById('event-related-status');
-    const eventRelatedWrap = document.getElementById('event-related-wrap');
-    const eventRelatedBody = document.getElementById('event-related-body');
-    const eventMitreGrid = document.getElementById('event-mitre-grid');
-    const eventMitreEmpty = document.getElementById('event-mitre-empty');
-    const canViewExactEventContext = <?= $canViewExactEventContext ? 'true' : 'false'; ?>;
-    const eventReviewForm = document.getElementById('event-review-form');
-    const eventReviewId = document.getElementById('event-review-id');
-    const eventReviewStatus = document.getElementById('event-review-status');
-    const eventQuickForms = Array.from(document.querySelectorAll('.event-quick-form'));
-    const focusReportId = <?= $focusReportId; ?>;
-    const msgScope = document.getElementById('msg-scope');
-    const msgClientIds = document.getElementById('msg-client-ids');
-    const msgUserIds = document.getElementById('msg-user-ids');
-    const sessionExpiresAt = <?= (int) $sessionExpiresAt; ?>;
-    const sessionWarningMinutes = <?= (int) $sessionWarningMinutes; ?>;
-    const sessionExtendMinutes = <?= (int) $sessionExtendMinutes; ?>;
-    const csrfToken = <?= json_encode($csrf, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-    const homeLeafletCssUrl = <?= json_encode($leafletCssUrl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-    const homeLeafletJsUrl = <?= json_encode($leafletJsUrl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-    const homeLeafletWorldGeoJsonUrl = <?= json_encode($leafletWorldGeoJsonUrl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-    let leafletEnsurePromise = null;
-    let localWorldGeoPromise = null;
-
-    const displayPanel = document.getElementById('display-settings-panel');
-    const displayToggleBtn = document.getElementById('display-settings-toggle');
-    const displayCloseBtn = document.getElementById('display-settings-close');
-    const displayStorageKey = 'cf_display_settings_v1';
-    const displayDefaults = {
-      dark: true,
-      contrast: false,
-      compact: false,
-      reducedMotion: false,
-      decorations: true,
-      accent: 'blue',
-      font: 'sora'
-    };
-    function applyDisplaySettings(settings) {
-      const body = document.body;
-      if (!body) return;
-      body.classList.toggle('ui-light', !settings.dark);
-      body.classList.toggle('ui-contrast', !!settings.contrast);
-      body.classList.toggle('ui-compact', !!settings.compact);
-      body.classList.toggle('ui-reduced-motion', !!settings.reducedMotion);
-      body.classList.toggle('ui-no-decor', !settings.decorations);
-      ['blue','green','purple','amber','red','cyan'].forEach((key) => body.classList.remove(`ui-accent-${key}`));
-      if (settings.accent) body.classList.add(`ui-accent-${settings.accent}`);
-      ['public','dm','nunito','sora'].forEach((key) => body.classList.remove(`ui-font-${key}`));
-      if (settings.font) body.classList.add(`ui-font-${settings.font}`);
-    }
-    function loadDisplaySettings() {
+      let rows = [];
       try {
-        const raw = localStorage.getItem(displayStorageKey);
-        if (!raw) return { ...displayDefaults };
-        const parsed = JSON.parse(raw);
-        return { ...displayDefaults, ...(parsed || {}) };
+        rows = JSON.parse(dataNode.textContent || '[]');
       } catch (error) {
-        return { ...displayDefaults };
+        rows = [];
       }
-    }
-    function saveDisplaySettings(settings) {
-      try {
-        localStorage.setItem(displayStorageKey, JSON.stringify(settings));
-      } catch (error) {
-        // ignore
+      if (!Array.isArray(rows) || !rows.length) {
+        return;
       }
-    }
-    function syncDisplayInputs(settings) {
-      document.querySelectorAll('[data-setting]').forEach((input) => {
-        const key = String(input.getAttribute('data-setting') || '');
+
+      const byId = (id) => document.getElementById(id);
+      const severityBucketForScore = (score) => {
+        const numeric = Number(score || 0);
+        if (numeric >= 70) return 'high';
+        if (numeric >= 40) return 'medium';
+        return 'low';
+      };
+      const getEventGroupKey = (event) => {
+        if (!event || typeof event !== 'object') return '';
+        const hostname = String(event.hostname || '').trim().toLowerCase();
+        const reasons = Array.isArray(event.reason_list) ? event.reason_list.filter(Boolean) : [];
+        const firstReason = String(reasons[0] || event.message || '').trim().toLowerCase();
+        return `${hostname}|${firstReason}`;
+      };
+      const eventGroups = new Map();
+      rows.forEach((row, index) => {
+        const key = getEventGroupKey(row);
         if (!key) return;
-        input.checked = !!settings[key];
-      });
-    }
-    window.addEventListener('DOMContentLoaded', () => {
-      let current = loadDisplaySettings();
-      applyDisplaySettings(current);
-      syncDisplayInputs(current);
-      if (displayToggleBtn && displayPanel) {
-        displayToggleBtn.addEventListener('click', () => {
-          displayPanel.classList.toggle('open');
-          displayPanel.setAttribute('aria-hidden', displayPanel.classList.contains('open') ? 'false' : 'true');
-        });
-      }
-      if (displayCloseBtn && displayPanel) {
-        displayCloseBtn.addEventListener('click', () => {
-          displayPanel.classList.remove('open');
-          displayPanel.setAttribute('aria-hidden', 'true');
-        });
-      }
-      document.addEventListener('click', (ev) => {
-        if (!displayPanel || !displayPanel.classList.contains('open')) return;
-        const target = ev.target;
-        if (!(target instanceof HTMLElement)) return;
-        if (displayPanel.contains(target) || (displayToggleBtn && displayToggleBtn.contains(target))) return;
-        displayPanel.classList.remove('open');
-        displayPanel.setAttribute('aria-hidden', 'true');
-      });
-      document.querySelectorAll('[data-setting]').forEach((input) => {
-        input.addEventListener('change', () => {
-          const key = String(input.getAttribute('data-setting') || '');
-          if (!key) return;
-          current = { ...current, [key]: !!input.checked };
-          applyDisplaySettings(current);
-          saveDisplaySettings(current);
-        });
-      });
-      document.querySelectorAll('[data-accent]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const accent = String(btn.getAttribute('data-accent') || '');
-          if (!accent) return;
-          current = { ...current, accent };
-          applyDisplaySettings(current);
-          saveDisplaySettings(current);
-        });
-      });
-      document.querySelectorAll('[data-font]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const font = String(btn.getAttribute('data-font') || '');
-          if (!font) return;
-          current = { ...current, font };
-          applyDisplaySettings(current);
-          saveDisplaySettings(current);
-        });
-      });
-    });
-
-    const MITRE_TACTIC_ORDER = [
-      'Initial Access',
-      'Execution',
-      'Persistence',
-      'Privilege Escalation',
-      'Defense Evasion',
-      'Credential Access',
-      'Discovery',
-      'Lateral Movement',
-      'Collection',
-      'Command and Control',
-      'Exfiltration',
-      'Impact',
-    ];
-
-    const MITRE_LIBRARY = [
-      { id: 'T1059.003', name: 'Windows Command Shell', tactic: 'Execution', patterns: [/\bcmd(?:\.exe)?\b/i, /\/c\s+[^\n]+/i, /\bcommand prompt\b/i] },
-      { id: 'T1059.001', name: 'PowerShell', tactic: 'Execution', patterns: [/\bpowershell(?:\.exe)?\b/i, /\bpwsh\b/i, /\bIEX\b/i, /\binvoke-expression\b/i] },
-      { id: 'T1059.005', name: 'Visual Basic', tactic: 'Execution', patterns: [/\bwscript\b/i, /\bcscript\b/i, /\.vbs\b/i, /\bvbscript\b/i] },
-      { id: 'T1218.005', name: 'Mshta', tactic: 'Defense Evasion', patterns: [/\bmshta\b/i, /\.hta\b/i] },
-      { id: 'T1218.011', name: 'Rundll32', tactic: 'Defense Evasion', patterns: [/\brundll32(?:\.exe)?\b/i] },
-      { id: 'T1218.010', name: 'Regsvr32', tactic: 'Defense Evasion', patterns: [/\bregsvr32(?:\.exe)?\b/i] },
-      { id: 'T1047', name: 'Windows Management Instrumentation', tactic: 'Execution', patterns: [/\bwmic\b/i, /\bwmiprvse\b/i, /win32_process/i] },
-      { id: 'T1053.005', name: 'Scheduled Task', tactic: 'Persistence', patterns: [/\bschtasks\b/i, /\/create\s+\/tn/i] },
-      { id: 'T1105', name: 'Ingress Tool Transfer', tactic: 'Command and Control', patterns: [/\bcurl\b/i, /\bwget\b/i, /\bInvoke-WebRequest\b/i, /\bcertutil\b/i, /\bbitsadmin\b/i] },
-      { id: 'T1071.001', name: 'Web Protocols', tactic: 'Command and Control', patterns: [/https?:\/\//i, /\bwinhttp\b/i] },
-      { id: 'T1027', name: 'Obfuscated/Encoded File or Information', tactic: 'Defense Evasion', patterns: [/\bbase64\b/i, /\bencoded\b/i, /\b-enc\b/i, /frombase64string/i] },
-      { id: 'T1021.002', name: 'SMB/Windows Admin Shares', tactic: 'Lateral Movement', patterns: [/\bnet\s+use\b/i, /\\\\[a-z0-9\.\-]+\\[a-z0-9$]+/i] },
-      { id: 'T1218.007', name: 'Msiexec', tactic: 'Defense Evasion', patterns: [/\bmsiexec\b/i, /\/i\s+https?:\/\//i] },
-      { id: 'T1204.002', name: 'User Execution: Malicious File', tactic: 'Execution', patterns: [/\.exe\b/i, /\.scr\b/i, /\.msi\b/i, /\.bat\b/i] },
-    ];
-
-    function extractMitreMatches(sourceText) {
-      const text = String(sourceText || '');
-      if (!text) return [];
-      const matches = new Map();
-      for (const entry of MITRE_LIBRARY) {
-        if (!entry || !Array.isArray(entry.patterns)) continue;
-        if (entry.patterns.some((pattern) => pattern.test(text))) {
-          matches.set(entry.id, entry);
+        if (!eventGroups.has(key)) {
+          eventGroups.set(key, []);
         }
-      }
-      return Array.from(matches.values());
-    }
-
-    function groupMitreByTactic(matches) {
-      const grouped = {};
-      (matches || []).forEach((entry) => {
-        const tactic = String(entry.tactic || 'Other');
-        if (!grouped[tactic]) grouped[tactic] = [];
-        grouped[tactic].push(entry);
+        eventGroups.get(key).push(index);
       });
-      return grouped;
-    }
-
-    function renderMitreBlueprint(container, emptyNode, matches) {
-      if (!container) return;
-      const list = Array.isArray(matches) ? matches : [];
-      container.innerHTML = '';
-      if (!list.length) {
-        if (emptyNode) emptyNode.hidden = false;
-        return;
-      }
-      if (emptyNode) emptyNode.hidden = true;
-      const grouped = groupMitreByTactic(list);
-      const tactics = [...MITRE_TACTIC_ORDER, ...Object.keys(grouped).filter((t) => !MITRE_TACTIC_ORDER.includes(t))];
-      tactics.forEach((tactic) => {
-        const entries = grouped[tactic];
-        if (!entries || !entries.length) return;
-        const card = document.createElement('div');
-        card.className = 'mitre-tactic';
-        const title = document.createElement('div');
-        title.className = 'mitre-tactic-title';
-        title.textContent = tactic;
-        const listWrap = document.createElement('div');
-        listWrap.className = 'mitre-tech-list';
-        entries.forEach((entry) => {
-          const chip = document.createElement('div');
-          chip.className = 'mitre-tech';
-          const id = document.createElement('b');
-          id.textContent = entry.id;
-          const name = document.createElement('span');
-          name.textContent = entry.name;
-          chip.appendChild(id);
-          chip.appendChild(name);
-          listWrap.appendChild(chip);
-        });
-        card.appendChild(title);
-        card.appendChild(listWrap);
-        container.appendChild(card);
-      });
-    }
-
-    function decodeBase64Candidate(value) {
-      const raw = String(value || '').trim();
-      if (!raw || raw.length < 24) return '';
-      if (!/^[A-Za-z0-9+/=]+$/.test(raw)) return '';
-      try {
-        const decoded = atob(raw.replace(/\s+/g, ''));
-        const printable = decoded.replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '');
-        if (printable.length < Math.floor(decoded.length * 0.6)) {
-          return '';
-        }
-        return decoded;
-      } catch (error) {
-        return '';
-      }
-    }
-
-    function expandMitreSource(source) {
-      const base = String(source || '');
-      if (!base) return '';
-      const extras = [];
-      if (/%[0-9A-Fa-f]{2}/.test(base)) {
-        try {
-          const decoded = decodeURIComponent(base);
-          if (decoded && decoded !== base) extras.push(decoded);
-        } catch (error) {
-          // ignore decode errors
-        }
-      }
-      const base64Candidates = base.match(/[A-Za-z0-9+/=]{24,}/g) || [];
-      base64Candidates.slice(0, 6).forEach((candidate) => {
-        const decoded = decodeBase64Candidate(candidate);
-        if (decoded) extras.push(decoded);
-      });
-      const cleaned = base.replace(/[`^]/g, '');
-      if (cleaned !== base) extras.push(cleaned);
-      return [base, ...extras].filter(Boolean).join('\n');
-    }
-
-    function buildMitreSourceFromEvent(event) {
-      const parts = [
-        event?.message,
-        event?.detected_content,
-        event?.full_context,
-        event?.url,
-        event?.previous_url,
-        Array.isArray(event?.snippets) ? event.snippets.join('\n') : '',
-        Array.isArray(event?.signals) ? event.signals.join('\n') : '',
-      ];
-      const raw = parts.filter(Boolean).join('\n');
-      return expandMitreSource(raw);
-    }
-
-    function updateEventMitre(event) {
-      if (!eventMitreGrid) return;
-      const source = buildMitreSourceFromEvent(event);
-      const matches = extractMitreMatches(source);
-      renderMitreBlueprint(eventMitreGrid, eventMitreEmpty, matches);
-    }
-
-    function updateInvestigationMitre() {
-      const container = document.getElementById('investigation-mitre-grid');
-      const emptyNode = document.getElementById('investigation-mitre-empty');
-      const wrapper = document.getElementById('investigation-mitre');
-      if (!wrapper || !container) return;
-      const source = expandMitreSource(wrapper.getAttribute('data-mitre-source') || '');
-      const matches = extractMitreMatches(source);
-      renderMitreBlueprint(container, emptyNode, matches);
-    }
-
-    function updateSharedInvestigationMitre() {
-      const container = document.getElementById('shared-mitre-grid');
-      const emptyNode = document.getElementById('shared-mitre-empty');
-      const wrapper = document.getElementById('shared-mitre');
-      if (!wrapper || !container) return;
-      const source = expandMitreSource(wrapper.getAttribute('data-mitre-source') || '');
-      const matches = extractMitreMatches(source);
-      renderMitreBlueprint(container, emptyNode, matches);
-    }
-
-    function updateSourceAlertMitre() {
-      const container = document.getElementById('source-alert-mitre-grid');
-      const emptyNode = document.getElementById('source-alert-mitre-empty');
-      const wrapper = document.getElementById('source-alert-mitre');
-      if (!wrapper || !container) return;
-      const source = expandMitreSource(wrapper.getAttribute('data-mitre-source') || '');
-      const matches = extractMitreMatches(source);
-      renderMitreBlueprint(container, emptyNode, matches);
-    }
-
-    const syncMessagingScope = () => {
-      if (!msgScope) {
-        return;
-      }
-      const scope = String(msgScope.value || 'all');
-      if (msgClientIds) {
-        const enabled = scope === 'client';
-        msgClientIds.disabled = !enabled;
-        msgClientIds.required = enabled;
-        if (!enabled) {
-          msgClientIds.value = '';
-        }
-      }
-      if (msgUserIds) {
-        const enabled = scope === 'user';
-        msgUserIds.disabled = !enabled;
-        msgUserIds.required = enabled;
-        if (!enabled) {
-          Array.from(msgUserIds.options).forEach((option) => {
-            option.selected = false;
-          });
-        }
-      }
-    };
-    if (msgScope) {
-      msgScope.addEventListener('change', syncMessagingScope);
-      syncMessagingScope();
-    }
-
-    (function initSessionTimeoutModal() {
-      if (!sessionExpiresAt || sessionExpiresAt <= 0) {
-        return;
-      }
-      const modal = document.getElementById('session-timeout-modal');
-      const countdown = document.getElementById('session-timeout-countdown');
-      const extendBtn = document.getElementById('session-extend-btn');
-      const logoutBtn = document.getElementById('session-logout-btn');
-      if (!modal || !countdown || !extendBtn || !logoutBtn) {
-        return;
-      }
-      let expiresAt = Number(sessionExpiresAt || 0) * 1000;
-      let warningTimer = null;
-      let tickTimer = null;
-
-      const renderCountdown = () => {
-        const remainingMs = Math.max(0, expiresAt - Date.now());
-        const totalSeconds = Math.floor(remainingMs / 1000);
-        const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
-        const seconds = String(totalSeconds % 60).padStart(2, '0');
-        countdown.textContent = `${minutes}:${seconds}`;
-        if (remainingMs <= 0) {
-          window.location.href = 'dashboard.php?page=access&public=1';
-        }
+      let currentGroupIndices = [];
+      let currentReviewScope = 'single';
+      const setText = (id, value, fallback = '-') => {
+        const node = byId(id);
+        if (!node) return;
+        const next = String(value ?? '').trim();
+        node.textContent = next !== '' ? next : fallback;
       };
-
-      const showModal = () => {
-        modal.hidden = false;
-        renderCountdown();
-        if (tickTimer) window.clearInterval(tickTimer);
-        tickTimer = window.setInterval(renderCountdown, 1000);
-      };
-
-      const scheduleWarning = () => {
-        if (warningTimer) window.clearTimeout(warningTimer);
-        const warningAt = expiresAt - (sessionWarningMinutes * 60 * 1000);
-        const delay = Math.max(0, warningAt - Date.now());
-        warningTimer = window.setTimeout(showModal, delay);
-      };
-
-      extendBtn.addEventListener('click', async () => {
-        const formData = new FormData();
-        formData.set('action', 'session_extend');
-        formData.set('csrf_token', String(csrfToken || ''));
-        try {
-          const response = await fetch('dashboard.php', {
-            method: 'POST',
-            body: formData,
-            credentials: 'same-origin'
-          });
-          const payload = await response.json();
-          if (payload && payload.status === 'ok' && payload.expires_at) {
-            expiresAt = Number(payload.expires_at) * 1000;
-            modal.hidden = true;
-            if (tickTimer) window.clearInterval(tickTimer);
-            scheduleWarning();
-          }
-        } catch (error) {
-          // ignore
-        }
-      });
-
-      logoutBtn.addEventListener('click', () => {
-        window.location.href = 'dashboard.php?page=access&public=1';
-      });
-
-      scheduleWarning();
-    })();
-
-    (function initIntelAutosave() {
-      const intelSaveForm = document.getElementById('intel-save-form');
-      if (!intelSaveForm) {
-        return;
-      }
-      const status = document.getElementById('intel-autosave-status');
-      let dirty = false;
-      let saveInFlight = false;
-
-      const markDirty = () => {
-        dirty = true;
-        if (status) {
-          status.textContent = 'Autosave: cambios pendientes...';
-        }
-      };
-
-      intelSaveForm.addEventListener('input', markDirty);
-      intelSaveForm.addEventListener('change', markDirty);
-
-      const runAutosave = async () => {
-        if (!dirty || saveInFlight) {
+      const setList = (id, values, emptyText) => {
+        const node = byId(id);
+        if (!node) return;
+        node.innerHTML = '';
+        const items = Array.isArray(values) ? values.filter(Boolean) : [];
+        if (!items.length) {
+          const li = document.createElement(node.tagName === 'UL' ? 'li' : 'div');
+          li.className = 'event-empty';
+          li.textContent = emptyText;
+          node.appendChild(li);
           return;
         }
-        saveInFlight = true;
-        const formData = new FormData(intelSaveForm);
-        formData.set('auto_save', '1');
-        try {
-          const response = await fetch('dashboard.php', {
-            method: 'POST',
-            body: formData,
-            credentials: 'same-origin'
-          });
-          const payload = await response.json();
-          if (payload && payload.status === 'ok') {
-            dirty = false;
-            const graphIdInput = document.getElementById('intel-graph-id');
-            if (graphIdInput && payload.graph_id) {
-              graphIdInput.value = String(payload.graph_id);
-            }
-            if (status) {
-              status.textContent = `Autosave: ${String(payload.saved_at || '')}`;
-            }
+        items.forEach((value) => {
+          const child = document.createElement(node.tagName === 'UL' ? 'li' : 'div');
+          if (node.tagName !== 'UL') {
+            child.className = 'event-snippet';
           }
-        } catch (error) {
-          if (status) {
-            status.textContent = 'Autosave: error';
-          }
-        } finally {
-          saveInFlight = false;
-        }
+          child.textContent = String(value);
+          node.appendChild(child);
+        });
       };
-
-      setInterval(runAutosave, 45000);
-    })();
-
-    const escapeHtml = (value) =>
-      String(value || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-
-    const escapeRegex = (value) =>
-      String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-    function boldMatchedSnippets(source, snippets) {
-      const text = String(source || '');
-      const list = Array.isArray(snippets) ? snippets.filter(Boolean) : [];
-      if (!text || !list.length) {
-        return escapeHtml(text);
-      }
-      const ranges = [];
-      const lowerSource = text.toLowerCase();
-      list.forEach((snippet) => {
-        const raw = String(snippet || '').trim();
-        if (!raw) return;
-        const needle = raw.toLowerCase();
-        let cursor = 0;
-        while (cursor < lowerSource.length) {
-          const idx = lowerSource.indexOf(needle, cursor);
-          if (idx === -1) break;
-          ranges.push({ start: idx, end: idx + needle.length });
-          cursor = idx + needle.length;
+      const summarizeEvent = (event) => {
+        const score = Number(event.score_total || 0);
+        const hostname = String(event.hostname || '(sin dominio)');
+        const country = String(event.country || '').trim();
+        const type = String(event.event_type || 'clickfix_alert');
+        const blocked = Boolean(event.blocked || event.host_blocked_before || event.ip_blocked_before);
+        const duplicateCount = Math.max(1, Number(event.duplicate_count || 1));
+        const reasons = Array.isArray(event.reason_list) ? event.reason_list.filter(Boolean) : [];
+        const snippets = Array.isArray(event.snippets) ? event.snippets.filter(Boolean) : [];
+        const signals = Array.isArray(event.signals) ? event.signals.filter(Boolean) : [];
+        let riskLabel = 'bajo';
+        if (score >= 80) {
+          riskLabel = 'critico';
+        } else if (score >= 60) {
+          riskLabel = 'alto';
+        } else if (score >= 35) {
+          riskLabel = 'medio';
         }
-      });
-      if (!ranges.length) {
-        return escapeHtml(text);
-      }
-      ranges.sort((a, b) => a.start - b.start || b.end - a.end);
-      const merged = [];
-      ranges.forEach((range) => {
-        const last = merged[merged.length - 1];
-        if (last && range.start <= last.end) {
-          last.end = Math.max(last.end, range.end);
+        const parts = [
+          `${hostname} presenta un evento de riesgo ${riskLabel} con score ${score}/100.`,
+          country ? `La actividad se asocia a ${country}.` : 'No hay pais fiable asociado.',
+          blocked ? 'Consta como bloqueado o con historial de bloqueo.' : 'No consta bloqueo previo confirmado.',
+          duplicateCount > 1 ? `Se observan ${duplicateCount} impactos similares en el grupo.` : 'Solo se observa un impacto en este grupo.'
+        ];
+        const points = [];
+        points.push(`Tipo: ${type}`);
+        if (reasons.length) {
+          points.push(`Motivo principal: ${String(reasons[0])}`);
+        } else if (event.message) {
+          points.push(`Motivo principal: ${String(event.message)}`);
+        }
+        if (snippets.length) {
+          points.push(`Snippets: ${snippets.length}`);
+        }
+        if (signals.length) {
+          points.push(`Evidencias: ${signals.length}`);
+        }
+        if (event.url) {
+          points.push(`URL: ${String(event.url)}`);
+        }
+        return {
+          summary: parts.join(' '),
+          points: points.slice(0, 5)
+        };
+      };
+      const renderSummary = (event) => {
+        const textNode = byId('event-ai-summary-text');
+        const pointsNode = byId('event-ai-summary-points');
+        if (!textNode || !pointsNode) return;
+        const summary = summarizeEvent(event);
+        textNode.textContent = summary.summary;
+        pointsNode.innerHTML = '';
+        summary.points.forEach((point) => {
+          const chip = document.createElement('span');
+          chip.className = 'event-ai-point';
+          chip.textContent = point;
+          pointsNode.appendChild(chip);
+        });
+      };
+      const syncReviewScopeUi = () => {
+        const scopeWrap = byId('event-review-scope');
+        const scopeNote = byId('event-review-scope-note');
+        const actionInput = byId('event-review-action');
+        const bulkIdsWrap = byId('event-review-bulk-ids');
+        const reviewId = byId('event-review-id');
+        if (!scopeWrap || !scopeNote || !actionInput || !bulkIdsWrap || !reviewId) {
+          return;
+        }
+        const actionableGroup = currentGroupIndices.filter((idx) => {
+          const row = rows[idx];
+          return row && Number(row.id || 0) > 0;
+        });
+        const hasGroupChoice = actionableGroup.length > 1;
+        scopeWrap.hidden = !hasGroupChoice;
+        if (!hasGroupChoice) {
+          currentReviewScope = 'single';
+        }
+        bulkIdsWrap.innerHTML = '';
+        scopeWrap.querySelectorAll('[data-review-scope]').forEach((button) => {
+          button.classList.toggle('is-active', button.getAttribute('data-review-scope') === currentReviewScope);
+        });
+        if (currentReviewScope === 'group' && hasGroupChoice) {
+          actionInput.value = 'review_bulk';
+          actionableGroup.forEach((idx) => {
+            const row = rows[idx];
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'report_ids[]';
+            input.value = String(Number(row.id || 0));
+            bulkIdsWrap.appendChild(input);
+          });
+          scopeNote.textContent = `Se aplicarÃ¡ a ${actionableGroup.length} alertas del grupo seleccionado.`;
         } else {
-          merged.push({ ...range });
-        }
-      });
-      let output = '';
-      let cursor = 0;
-      merged.forEach((range) => {
-        output += escapeHtml(text.slice(cursor, range.start));
-        output += '<strong>' + escapeHtml(text.slice(range.start, range.end)) + '</strong>';
-        cursor = range.end;
-      });
-      output += escapeHtml(text.slice(cursor));
-      return output;
-    }
-
-    function parseChartData(canvas) {
-      if (!canvas) {
-        return { labels: [], alerts: [], blocks: [] };
-      }
-      const parseArray = (raw) => {
-        try {
-          const value = JSON.parse(String(raw || '[]'));
-          return Array.isArray(value) ? value : [];
-        } catch (error) {
-          return [];
+          actionInput.value = 'review';
+          scopeNote.textContent = hasGroupChoice
+            ? `Se aplicarÃ¡ solo a la alerta abierta. El grupo contiene ${actionableGroup.length} alertas.`
+            : 'Se aplicarÃ¡ solo a esta alerta.';
         }
       };
-      return {
-        labels: parseArray(canvas.dataset.labels),
-        alerts: parseArray(canvas.dataset.alerts).map((v) => Number(v || 0)),
-        blocks: parseArray(canvas.dataset.blocks).map((v) => Number(v || 0))
+      const setBadges = (event) => {
+        const node = byId('event-badges');
+        if (!node) return;
+        node.innerHTML = '';
+        [
+          `score ${Number(event.score_total || 0)}/100`,
+          event.blocked ? 'blocked' : 'alert-only',
+          String(event.review_status || 'pending'),
+          `x${Math.max(1, Number(event.duplicate_count || 1))}`,
+          String(event.event_type || 'clickfix_alert')
+        ].forEach((label) => {
+          const chip = document.createElement('span');
+          chip.className = 'event-chip';
+          chip.textContent = label;
+          node.appendChild(chip);
+        });
       };
-    }
-
-    function setupCanvasSize(canvas) {
-      if (!canvas) return null;
-      const width = Math.max(240, Math.floor(canvas.clientWidth || 240));
-      const height = Math.max(120, Math.floor(canvas.clientHeight || 180));
-      const ratio = Math.max(1, Math.floor(window.devicePixelRatio || 1));
-      canvas.width = width * ratio;
-      canvas.height = height * ratio;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return null;
-      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      return { ctx, width, height };
-    }
-
-    function drawTrendChart(canvas) {
-      const parsed = parseChartData(canvas);
-      const setup = setupCanvasSize(canvas);
-      if (!setup) return;
-      const { ctx, width, height } = setup;
-      ctx.clearRect(0, 0, width, height);
-      const labels = parsed.labels;
-      const alerts = parsed.alerts;
-      const blocks = parsed.blocks;
-      const count = Math.min(labels.length, alerts.length, blocks.length);
-      if (count <= 0) return;
-      const maxValue = Math.max(1, ...alerts, ...blocks);
-      const padLeft = 28;
-      const padRight = 8;
-      const padTop = 10;
-      const padBottom = 18;
-      const plotW = Math.max(40, width - padLeft - padRight);
-      const plotH = Math.max(40, height - padTop - padBottom);
-
-      ctx.strokeStyle = '#1d3a55';
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= 4; i += 1) {
-        const y = padTop + (plotH * i) / 4;
-        ctx.beginPath();
-        ctx.moveTo(padLeft, y);
-        ctx.lineTo(width - padRight, y);
-        ctx.stroke();
-      }
-
-      const drawSeries = (series, color) => {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        for (let i = 0; i < count; i += 1) {
-          const x = padLeft + (plotW * (count === 1 ? 0.5 : i / (count - 1)));
-          const y = padTop + plotH - (plotH * Number(series[i] || 0)) / maxValue;
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
+      const scoreLabelMap = {
+        weighted: 'Weighted',
+        signals: 'SeÃ±ales',
+        clipboard: 'Clipboard',
+        context: 'Contexto',
+        scoreComponentSignals: 'SeÃ±ales',
+        scoreComponentClipboard: 'Clipboard',
+        scoreComponentContext: 'Contexto',
+        scoreSignalCommandMatch: 'PatrÃ³n de comando',
+        scoreSignalShellHint: 'Indicio de shell',
+        scoreSignalEvasionHint: 'Indicio de evasiÃ³n',
+        scoreSignalClipboardWarning: 'ManipulaciÃ³n de portapapeles',
+        scoreClipboardCommand: 'Comando en clipboard',
+        scoreClipboardExecutionHint: 'Indicio de ejecuciÃ³n',
+        scoreClipboardUrl: 'URL en clipboard',
+        scoreClipboardHighEntropy: 'Alta entropÃ­a',
       };
-
-      drawSeries(alerts, '#14b8ff');
-      drawSeries(blocks, '#38d17a');
-    }
-
-    function drawRatioChart(canvas) {
-      const parsed = parseChartData(canvas);
-      const setup = setupCanvasSize(canvas);
-      if (!setup) return;
-      const { ctx, width, height } = setup;
-      ctx.clearRect(0, 0, width, height);
-      const alerts = parsed.alerts;
-      const blocks = parsed.blocks;
-      const count = Math.min(alerts.length, blocks.length);
-      if (count <= 0) return;
-      const padLeft = 16;
-      const padRight = 8;
-      const padTop = 10;
-      const padBottom = 18;
-      const plotW = Math.max(40, width - padLeft - padRight);
-      const plotH = Math.max(40, height - padTop - padBottom);
-      const barGap = 4;
-      const barWidth = Math.max(2, (plotW - barGap * (count - 1)) / count);
-
-      ctx.strokeStyle = '#1d3a55';
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= 4; i += 1) {
-        const y = padTop + (plotH * i) / 4;
-        ctx.beginPath();
-        ctx.moveTo(padLeft, y);
-        ctx.lineTo(width - padRight, y);
-        ctx.stroke();
-      }
-
-      for (let i = 0; i < count; i += 1) {
-        const alertValue = Number(alerts[i] || 0);
-        const blockValue = Number(blocks[i] || 0);
-        const ratio = alertValue > 0 ? Math.min(100, (blockValue / alertValue) * 100) : 0;
-        const barH = (plotH * ratio) / 100;
-        const x = padLeft + i * (barWidth + barGap);
-        const y = padTop + plotH - barH;
-        ctx.fillStyle = '#ffd166';
-        ctx.fillRect(x, y, barWidth, barH);
-      }
-    }
-
-    function drawCategoryBarChart(canvas) {
-      if (!canvas) return;
-      const parseArray = (raw) => {
-        try {
-          const value = JSON.parse(String(raw || '[]'));
-          return Array.isArray(value) ? value : [];
-        } catch (error) {
-          return [];
-        }
+      const humanizeScoreKey = (value) => {
+        const raw = String(value || '').trim();
+        if (!raw) return '-';
+        if (scoreLabelMap[raw]) return scoreLabelMap[raw];
+        const camel = raw
+          .replace(/^score(Component|Signal|Clipboard)/, '')
+          .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+          .replace(/[_-]+/g, ' ')
+          .trim();
+        if (!camel) return raw;
+        return camel.charAt(0).toUpperCase() + camel.slice(1);
       };
-      const labels = parseArray(canvas.dataset.labels).map((v) => String(v || '').slice(0, 24));
-      const counts = parseArray(canvas.dataset.counts).map((v) => Number(v || 0));
-      const count = Math.min(labels.length, counts.length);
-      const setup = setupCanvasSize(canvas);
-      if (!setup) return;
-      const { ctx, width, height } = setup;
-      ctx.clearRect(0, 0, width, height);
-      if (count <= 0) return;
+      const buildScoreDetailsView = (details) => {
+        const shell = document.createElement('div');
+        shell.className = 'score-detail-shell';
 
-      const maxValue = Math.max(1, ...counts);
-      const padLeft = 14;
-      const padRight = 12;
-      const padTop = 12;
-      const padBottom = 46;
-      const plotW = Math.max(40, width - padLeft - padRight);
-      const plotH = Math.max(40, height - padTop - padBottom);
-      const gap = 8;
-      const barW = Math.max(8, Math.floor((plotW - gap * (count - 1)) / count));
+        const toolbar = document.createElement('div');
+        toolbar.className = 'score-detail-toolbar';
 
-      ctx.strokeStyle = '#1d3a55';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(padLeft, padTop + plotH);
-      ctx.lineTo(width - padRight, padTop + plotH);
-      ctx.stroke();
+        const total = document.createElement('div');
+        total.className = 'score-detail-total';
+        total.innerHTML = `<span>Total</span><strong>${Number(details.total || 0)}/100</strong><span>${humanizeScoreKey(details.method || 'weighted')}</span>`;
+        toolbar.appendChild(total);
 
-      for (let i = 0; i < count; i += 1) {
-        const value = Number(counts[i] || 0);
-        const barH = Math.max(1, (plotH * value) / maxValue);
-        const x = padLeft + i * (barW + gap);
-        const y = padTop + plotH - barH;
-        ctx.fillStyle = '#63d9ff';
-        ctx.fillRect(x, y, barW, barH);
-        ctx.fillStyle = '#bcd8f2';
-        ctx.font = '10px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(String(value), x + Math.floor(barW / 2), y - 4);
-        const label = labels[i] || '-';
-        const trimmedLabel = label.length > 12 ? `${label.slice(0, 11)}â€¦` : label;
-        ctx.fillStyle = '#8fb7d6';
-        ctx.fillText(trimmedLabel, x + Math.floor(barW / 2), padTop + plotH + 14);
-      }
-    }
+        const toggle = document.createElement('div');
+        toggle.className = 'score-detail-toggle';
+        const visualBtn = document.createElement('button');
+        visualBtn.type = 'button';
+        visualBtn.className = 'is-active';
+        visualBtn.textContent = 'Vista';
+        const jsonBtn = document.createElement('button');
+        jsonBtn.type = 'button';
+        jsonBtn.textContent = 'JSON';
+        toggle.appendChild(visualBtn);
+        toggle.appendChild(jsonBtn);
+        toolbar.appendChild(toggle);
+        shell.appendChild(toolbar);
 
-    function renderDashboardCharts() {
-      drawTrendChart(document.getElementById('home-trend-chart'));
-      drawRatioChart(document.getElementById('home-ratio-chart'));
-      drawTrendChart(document.getElementById('analytics-trend-chart'));
-      drawRatioChart(document.getElementById('analytics-ratio-chart'));
-      drawTrendChart(document.getElementById('analytics-review-chart'));
-      drawTrendChart(document.getElementById('analytics-risk-chart'));
-      drawCategoryBarChart(document.getElementById('analytics-type-chart'));
-      drawCategoryBarChart(document.getElementById('vt-reported-class-chart'));
-      drawCategoryBarChart(document.getElementById('vt-reported-engine-chart'));
-    }
+        const panels = document.createElement('div');
+        panels.className = 'score-detail-panels';
 
-    let chartResizeTimer = null;
-    window.addEventListener('resize', () => {
-      if (chartResizeTimer) {
-        clearTimeout(chartResizeTimer);
-      }
-      chartResizeTimer = setTimeout(() => {
-        renderDashboardCharts();
-      }, 120);
-    });
+        const visualPanel = document.createElement('div');
+        visualPanel.className = 'score-detail-visual';
+        const componentList = document.createElement('div');
+        componentList.className = 'score-component-list';
 
-    function wireTableSearch(inputId, bodyId, rowSelector, emptyId) {
-      const searchInput = document.getElementById(inputId);
-      const tableBody = document.getElementById(bodyId);
-      const emptyRow = document.getElementById(emptyId);
-      const rows = tableBody ? Array.from(tableBody.querySelectorAll(rowSelector)) : [];
-      if (!searchInput || !rows.length) {
-        return;
-      }
-      const runFilter = () => {
-        const term = String(searchInput.value || '').trim().toLowerCase();
-        let visible = 0;
-        rows.forEach((row) => {
-          const haystack = String(row.textContent || '').toLowerCase();
-          const show = term === '' || haystack.includes(term);
-          row.hidden = !show;
-          if (show) {
-            visible += 1;
-          }
-        });
-        if (emptyRow) {
-          emptyRow.hidden = visible > 0;
-        }
-      };
-      searchInput.addEventListener('input', runFilter);
-      runFilter();
-    }
+        const components = Array.isArray(details.components) ? details.components : [];
+        if (components.length) {
+          components.forEach((component) => {
+            const score = Number(component.score || 0);
+            const weight = Number(component.weight || 0);
+            const contributions = Array.isArray(component.contributions) ? component.contributions : [];
 
-    wireTableSearch('analytics-daily-search', 'analytics-daily-body', 'tr[data-day-row="1"]', 'analytics-daily-empty');
-    wireTableSearch('analytics-pending-search', 'analytics-pending-body', 'tr[data-analytics-pending-row="1"]', 'analytics-pending-empty');
-    wireTableSearch('pending-outside-search', 'pending-outside-body', 'tr[data-pending-outside-row="1"]', 'pending-outside-empty');
+            const card = document.createElement('section');
+            card.className = 'score-component-card';
 
-    function initVtReportedCharts() {
-      const button = document.getElementById('vt-reported-generate');
-      const panel = document.getElementById('vt-reported-panel');
-      const classCanvas = document.getElementById('vt-reported-class-chart');
-      const engineCanvas = document.getElementById('vt-reported-engine-chart');
-      if (!button || !panel || !classCanvas || !engineCanvas) {
-        return;
-      }
+            const head = document.createElement('div');
+            head.className = 'score-component-head';
+            head.innerHTML =
+              `<div class="score-component-title">` +
+                `<strong>${humanizeScoreKey(component.labelKey || component.id || 'Componente')}</strong>` +
+                `<div class="score-component-meta">` +
+                  `<span class="score-component-pill">score ${score}/100</span>` +
+                  `<span class="score-component-pill">peso ${(weight * 100).toFixed(0)}%</span>` +
+                  `<span class="score-component-pill">${component.available === false ? 'sin datos' : 'activo'}</span>` +
+                `</div>` +
+              `</div>`;
+            card.appendChild(head);
 
-      const render = () => {
-        drawCategoryBarChart(classCanvas);
-        drawCategoryBarChart(engineCanvas);
-      };
+            const bar = document.createElement('div');
+            bar.className = 'score-component-bar';
+            const fill = document.createElement('span');
+            fill.style.width = `${Math.max(0, Math.min(100, score))}%`;
+            bar.appendChild(fill);
+            card.appendChild(bar);
 
-      const updateButtonLabel = () => {
-        button.textContent = panel.hidden ? 'Generar graficos VT' : 'Ocultar graficos VT';
-      };
-
-      button.addEventListener('click', () => {
-        panel.hidden = !panel.hidden;
-        updateButtonLabel();
-        if (!panel.hidden) {
-          requestAnimationFrame(() => {
-            render();
-          });
-        }
-      });
-
-      updateButtonLabel();
-    }
-
-    initVtReportedCharts();
-
-    async function copyTextToClipboard(value) {
-      const text = String(value || '');
-      if (!text) return false;
-      try {
-        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-          await navigator.clipboard.writeText(text);
-          return true;
-        }
-      } catch (error) {
-        console.debug(error);
-      }
-      const helper = document.createElement('textarea');
-      helper.value = text;
-      helper.setAttribute('readonly', 'readonly');
-      helper.style.position = 'fixed';
-      helper.style.opacity = '0';
-      helper.style.pointerEvents = 'none';
-      document.body.appendChild(helper);
-      helper.select();
-      helper.setSelectionRange(0, text.length);
-      let copied = false;
-      try {
-        copied = document.execCommand('copy');
-      } catch (error) {
-        console.debug(error);
-      }
-      document.body.removeChild(helper);
-      return copied;
-    }
-
-    document.querySelectorAll('[data-copy-text]').forEach((button) => {
-      button.addEventListener('click', async () => {
-        const payload = button.getAttribute('data-copy-text') || '';
-        const ok = await copyTextToClipboard(payload);
-        const original = button.textContent || 'Copiar';
-        button.textContent = ok ? 'Copiado' : 'Error copia';
-        setTimeout(() => {
-          button.textContent = original;
-        }, 1400);
-      });
-    });
-
-    const intelNavButtons = Array.from(document.querySelectorAll('[data-scroll-target]'));
-    const intelSections = Array.from(document.querySelectorAll('[data-intel-section]'));
-
-    function setActiveIntelSection(sectionId) {
-      intelNavButtons.forEach((button) => {
-        const target = String(button.getAttribute('data-scroll-target') || '');
-        button.classList.toggle('active', target !== '' && target === sectionId);
-      });
-    }
-
-    intelNavButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        const targetId = String(button.getAttribute('data-scroll-target') || '');
-        if (!targetId) {
-          return;
-        }
-        const target = document.getElementById(targetId);
-        if (!target) {
-          return;
-        }
-        setActiveIntelSection(targetId);
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    });
-
-    if (intelSections.length) {
-      const observer = new IntersectionObserver((entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (!visible) {
-          return;
-        }
-        const sectionId = String(visible.target.getAttribute('data-intel-section') || visible.target.id || '');
-        if (sectionId) {
-          setActiveIntelSection(sectionId);
-        }
-      }, {
-        root: null,
-        threshold: [0.25, 0.45, 0.7],
-        rootMargin: '-110px 0px -40% 0px'
-      });
-      intelSections.forEach((section) => observer.observe(section));
-      const initialSection = String(intelSections[0].getAttribute('data-intel-section') || intelSections[0].id || '');
-      if (initialSection) {
-        setActiveIntelSection(initialSection);
-      }
-    }
-
-    document.querySelectorAll('[data-scan-inline-src][data-scan-inline-target]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const src = String(button.getAttribute('data-scan-inline-src') || '');
-        const targetId = String(button.getAttribute('data-scan-inline-target') || '');
-        if (!src || !targetId) {
-          return;
-        }
-        const target = document.getElementById(targetId);
-        if (!target) {
-          return;
-        }
-        if (target.getAttribute('data-scan-loaded') === '1') {
-          return;
-        }
-        target.textContent = 'Cargando captura...';
-        const img = document.createElement('img');
-        img.src = src;
-        img.loading = 'lazy';
-        img.alt = 'scan preview';
-        img.style.maxWidth = '100%';
-        img.style.borderRadius = '10px';
-        img.style.border = '1px solid #5dc8ff33';
-        img.addEventListener('load', () => {
-          target.innerHTML = '';
-          target.appendChild(img);
-          target.setAttribute('data-scan-loaded', '1');
-        });
-        img.addEventListener('error', () => {
-          target.textContent = 'No se pudo cargar la captura.';
-        });
-      });
-    });
-
-    function normalizeGraphPayload(raw) {
-      const base = raw && typeof raw === 'object' ? raw : {};
-      const nodes = Array.isArray(base.nodes) ? base.nodes : [];
-      const edges = Array.isArray(base.edges) ? base.edges : [];
-      const cleanedNodes = [];
-      const seenNodes = new Set();
-      nodes.forEach((node) => {
-        if (!node || typeof node !== 'object') return;
-        const id = String(node.id || '').replace(/[^a-zA-Z0-9._-]/g, '') || `n_${Math.random().toString(16).slice(2, 10)}`;
-        if (seenNodes.has(id)) return;
-        seenNodes.add(id);
-        cleanedNodes.push({
-          id,
-          label: String(node.label || 'node').slice(0, 120),
-          color: /^#[0-9a-fA-F]{6}$/.test(String(node.color || '')) ? String(node.color) : '#5dc8ff',
-          x: Number.isFinite(Number(node.x)) ? Number(node.x) : 120,
-          y: Number.isFinite(Number(node.y)) ? Number(node.y) : 120,
-          tags: Array.isArray(node.tags) ? node.tags.map((t) => String(t).slice(0, 40)).filter(Boolean) : [],
-          notes: String(node.notes || '').slice(0, 400)
-        });
-      });
-      const cleanedEdges = [];
-      const seenEdges = new Set();
-      edges.forEach((edge) => {
-        if (!edge || typeof edge !== 'object') return;
-        const from = String(edge.from || '').replace(/[^a-zA-Z0-9._-]/g, '');
-        const to = String(edge.to || '').replace(/[^a-zA-Z0-9._-]/g, '');
-        if (!from || !to || !seenNodes.has(from) || !seenNodes.has(to)) return;
-        const id = String(edge.id || '').replace(/[^a-zA-Z0-9._-]/g, '') || `e_${Math.random().toString(16).slice(2, 10)}`;
-        if (seenEdges.has(id)) return;
-        seenEdges.add(id);
-        cleanedEdges.push({
-          id,
-          from,
-          to,
-          label: String(edge.label || '').slice(0, 120),
-          color: /^#[0-9a-fA-F]{6}$/.test(String(edge.color || '')) ? String(edge.color) : '#94a3b8'
-        });
-      });
-      return { nodes: cleanedNodes, edges: cleanedEdges };
-    }
-
-    function makeGraphRenderer({ wrap, svg, nodeLayer, graph, readOnly, onSelectNode, edgeListSelect, edgeFromSelect, edgeToSelect, nodeListSelect, controls = {}, vtLookupIndex = null }) {
-      if (!wrap || !svg || !nodeLayer) {
-        return null;
-      }
-      const state = {
-        graph: normalizeGraphPayload(graph),
-        selectedNodeId: null,
-        drag: null,
-        lastInteractionMoved: false,
-        camera: {
-          x: 40,
-          y: 40,
-          scale: 1,
-          minScale: 0.35,
-          maxScale: 2.6
-        }
-      };
-
-      const controlRefs = {
-        layoutSelect: controls.layoutSelect || null,
-        layoutApplyButton: controls.layoutApplyButton || null,
-        fitButton: controls.fitButton || null,
-        zoomInButton: controls.zoomInButton || null,
-        zoomOutButton: controls.zoomOutButton || null,
-        zoomResetButton: controls.zoomResetButton || null,
-        fullscreenButton: controls.fullscreenButton || null,
-        fullscreenButtonAlt: controls.fullscreenButtonAlt || null,
-        zoomStatus: controls.zoomStatus || null,
-        zoomStatusAlt: controls.zoomStatusAlt || null
-      };
-
-      function nodeById(id) {
-        return state.graph.nodes.find((n) => n.id === id) || null;
-      }
-
-      function edgeById(id) {
-        return state.graph.edges.find((e) => e.id === id) || null;
-      }
-
-      function fillNodeSelect(selectEl, fallback = '') {
-        if (!selectEl) return;
-        const prev = fallback || selectEl.value || '';
-        selectEl.innerHTML = '';
-        state.graph.nodes.forEach((node) => {
-          const opt = document.createElement('option');
-          opt.value = node.id;
-          opt.textContent = `${node.label} (${node.id})`;
-          selectEl.appendChild(opt);
-        });
-        if (prev && state.graph.nodes.some((n) => n.id === prev)) {
-          selectEl.value = prev;
-        } else if (state.graph.nodes[0]) {
-          selectEl.value = state.graph.nodes[0].id;
-        }
-      }
-
-      function fillNodeList() {
-        if (!nodeListSelect) return;
-        const prev = state.selectedNodeId || nodeListSelect.value || '';
-        nodeListSelect.innerHTML = '';
-        state.graph.nodes.forEach((node) => {
-          const opt = document.createElement('option');
-          const tagsCount = Array.isArray(node.tags) ? node.tags.length : 0;
-          const hasNotes = String(node.notes || '').trim() !== '';
-          opt.value = node.id;
-          opt.textContent = `${node.label}${tagsCount ? ` | tags:${tagsCount}` : ''}${hasNotes ? ' | notes' : ''}`;
-          nodeListSelect.appendChild(opt);
-        });
-        if (prev && state.graph.nodes.some((n) => n.id === prev)) {
-          nodeListSelect.value = prev;
-        } else if (state.graph.nodes[0]) {
-          nodeListSelect.value = state.graph.nodes[0].id;
-        }
-      }
-
-      function fillEdgeList() {
-        if (!edgeListSelect) return;
-        const prev = edgeListSelect.value || '';
-        edgeListSelect.innerHTML = '';
-        state.graph.edges.forEach((edge) => {
-          const from = nodeById(edge.from);
-          const to = nodeById(edge.to);
-          const opt = document.createElement('option');
-          opt.value = edge.id;
-          opt.textContent = `${from ? from.label : edge.from} -> ${to ? to.label : edge.to}${edge.label ? ` | ${edge.label}` : ''}`;
-          edgeListSelect.appendChild(opt);
-        });
-        if (prev && state.graph.edges.some((e) => e.id === prev)) {
-          edgeListSelect.value = prev;
-        }
-      }
-
-      function nodeBounds() {
-        if (!state.graph.nodes.length) {
-          return { minX: 0, maxX: 0, minY: 0, maxY: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
-        }
-        const xs = state.graph.nodes.map((node) => Number(node.x || 0));
-        const ys = state.graph.nodes.map((node) => Number(node.y || 0));
-        const minX = Math.min(...xs);
-        const maxX = Math.max(...xs);
-        const minY = Math.min(...ys);
-        const maxY = Math.max(...ys);
-        return {
-          minX,
-          maxX,
-          minY,
-          maxY,
-          width: Math.max(1, maxX - minX),
-          height: Math.max(1, maxY - minY),
-          centerX: minX + (maxX - minX) / 2,
-          centerY: minY + (maxY - minY) / 2
-        };
-      }
-
-      function syncZoomStatus() {
-        const label = `zoom ${Math.round(state.camera.scale * 100)}%`;
-        [controlRefs.zoomStatus, controlRefs.zoomStatusAlt].forEach((node) => {
-          if (node) {
-            node.textContent = label;
-          }
-        });
-      }
-
-      function centerWorldPoint(worldX, worldY) {
-        const rect = wrap.getBoundingClientRect();
-        state.camera.x = rect.width / 2 - worldX * state.camera.scale;
-        state.camera.y = rect.height / 2 - worldY * state.camera.scale;
-      }
-
-      function fitGraph(padding = 90) {
-        const rect = wrap.getBoundingClientRect();
-        if (!rect.width || !rect.height) return;
-        const bounds = nodeBounds();
-        if (!state.graph.nodes.length) {
-          state.camera.scale = 1;
-          state.camera.x = rect.width / 2;
-          state.camera.y = rect.height / 2;
-          render();
-          return;
-        }
-        const availableWidth = Math.max(120, rect.width - padding * 2);
-        const availableHeight = Math.max(120, rect.height - padding * 2);
-        const scaleX = availableWidth / Math.max(bounds.width, 120);
-        const scaleY = availableHeight / Math.max(bounds.height, 120);
-        state.camera.scale = Math.max(state.camera.minScale, Math.min(state.camera.maxScale, Math.min(scaleX, scaleY, 1.65)));
-        centerWorldPoint(bounds.centerX, bounds.centerY);
-        render();
-      }
-
-      function resetZoom() {
-        const bounds = nodeBounds();
-        state.camera.scale = 1;
-        centerWorldPoint(bounds.centerX, bounds.centerY);
-        render();
-      }
-
-      function clientToWorld(clientX, clientY) {
-        const rect = wrap.getBoundingClientRect();
-        return {
-          x: (clientX - rect.left - state.camera.x) / state.camera.scale,
-          y: (clientY - rect.top - state.camera.y) / state.camera.scale
-        };
-      }
-
-      function setZoom(nextScale, anchorClientX = null, anchorClientY = null) {
-        const rect = wrap.getBoundingClientRect();
-        const clamped = Math.max(state.camera.minScale, Math.min(state.camera.maxScale, nextScale));
-        if (Math.abs(clamped - state.camera.scale) < 0.0001) {
-          syncZoomStatus();
-          return;
-        }
-        const anchorX = anchorClientX ?? (rect.left + rect.width / 2);
-        const anchorY = anchorClientY ?? (rect.top + rect.height / 2);
-        const world = clientToWorld(anchorX, anchorY);
-        state.camera.scale = clamped;
-        state.camera.x = anchorX - rect.left - world.x * state.camera.scale;
-        state.camera.y = anchorY - rect.top - world.y * state.camera.scale;
-        render();
-      }
-
-      function zoomBy(factor) {
-        const rect = wrap.getBoundingClientRect();
-        setZoom(state.camera.scale * factor, rect.left + rect.width / 2, rect.top + rect.height / 2);
-      }
-
-      function orderedNodeIds(rootId) {
-        const adjacency = new Map();
-        const incoming = new Map();
-        state.graph.nodes.forEach((node) => {
-          adjacency.set(node.id, []);
-          incoming.set(node.id, 0);
-        });
-        state.graph.edges.forEach((edge) => {
-          if (!adjacency.has(edge.from) || !adjacency.has(edge.to)) return;
-          adjacency.get(edge.from).push(edge.to);
-          incoming.set(edge.to, Number(incoming.get(edge.to) || 0) + 1);
-        });
-        adjacency.forEach((list) => list.sort());
-        const fallbackRoot = rootId && adjacency.has(rootId)
-          ? rootId
-          : [...incoming.entries()].sort((a, b) => a[1] - b[1] || String(a[0]).localeCompare(String(b[0])))[0]?.[0];
-        const visited = new Set();
-        const queue = fallbackRoot ? [fallbackRoot] : [];
-        const ordered = [];
-        while (queue.length) {
-          const current = queue.shift();
-          if (!current || visited.has(current)) continue;
-          visited.add(current);
-          ordered.push(current);
-          (adjacency.get(current) || []).forEach((nextId) => {
-            if (!visited.has(nextId)) queue.push(nextId);
-          });
-        }
-        state.graph.nodes
-          .map((node) => node.id)
-          .filter((id) => !visited.has(id))
-          .sort()
-          .forEach((id) => ordered.push(id));
-        return { ordered, adjacency, incoming, rootId: fallbackRoot || '' };
-      }
-
-      function shouldAutoLayout() {
-        const total = state.graph.nodes.length;
-        if (!total) return false;
-        let valid = 0;
-        let maxCount = 0;
-        const counts = new Map();
-        state.graph.nodes.forEach((node) => {
-          const x = Number(node.x);
-          const y = Number(node.y);
-          if (!Number.isFinite(x) || !Number.isFinite(y)) {
-            return;
-          }
-          valid += 1;
-          const key = `${Math.round(x)}:${Math.round(y)}`;
-          const next = (counts.get(key) || 0) + 1;
-          counts.set(key, next);
-          if (next > maxCount) {
-            maxCount = next;
-          }
-        });
-        if (valid === 0) return true;
-        return (maxCount / total) >= 0.6;
-      }
-
-      function estimateNodeRadius(node) {
-        const label = String(node?.label || '');
-        const base = 38;
-        const extra = Math.min(80, label.length * 2.4);
-        return base + extra;
-      }
-
-      function runForceLayout({ iterations = 200, stepsPerFrame = 6 } = {}) {
-        if (!state.graph.nodes.length) {
-          render();
-          return;
-        }
-        const nodes = state.graph.nodes;
-        const edges = state.graph.edges;
-        const velocity = new Map();
-        nodes.forEach((node) => {
-          velocity.set(node.id, { x: 0, y: 0 });
-          if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) {
-            node.x = 200 + Math.random() * 240;
-            node.y = 160 + Math.random() * 180;
-          }
-        });
-        const rect = wrap.getBoundingClientRect();
-        const center = {
-          x: rect.width > 0 ? rect.width / 2 : 420,
-          y: rect.height > 0 ? rect.height / 2 : 260
-        };
-        const repulsion = 5200;
-        const spring = 0.012;
-        const desired = 170;
-        const collisionStrength = 0.28;
-        const centerStrength = 0.004;
-        const damping = 0.86;
-        let iter = 0;
-
-        function stepSimulation() {
-          const forces = new Map();
-          nodes.forEach((node) => forces.set(node.id, { x: 0, y: 0 }));
-
-          for (let i = 0; i < nodes.length; i += 1) {
-            const a = nodes[i];
-            for (let j = i + 1; j < nodes.length; j += 1) {
-              const b = nodes[j];
-              let dx = a.x - b.x;
-              let dy = a.y - b.y;
-              let dist2 = dx * dx + dy * dy;
-              if (dist2 < 12) {
-                dx += (Math.random() - 0.5) * 4;
-                dy += (Math.random() - 0.5) * 4;
-                dist2 = dx * dx + dy * dy;
-              }
-              const dist = Math.sqrt(dist2);
-              const rep = repulsion / Math.max(40, dist2);
-              const fx = (dx / dist) * rep;
-              const fy = (dy / dist) * rep;
-              forces.get(a.id).x += fx;
-              forces.get(a.id).y += fy;
-              forces.get(b.id).x -= fx;
-              forces.get(b.id).y -= fy;
-
-              const minDist = estimateNodeRadius(a) + estimateNodeRadius(b) + 24;
-              if (dist < minDist) {
-                const push = (minDist - dist) * collisionStrength;
-                const cx = (dx / dist) * push;
-                const cy = (dy / dist) * push;
-                forces.get(a.id).x += cx;
-                forces.get(a.id).y += cy;
-                forces.get(b.id).x -= cx;
-                forces.get(b.id).y -= cy;
-              }
+            if (contributions.length) {
+              const contribList = document.createElement('div');
+              contribList.className = 'score-contrib-list';
+              contributions.forEach((contribution) => {
+                const item = document.createElement('div');
+                item.className = 'score-contrib';
+                item.innerHTML =
+                  `<div class="score-contrib-label">${humanizeScoreKey(contribution.key || '')}</div>` +
+                  `<div class="score-contrib-points">+${Number(contribution.points || 0)}</div>`;
+                contribList.appendChild(item);
+              });
+              card.appendChild(contribList);
+            } else {
+              const emptyNote = document.createElement('div');
+              emptyNote.className = 'score-empty-note';
+              emptyNote.textContent = 'Sin contribuciones detalladas en este componente.';
+              card.appendChild(emptyNote);
             }
-          }
 
-          edges.forEach((edge) => {
-            const from = nodeById(edge.from);
-            const to = nodeById(edge.to);
-            if (!from || !to) return;
-            const dx = to.x - from.x;
-            const dy = to.y - from.y;
-            const dist = Math.max(20, Math.sqrt(dx * dx + dy * dy));
-            const force = (dist - desired) * spring;
-            const fx = (dx / dist) * force;
-            const fy = (dy / dist) * force;
-            forces.get(from.id).x += fx;
-            forces.get(from.id).y += fy;
-            forces.get(to.id).x -= fx;
-            forces.get(to.id).y -= fy;
+            componentList.appendChild(card);
           });
+        } else {
+          const emptyNote = document.createElement('div');
+          emptyNote.className = 'score-empty-note';
+          emptyNote.textContent = 'Sin componentes estructurados para el score.';
+          componentList.appendChild(emptyNote);
+        }
+        visualPanel.appendChild(componentList);
 
-          nodes.forEach((node) => {
-            const f = forces.get(node.id);
-            const vx = velocity.get(node.id);
-            vx.x = (vx.x + f.x + (center.x - node.x) * centerStrength) * damping;
-            vx.y = (vx.y + f.y + (center.y - node.y) * centerStrength) * damping;
-            node.x += vx.x;
-            node.y += vx.y;
-          });
+        const jsonPanel = document.createElement('div');
+        jsonPanel.className = 'score-detail-json';
+        jsonPanel.hidden = true;
+        const pre = document.createElement('pre');
+        pre.className = 'event-snippet';
+        pre.textContent = JSON.stringify(details, null, 2);
+        jsonPanel.appendChild(pre);
+
+        visualBtn.addEventListener('click', () => {
+          visualBtn.classList.add('is-active');
+          jsonBtn.classList.remove('is-active');
+          visualPanel.hidden = false;
+          jsonPanel.hidden = true;
+        });
+        jsonBtn.addEventListener('click', () => {
+          jsonBtn.classList.add('is-active');
+          visualBtn.classList.remove('is-active');
+          visualPanel.hidden = true;
+          jsonPanel.hidden = false;
+        });
+
+        panels.appendChild(visualPanel);
+        panels.appendChild(jsonPanel);
+        shell.appendChild(panels);
+        return shell;
+      };
+      const render = (index) => {
+        const safeIndex = Number(index);
+        const event = Number.isInteger(safeIndex) ? rows[safeIndex] : null;
+        if (!event) return;
+        const groupKey = getEventGroupKey(event);
+        currentGroupIndices = groupKey && eventGroups.has(groupKey) ? eventGroups.get(groupKey).slice() : [safeIndex];
+        currentReviewScope = currentGroupIndices.length > 1 ? currentReviewScope : 'single';
+        feed.querySelectorAll('.event-feed-item').forEach((item) => {
+          item.classList.toggle('is-active', Number(item.getAttribute('data-event-index')) === safeIndex);
+        });
+        empty.hidden = true;
+        detail.hidden = false;
+        setText('event-title', event.hostname, '(sin dominio)');
+        renderSummary(event);
+        setText('event-time', event.activity_at || event.received_at, '-');
+        setText('event-country', event.country, '-');
+        setText('event-url', event.url, '-');
+        setText('event-prev-url', event.previous_url, '-');
+        const isManualReport = String(event.event_type || '') === 'manual_report';
+        setText('event-ip', isManualReport ? event.ip : '-', '-');
+        setText('event-extension', isManualReport ? event.extension_version : '-', '-');
+
+        const domainHistory = byId('event-domain-history');
+        if (domainHistory) {
+          const blocked = Boolean(event.host_blocked_before);
+          const total = Number(event.host_total_count || 0);
+          const count = Number(event.host_blocked_count || 0);
+          const lastAt = String(event.host_last_blocked_at || '');
+          domainHistory.textContent = blocked
+            ? `SI (${count} bloqueos / ${total} reportes${lastAt ? `, ultimo ${lastAt}` : ''})`
+            : `No (${total} reportes)`;
+        }
+        const ipHistory = byId('event-ip-history');
+        if (ipHistory) {
+          const blocked = Boolean(event.ip_blocked_before);
+          const total = Number(event.ip_total_count || 0);
+          const count = Number(event.ip_blocked_count || 0);
+          const lastAt = String(event.ip_last_blocked_at || '');
+          ipHistory.textContent = blocked
+            ? `SI (${count} bloqueos / ${total} reportes${lastAt ? `, ultimo ${lastAt}` : ''})`
+            : `No (${total} reportes)`;
         }
 
-        function tick() {
-          for (let s = 0; s < stepsPerFrame && iter < iterations; s += 1) {
-            stepSimulation();
-            iter += 1;
-          }
-          render();
-          if (iter < iterations && !state.drag) {
-            requestAnimationFrame(tick);
+        const iocWrap = byId('event-ioc');
+        if (iocWrap) {
+          const isUnsafeDownload = String(event.event_type || '') === 'unsafe_download';
+          if (isUnsafeDownload) {
+            const ioc = event.download_ioc || {};
+            setText('event-ioc-hash', ioc.hash, 'No disponible');
+            setText('event-ioc-name', ioc.filename || event.detected_content, '-');
+            setText('event-ioc-path', ioc.path, '-');
+            setText('event-ioc-site', ioc.url || ioc.site || event.url || event.hostname, '-');
+            setText('event-ioc-date', event.activity_at || event.received_at, '-');
+            iocWrap.hidden = false;
           } else {
-            fitGraph(110);
+            iocWrap.hidden = true;
           }
         }
-        tick();
-      }
 
-      function applyLayout(mode = 'tree-vertical') {
-        if (!state.graph.nodes.length) {
-          render();
+        setBadges(event);
+        setList('event-reasons', Array.isArray(event.reason_list) && event.reason_list.length ? event.reason_list : [event.message || 'Sin motivo clasificado'], 'Sin motivos.');
+        setList('event-snippets', Array.isArray(event.snippets) ? event.snippets : [], 'Sin snippets almacenados.');
+        setList('event-signals', Array.isArray(event.signals) ? event.signals : [], 'Sin signals capturados.');
+
+        const scoreDetails = byId('event-score-details');
+        if (scoreDetails) {
+          scoreDetails.innerHTML = '';
+          const details = event.score_details;
+          if (details && typeof details === 'object') {
+            scoreDetails.appendChild(buildScoreDetailsView(details));
+          } else if (typeof details === 'string' && details.trim() !== '') {
+            const pre = document.createElement('pre');
+            pre.className = 'event-snippet';
+            pre.textContent = details;
+            scoreDetails.appendChild(pre);
+          } else {
+            const div = document.createElement('div');
+            div.className = 'event-empty';
+            div.textContent = 'Sin detalle de score.';
+            scoreDetails.appendChild(div);
+          }
+        }
+
+        setText('event-context-title', 'Contexto del evento', 'Contexto del evento');
+        const contextNode = byId('event-context');
+        if (contextNode) {
+          contextNode.textContent = String(event.detected_content || event.full_context || 'Sin contexto capturado.');
+        }
+        const rawNode = byId('event-raw');
+        if (rawNode) {
+          rawNode.textContent = JSON.stringify(event, null, 2);
+        }
+        const relatedStatus = byId('event-related-status');
+        if (relatedStatus) {
+          relatedStatus.textContent = 'No se cargan autom?ticamente. Pulsa "Ver relacionadas" para consultar historial relacionado.';
+        }
+        const relatedWrap = byId('event-related-wrap');
+        if (relatedWrap) {
+          relatedWrap.hidden = true;
+        }
+        const relatedBody = byId('event-related-body');
+        if (relatedBody) {
+          relatedBody.innerHTML = '';
+        }
+        const relatedLoad = byId('event-related-load');
+        if (relatedLoad) {
+          relatedLoad.dataset.reportId = String(event.id || '');
+          relatedLoad.disabled = false;
+        }
+        const reviewId = byId('event-review-id');
+        if (reviewId) {
+          reviewId.value = String(event.id || '');
+        }
+        syncReviewScopeUi();
+        const reviewStatus = byId('event-review-status');
+        if (reviewStatus) {
+          const next = String(event.review_status || 'pending');
+          reviewStatus.value = ['pending', 'accepted', 'rejected', 'allowlisted'].includes(next) ? next : 'pending';
+        }
+        document.querySelectorAll('[data-event-report-id]').forEach((input) => {
+          input.value = String(event.id || '');
+        });
+      };
+
+      let activeSeverityFilter = 'all';
+      const applySeverityFilter = () => {
+        const groups = [...feed.querySelectorAll('.event-group')];
+        let visibleCount = 0;
+        groups.forEach((group) => {
+          const bucket = String(group.getAttribute('data-severity') || 'low');
+          const visible = activeSeverityFilter === 'all' || bucket === activeSeverityFilter;
+          group.hidden = !visible;
+          if (visible) {
+            visibleCount++;
+          }
+        });
+        if (!visibleCount) {
+          empty.hidden = false;
+          empty.textContent = 'No hay eventos en esta severidad.';
+          detail.hidden = true;
           return;
         }
-        if (mode === 'force') {
-          runForceLayout({ iterations: 240, stepsPerFrame: 8 });
+        empty.hidden = true;
+        const activeItem = feed.querySelector('.event-feed-item.is-active');
+        const activeGroup = activeItem ? activeItem.closest('.event-group') : null;
+        if (!activeGroup || activeGroup.hidden) {
+          const firstVisible = feed.querySelector('.event-group:not([hidden]) .event-feed-item');
+          if (firstVisible) {
+            render(Number(firstVisible.getAttribute('data-event-index')));
+          }
+        }
+      };
+
+      feed.addEventListener('click', (ev) => {
+        const target = ev.target;
+        if (!(target instanceof Element)) return;
+        const toggle = target.closest('.event-group-toggle');
+        if (toggle) {
+          const group = toggle.closest('.event-group');
+          const items = group ? group.querySelector('.event-group-items') : null;
+          if (!items) return;
+          const willOpen = items.hasAttribute('hidden');
+          if (willOpen) {
+            items.removeAttribute('hidden');
+            toggle.setAttribute('aria-expanded', 'true');
+            toggle.textContent = 'Ocultar';
+          } else {
+            items.setAttribute('hidden', '');
+            toggle.setAttribute('aria-expanded', 'false');
+            const count = Math.max(0, items.querySelectorAll('.event-feed-item').length);
+            toggle.textContent = `Ver ${count} mas`;
+          }
           return;
         }
-        const { ordered, adjacency, incoming, rootId } = orderedNodeIds(state.selectedNodeId || state.graph.nodes[0]?.id || '');
-        const root = rootId || ordered[0] || '';
-        const levels = new Map();
-        const queue = root ? [{ id: root, depth: 0 }] : [];
-        while (queue.length) {
-          const current = queue.shift();
-          if (!current || levels.has(current.id)) continue;
-          levels.set(current.id, current.depth);
-          (adjacency.get(current.id) || []).forEach((nextId) => {
-            if (!levels.has(nextId)) {
-              queue.push({ id: nextId, depth: current.depth + 1 });
-            }
-          });
-        }
-        ordered.forEach((id, index) => {
-          if (!levels.has(id)) {
-            levels.set(id, Math.max(1, Math.floor(index / 4) + 1));
-          }
+        const item = target.closest('.event-feed-item');
+        if (!item) return;
+        render(Number(item.getAttribute('data-event-index')));
+      });
+
+      const reviewScope = byId('event-review-scope');
+      if (reviewScope) {
+        reviewScope.addEventListener('click', (ev) => {
+          const target = ev.target;
+          if (!(target instanceof Element)) return;
+          const button = target.closest('[data-review-scope]');
+          if (!button) return;
+          currentReviewScope = button.getAttribute('data-review-scope') === 'group' ? 'group' : 'single';
+          syncReviewScopeUi();
         });
-
-        const layers = new Map();
-        ordered.forEach((id) => {
-          const depth = Number(levels.get(id) || 0);
-          if (!layers.has(depth)) layers.set(depth, []);
-          layers.get(depth).push(id);
-        });
-        layers.forEach((list) => {
-          list.sort((a, b) => {
-            const inDiff = Number(incoming.get(a) || 0) - Number(incoming.get(b) || 0);
-            if (inDiff !== 0) return inDiff;
-            return ordered.indexOf(a) - ordered.indexOf(b);
-          });
-        });
-
-        const startX = 160;
-        const startY = 110;
-        const gapX = 190;
-        const gapY = 110;
-
-        if (mode === 'tree-vertical' || mode === 'tree-horizontal') {
-          [...layers.entries()].sort((a, b) => a[0] - b[0]).forEach(([depth, ids]) => {
-            const count = ids.length;
-            ids.forEach((id, index) => {
-              const node = nodeById(id);
-              if (!node) return;
-              const spread = (index - (count - 1) / 2);
-              if (mode === 'tree-vertical') {
-                node.x = startX + depth * gapX;
-                node.y = startY + spread * gapY + 180;
-              } else {
-                node.x = startX + spread * gapX + 280;
-                node.y = startY + depth * gapY;
-              }
-            });
-          });
-        } else if (mode === 'cascade') {
-          ordered.forEach((id, index) => {
-            const node = nodeById(id);
-            if (!node) return;
-            const row = Math.floor(index / 5);
-            const col = index % 5;
-            node.x = 150 + row * 130 + col * 85;
-            node.y = 100 + row * 74 + col * 56;
-          });
-        } else if (mode === 'radial') {
-          const bounds = nodeBounds();
-          const centerX = bounds.centerX || 420;
-          const centerY = bounds.centerY || 250;
-          const byDepth = [...layers.entries()].sort((a, b) => a[0] - b[0]);
-          byDepth.forEach(([depth, ids]) => {
-            const radius = depth === 0 ? 0 : 120 + (depth - 1) * 105;
-            ids.forEach((id, index) => {
-              const node = nodeById(id);
-              if (!node) return;
-              if (depth === 0) {
-                node.x = centerX;
-                node.y = centerY;
-                return;
-              }
-              const angle = (index / Math.max(1, ids.length)) * Math.PI * 2;
-              node.x = Math.round(centerX + Math.cos(angle) * radius);
-              node.y = Math.round(centerY + Math.sin(angle) * Math.max(70, radius * 0.66));
-            });
-          });
-        } else if (mode === 'grid') {
-          const columns = Math.max(2, Math.ceil(Math.sqrt(state.graph.nodes.length)));
-          ordered.forEach((id, index) => {
-            const node = nodeById(id);
-            if (!node) return;
-            const col = index % columns;
-            const row = Math.floor(index / columns);
-            node.x = 150 + col * 180;
-            node.y = 110 + row * 115;
-          });
-        }
-
-        render();
-        fitGraph(100);
       }
 
-      function toggleFullscreen() {
-        if (!document.fullscreenEnabled) return;
-        if (document.fullscreenElement === wrap) {
-          document.exitFullscreen().catch(() => {});
-          return;
-        }
-        wrap.requestFullscreen?.().catch(() => {});
-      }
-
-      function render() {
-        const bounds = wrap.getBoundingClientRect();
-        const width = Math.max(200, bounds.width);
-        const height = Math.max(200, bounds.height);
-        svg.setAttribute('viewBox', `0 0 ${Math.round(width)} ${Math.round(height)}`);
-        svg.innerHTML = '';
-        nodeLayer.innerHTML = '';
-        nodeLayer.style.transform = `translate(${state.camera.x}px, ${state.camera.y}px) scale(${state.camera.scale})`;
-        nodeLayer.style.transformOrigin = '0 0';
-        syncZoomStatus();
-
-        const scene = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        scene.setAttribute('transform', `translate(${state.camera.x} ${state.camera.y}) scale(${state.camera.scale})`);
-        svg.appendChild(scene);
-
-        state.graph.edges.forEach((edge) => {
-          const from = nodeById(edge.from);
-          const to = nodeById(edge.to);
-          if (!from || !to) return;
-          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          line.setAttribute('x1', String(from.x));
-          line.setAttribute('y1', String(from.y));
-          line.setAttribute('x2', String(to.x));
-          line.setAttribute('y2', String(to.y));
-          line.setAttribute('stroke', edge.color || '#94a3b8');
-          line.setAttribute('stroke-width', '2');
-          line.setAttribute('stroke-linecap', 'round');
-          scene.appendChild(line);
-          if (edge.label) {
-            const tx = (from.x + to.x) / 2;
-            const ty = (from.y + to.y) / 2;
-            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            text.setAttribute('x', String(tx));
-            text.setAttribute('y', String(ty));
-            text.setAttribute('fill', '#d6ebf8');
-            text.setAttribute('font-size', '10');
-            text.setAttribute('text-anchor', 'middle');
-            text.textContent = edge.label;
-            scene.appendChild(text);
-          }
-        });
-
-        state.graph.nodes.forEach((node) => {
-          const el = document.createElement('div');
-          const kind = detectNodeKind(node);
-          const kindClass = kind.key ? ` type-${kind.key}` : '';
-          el.className = 'intel-node' + kindClass + (state.selectedNodeId === node.id ? ' active' : '');
-          el.dataset.nodeId = node.id;
-          el.style.left = `${node.x}px`;
-          el.style.top = `${node.y}px`;
-          el.style.background = node.color || '#5dc8ff';
-          el.style.cursor = readOnly ? 'pointer' : 'move';
-          const hasNotes = String(node.notes || '').trim() !== '';
-          const tags = Array.isArray(node.tags) ? node.tags.filter(Boolean) : [];
-          const labelWrap = document.createElement('div');
-          labelWrap.className = 'intel-node-label';
-          const flag = flagForNode(node);
-          labelWrap.textContent = `${flag ? `${flag} ` : ''}${node.label}${hasNotes ? ' *' : ''}`;
-          el.appendChild(labelWrap);
-          const metaWrap = document.createElement('div');
-          metaWrap.className = 'intel-node-meta';
-          if (kind.label) {
-            const kindChip = document.createElement('span');
-            kindChip.className = `node-chip ${kind.key}`;
-            kindChip.textContent = kind.label;
-            metaWrap.appendChild(kindChip);
-          }
-          const vtLookup = lookupVtForNode(node, vtLookupIndex);
-          if (vtLookup && vtLookup.summary && typeof vtLookup.summary === 'object') {
-            const mal = Number(vtLookup.summary.malicious || 0);
-            const sus = Number(vtLookup.summary.suspicious || 0);
-            const har = Number(vtLookup.summary.harmless || 0);
-            const und = Number(vtLookup.summary.undetected || 0);
-            const vtChip = document.createElement('span');
-            vtChip.className = 'node-chip vt';
-            vtChip.textContent = `VT ${mal}/${sus}/${har}/${und}`;
-            metaWrap.appendChild(vtChip);
-          }
-          if (metaWrap.childNodes.length) {
-            el.appendChild(metaWrap);
-          }
-          el.title = `${node.label}${tags.length ? `\nTags: ${tags.join(', ')}` : ''}${hasNotes ? `\nNotas: ${String(node.notes).slice(0, 300)}` : ''}`;
-          el.addEventListener('click', (ev) => {
-            if (state.drag && state.drag.moved) {
+      const reviewForm = byId('event-review-form');
+      if (reviewForm) {
+        reviewForm.addEventListener('submit', (ev) => {
+          const actionableGroup = currentGroupIndices.filter((idx) => {
+            const row = rows[idx];
+            return row && Number(row.id || 0) > 0;
+          });
+          if (currentReviewScope === 'group' && actionableGroup.length > 1) {
+            const statusNode = byId('event-review-status');
+            const nextStatus = String(statusNode?.value || 'pending');
+            if (!window.confirm(`Aplicar el veredicto "${nextStatus}" a las ${actionableGroup.length} alertas del grupo?`)) {
               ev.preventDefault();
               return;
             }
-            ev.stopPropagation();
-            state.selectedNodeId = node.id;
-            render();
-            if (typeof onSelectNode === 'function') {
-              onSelectNode(node);
-            }
-          });
-          if (!readOnly) {
-            el.addEventListener('pointerdown', (ev) => {
-              ev.preventDefault();
-              ev.stopPropagation();
-              state.selectedNodeId = node.id;
-              const world = clientToWorld(ev.clientX, ev.clientY);
-              state.drag = {
-                type: 'node',
-                id: node.id,
-                offsetX: world.x - node.x,
-                offsetY: world.y - node.y,
-                moved: false
-              };
-              render();
-            });
           }
-          nodeLayer.appendChild(el);
+          syncReviewScopeUi();
         });
-
-        fillNodeSelect(edgeFromSelect);
-        fillNodeSelect(edgeToSelect);
-        fillEdgeList();
-        fillNodeList();
       }
 
-      wrap.addEventListener('pointerdown', (ev) => {
-        const target = ev.target;
-        const isNode = target instanceof HTMLElement && target.classList.contains('intel-node');
-        if (isNode) {
-          return;
-        }
-        state.drag = {
-          type: 'pan',
-          startClientX: ev.clientX,
-          startClientY: ev.clientY,
-          startX: state.camera.x,
-          startY: state.camera.y,
-          moved: false
-        };
-        wrap.classList.add('is-panning');
-      });
-
-      window.addEventListener('pointermove', (ev) => {
-        if (!state.drag) return;
-        if (state.drag.type === 'node' && !readOnly) {
-          const node = nodeById(state.drag.id);
-          if (!node) return;
-          const world = clientToWorld(ev.clientX, ev.clientY);
-          node.x = world.x - state.drag.offsetX;
-          node.y = world.y - state.drag.offsetY;
-          state.drag.moved = true;
-          render();
-          return;
-        }
-        if (state.drag.type === 'pan') {
-          state.camera.x = state.drag.startX + (ev.clientX - state.drag.startClientX);
-          state.camera.y = state.drag.startY + (ev.clientY - state.drag.startClientY);
-          state.drag.moved = true;
-          render();
-        }
-      });
-
-      window.addEventListener('pointerup', () => {
-        state.lastInteractionMoved = Boolean(state.drag && state.drag.moved);
-        wrap.classList.remove('is-panning');
-        state.drag = null;
-      });
-
-      wrap.addEventListener('click', (ev) => {
-        if (state.lastInteractionMoved) {
-          state.lastInteractionMoved = false;
-          return;
-        }
-        const target = ev.target;
-        const isNode = target instanceof HTMLElement && target.classList.contains('intel-node');
-        if (isNode) return;
-        state.selectedNodeId = null;
-        render();
-        if (typeof onSelectNode === 'function') {
-          onSelectNode(null);
-        }
-      });
-
-      wrap.addEventListener('wheel', (ev) => {
-        ev.preventDefault();
-        const factor = ev.deltaY > 0 ? 0.9 : 1.1;
-        setZoom(state.camera.scale * factor, ev.clientX, ev.clientY);
-      }, { passive: false });
-
-      controlRefs.zoomInButton?.addEventListener('click', () => zoomBy(1.18));
-      controlRefs.zoomOutButton?.addEventListener('click', () => zoomBy(0.84));
-      controlRefs.zoomResetButton?.addEventListener('click', () => resetZoom());
-      controlRefs.fitButton?.addEventListener('click', () => fitGraph(90));
-      controlRefs.layoutApplyButton?.addEventListener('click', () => applyLayout(String(controlRefs.layoutSelect?.value || 'tree-vertical')));
-      [controlRefs.fullscreenButton, controlRefs.fullscreenButtonAlt].forEach((buttonRef) => {
-        buttonRef?.addEventListener('click', () => toggleFullscreen());
-      });
-
-      document.addEventListener('fullscreenchange', () => {
-        const isActive = document.fullscreenElement === wrap;
-        wrap.classList.toggle('is-fullscreen', isActive);
-        [controlRefs.fullscreenButton, controlRefs.fullscreenButtonAlt].forEach((buttonRef) => {
-          if (buttonRef) {
-            buttonRef.textContent = isActive ? 'Salir pantalla completa' : 'Pantalla completa';
-          }
-        });
-        render();
-      });
-
-      window.addEventListener('resize', () => render());
-      const initialLayoutMode = String(controlRefs.layoutSelect?.value || 'tree-vertical');
-      if (shouldAutoLayout()) {
-        applyLayout('force');
-      } else {
-        render();
-        fitGraph(90);
-      }
-
-      return {
-        getGraph() {
-          return normalizeGraphPayload(state.graph);
-        },
-        getSelectedNode() {
-          return nodeById(state.selectedNodeId);
-        },
-        addNode(payload) {
-          state.graph.nodes.push({
-            id: payload.id,
-            label: payload.label,
-            color: payload.color,
-            x: payload.x,
-            y: payload.y,
-            tags: payload.tags || [],
-            notes: payload.notes || ''
+      if (severityFilter) {
+        severityFilter.addEventListener('click', (ev) => {
+          const target = ev.target;
+          if (!(target instanceof Element)) return;
+          const button = target.closest('[data-ops-severity]');
+          if (!button) return;
+          activeSeverityFilter = String(button.getAttribute('data-ops-severity') || 'all');
+          severityFilter.querySelectorAll('[data-ops-severity]').forEach((node) => {
+            node.classList.toggle('is-active', node === button);
           });
-          state.selectedNodeId = payload.id;
-          render();
-          if (typeof onSelectNode === 'function') {
-            onSelectNode(nodeById(payload.id));
-          }
-        },
-        updateSelectedNode(payload) {
-          const node = nodeById(state.selectedNodeId);
-          if (!node) return false;
-          node.label = payload.label;
-          node.color = payload.color;
-          node.tags = payload.tags || [];
-          node.notes = payload.notes || '';
-          render();
-          if (typeof onSelectNode === 'function') {
-            onSelectNode(node);
-          }
-          return true;
-        },
-        removeSelectedNode() {
-          if (!state.selectedNodeId) return false;
-          const nodeId = state.selectedNodeId;
-          state.graph.nodes = state.graph.nodes.filter((n) => n.id !== nodeId);
-          state.graph.edges = state.graph.edges.filter((e) => e.from !== nodeId && e.to !== nodeId);
-          state.selectedNodeId = null;
-          render();
-          if (typeof onSelectNode === 'function') {
-            onSelectNode(null);
-          }
-          return true;
-        },
-        addEdge(payload) {
-          state.graph.edges.push(payload);
-          render();
-        },
-        removeEdge(edgeId) {
-          state.graph.edges = state.graph.edges.filter((e) => e.id !== edgeId);
-          render();
-        },
-        edgeById,
-        selectNode(nodeId) {
-          if (!nodeId || !nodeById(nodeId)) {
-            state.selectedNodeId = null;
-            render();
-            if (typeof onSelectNode === 'function') {
-              onSelectNode(null);
-            }
-            return false;
-          }
-          state.selectedNodeId = nodeId;
-          render();
-          if (typeof onSelectNode === 'function') {
-            onSelectNode(nodeById(nodeId));
-          }
-          return true;
-        },
-        fitGraph() {
-          fitGraph(90);
-        },
-        resetZoom() {
-          resetZoom();
-        },
-        zoomIn() {
-          zoomBy(1.18);
-        },
-        zoomOut() {
-          zoomBy(0.84);
-        },
-        applyLayout(mode) {
-          applyLayout(mode);
-        },
-        toggleFullscreen() {
-          toggleFullscreen();
-        }
-      };
-    }
-
-    function buildHighlightedContext(text, snippets) {
-      if (!text) return '';
-      const source = String(text);
-      const lowerSource = source.toLowerCase();
-      const list = Array.isArray(snippets) ? snippets : [];
-      const uniqueSnippets = [...new Set(list.map((entry) => String(entry || '').trim()).filter(Boolean))];
-      if (!uniqueSnippets.length) {
-        return escapeHtml(source);
-      }
-      const ranges = [];
-      uniqueSnippets.forEach((snippet) => {
-        const lowerSnippet = snippet.toLowerCase();
-        let cursor = 0;
-        while (cursor < lowerSource.length) {
-          const index = lowerSource.indexOf(lowerSnippet, cursor);
-          if (index === -1) break;
-          ranges.push({ start: index, end: index + lowerSnippet.length });
-          cursor = index + lowerSnippet.length;
-        }
-      });
-      if (!ranges.length) {
-        return escapeHtml(source);
-      }
-      ranges.sort((a, b) => a.start - b.start || b.end - a.end);
-      const merged = [];
-      ranges.forEach((range) => {
-        const last = merged[merged.length - 1];
-        if (last && range.start <= last.end) {
-          last.end = Math.max(last.end, range.end);
-        } else {
-          merged.push({ ...range });
-        }
-      });
-      let output = '';
-      let cursor = 0;
-      merged.forEach((range) => {
-        output += escapeHtml(source.slice(cursor, range.start));
-        output += '<mark>' + escapeHtml(source.slice(range.start, range.end)) + '</mark>';
-        cursor = range.end;
-      });
-      output += escapeHtml(source.slice(cursor));
-      return output;
-    }
-
-    function eventSeverity(score) {
-      const numeric = Number(score || 0);
-      if (numeric > 40) return 'critical';
-      if (numeric >= 30) return 'high';
-      if (numeric > 15) return 'medium';
-      return 'low';
-    }
-
-    const relatedEventsCache = new Map();
-
-    function buildEventFocusLink(reportId) {
-      const url = new URL(window.location.href);
-      url.searchParams.set('report_id', String(reportId || ''));
-      url.searchParams.delete('format');
-      return `${url.pathname}?${url.searchParams.toString()}`;
-    }
-
-    function renderRelatedRows(rows) {
-      if (!eventRelatedBody || !eventRelatedWrap) {
-        return;
-      }
-      eventRelatedBody.innerHTML = '';
-      if (!Array.isArray(rows) || !rows.length) {
-        const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.colSpan = 9;
-        td.className = 'mut';
-        td.textContent = 'No se encontraron alertas relacionadas.';
-        tr.appendChild(td);
-        eventRelatedBody.appendChild(tr);
-        eventRelatedWrap.hidden = false;
-        return;
-      }
-      rows.forEach((row) => {
-        const tr = document.createElement('tr');
-        const relation = [];
-        if (row.related_by_domain) relation.push('dominio');
-        if (row.related_by_ip) relation.push('ip');
-        if (row.related_by_ttp) relation.push('ttp');
-        if (row.related_by_snippet) relation.push('snippet');
-        const relationText = relation.length ? relation.join(' + ') : '-';
-        const sharedReasons = Array.isArray(row.shared_reasons) ? row.shared_reasons : [];
-        const sharedSignals = Array.isArray(row.shared_signals) ? row.shared_signals : [];
-        const sharedSnippets = Array.isArray(row.shared_snippets) ? row.shared_snippets : [];
-        const evidenceParts = [];
-        if (sharedSnippets.length) {
-          evidenceParts.push(`snippet: ${sharedSnippets[0]}`);
-        }
-        if (sharedReasons.length) {
-          evidenceParts.push(`reason: ${sharedReasons[0]}`);
-        }
-        if (sharedSignals.length) {
-          evidenceParts.push(`signal: ${sharedSignals[0]}`);
-        }
-        const evidenceText = evidenceParts.join(' | ') || '-';
-        const cells = [
-          String(row.id || ''),
-          String(row.activity_at || row.received_at || '-'),
-          String(row.hostname || '-'),
-          String(row.ip || '-'),
-          `${Number(row.score_total || 0)}/100`,
-          String(row.review_status || 'pending'),
-          relationText,
-          evidenceText,
-        ];
-        cells.forEach((value) => {
-          const td = document.createElement('td');
-          td.textContent = value;
-          if (/^\d+$/.test(value) || value.includes('/100')) {
-            td.className = 'mono';
-          }
-          tr.appendChild(td);
-        });
-        const actionTd = document.createElement('td');
-        const link = document.createElement('a');
-        link.className = 'event-related-link';
-        link.href = buildEventFocusLink(row.id || 0);
-        link.textContent = 'Abrir';
-        actionTd.appendChild(link);
-        if (row.hostname) {
-          const sep = document.createTextNode(' | ');
-          actionTd.appendChild(sep);
-          const searchLink = document.createElement('a');
-          searchLink.className = 'event-related-link';
-          searchLink.href = `dashboard.php?page=search&domain=${encodeURIComponent(String(row.hostname || ''))}`;
-          searchLink.textContent = 'Buscar';
-          actionTd.appendChild(searchLink);
-        }
-        tr.appendChild(actionTd);
-        eventRelatedBody.appendChild(tr);
-      });
-      eventRelatedWrap.hidden = false;
-    }
-
-    async function loadRelatedReports(reportId) {
-      const url = `dashboard.php?format=related_reports&report_id=${encodeURIComponent(String(reportId || 0))}`;
-      const response = await fetch(url, { cache: 'no-store' });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      const payload = await response.json();
-      if (!payload || payload.status !== 'ok') {
-        throw new Error(String(payload?.message || 'invalid_response'));
-      }
-      return Array.isArray(payload.related) ? payload.related : [];
-    }
-
-    function renderEventDetail(index) {
-      if (!eventDetail || !eventEmpty || !eventWorkbenchData[index]) {
-        return;
-      }
-      const event = eventWorkbenchData[index];
-      const liveItems = eventFeed ? Array.from(eventFeed.querySelectorAll('.event-feed-item')) : [];
-      liveItems.forEach((item) => {
-        item.classList.toggle('is-active', Number(item.dataset.eventIndex) === index);
-      });
-      eventEmpty.hidden = true;
-      eventDetail.hidden = false;
-      eventTitle.textContent = event.hostname || '(sin dominio)';
-      eventTime.textContent = event.activity_at || event.received_at || '-';
-      eventCountry.textContent = event.country || '-';
-      eventUrl.textContent = event.url || '-';
-      eventPrevUrl.textContent = event.previous_url || '-';
-      const isManualReport = String(event.event_type || '') === 'manual_report';
-      if (eventIp) {
-        eventIp.textContent = isManualReport ? (event.ip || '-') : '-';
-      }
-      if (eventExtension) {
-        eventExtension.textContent = isManualReport ? (event.extension_version || '-') : '-';
-      }
-      if (eventDomainHistory) {
-        const domainBlockedCount = Number(event.host_blocked_count || 0);
-        const domainTotalCount = Number(event.host_total_count || 0);
-        const domainBlocked = Boolean(event.host_blocked_before);
-        const domainLastBlockedAt = String(event.host_last_blocked_at || '');
-        eventDomainHistory.textContent = domainBlocked
-          ? `SI (${domainBlockedCount} bloqueos / ${domainTotalCount} reportes${domainLastBlockedAt ? `, ultimo ${domainLastBlockedAt}` : ''})`
-          : `No (${domainTotalCount} reportes)`;
-      }
-      if (eventIpHistory) {
-        const ipBlockedCount = Number(event.ip_blocked_count || 0);
-        const ipTotalCount = Number(event.ip_total_count || 0);
-        const ipBlocked = Boolean(event.ip_blocked_before);
-        const ipLastBlockedAt = String(event.ip_last_blocked_at || '');
-        eventIpHistory.textContent = ipBlocked
-          ? `SI (${ipBlockedCount} bloqueos / ${ipTotalCount} reportes${ipLastBlockedAt ? `, ultimo ${ipLastBlockedAt}` : ''})`
-          : `No (${ipTotalCount} reportes)`;
-      }
-      if (eventIoc) {
-        const isUnsafeDownload = String(event.event_type || '') === 'unsafe_download';
-        if (isUnsafeDownload) {
-          const ioc = event.download_ioc || {};
-          if (eventIocHash) {
-            eventIocHash.textContent = ioc.hash ? String(ioc.hash) : 'No disponible';
-          }
-          if (eventIocName) {
-            eventIocName.textContent = ioc.filename ? String(ioc.filename) : (event.detected_content || '-');
-          }
-          if (eventIocPath) {
-            eventIocPath.textContent = ioc.path ? String(ioc.path) : '-';
-          }
-          if (eventIocSite) {
-            eventIocSite.textContent = ioc.url || ioc.site || event.url || event.hostname || '-';
-          }
-          if (eventIocDate) {
-            eventIocDate.textContent = event.activity_at || event.received_at || '-';
-          }
-          eventIoc.hidden = false;
-        } else {
-          eventIoc.hidden = true;
-        }
-      }
-      if (eventReviewId) {
-        eventReviewId.value = event.id || '';
-      }
-      if (eventReviewStatus) {
-        const nextStatus = String(event.review_status || 'pending');
-        eventReviewStatus.value = ['pending', 'accepted', 'rejected'].includes(nextStatus) ? nextStatus : 'pending';
-      }
-      document.querySelectorAll('[data-event-report-id]').forEach((input) => {
-        input.value = event.id || '';
-      });
-
-      eventBadges.innerHTML = '';
-      const badges = [
-        `score ${Number(event.score_total || 0)}/100`,
-        event.blocked ? 'blocked' : 'alert-only',
-        String(event.review_status || 'pending'),
-        `x${Math.max(1, Number(event.duplicate_count || 1))}`,
-        String(event.event_type || 'clickfix_alert')
-      ];
-      if (Boolean(event.host_blocked_before)) {
-        badges.push(`domain_blocked x${Number(event.host_blocked_count || 0)}`);
-      }
-      if (Boolean(event.ip_blocked_before)) {
-        badges.push(`ip_blocked x${Number(event.ip_blocked_count || 0)}`);
-      }
-      badges.forEach((label) => {
-        const chip = document.createElement('span');
-        chip.className = 'event-chip';
-        chip.textContent = label;
-        eventBadges.appendChild(chip);
-      });
-
-      eventReasons.innerHTML = '';
-      const reasonList = Array.isArray(event.reason_list) && event.reason_list.length
-        ? event.reason_list
-        : [event.message || 'Sin motivo clasificado'];
-      reasonList.forEach((reason) => {
-        const li = document.createElement('li');
-        li.textContent = String(reason);
-        eventReasons.appendChild(li);
-      });
-
-      eventSnippets.innerHTML = '';
-      const snippets = Array.isArray(event.snippets) ? event.snippets.filter(Boolean) : [];
-      if (snippets.length) {
-        snippets.forEach((snippet) => {
-          const div = document.createElement('div');
-          div.className = 'event-snippet';
-          div.innerHTML = boldMatchedSnippets(String(snippet), [snippet]);
-          eventSnippets.appendChild(div);
-        });
-      } else {
-        const div = document.createElement('div');
-        div.className = 'event-empty';
-        div.textContent = 'Sin snippets almacenados.';
-        eventSnippets.appendChild(div);
-      }
-
-      if (eventSignals) {
-        eventSignals.innerHTML = '';
-        const signals = Array.isArray(event.signals) ? event.signals.filter(Boolean) : [];
-        if (signals.length) {
-          signals.forEach((signal) => {
-            const li = document.createElement('li');
-            li.textContent = String(signal);
-            eventSignals.appendChild(li);
-          });
-        } else {
-          const li = document.createElement('li');
-          li.className = 'event-empty';
-          li.textContent = 'Sin signals capturados.';
-          eventSignals.appendChild(li);
-        }
-      }
-
-      if (eventScoreDetails) {
-        eventScoreDetails.innerHTML = '';
-        const details = event.score_details;
-        if (details && typeof details === 'object') {
-          const pre = document.createElement('pre');
-          pre.className = 'event-snippet';
-          pre.textContent = JSON.stringify(details, null, 2);
-          eventScoreDetails.appendChild(pre);
-        } else if (typeof details === 'string' && details.trim() !== '') {
-          const pre = document.createElement('pre');
-          pre.className = 'event-snippet';
-          pre.textContent = details;
-          eventScoreDetails.appendChild(pre);
-        } else {
-          const div = document.createElement('div');
-          div.className = 'event-empty';
-          div.textContent = 'Sin detalle de score.';
-          eventScoreDetails.appendChild(div);
-        }
-      }
-
-      const fullContextText = String(event.full_context || '');
-      const detectedContextText = String(event.detected_content || '');
-      if (canViewExactEventContext) {
-        if (eventContextTitle) {
-          eventContextTitle.textContent = 'Contexto completo de pagina';
-        }
-        const contextText = fullContextText || detectedContextText;
-        eventContext.textContent = contextText || 'Sin contexto capturado.';
-      } else {
-        if (eventContextTitle) {
-          eventContextTitle.textContent = 'Contexto resaltado';
-        }
-        const contextText = detectedContextText || fullContextText;
-        if (contextText) {
-          eventContext.innerHTML = buildHighlightedContext(contextText, snippets);
-        } else {
-          eventContext.textContent = 'Sin contexto capturado.';
-        }
-      }
-
-      const rawPayload = {
-        id: event.id,
-        received_at: event.received_at,
-        last_seen: event.last_seen,
-        activity_at: event.activity_at,
-        hostname: event.hostname,
-        url: event.url,
-        previous_url: event.previous_url,
-        message: event.message,
-        detected_content: event.detected_content,
-        full_context: canViewExactEventContext ? event.full_context : undefined,
-        score_total: event.score_total,
-        event_type: event.event_type,
-        ip: event.ip,
-        extension_version: event.extension_version,
-        host_blocked_before: event.host_blocked_before,
-        host_blocked_count: event.host_blocked_count,
-        host_total_count: event.host_total_count,
-        host_last_blocked_at: event.host_last_blocked_at,
-        ip_blocked_before: event.ip_blocked_before,
-        ip_blocked_count: event.ip_blocked_count,
-        ip_total_count: event.ip_total_count,
-        ip_last_blocked_at: event.ip_last_blocked_at,
-        review_status: event.review_status,
-        blocked: event.blocked,
-        duplicate_count: event.duplicate_count,
-        reasons: event.reason_list,
-        snippets: event.snippets,
-        signals: event.signals,
-        score_details: event.score_details,
-        download_ioc: event.download_ioc
-      };
-      eventRaw.textContent = JSON.stringify(rawPayload, null, 2);
-
-      const severity = eventSeverity(event.score_total);
-      eventTitle.dataset.severity = severity;
-
-      if (eventRelatedLoad) {
-        eventRelatedLoad.disabled = false;
-        eventRelatedLoad.dataset.reportId = String(event.id || '');
-      }
-      if (eventRelatedStatus) {
-        eventRelatedStatus.textContent = 'No se cargan automaticamente. Pulsa "Ver relacionadas" para consultar historial relacionado.';
-      }
-      if (eventRelatedBody) {
-        eventRelatedBody.innerHTML = '';
-      }
-      if (eventRelatedWrap) {
-        eventRelatedWrap.hidden = true;
-      }
-      updateEventMitre(event);
-    }
-
-    if (eventReviewForm) {
-      eventReviewForm.addEventListener('submit', (ev) => {
-        const reportId = Number(eventReviewId?.value || 0);
-        if (!Number.isFinite(reportId) || reportId <= 0) {
-          ev.preventDefault();
-          alert('Selecciona un evento valido antes de actualizar la revision.');
-        }
-      });
-    }
-    eventQuickForms.forEach((form) => {
-      form.addEventListener('submit', (ev) => {
-        const idInput = form.querySelector('[data-event-report-id]');
-        const reportId = Number(idInput?.value || 0);
-        if (!Number.isFinite(reportId) || reportId <= 0) {
-          ev.preventDefault();
-          alert('Selecciona un evento valido antes de ejecutar la accion.');
-        }
-      });
-    });
-
-    if (eventRelatedLoad) {
-      eventRelatedLoad.addEventListener('click', async () => {
-        const reportId = Number(eventRelatedLoad.dataset.reportId || 0);
-        if (!Number.isFinite(reportId) || reportId <= 0) {
-          if (eventRelatedStatus) {
-            eventRelatedStatus.textContent = 'Selecciona primero un evento valido.';
-          }
-          return;
-        }
-        if (eventRelatedStatus) {
-          eventRelatedStatus.textContent = 'Cargando alertas relacionadas...';
-        }
-        eventRelatedLoad.disabled = true;
-        try {
-          if (!relatedEventsCache.has(reportId)) {
-            const rows = await loadRelatedReports(reportId);
-            relatedEventsCache.set(reportId, rows);
-          }
-          const rows = relatedEventsCache.get(reportId) || [];
-          renderRelatedRows(rows);
-          if (eventRelatedStatus) {
-            eventRelatedStatus.textContent = `Relacionadas encontradas: ${Array.isArray(rows) ? rows.length : 0}.`;
-          }
-        } catch (error) {
-          if (eventRelatedStatus) {
-            eventRelatedStatus.textContent = `No se pudieron cargar las relacionadas (${String(error?.message || 'error')}).`;
-          }
-          if (eventRelatedBody) {
-            eventRelatedBody.innerHTML = '';
-          }
-          if (eventRelatedWrap) {
-            eventRelatedWrap.hidden = true;
-          }
-        } finally {
-          eventRelatedLoad.disabled = false;
-        }
-      });
-    }
-
-    updateInvestigationMitre();
-    updateSharedInvestigationMitre();
-    updateSourceAlertMitre();
-    if (eventFeed && eventWorkbenchData.length) {
-      eventFeed.addEventListener('click', (event) => {
-        const target = event.target;
-        if (!(target instanceof Element)) {
-          return;
-        }
-        const btn = target.closest('.event-feed-item');
-        if (!btn || !eventFeed.contains(btn)) {
-          return;
-        }
-        renderEventDetail(Number(btn.dataset.eventIndex));
-      });
-      const preferredIndex = focusReportId > 0
-        ? eventWorkbenchData.findIndex((entry) => Number(entry?.id || 0) === Number(focusReportId))
-        : -1;
-      renderEventDetail(preferredIndex >= 0 ? preferredIndex : 0);
-    }
-
-    const focusShell = document.querySelector('.intel-selector-shell[data-intel-focus="1"]');
-    if (focusShell) {
-      const tabButtons = Array.from(focusShell.querySelectorAll('[data-intel-tab]'));
-      const panels = Array.from(focusShell.querySelectorAll('[data-intel-panel]'));
-      const searchInput = focusShell.querySelector('#intel-focus-search');
-      const cards = Array.from(focusShell.querySelectorAll('.intel-focus-card'));
-
-      const activateTab = (tabId) => {
-        tabButtons.forEach((btn) => {
-          const isActive = btn.dataset.intelTab === tabId;
-          btn.classList.toggle('is-active', isActive);
-          btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
-        });
-        panels.forEach((panel) => {
-          panel.hidden = panel.dataset.intelPanel !== tabId;
-        });
-      };
-
-      tabButtons.forEach((btn) => {
-        btn.addEventListener('click', () => {
-          activateTab(btn.dataset.intelTab || 'investigations');
-        });
-      });
-
-      if (searchInput) {
-        const runFilter = () => {
-          const query = String(searchInput.value || '').trim().toLowerCase();
-          cards.forEach((card) => {
-            const haystack = String(card.dataset.search || '');
-            const match = !query || haystack.includes(query);
-            card.classList.toggle('is-hidden', !match);
-          });
-        };
-        searchInput.addEventListener('input', runFilter);
-      }
-    }
-
-    const intelWrap = document.getElementById('intel-canvas-wrap');
-    const intelSvg = document.getElementById('intel-svg');
-    const intelNodeLayer = document.getElementById('intel-node-layer');
-    const intelLayoutMode = document.getElementById('intel-layout-mode');
-    const intelLayoutApply = document.getElementById('intel-layout-apply');
-    const intelFitGraph = document.getElementById('intel-fit-graph');
-    const intelZoomIn = document.getElementById('intel-zoom-in');
-    const intelZoomOut = document.getElementById('intel-zoom-out');
-    const intelZoomReset = document.getElementById('intel-zoom-reset');
-    const intelZoomStatus = document.getElementById('intel-zoom-status');
-    const intelFullscreen = document.getElementById('intel-fullscreen');
-    const intelWorkspaceFullscreen = document.getElementById('intel-workspace-fullscreen');
-    const intelLayoutCycle = document.getElementById('intel-layout-cycle');
-    const intelDockFit = document.getElementById('intel-dock-fit');
-    const intelDockZoomIn = document.getElementById('intel-dock-zoom-in');
-    const intelDockZoomOut = document.getElementById('intel-dock-zoom-out');
-    const intelDockZoomReset = document.getElementById('intel-dock-zoom-reset');
-    const intelDockZoomStatus = document.getElementById('intel-dock-zoom-status');
-    const intelDockFullscreen = document.getElementById('intel-dock-fullscreen');
-    const intelGraphJsonInput = document.getElementById('intel-graph-json');
-    const intelSaveForm = document.getElementById('intel-save-form');
-    const nodeLabelInput = document.getElementById('node-label');
-    const nodeColorInput = document.getElementById('node-color');
-    const nodeTagsInput = document.getElementById('node-tags');
-    const nodeNotesInput = document.getElementById('node-notes');
-    const nodeAddButton = document.getElementById('node-add');
-    const nodeUpdateButton = document.getElementById('node-update');
-    const nodeDeleteButton = document.getElementById('node-delete');
-    const nodeListSelect = document.getElementById('node-list');
-    const nodePreviewLabel = document.getElementById('node-preview-label');
-    const nodePreviewTags = document.getElementById('node-preview-tags');
-    const nodePreviewNotes = document.getElementById('node-preview-notes');
-    const edgeFromSelect = document.getElementById('edge-from');
-    const edgeToSelect = document.getElementById('edge-to');
-    const edgeLabelInput = document.getElementById('edge-label');
-    const edgeColorInput = document.getElementById('edge-color');
-    const edgeAddButton = document.getElementById('edge-add');
-    const edgeListSelect = document.getElementById('edge-list');
-    const edgeDeleteButton = document.getElementById('edge-delete');
-    const intelApiMapMeta = document.getElementById('intel-api-map-meta');
-    const intelApiKeywordsWrap = document.getElementById('intel-api-keywords');
-
-    function tagsFromInput(value) {
-      return String(value || '')
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .slice(0, 20);
-    }
-
-    function makeNodeId() {
-      return `n_${Date.now().toString(36)}_${Math.random().toString(16).slice(2, 7)}`;
-    }
-
-    function makeEdgeId() {
-      return `e_${Date.now().toString(36)}_${Math.random().toString(16).slice(2, 7)}`;
-    }
-
-    function tinyHash(value) {
-      const raw = String(value || '');
-      if (!raw) return '0';
-      let hash = 0;
-      for (let i = 0; i < raw.length; i += 1) {
-        hash = ((hash << 5) - hash) + raw.charCodeAt(i);
-        hash |= 0;
-      }
-      return Math.abs(hash).toString(16);
-    }
-
-    function makeStableGraphId(prefix, rawValue) {
-      const clean = String(rawValue || '')
-        .toLowerCase()
-        .replace(/[^a-z0-9._-]+/g, '_')
-        .replace(/^_+|_+$/g, '')
-        .slice(0, 34) || 'item';
-      return `${prefix}_${clean}_${tinyHash(rawValue).slice(0, 6)}`;
-    }
-
-    function normalizeDomainValue(value) {
-      const raw = String(value || '').trim();
-      if (!raw) return '';
-      try {
-        const maybeUrl = /^https?:\/\//i.test(raw) ? new URL(raw) : null;
-        if (maybeUrl) {
-          return String(maybeUrl.hostname || '').toLowerCase().replace(/^www\./, '');
-        }
-      } catch (error) {
-        // Ignore URL parse errors.
-      }
-      if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(raw)) {
-        return '';
-      }
-      return raw.toLowerCase().replace(/^www\./, '').replace(/:\d+$/, '');
-    }
-
-    function extractCountryCode(label) {
-      const raw = String(label || '').trim();
-      if (!raw) return '';
-      const match = raw.match(/\(([A-Z]{2})\)/);
-      if (match) return match[1];
-      if (/^[A-Z]{2}$/.test(raw)) return raw;
-      return '';
-    }
-
-    function countryCodeToFlag(code) {
-      const safe = String(code || '').trim().toUpperCase();
-      if (!/^[A-Z]{2}$/.test(safe)) return '';
-      const base = 0x1f1e6;
-      const first = safe.charCodeAt(0) - 65;
-      const second = safe.charCodeAt(1) - 65;
-      if (first < 0 || first > 25 || second < 0 || second > 25) return '';
-      return String.fromCodePoint(base + first, base + second);
-    }
-
-    function flagForNode(node) {
-      const label = String(node?.label || '');
-      const tags = Array.isArray(node?.tags) ? node.tags.map((t) => String(t).toLowerCase()) : [];
-      const code = extractCountryCode(label);
-      if (!code) return '';
-      if (!tags.includes('geo') && !/\([A-Z]{2}\)/.test(label) && !/^[A-Z]{2}$/.test(label.trim())) {
-        return '';
-      }
-      return countryCodeToFlag(code);
-    }
-
-    function detectNodeKind(node) {
-      const label = String(node?.label || '');
-      const tags = Array.isArray(node?.tags) ? node.tags.map((t) => String(t).toLowerCase()) : [];
-      if (tags.includes('api-provider') || tags.includes('source') || tags.includes('origin') || tags.includes('alert')) {
-        return { key: 'source', label: 'fuente' };
-      }
-      if (label.trim().startsWith('#') || tags.includes('keyword')) {
-        return { key: 'hash', label: '#' };
-      }
-      const isSha256 = /^[a-f0-9]{64}$/i.test(label.trim());
-      const isUrl = /^https?:\/\//i.test(label.trim());
-      const isIp = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(label.trim());
-      const isDomain = !!normalizeDomainValue(label);
-      if (isSha256 || isUrl || isIp || isDomain || tags.includes('ioc') || tags.includes('domain') || tags.includes('ip') || tags.includes('url')) {
-        return { key: 'ioc', label: 'ioc' };
-      }
-      if (tags.includes('artifact') || tags.includes('evidence') || tags.includes('snippet') || tags.includes('file') || tags.includes('download')) {
-        return { key: 'artifact', label: 'artefacto' };
-      }
-      return { key: '', label: '' };
-    }
-
-    function normalizeLookupKey(type, value) {
-      const raw = String(value || '').trim();
-      if (!raw) return '';
-      if (type === 'domain') {
-        const domain = normalizeDomainValue(raw);
-        return domain ? `domain:${domain}` : '';
-      }
-      if (type === 'ip') {
-        return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(raw) ? `ip:${raw}` : '';
-      }
-      if (type === 'url') {
-        try {
-          const parsed = new URL(raw);
-          return `url:${parsed.toString()}`;
-        } catch (error) {
-          return '';
-        }
-      }
-      if (type === 'hash') {
-        return /^[a-f0-9]{64}$/i.test(raw) ? `hash:${raw.toLowerCase()}` : '';
-      }
-      return '';
-    }
-
-    function buildVtLookupIndex(lookupRows) {
-      const index = new Map();
-      const rows = Array.isArray(lookupRows) ? lookupRows : [];
-      rows.forEach((row) => {
-        if (!row || String(row.provider || '').toLowerCase() !== 'virustotal') {
-          return;
-        }
-        const target = String(row.target || '');
-        const targetType = String(row.target_type || '');
-        const meta = parseLookupTargetMeta(target, targetType);
-        let key = '';
-        if (/^[a-f0-9]{64}$/i.test(target.trim()) || targetType === 'sha256') {
-          key = normalizeLookupKey('hash', target.trim());
-        } else {
-          key = normalizeLookupKey(meta.type, meta.display || target);
-        }
-        if (!key) return;
-        index.set(key, row);
-      });
-      return index;
-    }
-
-    function lookupVtForNode(node, vtIndex) {
-      if (!vtIndex || !(vtIndex instanceof Map)) return null;
-      const label = String(node?.label || '').trim();
-      const tags = Array.isArray(node?.tags) ? node.tags.map((t) => String(t).toLowerCase()) : [];
-      let key = '';
-      if (/^[a-f0-9]{64}$/i.test(label)) {
-        key = normalizeLookupKey('hash', label);
-      } else if (tags.includes('url') || /^https?:\/\//i.test(label)) {
-        key = normalizeLookupKey('url', label);
-      } else if (tags.includes('ip') || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(label)) {
-        key = normalizeLookupKey('ip', label);
-      } else {
-        key = normalizeLookupKey('domain', label);
-      }
-      if (!key) return null;
-      return vtIndex.get(key) || null;
-    }
-
-    function parseLookupTargetMeta(target, targetType) {
-      const raw = String(target || '').trim();
-      const declaredType = String(targetType || '').toLowerCase();
-      let type = declaredType || 'unknown';
-      let display = raw;
-      let domain = '';
-      if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(raw)) {
-        type = 'ip';
-      } else if (/^https?:\/\//i.test(raw)) {
-        type = 'url';
-        try {
-          const parsed = new URL(raw);
-          domain = normalizeDomainValue(parsed.hostname);
-          display = parsed.toString();
-        } catch (error) {
-          // Keep raw value.
-        }
-      } else {
-        const normalizedDomain = normalizeDomainValue(raw);
-        if (normalizedDomain) {
-          type = 'domain';
-          domain = normalizedDomain;
-          display = normalizedDomain;
-        }
-      }
-      if (!domain && type === 'domain') {
-        domain = normalizeDomainValue(raw);
-      }
-      return { type, display, domain };
-    }
-
-    function providerColor(provider) {
-      const key = String(provider || '').toLowerCase();
-      if (key === 'virustotal') return '#ff9f43';
-      if (key === 'abuseipdb') return '#ff6b6b';
-      if (key === 'urlscan') return '#4fd1c5';
-      if (key === 'threatrip') return '#a78bfa';
-      return '#6cb6ff';
-    }
-
-    function ensureGraphNode(graph, payload) {
-      const existing = graph.nodes.find((node) => String(node.id) === String(payload.id));
-      if (existing) {
-        return existing;
-      }
-      const node = {
-        id: String(payload.id),
-        label: String(payload.label || 'node').slice(0, 120),
-        color: /^#[0-9a-fA-F]{6}$/.test(String(payload.color || '')) ? String(payload.color) : '#5dc8ff',
-        x: Number.isFinite(Number(payload.x)) ? Number(payload.x) : 120,
-        y: Number.isFinite(Number(payload.y)) ? Number(payload.y) : 120,
-        tags: Array.isArray(payload.tags) ? payload.tags.map((tag) => String(tag).slice(0, 40)).filter(Boolean) : [],
-        notes: String(payload.notes || '').slice(0, 400)
-      };
-      graph.nodes.push(node);
-      return node;
-    }
-
-    function ensureGraphEdge(graph, payload) {
-      const from = String(payload.from || '');
-      const to = String(payload.to || '');
-      const label = String(payload.label || '').slice(0, 120);
-      if (!from || !to || from === to) return;
-      const dup = graph.edges.some((edge) =>
-        String(edge.from) === from && String(edge.to) === to && String(edge.label || '') === label
-      );
-      if (dup) return;
-      graph.edges.push({
-        id: String(payload.id || makeEdgeId()),
-        from,
-        to,
-        label,
-        color: /^#[0-9a-fA-F]{6}$/.test(String(payload.color || '')) ? String(payload.color) : '#94a3b8'
-      });
-    }
-
-    function summarizeLookup(lookup, meta) {
-      const provider = String(lookup?.provider || 'unknown');
-      const status = Number(lookup?.status || 0);
-      const createdAt = String(lookup?.created_at || '');
-      const summary = (lookup && typeof lookup.summary === 'object' && lookup.summary) ? lookup.summary : {};
-      const details = (lookup && typeof lookup.details === 'object' && lookup.details) ? lookup.details : {};
-      const summaryParts = Object.entries(summary)
-        .slice(0, 6)
-        .map(([key, value]) => `${key}: ${String(value)}`);
-      const lines = [
-        `provider=${provider}`,
-        `target=${String(meta.display || lookup?.target || '')}`,
-        `type=${String(meta.type || lookup?.target_type || 'unknown')}`,
-        `status=${status}`,
-      ];
-      if (createdAt) {
-        lines.push(`at=${createdAt}`);
-      }
-      if (summaryParts.length) {
-        lines.push(summaryParts.join(' | '));
-      }
-      const detailParts = [];
-      if (details.related_ip) detailParts.push(`ip=${String(details.related_ip)}`);
-      if (details.related_domain) detailParts.push(`domain=${String(details.related_domain)}`);
-      if (details.country_code || details.country_name) {
-        detailParts.push(`country=${String(details.country_name || details.country_code)}`);
-      }
-      if (details.abuse_score) detailParts.push(`abuse_score=${Number(details.abuse_score)}`);
-      if (details.total_reports) detailParts.push(`reports=${Number(details.total_reports)}`);
-      if (details.vt_reputation) detailParts.push(`vt_reputation=${Number(details.vt_reputation)}`);
-      if (details.vt_registrar) detailParts.push(`registrar=${String(details.vt_registrar)}`);
-      if (details.vt_cert_issuer) detailParts.push(`issuer=${String(details.vt_cert_issuer)}`);
-      if (Array.isArray(details.vt_malicious_labels) && details.vt_malicious_labels.length) {
-        detailParts.push(`labels=${details.vt_malicious_labels.slice(0, 4).join(',')}`);
-      }
-      if (Array.isArray(details.vt_malicious_engines) && details.vt_malicious_engines.length) {
-        detailParts.push(`engines=${details.vt_malicious_engines.slice(0, 4).join(',')}`);
-      }
-      if (detailParts.length) {
-        lines.push(detailParts.join(' | '));
-      }
-      return lines.join('\n').slice(0, 390);
-    }
-
-    function renderIntelApiInsights(lookupRows, keywordRows) {
-      const lookups = Array.isArray(lookupRows) ? lookupRows : [];
-      const keywords = Array.isArray(keywordRows) ? keywordRows : [];
-      if (intelApiMapMeta) {
-        if (!lookups.length) {
-          intelApiMapMeta.textContent = 'Sin consultas recientes de proveedores para esta investigacion.';
-        } else {
-          const providers = {};
-          let highRisk = 0;
-          lookups.forEach((row) => {
-            const provider = String(row?.provider || 'unknown').toLowerCase();
-            providers[provider] = (providers[provider] || 0) + 1;
-            const mal = Number(row?.summary?.malicious || 0);
-            const sus = Number(row?.summary?.suspicious || 0);
-            const abuse = Number(row?.details?.abuse_score || 0);
-            if (mal > 0 || sus > 0 || abuse >= 40) {
-              highRisk += 1;
-            }
-          });
-          const providerLabel = Object.entries(providers)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3)
-            .map(([provider, hits]) => `${provider}:${hits}`)
-            .join(' | ');
-          intelApiMapMeta.textContent = `${lookups.length} consultas | high-risk:${highRisk} | ${keywords.length} keywords | ${providerLabel || 'sin proveedor'}`;
-        }
-      }
-      if (!intelApiKeywordsWrap) return;
-      intelApiKeywordsWrap.innerHTML = '';
-      if (!keywords.length) {
-        const empty = document.createElement('span');
-        empty.className = 'mut';
-        empty.textContent = lookups.length ? 'No hay keywords frecuentes en los resultados de proveedores.' : 'Sin keywords comunes detectadas.';
-        intelApiKeywordsWrap.appendChild(empty);
-        return;
-      }
-      keywords.slice(0, 12).forEach((row) => {
-        const chip = document.createElement('span');
-        chip.className = 'intel-api-keyword-chip';
-        const keywordLabel = String(row?.keyword || '-').replace(/_/g, ' ');
-        chip.textContent = keywordLabel;
-        const hits = document.createElement('b');
-        hits.textContent = `x${Number(row?.hits || 0)}`;
-        chip.appendChild(hits);
-        intelApiKeywordsWrap.appendChild(chip);
-      });
-    }
-
-    function enrichGraphWithApiResults(baseGraph, lookupRows, keywordRows) {
-      const graph = normalizeGraphPayload(baseGraph || { nodes: [], edges: [] });
-      const lookups = Array.isArray(lookupRows) ? lookupRows.filter((row) => row && typeof row === 'object') : [];
-      const keywords = Array.isArray(keywordRows) ? keywordRows.filter((row) => row && typeof row === 'object') : [];
-      if (!lookups.length) {
-        return graph;
-      }
-
-      const investigationDomain = normalizeDomainValue(
-        selectedInvestigation?.site_domain || selectedInvestigation?.hostname || selectedInvestigation?.title || ''
-      );
-      let rootNode = graph.nodes.find((node) => {
-        const labelDomain = normalizeDomainValue(node?.label || '');
-        const tags = Array.isArray(node?.tags) ? node.tags : [];
-        return (investigationDomain && labelDomain === investigationDomain)
-          || tags.some((tag) => normalizeDomainValue(tag) === investigationDomain);
-      }) || null;
-
-      if (!rootNode) {
-        const centerX = Number(intelWrap?.clientWidth || 920) * 0.5;
-        const centerY = Number(intelWrap?.clientHeight || 470) * 0.46;
-        rootNode = ensureGraphNode(graph, {
-          id: makeStableGraphId('root', investigationDomain || selectedInvestigation?.title || 'investigation'),
-          label: investigationDomain || String(selectedInvestigation?.title || 'Investigacion'),
-          color: '#5dc8ff',
-          x: Math.round(centerX),
-          y: Math.round(centerY),
-          tags: ['investigation', investigationDomain || 'scope'],
-          notes: 'Nodo raiz de investigacion (contexto de proveedores)'
+          applySeverityFilter();
         });
       }
 
-      const providerNodeMap = new Map();
-      const baseRadius = 165;
-      lookups.slice(0, 30).forEach((lookup, index) => {
-        const provider = String(lookup?.provider || 'unknown').toLowerCase();
-        const target = String(lookup?.target || '').trim();
-        if (!target) return;
-        const meta = parseLookupTargetMeta(target, lookup?.target_type || '');
-        const angle = (index / Math.max(1, Math.min(lookups.length, 30))) * Math.PI * 2;
-        const radius = baseRadius + (index % 4) * 20;
-        const indicatorX = Math.round(Number(rootNode.x || 450) + Math.cos(angle) * radius);
-        const indicatorY = Math.round(Number(rootNode.y || 235) + Math.sin(angle) * (radius * 0.65));
-
-        const summary = (lookup && typeof lookup.summary === 'object' && lookup.summary) ? lookup.summary : {};
-        const details = (lookup && typeof lookup.details === 'object' && lookup.details) ? lookup.details : {};
-        const tags = ['api', provider, String(meta.type || 'unknown')];
-        if (Number(summary.malicious || 0) > 0) tags.push('malicious');
-        if (Number(summary.suspicious || 0) > 0) tags.push('suspicious');
-        if (Number(summary.abuseConfidenceScore || 0) >= 40) tags.push('abuse-high');
-        if (Number(details.abuse_score || 0) >= 40) tags.push('abuse-high');
-        if (Number(details.vt_reputation || 0) < 0) tags.push('negative-reputation');
-        if (Array.isArray(details.vt_malicious_labels)) {
-          details.vt_malicious_labels.slice(0, 2).forEach((label) => {
-            const normalized = String(label || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-            if (normalized) {
-              tags.push(`label:${normalized}`);
-            }
-          });
-        }
-        if (!lookup?.ok) tags.push('error');
-
-        const indicatorNode = ensureGraphNode(graph, {
-          id: makeStableGraphId('api_i', `${provider}:${meta.display || target}`),
-          label: String(meta.display || target).slice(0, 72),
-          color: providerColor(provider),
-          x: indicatorX,
-          y: indicatorY,
-          tags,
-          notes: summarizeLookup(lookup, meta)
-        });
-
-        ensureGraphEdge(graph, {
-          id: makeStableGraphId('api_e', `${rootNode.id}>${indicatorNode.id}>lookup`),
-          from: rootNode.id,
-          to: indicatorNode.id,
-          label: `lookup:${provider}`,
-          color: '#7eb6de'
-        });
-
-        if (!providerNodeMap.has(provider)) {
-          const providerIndex = providerNodeMap.size;
-          const providerNode = ensureGraphNode(graph, {
-            id: makeStableGraphId('api_p', provider),
-            label: provider,
-            color: providerColor(provider),
-            x: Math.round(Number(rootNode.x || 450) - 210 + providerIndex * 95),
-            y: Math.round(Number(rootNode.y || 235) - 150),
-            tags: ['api-provider', provider],
-            notes: `Proveedor: ${provider}`
-          });
-          providerNodeMap.set(provider, providerNode);
-        }
-        const providerNode = providerNodeMap.get(provider);
-        if (providerNode) {
-          ensureGraphEdge(graph, {
-            id: makeStableGraphId('api_ep', `${providerNode.id}>${indicatorNode.id}`),
-            from: providerNode.id,
-            to: indicatorNode.id,
-            label: `status:${Number(lookup?.status || 0)}`,
-            color: '#8ba9be'
-          });
-        }
-
-        if (meta.domain && meta.domain !== investigationDomain) {
-          const domainNode = ensureGraphNode(graph, {
-            id: makeStableGraphId('api_d', meta.domain),
-            label: meta.domain,
-            color: '#7ab8ff',
-            x: Math.round(indicatorX + 54),
-            y: Math.round(indicatorY + 42),
-            tags: ['domain', 'resolved-domain'],
-            notes: `Dominio asociado por consulta de proveedor: ${meta.domain}`
-          });
-          ensureGraphEdge(graph, {
-            id: makeStableGraphId('api_ed', `${indicatorNode.id}>${domainNode.id}`),
-            from: indicatorNode.id,
-            to: domainNode.id,
-            label: 'resolved-domain',
-            color: '#7fa4c2'
-          });
-        }
-
-        const detailDomain = normalizeDomainValue(String(details.related_domain || ''));
-        if (detailDomain && detailDomain !== investigationDomain && detailDomain !== meta.domain) {
-          const relatedDomainNode = ensureGraphNode(graph, {
-            id: makeStableGraphId('api_rd', detailDomain),
-            label: detailDomain,
-            color: '#82c2ff',
-            x: Math.round(indicatorX - 56),
-            y: Math.round(indicatorY + 54),
-            tags: ['domain', 'api-derived'],
-            notes: `Dominio derivado de ${provider}`
-          });
-          ensureGraphEdge(graph, {
-            id: makeStableGraphId('api_erd', `${indicatorNode.id}>${relatedDomainNode.id}`),
-            from: indicatorNode.id,
-            to: relatedDomainNode.id,
-            label: 'related-domain',
-            color: '#7fa4c2'
-          });
-        }
-
-        const detailIp = String(details.related_ip || '').trim();
-        if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(detailIp) && detailIp !== target) {
-          const ipNode = ensureGraphNode(graph, {
-            id: makeStableGraphId('api_ip', detailIp),
-            label: detailIp,
-            color: '#9aa8ff',
-            x: Math.round(indicatorX + 72),
-            y: Math.round(indicatorY - 48),
-            tags: ['ip', 'api-derived'],
-            notes: `IP relacionada por ${provider}`
-          });
-          ensureGraphEdge(graph, {
-            id: makeStableGraphId('api_eip', `${indicatorNode.id}>${ipNode.id}`),
-            from: indicatorNode.id,
-            to: ipNode.id,
-            label: 'related-ip',
-            color: '#8b95cd'
-          });
-        }
-
-        const countryCode = String(details.country_code || '').trim().toUpperCase();
-        const countryName = String(details.country_name || '').trim();
-        if (countryCode || countryName) {
-          const countryLabel = countryName ? `${countryName}${countryCode ? ` (${countryCode})` : ''}` : countryCode;
-          const countryNode = ensureGraphNode(graph, {
-            id: makeStableGraphId('api_cc', countryLabel),
-            label: countryLabel,
-            color: '#7ac6bf',
-            x: Math.round(indicatorX - 78),
-            y: Math.round(indicatorY - 52),
-            tags: ['geo', 'api-derived'],
-            notes: `Geolocalizacion detectada por ${provider}`
-          });
-          ensureGraphEdge(graph, {
-            id: makeStableGraphId('api_ec', `${indicatorNode.id}>${countryNode.id}`),
-            from: indicatorNode.id,
-            to: countryNode.id,
-            label: 'country',
-            color: '#7ea4b1'
-          });
-        }
-
-        const hostnames = Array.isArray(details.hostnames) ? details.hostnames : [];
-        hostnames.slice(0, 3).forEach((hostname, hostIndex) => {
-          const hostLabel = normalizeDomainValue(String(hostname || ''));
-          if (!hostLabel) return;
-          const hostNode = ensureGraphNode(graph, {
-            id: makeStableGraphId('api_hn', hostLabel),
-            label: hostLabel,
-            color: '#95b7ff',
-            x: Math.round(indicatorX + 36 + hostIndex * 24),
-            y: Math.round(indicatorY + 78 + hostIndex * 18),
-            tags: ['hostname', 'api-derived'],
-            notes: `Hostname asociado (${provider})`
-          });
-          ensureGraphEdge(graph, {
-            id: makeStableGraphId('api_eh', `${indicatorNode.id}>${hostNode.id}`),
-            from: indicatorNode.id,
-            to: hostNode.id,
-            label: 'hostname',
-            color: '#8ba9be'
-          });
-        });
-      });
-
-      if (keywords.length) {
-        const keywordHub = ensureGraphNode(graph, {
-          id: makeStableGraphId('api_kw', `${rootNode.id}:hub`),
-          label: 'api-keywords',
-          color: '#7ac6bf',
-          x: Math.round(Number(rootNode.x || 450)),
-          y: Math.round(Number(rootNode.y || 235) + 170),
-          tags: ['keywords', 'api'],
-          notes: 'Keywords comunes detectadas en resultados de proveedores'
-        });
-        ensureGraphEdge(graph, {
-          id: makeStableGraphId('api_kw_e', `${rootNode.id}>${keywordHub.id}`),
-          from: rootNode.id,
-          to: keywordHub.id,
-          label: 'api-keywords',
-          color: '#7eb6de'
-        });
-        keywords.slice(0, 8).forEach((row, index) => {
-          const keyword = String(row?.keyword || '').trim();
-          if (!keyword) return;
-          const hits = Number(row?.hits || 0);
-          const angle = (index / Math.max(1, Math.min(keywords.length, 8))) * Math.PI * 2;
-          const keywordNode = ensureGraphNode(graph, {
-            id: makeStableGraphId('kw', keyword),
-            label: `#${keyword}`.slice(0, 58),
-            color: '#58bfa7',
-            x: Math.round(Number(keywordHub.x || 450) + Math.cos(angle) * 130),
-            y: Math.round(Number(keywordHub.y || 360) + Math.sin(angle) * 62),
-            tags: ['keyword', 'api'],
-            notes: `Apariciones en consultas de proveedores: ${hits}`
-          });
-          ensureGraphEdge(graph, {
-            id: makeStableGraphId('kw_e', `${keywordHub.id}>${keywordNode.id}`),
-            from: keywordHub.id,
-            to: keywordNode.id,
-            label: `hits:${hits}`,
-            color: '#7fa4c2'
-          });
-        });
-      }
-
-      return graph;
-    }
-
-    if (intelWrap && intelSvg && intelNodeLayer) {
-      renderIntelApiInsights(intelApiLookupMapRows, intelApiCommonKeywords);
-      const baseGraph = selectedInvestigation?.graph || { nodes: [], edges: [] };
-      const initialGraph = enrichGraphWithApiResults(baseGraph, intelApiLookupMapRows, intelApiCommonKeywords);
-      const vtLookupIndex = buildVtLookupIndex(intelApiLookupMapRows);
-      const editor = makeGraphRenderer({
-        wrap: intelWrap,
-        svg: intelSvg,
-        nodeLayer: intelNodeLayer,
-        graph: initialGraph,
-        readOnly: false,
-        nodeListSelect,
-        vtLookupIndex,
-        controls: {
-          layoutSelect: intelLayoutMode,
-          layoutApplyButton: intelLayoutApply,
-          fitButton: intelFitGraph,
-          zoomInButton: intelZoomIn,
-          zoomOutButton: intelZoomOut,
-          zoomResetButton: intelZoomReset,
-          fullscreenButton: intelFullscreen,
-          fullscreenButtonAlt: intelDockFullscreen || intelWorkspaceFullscreen,
-          zoomStatus: intelZoomStatus,
-          zoomStatusAlt: intelDockZoomStatus
-        },
-        onSelectNode(node) {
-          if (!node) {
-            if (nodeLabelInput) nodeLabelInput.value = '';
-            if (nodeColorInput) nodeColorInput.value = '#5dc8ff';
-            if (nodeTagsInput) nodeTagsInput.value = '';
-            if (nodeNotesInput) nodeNotesInput.value = '';
-            if (nodePreviewLabel) nodePreviewLabel.textContent = 'Sin nodo seleccionado.';
-            if (nodePreviewTags) nodePreviewTags.textContent = '';
-            if (nodePreviewNotes) nodePreviewNotes.textContent = '';
-            return;
-          }
-          if (nodeLabelInput) nodeLabelInput.value = node.label || '';
-          if (nodeColorInput) nodeColorInput.value = /^#[0-9a-fA-F]{6}$/.test(String(node.color || '')) ? node.color : '#5dc8ff';
-          if (nodeTagsInput) nodeTagsInput.value = Array.isArray(node.tags) ? node.tags.join(', ') : '';
-          if (nodeNotesInput) nodeNotesInput.value = node.notes || '';
-          if (nodePreviewLabel) nodePreviewLabel.textContent = `Nodo: ${String(node.label || '')} (${String(node.id || '')})`;
-          if (nodePreviewTags) nodePreviewTags.textContent = `Tags: ${Array.isArray(node.tags) && node.tags.length ? node.tags.join(', ') : '-'}`;
-          if (nodePreviewNotes) nodePreviewNotes.textContent = String(node.notes || '').trim() || 'Sin notas en este nodo.';
-        },
-        edgeListSelect,
-        edgeFromSelect,
-        edgeToSelect
-      });
-
-      nodeListSelect?.addEventListener('change', () => {
-        if (!editor) return;
-        const nodeId = String(nodeListSelect.value || '');
-        editor.selectNode(nodeId);
-      });
-
-      nodeAddButton?.addEventListener('click', () => {
-        if (!editor) return;
-        const label = (nodeLabelInput?.value || '').trim() || 'node';
-        const color = /^#[0-9a-fA-F]{6}$/.test(String(nodeColorInput?.value || '')) ? String(nodeColorInput?.value) : '#5dc8ff';
-        const tags = tagsFromInput(nodeTagsInput?.value || '');
-        const notes = (nodeNotesInput?.value || '').trim().slice(0, 400);
-        const bounds = intelWrap.getBoundingClientRect();
-        editor.addNode({
-          id: makeNodeId(),
-          label: label.slice(0, 120),
-          color,
-          x: Math.max(40, Math.min(bounds.width - 40, 80 + Math.random() * (bounds.width - 160))),
-          y: Math.max(40, Math.min(bounds.height - 40, 80 + Math.random() * (bounds.height - 160))),
-          tags,
-          notes
-        });
-      });
-
-      nodeUpdateButton?.addEventListener('click', () => {
-        if (!editor) return;
-        const ok = editor.updateSelectedNode({
-          label: ((nodeLabelInput?.value || '').trim() || 'node').slice(0, 120),
-          color: /^#[0-9a-fA-F]{6}$/.test(String(nodeColorInput?.value || '')) ? String(nodeColorInput?.value) : '#5dc8ff',
-          tags: tagsFromInput(nodeTagsInput?.value || ''),
-          notes: (nodeNotesInput?.value || '').trim().slice(0, 400)
-        });
-        if (!ok) {
-          alert('Selecciona un nodo para actualizar.');
-        }
-      });
-
-      nodeDeleteButton?.addEventListener('click', () => {
-        if (!editor) return;
-        const ok = editor.removeSelectedNode();
-        if (!ok) {
-          alert('Selecciona un nodo para eliminar.');
-        }
-      });
-
-      edgeAddButton?.addEventListener('click', () => {
-        if (!editor || !edgeFromSelect || !edgeToSelect) return;
-        const from = edgeFromSelect.value;
-        const to = edgeToSelect.value;
-        if (!from || !to || from === to) {
-          alert('Selecciona nodos origen y destino distintos.');
-          return;
-        }
-        editor.addEdge({
-          id: makeEdgeId(),
-          from,
-          to,
-          label: (edgeLabelInput?.value || '').trim().slice(0, 120),
-          color: /^#[0-9a-fA-F]{6}$/.test(String(edgeColorInput?.value || '')) ? String(edgeColorInput?.value) : '#94a3b8'
-        });
-      });
-
-      edgeDeleteButton?.addEventListener('click', () => {
-        if (!editor || !edgeListSelect) return;
-        if (!edgeListSelect.value) {
-          alert('Selecciona una conexion para eliminar.');
-          return;
-        }
-        editor.removeEdge(edgeListSelect.value);
-      });
-
-      intelSaveForm?.addEventListener('submit', () => {
-        if (!editor || !intelGraphJsonInput) return;
-        intelGraphJsonInput.value = JSON.stringify(editor.getGraph());
-      });
-
-      const proxyClick = (targetButton, triggerButton) => {
-        triggerButton?.addEventListener('click', () => {
-          targetButton?.click();
-        });
-      };
-      proxyClick(intelFitGraph, intelDockFit);
-      proxyClick(intelZoomIn, intelDockZoomIn);
-      proxyClick(intelZoomOut, intelDockZoomOut);
-      proxyClick(intelZoomReset, intelDockZoomReset);
-      proxyClick(intelFullscreen, intelWorkspaceFullscreen);
-
-      intelLayoutCycle?.addEventListener('click', () => {
-        if (!(intelLayoutMode instanceof HTMLSelectElement)) {
-          return;
-        }
-        const optionCount = intelLayoutMode.options.length;
-        if (!optionCount) {
-          return;
-        }
-        intelLayoutMode.selectedIndex = (intelLayoutMode.selectedIndex + 1) % optionCount;
-        intelLayoutApply?.click();
-      });
-
-      document.addEventListener('fullscreenchange', () => {
-        if (!intelWorkspaceFullscreen || !intelWrap) {
-          return;
-        }
-        const isActive = document.fullscreenElement === intelWrap;
-        intelWorkspaceFullscreen.textContent = isActive ? 'Salir pantalla completa' : 'Pantalla completa';
-      });
-    }
-
-    const sharedWrap = document.getElementById('shared-canvas-wrap');
-    const sharedSvg = document.getElementById('shared-svg');
-    const sharedNodeLayer = document.getElementById('shared-node-layer');
-    const sharedLayoutMode = document.getElementById('shared-layout-mode');
-    const sharedLayoutApply = document.getElementById('shared-layout-apply');
-    const sharedFitGraph = document.getElementById('shared-fit-graph');
-    const sharedZoomIn = document.getElementById('shared-zoom-in');
-    const sharedZoomOut = document.getElementById('shared-zoom-out');
-    const sharedZoomReset = document.getElementById('shared-zoom-reset');
-    const sharedZoomStatus = document.getElementById('shared-zoom-status');
-    const sharedFullscreen = document.getElementById('shared-fullscreen');
-    const sharedNodeLabel = document.getElementById('shared-node-label');
-    const sharedNodeTags = document.getElementById('shared-node-tags');
-    const sharedNodeNotes = document.getElementById('shared-node-notes');
-    if (sharedWrap && sharedSvg && sharedNodeLayer && sharedInvestigation?.graph) {
-      const sharedVtIndex = buildVtLookupIndex(intelApiLookupMapRows);
-      makeGraphRenderer({
-        wrap: sharedWrap,
-        svg: sharedSvg,
-        nodeLayer: sharedNodeLayer,
-        graph: sharedInvestigation.graph,
-        readOnly: true,
-        vtLookupIndex: sharedVtIndex,
-        controls: {
-          layoutSelect: sharedLayoutMode,
-          layoutApplyButton: sharedLayoutApply,
-          fitButton: sharedFitGraph,
-          zoomInButton: sharedZoomIn,
-          zoomOutButton: sharedZoomOut,
-          zoomResetButton: sharedZoomReset,
-          fullscreenButton: sharedFullscreen,
-          zoomStatus: sharedZoomStatus
-        },
-        onSelectNode(node) {
-          if (!node) {
-            if (sharedNodeLabel) sharedNodeLabel.textContent = 'Sin nodo seleccionado.';
-            if (sharedNodeTags) sharedNodeTags.textContent = '';
-            if (sharedNodeNotes) sharedNodeNotes.textContent = '';
-            return;
-          }
-          if (sharedNodeLabel) sharedNodeLabel.textContent = `Nodo: ${String(node.label || '')} (${String(node.id || '')})`;
-          if (sharedNodeTags) sharedNodeTags.textContent = `Tags: ${Array.isArray(node.tags) && node.tags.length ? node.tags.join(', ') : '-'}`;
-          if (sharedNodeNotes) sharedNodeNotes.textContent = String(node.notes || '').trim() || 'Sin notas en este nodo.';
-        }
-      });
-    }
-
-    const apiKeyToggleButtons = Array.from(document.querySelectorAll('[data-toggle-api-key]'));
-    apiKeyToggleButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        const targetId = String(button.getAttribute('data-toggle-api-key') || '');
-        if (!targetId) return;
-        const input = document.getElementById(targetId);
-        if (!(input instanceof HTMLInputElement)) return;
-        const masked = String(input.dataset.apiKeyMasked || '');
-        const plain = String(input.dataset.apiKeyPlain || '');
-        const revealed = String(input.dataset.apiKeyRevealed || '0') === '1';
-        if (revealed) {
-          input.value = masked;
-          input.dataset.apiKeyRevealed = '0';
-          button.textContent = 'ver';
-          return;
-        }
-        if (plain !== '') {
-          input.value = plain;
-          input.dataset.apiKeyRevealed = '1';
-          button.textContent = 'ocultar';
-          return;
-        }
-        const visible = input.type === 'text';
-        input.type = visible ? 'password' : 'text';
-        button.textContent = visible ? 'ver' : 'ocultar';
-      });
-    });
-
-    const apiKeyForms = Array.from(document.querySelectorAll('.api-key-row-form'));
-    apiKeyForms.forEach((form) => {
-      form.addEventListener('submit', () => {
-        const input = form.querySelector('input[name="api_key"]');
-        if (!(input instanceof HTMLInputElement)) return;
-        const masked = String(input.dataset.apiKeyMasked || '');
-        const plain = String(input.dataset.apiKeyPlain || '');
-        if (plain && masked && input.value.trim() === masked) {
-          // Keep existing key if user submits without revealing/editing.
-          input.value = plain;
-        }
-      });
-    });
-
-    const homeExtensionMapEl = document.getElementById('home-extension-map');
-    const homeWebMapEl = document.getElementById('home-web-map');
-    const homeExtensionBody = document.getElementById('home-extension-country-body');
-    const homeWebBody = document.getElementById('home-web-body');
-    const homeExtensionTotal = document.getElementById('home-extension-total');
-    const homeExtensionCountries = document.getElementById('home-extension-countries');
-    const homeWebCount = document.getElementById('home-web-count');
-    const homeWebLast = document.getElementById('home-web-last');
-
-    function setTableMessage(tableBodyEl, message, columns) {
-      if (!tableBodyEl) return;
-      tableBodyEl.innerHTML = '';
-      const tr = document.createElement('tr');
-      const td = document.createElement('td');
-      td.colSpan = columns;
-      td.className = 'mut';
-      td.textContent = message;
-      tr.appendChild(td);
-      tableBodyEl.appendChild(tr);
-    }
-
-    function parseSortableValue(raw) {
-      const text = String(raw || '').replace(/\s+/g, ' ').trim();
-      if (!text) {
-        return { type: 'empty', value: '' };
-      }
-
-      const maybeDate = Date.parse(text);
-      if (
-        Number.isFinite(maybeDate) &&
-        /\d/.test(text) &&
-        (text.includes('-') || text.includes('/') || text.includes(':') || text.includes('T'))
-      ) {
-        return { type: 'date', value: maybeDate };
-      }
-
-      let numericText = text
-        .replace(/[%â‚¬$Â£Â¥]/g, '')
-        .replace(/\(([^)]+)\)/g, '-$1')
-        .replace(/[^\d,.\-]/g, '');
-      if (/,/.test(numericText) && /\./.test(numericText)) {
-        if (numericText.lastIndexOf(',') > numericText.lastIndexOf('.')) {
-          numericText = numericText.replace(/\./g, '').replace(',', '.');
-        } else {
-          numericText = numericText.replace(/,/g, '');
-        }
-      } else if (/,/.test(numericText) && !/\./.test(numericText)) {
-        const parts = numericText.split(',');
-        if (parts.length === 2 && parts[1].length <= 2) {
-          numericText = `${parts[0].replace(/,/g, '')}.${parts[1]}`;
-        } else {
-          numericText = numericText.replace(/,/g, '');
-        }
-      }
-      const numericValue = Number(numericText);
-      if (numericText && Number.isFinite(numericValue)) {
-        return { type: 'number', value: numericValue };
-      }
-
-      return { type: 'text', value: text.toLocaleLowerCase() };
-    }
-
-    function compareSortableValues(a, b) {
-      const rank = { number: 0, date: 1, text: 2, empty: 3 };
-      const ra = Object.prototype.hasOwnProperty.call(rank, a.type) ? rank[a.type] : 9;
-      const rb = Object.prototype.hasOwnProperty.call(rank, b.type) ? rank[b.type] : 9;
-      if (ra !== rb) {
-        return ra - rb;
-      }
-      if (a.type === 'number' || a.type === 'date') {
-        return a.value - b.value;
-      }
-      if (a.type === 'empty') {
-        return 0;
-      }
-      return String(a.value).localeCompare(String(b.value), undefined, { numeric: true, sensitivity: 'base' });
-    }
-
-    function sortTableByColumn(table, columnIndex, direction) {
-      const tbody = table?.tBodies?.[0];
-      if (!tbody) return;
-      const rows = Array.from(tbody.rows || []);
-      if (rows.length < 2) return;
-
-      const prepared = rows.map((row, index) => {
-        const cell = row.cells[columnIndex];
-        const raw = cell?.dataset?.sortValue ?? cell?.textContent ?? '';
-        return {
-          row,
-          index,
-          parsed: parseSortableValue(raw)
-        };
-      });
-
-      prepared.sort((left, right) => {
-        const base = compareSortableValues(left.parsed, right.parsed);
-        if (base !== 0) {
-          return direction === 'desc' ? -base : base;
-        }
-        return left.index - right.index;
-      });
-
-      prepared.forEach((item) => tbody.appendChild(item.row));
-    }
-
-    function initSortableTables(root = document) {
-      const tables = Array.from(root.querySelectorAll('table'));
-      tables.forEach((table) => {
-        const thead = table.tHead;
-        const tbody = table.tBodies?.[0];
-        if (!thead || !tbody || tbody.rows.length < 2) {
-          return;
-        }
-        if (table.dataset.sortableReady === 'true') {
-          return;
-        }
-        const headerRow = thead.rows[thead.rows.length - 1];
-        if (!headerRow) {
-          return;
-        }
-        const headers = Array.from(headerRow.cells || []);
-        if (!headers.length) {
-          return;
-        }
-
-        table.dataset.sortableReady = 'true';
-        headers.forEach((th, columnIndex) => {
-          if (th.dataset.sortable === 'false') {
-            return;
-          }
-          th.classList.add('sortable');
-          th.tabIndex = 0;
-          th.setAttribute('role', 'button');
-          th.dataset.sortDir = '';
-
-          const triggerSort = () => {
-            const nextDir = th.dataset.sortDir === 'asc' ? 'desc' : 'asc';
-            headers.forEach((other) => {
-              if (other === th) return;
-              other.dataset.sortDir = '';
-              other.classList.remove('sort-asc', 'sort-desc');
-            });
-            th.dataset.sortDir = nextDir;
-            th.classList.toggle('sort-asc', nextDir === 'asc');
-            th.classList.toggle('sort-desc', nextDir === 'desc');
-            sortTableByColumn(table, columnIndex, nextDir);
-          };
-
-          th.addEventListener('click', triggerSort);
-          th.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              triggerSort();
-            }
-          });
-        });
-      });
-    }
-
-    function initBulkReviewActions() {
-      const form = document.getElementById('bulk-review-form');
-      if (!form) {
-        return;
-      }
-      const checkboxes = Array.from(document.querySelectorAll('.bulk-review-checkbox'));
-      const selectAll = document.getElementById('bulk-review-select-all');
-      const selectPending = document.getElementById('bulk-review-select-pending');
-      const clearButton = document.getElementById('bulk-review-clear');
-      const submitButton = document.getElementById('bulk-review-submit');
-      const countEl = document.getElementById('bulk-review-count');
-      const statusSelect = document.getElementById('bulk-review-status');
-
-      const updateState = () => {
-        const selected = checkboxes.filter((checkbox) => checkbox.checked).length;
-        if (countEl) {
-          countEl.textContent = `${selected} seleccionadas`;
-        }
-        if (submitButton) {
-          submitButton.disabled = selected <= 0;
-        }
-        if (selectAll) {
-          const allSelected = checkboxes.length > 0 && selected === checkboxes.length;
-          const hasAnySelected = selected > 0 && selected < checkboxes.length;
-          selectAll.checked = allSelected;
-          selectAll.indeterminate = hasAnySelected;
-        }
-      };
-
-      checkboxes.forEach((checkbox) => {
-        checkbox.addEventListener('change', updateState);
-      });
-
-      if (selectAll) {
-        selectAll.addEventListener('change', () => {
-          const checked = Boolean(selectAll.checked);
-          checkboxes.forEach((checkbox) => {
-            checkbox.checked = checked;
-          });
-          updateState();
-        });
-      }
-
-      if (selectPending) {
-        selectPending.addEventListener('click', () => {
-          checkboxes.forEach((checkbox) => {
-            checkbox.checked = String(checkbox.dataset.reviewStatus || 'pending') === 'pending';
-          });
-          updateState();
-        });
-      }
-
-      if (clearButton) {
-        clearButton.addEventListener('click', () => {
-          checkboxes.forEach((checkbox) => {
-            checkbox.checked = false;
-          });
-          updateState();
-        });
-      }
-
-      form.addEventListener('submit', (event) => {
-        const selected = checkboxes.filter((checkbox) => checkbox.checked).length;
-        if (selected <= 0) {
-          event.preventDefault();
-          alert('Selecciona al menos una alerta para revision masiva.');
-          return;
-        }
-        const status = String(statusSelect?.value || 'pending');
-        if (!confirm(`Aplicar estado "${status}" a ${selected} alertas seleccionadas?`)) {
-          event.preventDefault();
-        }
-      });
-
-      updateState();
-    }
-
-    function normalizeUrlCandidate(value) {
-      try {
-        return new URL(String(value || ''), window.location.href).toString();
-      } catch (error) {
-        return String(value || '');
-      }
-    }
-
-    function ensureStylesheetLoaded(href) {
-      const normalizedHref = normalizeUrlCandidate(href);
-      if (!normalizedHref) return;
-      const links = Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'));
-      if (links.some((link) => normalizeUrlCandidate(link.getAttribute('href')) === normalizedHref)) {
-        return;
-      }
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = normalizedHref;
-      document.head.appendChild(link);
-    }
-
-    function loadScriptOnce(src) {
-      const normalizedSrc = normalizeUrlCandidate(src);
-      if (!normalizedSrc) return Promise.resolve(false);
-      const scripts = Array.from(document.querySelectorAll('script[src]'));
-      const existing = scripts.find((script) => normalizeUrlCandidate(script.getAttribute('src')) === normalizedSrc);
-      if (existing) {
-        if (window.L && typeof window.L.map === 'function') {
-          return Promise.resolve(true);
-        }
-        return new Promise((resolve) => {
-          existing.addEventListener('load', () => resolve(!!(window.L && typeof window.L.map === 'function')), { once: true });
-          existing.addEventListener('error', () => resolve(false), { once: true });
-          setTimeout(() => resolve(!!(window.L && typeof window.L.map === 'function')), 2500);
-        });
-      }
-      return new Promise((resolve) => {
-        const script = document.createElement('script');
-        script.src = normalizedSrc;
-        script.async = true;
-        script.defer = true;
-        script.addEventListener('load', () => resolve(!!(window.L && typeof window.L.map === 'function')), { once: true });
-        script.addEventListener('error', () => resolve(false), { once: true });
-        document.head.appendChild(script);
-      });
-    }
-
-    async function ensureLeafletLoaded() {
-      if (window.L && typeof window.L.map === 'function') {
-        return true;
-      }
-      if (!leafletEnsurePromise) {
-        leafletEnsurePromise = (async () => {
-          const cssCandidates = [
-            homeLeafletCssUrl,
-            'assets/vendor/leaflet/leaflet.css',
-            '/assets/vendor/leaflet/leaflet.css'
-          ];
-          cssCandidates.forEach((href) => ensureStylesheetLoaded(href));
-
-          const jsCandidates = [
-            homeLeafletJsUrl,
-            'assets/vendor/leaflet/leaflet.js',
-            '/assets/vendor/leaflet/leaflet.js'
-          ];
-          for (const src of jsCandidates) {
-            if (await loadScriptOnce(src)) {
-              return true;
-            }
-          }
-          return !!(window.L && typeof window.L.map === 'function');
-        })();
-      }
-      return leafletEnsurePromise;
-    }
-
-    function createOfflineTileLayer() {
-      const fallback = L.gridLayer({ attribution: 'Offline base', noWrap: true, opacity: 0.95 });
-      fallback.createTile = function (coords) {
-        const size = this.getTileSize();
-        const canvas = document.createElement('canvas');
-        canvas.width = size.x;
-        canvas.height = size.y;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return canvas;
-        ctx.fillStyle = '#0c2235';
-        ctx.fillRect(0, 0, size.x, size.y);
-        ctx.strokeStyle = 'rgba(99, 217, 255, 0.18)';
-        ctx.strokeRect(0.5, 0.5, size.x - 1, size.y - 1);
-        ctx.strokeStyle = 'rgba(87, 240, 190, 0.1)';
-        ctx.beginPath();
-        ctx.moveTo(0, size.y / 2);
-        ctx.lineTo(size.x, size.y / 2);
-        ctx.moveTo(size.x / 2, 0);
-        ctx.lineTo(size.x / 2, size.y);
-        ctx.stroke();
-        ctx.fillStyle = 'rgba(220, 238, 255, 0.65)';
-        ctx.font = '11px JetBrains Mono, monospace';
-        ctx.fillText(`${coords.z}/${coords.x}/${coords.y}`, 8, 16);
-        return canvas;
-      };
-      return fallback;
-    }
-
-    async function loadLocalWorldGeoJson() {
-      if (localWorldGeoPromise) {
-        return localWorldGeoPromise;
-      }
-      localWorldGeoPromise = (async () => {
-        const candidates = [
-          homeLeafletWorldGeoJsonUrl,
-          'assets/vendor/leaflet/data/world-countries.geo.json',
-          '/assets/vendor/leaflet/data/world-countries.geo.json'
-        ];
-        for (const candidate of candidates) {
-          try {
-            const response = await fetch(candidate, { cache: 'force-cache' });
-            if (!response.ok) {
-              continue;
-            }
-            const json = await response.json();
-            if (json && String(json.type || '') === 'FeatureCollection' && Array.isArray(json.features)) {
-              return json;
-            }
-          } catch (error) {
-            // Ignore and try next candidate.
-          }
-        }
-        return null;
-      })();
-      return localWorldGeoPromise;
-    }
-
-    function createOfflineCountriesLayer() {
-      const group = L.layerGroup();
-      loadLocalWorldGeoJson().then((geojson) => {
-        if (!geojson) {
-          return;
-        }
-        L.geoJSON(geojson, {
-          interactive: false,
-          attribution: 'Countries: Natural Earth (local cache)',
-          style: () => ({
-            color: '#33577a',
-            weight: 0.8,
-            opacity: 0.95,
-            fillColor: '#10263b',
-            fillOpacity: 0.9
-          })
-        }).addTo(group);
-      }).catch(() => {
-        // Keep map available even if local geojson could not be loaded.
-      });
-      return group;
-    }
-
-    function makeLeafletMap(targetEl, center = [20, 0], zoom = 2) {
-      if (!targetEl || !window.L) return null;
-      const map = L.map(targetEl, {
-        center,
-        zoom,
-        minZoom: 2,
-        maxZoom: 7,
-        zoomControl: true,
-        worldCopyJump: true
-      });
-      const baseLayers = {
-        'Offline Countries (local)': createOfflineCountriesLayer(),
-        'Offline Grid': createOfflineTileLayer()
-      };
-      baseLayers['Offline Countries (local)'].addTo(map);
-      L.control.layers(baseLayers, null, { position: 'topright', collapsed: true }).addTo(map);
-      return map;
-    }
-
-    async function loadHomeGeoData() {
-      if (!homeExtensionMapEl && !homeWebMapEl) {
-        return;
-      }
-      const leafletReady = await ensureLeafletLoaded();
-      if (!leafletReady || !window.L) {
-        setTableMessage(homeExtensionBody, 'Mapa no disponible (Leaflet no cargado).', 4);
-        setTableMessage(homeWebBody, 'Mapa no disponible (Leaflet no cargado).', 7);
-        return;
-      }
-      let payload = null;
-      try {
-        const response = await fetch('dashboard.php?format=home_geo', { cache: 'no-store' });
-        if (!response.ok) {
-          throw new Error(`home_geo_failed_${response.status}`);
-        }
-        payload = await response.json();
-      } catch (error) {
-        setTableMessage(homeExtensionBody, 'No se pudo cargar geointeligencia de usuarios.', 4);
-        setTableMessage(homeWebBody, 'No se pudo cargar geointeligencia de webs.', 7);
-        return;
-      }
-      const data = payload && payload.status === 'ok' ? payload.data : null;
-      if (!data || typeof data !== 'object') {
-        setTableMessage(homeExtensionBody, 'Sin datos de geointeligencia.', 4);
-        setTableMessage(homeWebBody, 'Sin datos de geointeligencia.', 7);
-        return;
-      }
-
-      const extensionPoints = Array.isArray(data.extension_points) ? data.extension_points : [];
-      const extensionCountriesData = Array.isArray(data.extension_country_counts) ? data.extension_country_counts : [];
-      const websitePoints = Array.isArray(data.website_points) ? data.website_points : [];
-      const websiteRows = Array.isArray(data.website_rows) ? data.website_rows : [];
-
-      const extensionMap = makeLeafletMap(homeExtensionMapEl);
-      if (extensionMap) {
-        extensionPoints.forEach((point) => {
-          const lat = Number(point.lat || 0);
-          const lon = Number(point.lon || 0);
-          if (!Number.isFinite(lat) || !Number.isFinite(lon) || (lat === 0 && lon === 0)) return;
-          const users = Number(point.users || 0);
-          L.circleMarker([lat, lon], {
-            radius: Math.max(5, Math.min(22, 4 + Math.log2(Math.max(1, users)) * 3)),
-            color: '#ff4d4f',
-            fillColor: '#ff2d2f',
-            fillOpacity: 0.75,
-            weight: 1
-          })
-            .bindPopup(
-              `<b>${escapeHtml(String(point.country_name || point.country_code || '-'))}</b><br>` +
-              `Usuarios extension: ${escapeHtml(String(users))}<br>` +
-              `Codigo: ${escapeHtml(String(point.country_code || '-'))}`
-            )
-            .addTo(extensionMap);
-        });
-        setTimeout(() => extensionMap.invalidateSize(), 80);
-      }
-
-      if (homeExtensionTotal) {
-        homeExtensionTotal.textContent = String(Number(data.extension_users_total || 0));
-      }
-      if (homeExtensionCountries) {
-        homeExtensionCountries.textContent = String(extensionCountriesData.length);
-      }
-      if (homeExtensionBody) {
-        homeExtensionBody.innerHTML = '';
-        if (!extensionCountriesData.length) {
-          setTableMessage(homeExtensionBody, 'No hay paises con actividad reciente.', 4);
-        } else {
-          extensionCountriesData.forEach((row) => {
-            const tr = document.createElement('tr');
-            const languages = Array.isArray(row.languages) && row.languages.length ? row.languages.join(', ') : '-';
-            tr.innerHTML =
-              `<td>${escapeHtml(String(row.country_name || row.country_code || '-'))}</td>` +
-              `<td class="mono">${escapeHtml(String(row.country_code || '-'))}</td>` +
-              `<td class="mono">${escapeHtml(String(row.users || 0))}</td>` +
-              `<td>${escapeHtml(languages)}</td>`;
-            homeExtensionBody.appendChild(tr);
-          });
-        }
-      }
-
-      const webMap = makeLeafletMap(homeWebMapEl);
-      if (webMap) {
-        websitePoints.forEach((point) => {
-          const lat = Number(point.lat || 0);
-          const lon = Number(point.lon || 0);
-          if (!Number.isFinite(lat) || !Number.isFinite(lon) || (lat === 0 && lon === 0)) return;
-          const hits = Number(point.hits || 0);
-          L.circleMarker([lat, lon], {
-            radius: Math.max(4, Math.min(18, 4 + Math.log2(Math.max(1, hits)) * 2)),
-            color: '#ffb347',
-            fillColor: '#ff8f1f',
-            fillOpacity: 0.65,
-            weight: 1
-          })
-            .bindPopup(
-              `<b>${escapeHtml(String(point.hostname || '-'))}</b><br>` +
-              `IP: ${escapeHtml(String(point.ip || '-'))}<br>` +
-              `ISP: ${escapeHtml(String(point.isp || '-'))}<br>` +
-              `Servidor HTTP: ${escapeHtml(String(point.http_server || '-'))}<br>` +
-              `Pais: ${escapeHtml(String(point.country_name || point.country_code || '-'))}<br>` +
-              `Idioma: ${escapeHtml(String(point.language || '-'))}<br>` +
-              `Servicios: ${escapeHtml(Array.isArray(point.services) && point.services.length ? point.services.join(', ') : '-') }<br>` +
-              `Hits: ${escapeHtml(String(hits))}`
-            )
-            .addTo(webMap);
-        });
-        setTimeout(() => webMap.invalidateSize(), 80);
-      }
-
-      if (homeWebCount) {
-        homeWebCount.textContent = String(websitePoints.length);
-      }
-      if (homeWebLast) {
-        homeWebLast.textContent = String(data.generated_at || '-');
-      }
-      if (homeWebBody) {
-        homeWebBody.innerHTML = '';
-        if (!websiteRows.length) {
-          setTableMessage(homeWebBody, 'No hay webs suficientes para geolocalizar.', 7);
-        } else {
-          websiteRows.slice(0, 80).forEach((row) => {
-            const tr = document.createElement('tr');
-            const services = Array.isArray(row.services) && row.services.length
-              ? row.services.slice(0, 5).join(', ')
-              : (row.http_server ? String(row.http_server) : '-');
-            tr.innerHTML =
-              `<td class="mono">${escapeHtml(String(row.hostname || '-'))}</td>` +
-              `<td class="mono">${escapeHtml(String(row.ip || '-'))}</td>` +
-              `<td>${escapeHtml(String(row.isp || '-'))}</td>` +
-              `<td>${escapeHtml(String(row.country_name || row.country_code || '-'))}</td>` +
-              `<td class="mono">${escapeHtml(String(row.language || '-'))}</td>` +
-              `<td>${escapeHtml(services)}</td>` +
-              `<td class="mono">${escapeHtml(String(row.hits || 0))}</td>`;
-            homeWebBody.appendChild(tr);
-          });
-        }
-      }
-      initSortableTables();
-    }
-    initSortableTables();
-    initBulkReviewActions();
-    loadHomeGeoData();
-    renderDashboardCharts();
-
-    setInterval(async () => {
-      try {
-        const r = await fetch('dashboard.php?public=1&format=live', { cache: 'no-store' });
-        if (!r.ok) return;
-        const p = await r.json();
-        if (!p.stats) return;
-        document.querySelectorAll('[data-live-metric]').forEach((n) => {
-          const k = n.getAttribute('data-live-metric');
-          if (!k || !Object.prototype.hasOwnProperty.call(p.stats, k)) return;
-          const rawValue = p.stats[k];
-          if (k === 'review_coverage_pct' || k === 'block_rate_24h') {
-            const numeric = Number(rawValue);
-            n.textContent = `${Number.isFinite(numeric) ? numeric.toFixed(2) : '0.00'}%`;
-            return;
-          }
-          n.textContent = String(rawValue);
-        });
-      } catch (e) { console.debug(e); }
-    }, 45000);
+      render(0);
+      applySeverityFilter();
+    })();
   </script>
+  <?php if ($enableSidebarGeoMap): ?>
+    <script>
+      (function () {
+        if (!window.L) return;
+        const el = document.getElementById('sidebar-geo-map');
+        if (!el) return;
+        const topCode = (el.getAttribute('data-top-country') || '').toUpperCase();
+        const rawCountries = el.getAttribute('data-countries') || '{}';
+        let countries = {};
+        try { countries = JSON.parse(rawCountries); } catch (e) { countries = {}; }
+        const maxHits = parseInt(el.getAttribute('data-max') || '0', 10) || 0;
+        const iso2to3 = {
+          ES: 'ESP', US: 'USA', DE: 'DEU', SG: 'SGP', BR: 'BRA', FR: 'FRA', IT: 'ITA',
+          GB: 'GBR', UK: 'GBR', PT: 'PRT', NL: 'NLD', BE: 'BEL', CH: 'CHE', AT: 'AUT',
+          SE: 'SWE', NO: 'NOR', FI: 'FIN', DK: 'DNK', IE: 'IRL', PL: 'POL', CZ: 'CZE',
+          RO: 'ROU', BG: 'BGR', GR: 'GRC', HU: 'HUN', UA: 'UKR', RU: 'RUS', CN: 'CHN',
+          JP: 'JPN', KR: 'KOR', AU: 'AUS', NZ: 'NZL', MX: 'MEX', AR: 'ARG', CL: 'CHL',
+          CO: 'COL', PE: 'PER', VE: 'VEN', ZA: 'ZAF', EG: 'EGY', MA: 'MAR', DZ: 'DZA',
+          TR: 'TUR', IL: 'ISR', AE: 'ARE', SA: 'SAU', IN: 'IND', ID: 'IDN', TH: 'THA',
+          MY: 'MYS', PH: 'PHL', VN: 'VNM', CA: 'CAN'
+        };
+        const iso3to2 = Object.entries(iso2to3).reduce((acc, [iso2, iso3]) => {
+          if (!acc[iso3]) acc[iso3] = iso2;
+          return acc;
+        }, {});
+        const normalizeIso2 = code => {
+          const normalized = String(code || '').trim().toUpperCase();
+          if (/^[A-Z]{2}$/.test(normalized)) return normalized;
+          if (/^[A-Z]{3}$/.test(normalized) && iso3to2[normalized]) return iso3to2[normalized];
+          return '';
+        };
+        const normalizeIso3 = code => {
+          const normalized = String(code || '').trim().toUpperCase();
+          if (/^[A-Z]{3}$/.test(normalized)) return normalized;
+          if (/^[A-Z]{2}$/.test(normalized) && iso2to3[normalized]) return iso2to3[normalized];
+          return '';
+        };
+        const normalizedCountries = {};
+        Object.entries(countries || {}).forEach(([rawCode, rawHits]) => {
+          const hits = Number(rawHits || 0);
+          if (!Number.isFinite(hits) || hits <= 0) return;
+          const iso2 = normalizeIso2(rawCode);
+          const iso3 = normalizeIso3(rawCode);
+          if (iso2) normalizedCountries[iso2] = Math.max(Number(normalizedCountries[iso2] || 0), hits);
+          if (iso3) normalizedCountries[iso3] = Math.max(Number(normalizedCountries[iso3] || 0), hits);
+        });
+        countries = normalizedCountries;
+        const targetCode2 = normalizeIso2(topCode);
+        const targetCode3 = normalizeIso3(topCode);
+        const map = L.map(el, {
+          zoomControl: false,
+          attributionControl: false,
+          dragging: false,
+          scrollWheelZoom: false,
+          doubleClickZoom: false,
+          boxZoom: false,
+          keyboard: false,
+          tap: false
+        }).setView([18, 8], 1.45);
+        const colorForIntensity = (intensity) => {
+          if (intensity >= 0.85) return '#ff5f6d';
+          if (intensity >= 0.6) return '#ff9f43';
+          if (intensity >= 0.35) return '#ffd166';
+          if (intensity > 0) return '#34d399';
+          return '#17212b';
+        };
+        fetch('<?= clickfix_h($leafletWorldGeoJsonUrl); ?>')
+          .then(r => r.json())
+          .then(data => {
+            const layer = L.geoJSON(data, {
+              style: feature => {
+                const code3 = (feature.id || '').toUpperCase();
+                const code2 = normalizeIso2((feature.properties && (feature.properties.ISO_A2 || feature.properties.iso_a2)) || '');
+                const code3Normalized = normalizeIso3(code3);
+                const hitValue = Math.max(
+                  code2 ? Number(countries[code2] || 0) : 0,
+                  code3Normalized ? Number(countries[code3Normalized] || 0) : 0
+                );
+                const intensity = maxHits > 0 ? Math.min(1, hitValue / maxHits) : 0;
+                const isTop =
+                  (targetCode3 !== '' && code3Normalized === targetCode3)
+                  || (targetCode2 !== '' && code2 === targetCode2);
+                const fill = colorForIntensity(intensity);
+                return {
+                  color: isTop ? '#ecfeff' : '#324556',
+                  weight: isTop ? 1.5 : 0.75,
+                  fillColor: isTop ? '#ff5f6d' : fill,
+                  fillOpacity: intensity > 0 ? 0.82 : 0.48
+                };
+              },
+              onEachFeature: (feature, featureLayer) => {
+                const code2 = normalizeIso2((feature.properties && (feature.properties.ISO_A2 || feature.properties.iso_a2)) || '');
+                const code3 = normalizeIso3(feature.id || '');
+                const hitValue = Math.max(
+                  code2 ? Number(countries[code2] || 0) : 0,
+                  code3 ? Number(countries[code3] || 0) : 0
+                );
+                const countryName =
+                  String(feature.properties?.ADMIN || feature.properties?.NAME || code2 || code3 || 'PaÃ­s');
+                featureLayer.bindTooltip(`${countryName}: ${hitValue} eventos`, {
+                  sticky: true,
+                  direction: 'auto',
+                  opacity: 0.92
+                });
+              }
+            }).addTo(map);
+            if (layer.getBounds && layer.getBounds().isValid()) {
+              map.fitWorld({ padding: [4, 4] });
+            }
+          })
+          .catch(() => {});
+      })();
+    </script>
+  <?php endif; ?>
 </body>
 </html>
 <?php
 $dashboardOutput = ob_get_clean();
 echo cfdashboardtranslateoutput($dashboardOutput, (string) $lang);
+
+
+
 
