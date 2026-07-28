@@ -620,6 +620,20 @@
   "alertFilterRed": {
     "message": "Red only"
   },
+  "popupFalsePositiveButton": {
+    "message": "Revisar fals positiu"
+  },
+  "popupFalsePositiveSent": {
+    "message": "Fals positiu enviat: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "falsePositiveReason": {
+    "message": "Fals positiu reportat"
+  },
   "optionsExceptionlistTitle": {
     "message": "Llista d'excepcions"
   },
@@ -637,5 +651,62 @@
   },
   "optionsExceptionlistEmpty": {
     "message": "Sense excepcions."
+  },
+  "onboardingPillFirstUse": {
+    "message": "Primer ús"
+  },
+  "onboardingSkip": {
+    "message": "Ometre"
+  },
+  "onboardingWelcomeTitle": {
+    "message": "Benvingut"
+  },
+  "onboardingWelcomeDesc": {
+    "message": "Et guiarem pas a pas."
+  },
+  "onboardingPrev": {
+    "message": "Enrere"
+  },
+  "onboardingNext": {
+    "message": "Següent"
+  },
+  "onboardingFinish": {
+    "message": "Finalitzar"
+  },
+  "onboardingStep1Title": {
+    "message": "Pas 1 - Idioma"
+  },
+  "onboardingStep1Desc": {
+    "message": "Tria l'idioma perquè tota la interfície sigui al teu idioma."
+  },
+  "onboardingStep2Title": {
+    "message": "Pas 2 - Tema"
+  },
+  "onboardingStep2Desc": {
+    "message": "Selecciona l'aspecte visual: clar, fosc o del sistema."
+  },
+  "onboardingStep3Title": {
+    "message": "Pas 3 - Nivell d'avisos"
+  },
+  "onboardingStep3Desc": {
+    "message": "Ajusta el filtre d'alertes per reduir soroll."
+  },
+  "onboardingStep4Title": {
+    "message": "Pas 4 - Protecció"
+  },
+  "onboardingStep4Desc": {
+    "message": "Activa detecció, bloqueig del porta-retalls i FamilySafe si cal."
+  },
+  "onboardingStep5Title": {
+    "message": "Pas 5 - Puntuació"
+  },
+  "onboardingStep5Desc": {
+    "message": "Ajusta pesos i regles de puntuació segons el teu entorn."
+  },
+  "onboardingStep6Title": {
+    "message": "Pas 6 - Llistes i historial"
+  },
+  "onboardingStep6Desc": {
+    "message": "Gestiona llistes i revisa l'historial complet."
   }
 }

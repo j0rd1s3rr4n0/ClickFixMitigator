@@ -620,6 +620,20 @@
   "alertFilterRed": {
     "message": "Red only"
   },
+  "popupFalsePositiveButton": {
+    "message": "Review false positive"
+  },
+  "popupFalsePositiveSent": {
+    "message": "False positive submitted: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "falsePositiveReason": {
+    "message": "False positive reported"
+  },
   "optionsExceptionlistTitle": {
     "message": "Exception list"
   },
@@ -637,5 +651,62 @@
   },
   "optionsExceptionlistEmpty": {
     "message": "No exceptions."
+  },
+  "onboardingPillFirstUse": {
+    "message": "Erster Start"
+  },
+  "onboardingSkip": {
+    "message": "Überspringen"
+  },
+  "onboardingWelcomeTitle": {
+    "message": "Willkommen"
+  },
+  "onboardingWelcomeDesc": {
+    "message": "Wir führen dich Schritt für Schritt."
+  },
+  "onboardingPrev": {
+    "message": "Zurück"
+  },
+  "onboardingNext": {
+    "message": "Weiter"
+  },
+  "onboardingFinish": {
+    "message": "Fertig"
+  },
+  "onboardingStep1Title": {
+    "message": "Schritt 1 - Sprache"
+  },
+  "onboardingStep1Desc": {
+    "message": "Wähle eine Sprache, damit die gesamte Oberfläche in deiner Sprache ist."
+  },
+  "onboardingStep2Title": {
+    "message": "Schritt 2 - Design"
+  },
+  "onboardingStep2Desc": {
+    "message": "Wähle das Erscheinungsbild: hell, dunkel oder System."
+  },
+  "onboardingStep3Title": {
+    "message": "Schritt 3 - Warnstufe"
+  },
+  "onboardingStep3Desc": {
+    "message": "Passe den Warnfilter an, um Rauschen zu reduzieren."
+  },
+  "onboardingStep4Title": {
+    "message": "Schritt 4 - Schutz"
+  },
+  "onboardingStep4Desc": {
+    "message": "Aktiviere Erkennung, Zwischenablage-Sperre und FamilySafe bei Bedarf."
+  },
+  "onboardingStep5Title": {
+    "message": "Schritt 5 - Bewertung"
+  },
+  "onboardingStep5Desc": {
+    "message": "Passe Gewichte und Regeln für deine Umgebung an."
+  },
+  "onboardingStep6Title": {
+    "message": "Schritt 6 - Listen und Verlauf"
+  },
+  "onboardingStep6Desc": {
+    "message": "Verwalte Listen und prüfe den gesamten Verlauf."
   }
 }

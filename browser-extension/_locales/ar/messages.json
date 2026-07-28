@@ -651,5 +651,62 @@
   },
   "optionsExceptionlistEmpty": {
     "message": "No exceptions."
+  },
+  "onboardingPillFirstUse": {
+    "message": "الاستخدام الأول"
+  },
+  "onboardingSkip": {
+    "message": "تخطى"
+  },
+  "onboardingWelcomeTitle": {
+    "message": "مرحبا"
+  },
+  "onboardingWelcomeDesc": {
+    "message": "سنرشدك خطوة بخطوة."
+  },
+  "onboardingPrev": {
+    "message": "رجوع"
+  },
+  "onboardingNext": {
+    "message": "التالي"
+  },
+  "onboardingFinish": {
+    "message": "إنهاء"
+  },
+  "onboardingStep1Title": {
+    "message": "الخطوة 1 - اللغة"
+  },
+  "onboardingStep1Desc": {
+    "message": "اختر اللغة ليكون كل الواجهة بلغتك."
+  },
+  "onboardingStep2Title": {
+    "message": "الخطوة 2 - المظهر"
+  },
+  "onboardingStep2Desc": {
+    "message": "اختر المظهر: فاتح، داكن أو النظام."
+  },
+  "onboardingStep3Title": {
+    "message": "الخطوة 3 - مستوى التنبيهات"
+  },
+  "onboardingStep3Desc": {
+    "message": "عدّل مرشح التنبيهات لتقليل الضوضاء."
+  },
+  "onboardingStep4Title": {
+    "message": "الخطوة 4 - الحماية"
+  },
+  "onboardingStep4Desc": {
+    "message": "فعّل الكشف وحظر الحافظة وFamilySafe عند الحاجة."
+  },
+  "onboardingStep5Title": {
+    "message": "الخطوة 5 - النقاط"
+  },
+  "onboardingStep5Desc": {
+    "message": "اضبط الأوزان والقواعد حسب بيئتك."
+  },
+  "onboardingStep6Title": {
+    "message": "الخطوة 6 - القوائم والسجل"
+  },
+  "onboardingStep6Desc": {
+    "message": "أدِر القوائم وراجع السجل الكامل."
   }
 }

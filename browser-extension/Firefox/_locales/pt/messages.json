@@ -620,6 +620,20 @@
   "alertFilterRed": {
     "message": "Red only"
   },
+  "popupFalsePositiveButton": {
+    "message": "Review false positive"
+  },
+  "popupFalsePositiveSent": {
+    "message": "False positive submitted: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "falsePositiveReason": {
+    "message": "False positive reported"
+  },
   "optionsExceptionlistTitle": {
     "message": "Exception list"
   },
@@ -637,5 +651,62 @@
   },
   "optionsExceptionlistEmpty": {
     "message": "No exceptions."
+  },
+  "onboardingPillFirstUse": {
+    "message": "Primeiro uso"
+  },
+  "onboardingSkip": {
+    "message": "Ignorar"
+  },
+  "onboardingWelcomeTitle": {
+    "message": "Bem-vindo"
+  },
+  "onboardingWelcomeDesc": {
+    "message": "Vamos guiá-lo passo a passo."
+  },
+  "onboardingPrev": {
+    "message": "Voltar"
+  },
+  "onboardingNext": {
+    "message": "Próximo"
+  },
+  "onboardingFinish": {
+    "message": "Concluir"
+  },
+  "onboardingStep1Title": {
+    "message": "Passo 1 - Idioma"
+  },
+  "onboardingStep1Desc": {
+    "message": "Escolha o idioma para que toda a interface fique no seu idioma."
+  },
+  "onboardingStep2Title": {
+    "message": "Passo 2 - Tema"
+  },
+  "onboardingStep2Desc": {
+    "message": "Selecione o visual: claro, escuro ou sistema."
+  },
+  "onboardingStep3Title": {
+    "message": "Passo 3 - Nível de alertas"
+  },
+  "onboardingStep3Desc": {
+    "message": "Ajuste o filtro de alertas para reduzir ruído."
+  },
+  "onboardingStep4Title": {
+    "message": "Passo 4 - Proteção"
+  },
+  "onboardingStep4Desc": {
+    "message": "Ative detecção, bloqueio da área de transferência e FamilySafe se necessário."
+  },
+  "onboardingStep5Title": {
+    "message": "Passo 5 - Pontuação"
+  },
+  "onboardingStep5Desc": {
+    "message": "Ajuste pesos e regras conforme seu ambiente."
+  },
+  "onboardingStep6Title": {
+    "message": "Passo 6 - Listas e histórico"
+  },
+  "onboardingStep6Desc": {
+    "message": "Gerencie listas e revise o histórico completo."
   }
 }

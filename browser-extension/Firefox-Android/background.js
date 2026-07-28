@@ -94,7 +94,7 @@ const DEFAULT_SETTINGS = {
   scoreConfig: DEFAULT_SCORE_CONFIG,
   scoreConfigManagedBy: "local",
   scoreConfigServerUpdatedAt: 0,
-  alertMinSeverity: "green",
+  alertMinSeverity: "red",
   extensionMessageSeenIds: []
 };
 
@@ -244,6 +244,15 @@ const BRAND_REPUTATION_RULES = [
   { name: "github", hosts: ["github.com"] },
   { name: "cloudflare", hosts: ["cloudflare.com"] }
 ];
+const TRUSTED_OBFUSCATION_HOSTS = [
+  "gstatic.com",
+  "googleusercontent.com",
+  "googlesyndication.com",
+  "doubleclick.net",
+  "google-analytics.com",
+  "googletagmanager.com",
+  "googleapis.com"
+];
 const LIST_REFRESH_MINUTES = 3;
 const REPORT_FLUSH_MINUTES = 5;
 const PAGE_ALERT_DEBOUNCE_MS = 900;
@@ -287,6 +296,68 @@ const ALERT_SEVERITY_ORDER = {
   orange: 2,
   red: 3
 };
+
+function looksLikeHtml(text) {
+  const value = String(text || "").trim();
+  if (!value || value.length < 6) {
+    return false;
+  }
+  const hasTag = /<\s*[a-z][^>]*>/i.test(value);
+  if (!hasTag) {
+    return false;
+  }
+  const hasCloseTag = /<\/\s*[a-z][^>]*>/i.test(value);
+  return hasCloseTag || value.startsWith("<");
+}
+
+function isTrustedBrandHost(hostname) {
+  if (!hostname) {
+    return false;
+  }
+  if (TRUSTED_OBFUSCATION_HOSTS.some((entry) => matchesHostname(hostname, entry))) {
+    return true;
+  }
+  return BRAND_REPUTATION_RULES.some((brand) =>
+    brand.hosts.some((entry) => matchesHostname(hostname, entry))
+  );
+}
+
+function shouldSuppressEvasionHint(details) {
+  if (!details?.evasionHint) {
+    return false;
+  }
+  const hostname = extractHostname(details?.url || "").toLowerCase();
+  if (!hostname || !isTrustedBrandHost(hostname)) {
+    return false;
+  }
+  const otherSignals = Boolean(
+    details?.commandMatch ||
+      details?.shellHint ||
+      details?.clipboardWarning ||
+      details?.mismatch ||
+      details?.winRHint ||
+      details?.winXHint ||
+      details?.winXTerminalHint ||
+      details?.consoleHint ||
+      details?.pasteSequenceHint ||
+      details?.copyTriggerHint ||
+      details?.fileExplorerHint ||
+      details?.browserErrorHint ||
+      details?.fixActionHint ||
+      details?.captchaHint
+  );
+  return !otherSignals;
+}
+
+function normalizeEvasionHint(details) {
+  if (!details?.evasionHint) {
+    return details;
+  }
+  if (shouldSuppressEvasionHint(details)) {
+    return { ...details, evasionHint: false };
+  }
+  return details;
+}
 
 function tabScriptBlockRuleIds(tabId) {
   const normalizedTabId = Number(tabId);
@@ -527,7 +598,11 @@ async function getSettings() {
     scoreConfig: normalizeScoreConfig(stored.scoreConfig),
     scoreConfigManagedBy: stored.scoreConfigManagedBy === "server" ? "server" : "local",
     scoreConfigServerUpdatedAt: Number(stored.scoreConfigServerUpdatedAt || 0),
-    alertMinSeverity: normalizeAlertMinSeverity(stored.alertMinSeverity)
+    alertMinSeverity:
+      ALERT_SEVERITY_ORDER[normalizeAlertMinSeverity(stored.alertMinSeverity)] <
+      ALERT_SEVERITY_ORDER.red
+        ? "red"
+        : normalizeAlertMinSeverity(stored.alertMinSeverity)
   };
 }
 
@@ -1517,11 +1592,13 @@ function computeContentRiskSignals(details) {
   add(details?.winXTerminalHint, 6, "Win+X then I/Terminal execution flow found.");
   add(details?.consoleHint, 8, "Developer console instruction found.");
   add(details?.pasteSequenceHint, 6, "Step-by-step paste execution flow found.");
+  add(details?.verificationStepsHint, 7, "Verification step-by-step instructions detected.");
   add(details?.copyTriggerHint, 6, "Forced clipboard copy trigger found.");
   add(details?.fileExplorerHint, 5, "File Explorer path execution instruction found.");
   add(details?.browserErrorHint, 5, "Fake browser error social engineering pattern found.");
   add(details?.fixActionHint, 5, "Fix/repair bait wording found.");
   add(details?.captchaHint, 4, "Fake CAPTCHA lure pattern found.");
+  add(details?.wordpressHint, 4, "WordPress footprint detected.");
   return { score, reasons };
 }
 
@@ -1576,6 +1653,19 @@ function computeLureRiskSignals(details) {
   if (details?.captchaHint && (details?.commandMatch || details?.shellHint || details?.downloadHint)) {
     score += 12;
     reasons.push("CAPTCHA + execution chain detected.");
+  }
+  if (
+    details?.wordpressHint &&
+    (details?.winRHint ||
+      details?.winXHint ||
+      details?.consoleHint ||
+      details?.shellHint ||
+      details?.pasteSequenceHint ||
+      details?.copyTriggerHint ||
+      details?.verificationStepsHint)
+  ) {
+    score += 8;
+    reasons.push("WordPress + execution guidance combination detected.");
   }
   if (details?.browserErrorHint && details?.fixActionHint) {
     score += 10;
@@ -1872,6 +1962,7 @@ function applyPageAlertTypeToDetails(details, alertType) {
   if (alertType === "console") details.consoleHint = true;
   if (alertType === "shell") details.shellHint = true;
   if (alertType === "paste-sequence") details.pasteSequenceHint = true;
+  if (alertType === "verification-steps") details.verificationStepsHint = true;
   if (alertType === "file-explorer") details.fileExplorerHint = true;
   if (alertType === "copy-trigger") details.copyTriggerHint = true;
 }
@@ -1891,11 +1982,13 @@ function mergePageSignalState(details, signalState) {
     "consoleHint",
     "shellHint",
     "pasteSequenceHint",
+    "verificationStepsHint",
     "fileExplorerHint",
     "copyTriggerHint",
     "evasionHint",
     "mismatch",
-    "clipboardWarning"
+    "clipboardWarning",
+    "wordpressHint"
   ];
   mappings.forEach((key) => {
     if (signalState[key]) {
@@ -1953,10 +2046,12 @@ function queueBatchedPageAlert(message, sender) {
         consoleHint: false,
         shellHint: false,
         pasteSequenceHint: false,
+        verificationStepsHint: false,
         fileExplorerHint: false,
         copyTriggerHint: false,
         evasionHint: false,
         clipboardWarning: false,
+        wordpressHint: false,
         snippets: [],
         blockedClipboardText: "",
         detectedContent: "",
@@ -2049,8 +2144,10 @@ function extractDetectionSignals(details) {
   addSignal("captchaHint", details?.captchaHint);
   addSignal("consoleHint", details?.consoleHint);
   addSignal("pasteSequenceHint", details?.pasteSequenceHint);
+  addSignal("verificationStepsHint", details?.verificationStepsHint);
   addSignal("fileExplorerHint", details?.fileExplorerHint);
   addSignal("copyTriggerHint", details?.copyTriggerHint);
+  addSignal("wordpressHint", details?.wordpressHint);
   addSignal("blockedClipboardText", Boolean(details?.blockedClipboardText));
 
   const clipboard = details?.clipboardAnalysis;
@@ -2434,6 +2531,7 @@ async function maybeCaptureBeforeScreenshotForPage(message, sender) {
 
 async function triggerAlert(details) {
   await ensureLocaleReady();
+  details = normalizeEvasionHint(details);
   const exceptionlisted = await isExceptionlisted(details?.url || "");
   if (exceptionlisted) {
     details = {
@@ -3158,11 +3256,82 @@ async function addToWhitelist(hostname) {
   await chrome.storage.local.set({ whitelist });
 }
 
+async function addToBlocklist(hostname) {
+  if (!hostname) {
+    return;
+  }
+  const settings = await getSettings();
+  if (settings.blocklist.includes(hostname)) {
+    return;
+  }
+  const blocklist = [...settings.blocklist, hostname];
+  blocklistCache = { items: blocklist, fetchedAt: Date.now() };
+  await chrome.storage.local.set({ blocklist, blocklistUpdatedAt: Date.now() });
+}
+
+const CONTEXT_MENU_ROOT = "clickfix-root";
+const CONTEXT_MENU_REPORT = "clickfix-report";
+const CONTEXT_MENU_ALLOW = "clickfix-allow";
+const CONTEXT_MENU_BLOCK = "clickfix-block";
+const CONTEXT_MENU_SCAN_SIMPLE = "clickfix-scan-simple";
+const CONTEXT_MENU_SCAN_INTENSE = "clickfix-scan-intense";
+
+function createContextMenus() {
+  if (!chrome?.contextMenus?.create) {
+    return;
+  }
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_ROOT,
+      title: "ClickFix Mitigator",
+      contexts: ["page"]
+    });
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_REPORT,
+      parentId: CONTEXT_MENU_ROOT,
+      title: "Reportar sitio",
+      contexts: ["page"]
+    });
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_ALLOW,
+      parentId: CONTEXT_MENU_ROOT,
+      title: "Anadir a whitelist",
+      contexts: ["page"]
+    });
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_BLOCK,
+      parentId: CONTEXT_MENU_ROOT,
+      title: "Anadir a blacklist",
+      contexts: ["page"]
+    });
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_SCAN_SIMPLE,
+      parentId: CONTEXT_MENU_ROOT,
+      title: "Escaneo simple de ClickFix",
+      contexts: ["page"]
+    });
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_SCAN_INTENSE,
+      parentId: CONTEXT_MENU_ROOT,
+      title: "Escaneo intenso de ClickFix",
+      contexts: ["page"]
+    });
+  });
+}
+  const settings = await getSettings();
+  if (settings.whitelist.includes(hostname)) {
+    return;
+  }
+  const whitelist = [...settings.whitelist, hostname];
+  await chrome.storage.local.set({ whitelist });
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   refreshBlocklist();
   refreshAllowlist();
   refreshServerScoreConfig();
   refreshExtensionMessages();
+  createContextMenus();
   chrome.alarms.create("clickfix-refresh", { periodInMinutes: LIST_REFRESH_MINUTES });
   chrome.alarms.create("clickfix-reports", { periodInMinutes: REPORT_FLUSH_MINUTES });
   restoreReportQueue();
@@ -3173,6 +3342,7 @@ chrome.runtime.onStartup.addListener(() => {
   refreshAllowlist();
   refreshServerScoreConfig();
   refreshExtensionMessages();
+  createContextMenus();
   chrome.alarms.create("clickfix-refresh", { periodInMinutes: LIST_REFRESH_MINUTES });
   chrome.alarms.create("clickfix-reports", { periodInMinutes: REPORT_FLUSH_MINUTES });
   restoreReportQueue();
@@ -3184,12 +3354,57 @@ if (chrome?.downloads?.onCreated) {
   });
 }
 
+
+if (chrome?.contextMenus?.onClicked) {
+  chrome.contextMenus.onClicked.addListener((info, tab) => {
+    const pageUrl = String(info?.pageUrl || tab?.url || "");
+    if (!pageUrl) {
+      return;
+    }
+    const hostname = extractHostname(pageUrl);
+    if (info.menuItemId === CONTEXT_MENU_REPORT) {
+      enqueueReport({
+        url: pageUrl,
+        hostname: hostname || extractHostname(pageUrl),
+        timestamp: Date.now(),
+        reason: t("manualReportReason"),
+        blocked: true,
+        event_type: "manual_report",
+        manualReport: true,
+        detectedContent: "",
+        previous_url: ""
+      });
+      return;
+    }
+    if (info.menuItemId === CONTEXT_MENU_ALLOW) {
+      addToWhitelist(hostname);
+      return;
+    }
+    if (info.menuItemId === CONTEXT_MENU_BLOCK) {
+      addToBlocklist(hostname);
+      return;
+    }
+    if (
+      info.menuItemId === CONTEXT_MENU_SCAN_SIMPLE ||
+      info.menuItemId === CONTEXT_MENU_SCAN_INTENSE
+    ) {
+      if (Number.isInteger(tab?.id)) {
+        chrome.tabs.sendMessage(tab.id, {
+          type: "manualScan",
+          mode: info.menuItemId === CONTEXT_MENU_SCAN_INTENSE ? "intense" : "simple"
+        });
+      }
+    }
+  });
+}
+
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "clickfix-refresh") {
     refreshBlocklist();
     refreshAllowlist();
     refreshServerScoreConfig();
     refreshExtensionMessages();
+  createContextMenus();
   }
   if (alarm.name === "clickfix-reports") {
     flushReportQueue();
@@ -3778,11 +3993,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const shellHint = Boolean(
         clipboardAnalysis.shellHint ?? clipboardAnalysis.hasExecutionHint
       );
-      const evasionHint = Boolean(
+      const looksHtml = looksLikeHtml(clipboardText);
+      let evasionHint = Boolean(
         clipboardAnalysis.evasionHint ??
           clipboardAnalysis.hasBase64 ??
           clipboardAnalysis.hasHighEntropy
       );
+      if (looksHtml && !commandMatch && !shellHint) {
+        evasionHint = false;
+      }
       const mismatch =
         message.eventType === "copy" &&
         message.clipboardAvailable &&

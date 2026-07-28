@@ -5,13 +5,17 @@ const DEFAULT_SETTINGS = {
   uiTheme: "system",
   muteDetectionNotifications: false,
   whitelist: [],
+  exceptionlist: [],
   history: [],
   blocklistSources: [],
   allowlistSources: [],
   saveClipboardBackup: true,
   sendCountry: true,
+  protectionProfile: "balanced",
+  privacyBaselineEnabled: true,
+  privacyBaselineShareSummary: true,
   detectionScreenshotCapture: false,
-  alertMinSeverity: "green",
+  alertMinSeverity: "red",
   scoreConfig: null,
   scoreConfigManagedBy: "local",
   scoreConfigServerUpdatedAt: 0
@@ -19,36 +23,36 @@ const DEFAULT_SETTINGS = {
 
 const SCORE_RULE_DEFINITIONS = {
   signals: [
-    { flag: "commandMatch", key: "scoreSignalCommandMatch", defaultPoints: 20 },
+    { flag: "commandMatch", key: "scoreSignalCommandMatch", defaultPoints: 18 },
     { flag: "shellHint", key: "scoreSignalShellHint", defaultPoints: 14 },
-    { flag: "evasionHint", key: "scoreSignalEvasionHint", defaultPoints: 12 },
+    { flag: "evasionHint", key: "scoreSignalEvasionHint", defaultPoints: 4 },
     { flag: "mismatch", key: "scoreSignalMismatch", defaultPoints: 8 },
-    { flag: "clipboardWarning", key: "scoreSignalClipboardWarning", defaultPoints: 6 },
+    { flag: "clipboardWarning", key: "scoreSignalClipboardWarning", defaultPoints: 3 },
     { flag: "winRHint", key: "scoreSignalWinR", defaultPoints: 6 },
     { flag: "winXHint", key: "scoreSignalWinX", defaultPoints: 4 },
     { flag: "pasteSequenceHint", key: "scoreSignalPasteSequence", defaultPoints: 6 },
     { flag: "consoleHint", key: "scoreSignalConsole", defaultPoints: 5 },
     { flag: "fileExplorerHint", key: "scoreSignalFileExplorer", defaultPoints: 4 },
-    { flag: "copyTriggerHint", key: "scoreSignalCopyTrigger", defaultPoints: 4 },
+    { flag: "copyTriggerHint", key: "scoreSignalCopyTrigger", defaultPoints: 3 },
     { flag: "browserErrorHint", key: "scoreSignalBrowserError", defaultPoints: 4 },
     { flag: "fixActionHint", key: "scoreSignalFixAction", defaultPoints: 4 },
-    { flag: "captchaHint", key: "scoreSignalCaptcha", defaultPoints: 3 }
+    { flag: "captchaHint", key: "scoreSignalCaptcha", defaultPoints: 2 }
   ],
   clipboard: [
-    { flag: "hasCommand", key: "scoreClipboardCommand", defaultPoints: 22 },
-    { flag: "hasExecutionHint", key: "scoreClipboardExecutionHint", defaultPoints: 18 },
-    { flag: "hasUrl", key: "scoreClipboardUrl", defaultPoints: 12 },
-    { flag: "hasBase64", key: "scoreClipboardBase64", defaultPoints: 12 },
-    { flag: "hasHighEntropy", key: "scoreClipboardHighEntropy", defaultPoints: 10 },
-    { flag: "hasShellMeta", key: "scoreClipboardShellMeta", defaultPoints: 6 },
-    { flag: "isLong", key: "scoreClipboardLong", defaultPoints: 5 },
-    { flag: "hasLeadingWhitespace", key: "scoreClipboardLeadingWhitespace", defaultPoints: 5 },
-    { flag: "looksLikeCommand", key: "scoreClipboardLooksLikeCommand", defaultPoints: 10 }
+    { flag: "hasCommand", key: "scoreClipboardCommand", defaultPoints: 18 },
+    { flag: "hasExecutionHint", key: "scoreClipboardExecutionHint", defaultPoints: 14 },
+    { flag: "hasUrl", key: "scoreClipboardUrl", defaultPoints: 8 },
+    { flag: "hasBase64", key: "scoreClipboardBase64", defaultPoints: 4 },
+    { flag: "hasHighEntropy", key: "scoreClipboardHighEntropy", defaultPoints: 2 },
+    { flag: "hasShellMeta", key: "scoreClipboardShellMeta", defaultPoints: 4 },
+    { flag: "isLong", key: "scoreClipboardLong", defaultPoints: 3 },
+    { flag: "hasLeadingWhitespace", key: "scoreClipboardLeadingWhitespace", defaultPoints: 2 },
+    { flag: "looksLikeCommand", key: "scoreClipboardLooksLikeCommand", defaultPoints: 5 }
   ],
   context: [
-    { flag: "isAllowlisted", key: "scoreContextAllowlisted", defaultPoints: -25 },
-    { flag: "isTrustedHost", key: "scoreContextTrustedHost", defaultPoints: -15 },
-    { flag: "isCodeContext", key: "scoreContextCodeContext", defaultPoints: -10 },
+    { flag: "isAllowlisted", key: "scoreContextAllowlisted", defaultPoints: -35 },
+    { flag: "isTrustedHost", key: "scoreContextTrustedHost", defaultPoints: -22 },
+    { flag: "isCodeContext", key: "scoreContextCodeContext", defaultPoints: -18 },
     { flag: "isIframe", key: "scoreContextIframe", defaultPoints: 5 },
     { flag: "opaqueIframes", key: "scoreContextOpaqueIframes", defaultPoints: 5 },
     { flag: "opaqueIframesHigh", key: "scoreContextOpaqueIframes", defaultPoints: 10 }
@@ -68,11 +72,11 @@ function buildDefaultScoreRules() {
 
 const DEFAULT_SCORE_CONFIG = {
   weights: {
-    signals: 0.5,
-    clipboard: 0.35,
-    context: 0.15
+    signals: 0.44,
+    clipboard: 0.26,
+    context: 0.30
   },
-  contextBaseScore: 50,
+  contextBaseScore: 42,
   rules: buildDefaultScoreRules()
 };
 
@@ -83,11 +87,17 @@ const toggleMuteNotifications = document.getElementById("toggle-mute-notificatio
 const whitelistInput = document.getElementById("whitelist-input");
 const addDomainButton = document.getElementById("add-domain");
 const whitelistList = document.getElementById("whitelist-list");
+const exceptionlistInput = document.getElementById("exceptionlist-input");
+const addExceptionButton = document.getElementById("add-exception");
+const exceptionlistList = document.getElementById("exceptionlist-list");
 const blocklistInput = document.getElementById("blocklist-input");
 const addBlocklistButton = document.getElementById("add-blocklist");
 const blocklistList = document.getElementById("blocklist-list");
 const toggleClipboardBackup = document.getElementById("toggle-clipboard-backup");
 const toggleSendCountry = document.getElementById("toggle-send-country");
+const protectionProfileSelect = document.getElementById("protection-profile");
+const protectionProfileSummary = document.getElementById("protection-profile-summary");
+const togglePrivacyBaseline = document.getElementById("toggle-privacy-baseline");
 const toggleDetectionScreenshots = document.getElementById("toggle-detection-screenshots");
 const alertMinSeveritySelect = document.getElementById("alert-min-severity");
 const allowlistInput = document.getElementById("allowlist-input");
@@ -113,11 +123,78 @@ const scoreRulesContainer = document.getElementById("score-rules");
 const scoreSaveButton = document.getElementById("score-save");
 const scoreResetButton = document.getElementById("score-reset");
 const scoreStatus = document.getElementById("score-settings-status");
+const onboardingOverlay = document.getElementById("onboarding-overlay");
+const onboardingTitle = document.getElementById("onboarding-title");
+const onboardingDesc = document.getElementById("onboarding-desc");
+const onboardingBody = document.getElementById("onboarding-body");
+const onboardingPrev = document.getElementById("onboarding-prev");
+const onboardingNext = document.getElementById("onboarding-next");
+const onboardingSkip = document.getElementById("onboarding-skip");
+const onboardingLanguage = document.getElementById("onboarding-language");
+let onboardingStep = 0;
+let onboardingFocus = null;
+let onboardingBusy = false;
 
 const SUPPORTED_LOCALES = ["en", "es", "ca", "de", "fr", "nl", "he", "ru", "zh", "ko", "ja", "pt", "ar", "hi"];
 const DEFAULT_LOCALE = "en";
 let activeMessages = null;
 const RTL_LOCALES = new Set(["ar"]);
+let applyingProtectionProfile = false;
+
+const PROTECTION_PROFILE_PRESETS = {
+  balanced: {
+    enabled: true,
+    blockAllClipboard: true,
+    familySafe: false,
+    muteDetectionNotifications: false,
+    saveClipboardBackup: true,
+    sendCountry: true,
+    privacyBaselineEnabled: true,
+    privacyBaselineShareSummary: true,
+    detectionScreenshotCapture: false,
+    alertMinSeverity: "orange",
+    popupViewMode: "simple"
+  },
+  strict: {
+    enabled: true,
+    blockAllClipboard: true,
+    familySafe: true,
+    muteDetectionNotifications: false,
+    saveClipboardBackup: true,
+    sendCountry: true,
+    privacyBaselineEnabled: true,
+    privacyBaselineShareSummary: true,
+    detectionScreenshotCapture: false,
+    alertMinSeverity: "yellow",
+    popupViewMode: "simple"
+  },
+  quiet: {
+    enabled: true,
+    blockAllClipboard: true,
+    familySafe: false,
+    muteDetectionNotifications: true,
+    saveClipboardBackup: false,
+    sendCountry: true,
+    privacyBaselineEnabled: true,
+    privacyBaselineShareSummary: true,
+    detectionScreenshotCapture: false,
+    alertMinSeverity: "red",
+    popupViewMode: "simple"
+  },
+  analyst: {
+    enabled: true,
+    blockAllClipboard: false,
+    familySafe: false,
+    muteDetectionNotifications: false,
+    saveClipboardBackup: true,
+    sendCountry: true,
+    privacyBaselineEnabled: false,
+    privacyBaselineShareSummary: false,
+    detectionScreenshotCapture: true,
+    alertMinSeverity: "green",
+    popupViewMode: "advanced"
+  }
+};
 
 function t(key, substitutions) {
   if (activeMessages?.[key]?.message) {
@@ -148,12 +225,340 @@ function normalizeLocale(locale) {
   return SUPPORTED_LOCALES.includes(base) ? base : DEFAULT_LOCALE;
 }
 
+function extractHostname(value) {
+  if (!value) {
+    return "";
+  }
+  try {
+    return new URL(value).hostname;
+  } catch (error) {
+    return "";
+  }
+}
+
+function normalizeHostname(value) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) {
+    return "";
+  }
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return extractHostname(trimmed);
+  }
+  if (trimmed.includes("/")) {
+    return extractHostname(`https://${trimmed}`);
+  }
+  return trimmed.replace(/^\*\./, "");
+}
+
 function normalizeAlertMinSeverity(value) {
   const normalized = String(value || "").toLowerCase();
   if (normalized === "yellow" || normalized === "orange" || normalized === "red") {
     return normalized;
   }
   return "green";
+}
+
+function normalizeProtectionProfile(value) {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized === "strict" || normalized === "quiet" || normalized === "analyst" || normalized === "custom") {
+    return normalized;
+  }
+  return "balanced";
+}
+
+function getProtectionProfileMeta(profile) {
+  switch (normalizeProtectionProfile(profile)) {
+    case "strict":
+      return {
+        label: "Estricto",
+        summary: "Bloquea antes, alerta antes y fuerza un modo más cerrado para puestos de mayor riesgo."
+      };
+    case "quiet":
+      return {
+        label: "Discreto",
+        summary: "Mantiene la protección base con menos ruido visual y menos datos locales guardados."
+      };
+    case "analyst":
+      return {
+        label: "Analista",
+        summary: "Expone más detalle técnico, conserva evidencias y evita suavizar la detección con baseline local."
+      };
+    case "custom":
+      return {
+        label: "Personalizado",
+        summary: "Has modificado opciones manualmente. Mantén este perfil si quieres conservar ajustes propios."
+      };
+    default:
+      return {
+        label: "Equilibrado",
+        summary: "Protege sin generar tanto ruido y mantiene activado el aprendizaje local para reducir falsos positivos."
+      };
+  }
+}
+
+function getProtectionProfileSummaryKey(profile) {
+  switch (normalizeProtectionProfile(profile)) {
+    case "strict":
+      return "protectionProfileStrictSummary";
+    case "quiet":
+      return "protectionProfileQuietSummary";
+    case "analyst":
+      return "protectionProfileAnalystSummary";
+    case "custom":
+      return "protectionProfileCustomSummary";
+    default:
+      return "protectionProfileBalancedSummary";
+  }
+}
+
+function updateProtectionProfileUi(profile) {
+  const normalized = normalizeProtectionProfile(profile);
+  if (protectionProfileSelect) {
+    protectionProfileSelect.value = normalized;
+  }
+  if (protectionProfileSummary) {
+    protectionProfileSummary.textContent = t(getProtectionProfileSummaryKey(normalized));
+  }
+}
+
+function applySettingsToStateControls(settings) {
+  toggleEnabled.checked = Boolean(settings.enabled);
+  if (toggleBlockAll) {
+    toggleBlockAll.checked = Boolean(settings.blockAllClipboard);
+  }
+  if (toggleFamilySafe) {
+    toggleFamilySafe.checked = Boolean(settings.familySafe);
+  }
+  if (toggleMuteNotifications) {
+    toggleMuteNotifications.checked = Boolean(settings.muteDetectionNotifications);
+  }
+  toggleClipboardBackup.checked = Boolean(settings.saveClipboardBackup);
+  toggleSendCountry.checked = Boolean(settings.sendCountry);
+  if (togglePrivacyBaseline) {
+    togglePrivacyBaseline.checked = settings.privacyBaselineEnabled !== false;
+  }
+  if (toggleDetectionScreenshots) {
+    toggleDetectionScreenshots.checked = Boolean(settings.detectionScreenshotCapture);
+  }
+  if (alertMinSeveritySelect) {
+    alertMinSeveritySelect.value = normalizeAlertMinSeverity(settings.alertMinSeverity);
+  }
+  updateProtectionProfileUi(settings.protectionProfile);
+}
+
+async function saveSettingPatch(patch, options = {}) {
+  const nextPatch = { ...patch };
+  if (!applyingProtectionProfile && !options.keepProfile) {
+    nextPatch.protectionProfile = "custom";
+  }
+  await chrome.storage.local.set(nextPatch);
+  if (nextPatch.protectionProfile) {
+    updateProtectionProfileUi(nextPatch.protectionProfile);
+  }
+}
+
+async function applyProtectionProfile(profile) {
+  const normalized = normalizeProtectionProfile(profile);
+  if (normalized === "custom") {
+    updateProtectionProfileUi("custom");
+    await chrome.storage.local.set({ protectionProfile: "custom" });
+    return;
+  }
+  const preset = PROTECTION_PROFILE_PRESETS[normalized];
+  if (!preset) {
+    return;
+  }
+  applyingProtectionProfile = true;
+  try {
+    const nextSettings = { ...preset, protectionProfile: normalized };
+    await chrome.storage.local.set(nextSettings);
+    applySettingsToStateControls(nextSettings);
+    updateProtectionProfileUi(normalized);
+  } finally {
+    applyingProtectionProfile = false;
+  }
+}
+
+async function initOnboarding() {
+  if (!onboardingOverlay) {
+    return;
+  }
+  const stored = await chrome.storage.local.get({ onboardingCompleted: false, uiLanguage: "" });
+  const browserLocale = normalizeLocale((chrome.i18n.getUILanguage && chrome.i18n.getUILanguage()) || "");
+  if (stored.onboardingCompleted) {
+    return;
+  }
+  const selectedLocale = normalizeLocale(stored.uiLanguage || browserLocale || DEFAULT_LOCALE);
+  await loadLocaleMessages(selectedLocale);
+
+  const steps = [
+    {
+      titleKey: "onboardingStep1Title",
+      descKey: "onboardingStep1Desc",
+      target: "#language-section",
+      showLang: true
+    },
+    {
+      titleKey: "onboardingStep2Title",
+      descKey: "onboardingStep2Desc",
+      target: "#theme-section"
+    },
+    {
+      titleKey: "onboardingStep3Title",
+      descKey: "onboardingStep3Desc",
+      target: "#state-section"
+    },
+    {
+      titleKey: "onboardingStep4Title",
+      descKey: "onboardingStep4Desc",
+      target: "#state-section"
+    },
+    {
+      titleKey: "onboardingStep5Title",
+      descKey: "onboardingStep5Desc",
+      target: "#score-settings-section"
+    },
+    {
+      titleKey: "onboardingStep6Title",
+      descKey: "onboardingStep6Desc",
+      target: "#lists-section"
+    }
+  ];
+
+  const focusTarget = (selector) => {
+    if (onboardingFocus) {
+      onboardingFocus.classList.remove("onboarding-focus");
+    }
+    const target = document.querySelector(selector);
+    if (target) {
+      onboardingFocus = target;
+      target.classList.add("onboarding-focus");
+      setTimeout(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 80);
+    }
+  };
+
+  const renderStep = () => {
+    const step = steps[onboardingStep];
+    if (!step) {
+      return;
+    }
+    onboardingTitle.textContent = step.titleKey ? t(step.titleKey) : "";
+    onboardingDesc.textContent = step.descKey ? t(step.descKey) : "";
+    const langWrap = document.getElementById("onboarding-language-wrap");
+    if (langWrap) {
+      langWrap.style.display = step.showLang ? "block" : "none";
+    }
+    onboardingPrev.disabled = onboardingStep === 0;
+    onboardingNext.disabled = false;
+    onboardingPrev.textContent = t("onboardingPrev");
+    onboardingNext.textContent = onboardingStep === steps.length - 1 ? t("onboardingFinish") : t("onboardingNext");
+    if (step.showLang && onboardingLanguage && languageSelect) {
+      onboardingLanguage.value = stored.uiLanguage || browserLocale || languageSelect.value || DEFAULT_LOCALE;
+    }
+    focusTarget(step.target);
+  };
+
+  const completeOnboarding = () => {
+    onboardingOverlay.hidden = true;
+    onboardingOverlay.style.display = "none";
+    document.body.classList.remove("onboarding-active");
+    if (onboardingFocus) {
+      onboardingFocus.classList.remove("onboarding-focus");
+      onboardingFocus = null;
+    }
+    const savePromise = chrome.storage.local.set({ onboardingCompleted: true });
+    if (savePromise?.catch) {
+      savePromise.catch(() => {});
+    }
+  };
+
+  const forceCompleteOnboarding = () => {
+    try {
+      completeOnboarding();
+    } finally {
+      onboardingOverlay.hidden = true;
+      onboardingOverlay.style.display = "none";
+      document.body.classList.remove("onboarding-active");
+    }
+  };
+
+  const handleSkipClick = (event) => {
+    try {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      forceCompleteOnboarding();
+    } finally {
+      onboardingBusy = false;
+    }
+  };
+
+  const handleNextClick = async (event) => {
+    if (onboardingBusy) {
+      return;
+    }
+    onboardingBusy = true;
+    try {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      const step = steps[onboardingStep];
+      let localeSyncPromise = Promise.resolve();
+      if (step?.showLang && onboardingLanguage && languageSelect) {
+        const nextLocale = normalizeLocale(onboardingLanguage.value || browserLocale || DEFAULT_LOCALE);
+        languageSelect.value = nextLocale;
+        localeSyncPromise = Promise.resolve(chrome.storage.local.set({ uiLanguage: nextLocale }))
+          .catch(() => {})
+          .then(() => loadLocaleMessages(nextLocale))
+          .catch((error) => {
+            console.error("[ClickFix onboarding] Failed to sync locale", error);
+          });
+      }
+      if (onboardingStep >= steps.length - 1) {
+        forceCompleteOnboarding();
+        await localeSyncPromise;
+        return;
+      }
+      onboardingStep += 1;
+      renderStep();
+      await localeSyncPromise;
+    } catch (error) {
+      console.error("[ClickFix onboarding] Failed to advance tutorial", error);
+      onboardingStep = Math.min(onboardingStep + 1, steps.length - 1);
+      renderStep();
+    } finally {
+      onboardingBusy = false;
+    }
+  };
+
+  window.__clickfixAdvanceOnboarding = handleNextClick;
+  window.__clickfixSkipOnboarding = handleSkipClick;
+
+  onboardingSkip?.addEventListener("click", handleSkipClick);
+  onboardingSkip?.addEventListener("pointerdown", (event) => event.stopPropagation());
+  onboardingOverlay?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (target === onboardingOverlay || target?.classList?.contains("onboarding-backdrop")) {
+      forceCompleteOnboarding();
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !onboardingOverlay.hidden) {
+      forceCompleteOnboarding();
+    }
+  });
+  onboardingPrev?.addEventListener("click", () => {
+    if (onboardingStep > 0) {
+      onboardingStep -= 1;
+      renderStep();
+    }
+  });
+  onboardingNext?.addEventListener("click", handleNextClick);
+  onboardingNext?.addEventListener("pointerdown", (event) => event.stopPropagation());
+
+  onboardingOverlay.hidden = false;
+  document.body.classList.add("onboarding-active");
+  renderStep();
 }
 
 function clampScorePoints(value, fallback) {
@@ -320,6 +725,7 @@ async function loadSettings() {
     uiTheme: settings.uiTheme ?? "system",
     muteDetectionNotifications: settings.muteDetectionNotifications ?? false,
     whitelist: settings.whitelist ?? [],
+    exceptionlist: settings.exceptionlist ?? [],
     history: settings.history ?? [],
     alertCount: settings.alertCount ?? 0,
     blockCount: settings.blockCount ?? 0,
@@ -328,6 +734,9 @@ async function loadSettings() {
     allowlistSources: settings.allowlistSources ?? [],
     saveClipboardBackup: settings.saveClipboardBackup ?? true,
     sendCountry: settings.sendCountry ?? true,
+    protectionProfile: normalizeProtectionProfile(settings.protectionProfile),
+    privacyBaselineEnabled: settings.privacyBaselineEnabled !== false,
+    privacyBaselineShareSummary: settings.privacyBaselineShareSummary !== false,
     detectionScreenshotCapture: settings.detectionScreenshotCapture ?? false,
     alertMinSeverity: normalizeAlertMinSeverity(settings.alertMinSeverity),
     scoreConfig: normalizeScoreConfig(settings.scoreConfig || DEFAULT_SCORE_CONFIG),
@@ -359,6 +768,35 @@ function renderWhitelist(domains) {
     });
     item.appendChild(removeButton);
     whitelistList.appendChild(item);
+  });
+}
+
+function renderExceptionlist(domains) {
+  if (!exceptionlistList) {
+    return;
+  }
+  exceptionlistList.innerHTML = "";
+  if (!domains.length) {
+    const item = document.createElement("li");
+    item.textContent = t("optionsExceptionlistEmpty");
+    item.classList.add("empty");
+    exceptionlistList.appendChild(item);
+    return;
+  }
+
+  domains.forEach((domain) => {
+    const item = document.createElement("li");
+    item.textContent = domain;
+    const removeButton = document.createElement("button");
+    removeButton.textContent = t("optionsRemove");
+    removeButton.addEventListener("click", async () => {
+      const settings = await loadSettings();
+      const next = settings.exceptionlist.filter((entry) => entry !== domain);
+      await chrome.storage.local.set({ exceptionlist: next });
+      renderExceptionlist(next);
+    });
+    item.appendChild(removeButton);
+    exceptionlistList.appendChild(item);
   });
 }
 
@@ -488,7 +926,7 @@ function buildSnippetListElement(entry) {
   container.classList.add("history-snippets");
   const title = document.createElement("div");
   title.classList.add("history-snippets-title");
-  title.textContent = "Snippets detected";
+  title.textContent = t("historySnippetsTitle");
   const list = document.createElement("ul");
   list.classList.add("history-snippet-list");
   snippets.forEach((snippet) => {
@@ -1003,11 +1441,34 @@ async function addDomain(domain) {
   }
 }
 
+async function addException(domain) {
+  const normalized = normalizeHostname(domain);
+  if (!normalized) {
+    return;
+  }
+  const settings = await loadSettings();
+  if (!settings.exceptionlist.includes(normalized)) {
+    const next = [...settings.exceptionlist, normalized].sort();
+    await chrome.storage.local.set({ exceptionlist: next });
+    renderExceptionlist(next);
+  }
+}
+
 addDomainButton.addEventListener("click", async () => {
   const domain = whitelistInput.value.trim();
   if (domain) {
     await addDomain(domain);
     whitelistInput.value = "";
+  }
+});
+
+addExceptionButton?.addEventListener("click", async () => {
+  const domain = exceptionlistInput?.value.trim();
+  if (domain) {
+    await addException(domain);
+    if (exceptionlistInput) {
+      exceptionlistInput.value = "";
+    }
   }
 });
 
@@ -1056,64 +1517,61 @@ clearHistoryButton.addEventListener("click", async () => {
 });
 
 toggleEnabled.addEventListener("change", async () => {
-  await chrome.storage.local.set({ enabled: toggleEnabled.checked });
+  await saveSettingPatch({ enabled: toggleEnabled.checked });
 });
 
 toggleBlockAll?.addEventListener("change", async () => {
-  await chrome.storage.local.set({ blockAllClipboard: toggleBlockAll.checked });
+  await saveSettingPatch({ blockAllClipboard: toggleBlockAll.checked });
 });
 
 toggleFamilySafe?.addEventListener("change", async () => {
-  await chrome.storage.local.set({ familySafe: toggleFamilySafe.checked });
+  await saveSettingPatch({ familySafe: toggleFamilySafe.checked });
 });
 
 toggleMuteNotifications?.addEventListener("change", async () => {
-  await chrome.storage.local.set({ muteDetectionNotifications: toggleMuteNotifications.checked });
+  await saveSettingPatch({ muteDetectionNotifications: toggleMuteNotifications.checked });
 });
 
 toggleClipboardBackup.addEventListener("change", async () => {
-  await chrome.storage.local.set({ saveClipboardBackup: toggleClipboardBackup.checked });
+  await saveSettingPatch({ saveClipboardBackup: toggleClipboardBackup.checked });
 });
 
 toggleSendCountry.addEventListener("change", async () => {
-  await chrome.storage.local.set({ sendCountry: toggleSendCountry.checked });
+  await saveSettingPatch({ sendCountry: toggleSendCountry.checked });
+});
+
+togglePrivacyBaseline?.addEventListener("change", async () => {
+  const enabled = Boolean(togglePrivacyBaseline.checked);
+  await saveSettingPatch({
+    privacyBaselineEnabled: enabled,
+    privacyBaselineShareSummary: enabled
+  });
 });
 
 toggleDetectionScreenshots?.addEventListener("change", async () => {
-  await chrome.storage.local.set({
+  await saveSettingPatch({
     detectionScreenshotCapture: Boolean(toggleDetectionScreenshots.checked)
   });
 });
 
 alertMinSeveritySelect?.addEventListener("change", async () => {
-  await chrome.storage.local.set({
+  await saveSettingPatch({
     alertMinSeverity: normalizeAlertMinSeverity(alertMinSeveritySelect.value)
   });
 });
 
+protectionProfileSelect?.addEventListener("change", async () => {
+  await applyProtectionProfile(protectionProfileSelect.value);
+});
+
 (async () => {
+  await initOnboarding();
   await initLanguageSelector();
   await initThemeSelector();
   const settings = await loadSettings();
-  toggleEnabled.checked = settings.enabled;
-  if (toggleBlockAll) {
-    toggleBlockAll.checked = settings.blockAllClipboard;
-  }
-  if (toggleFamilySafe) {
-    toggleFamilySafe.checked = settings.familySafe;
-  }
-  if (toggleMuteNotifications) {
-    toggleMuteNotifications.checked = settings.muteDetectionNotifications;
-  }
-  toggleClipboardBackup.checked = settings.saveClipboardBackup;
-  toggleSendCountry.checked = settings.sendCountry;
-  if (toggleDetectionScreenshots) {
-    toggleDetectionScreenshots.checked = Boolean(settings.detectionScreenshotCapture);
-  }
-  if (alertMinSeveritySelect) {
-    alertMinSeveritySelect.value = settings.alertMinSeverity;
-  }
+  applySettingsToStateControls(settings);
   renderWhitelist(settings.whitelist);
+  renderExceptionlist(settings.exceptionlist);
   renderBlocklistSources(settings.blocklistSources);
   renderAllowlistSources(settings.allowlistSources);
   renderHistory(settings.history);
@@ -1138,10 +1596,29 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (shouldUpdateStats) {
     loadSettings().then(renderStats);
   }
+  if (changes.exceptionlist) {
+    loadSettings().then((settings) => renderExceptionlist(settings.exceptionlist));
+  }
   if (changes.scoreConfig || changes.scoreConfigManagedBy || changes.scoreConfigServerUpdatedAt) {
     loadSettings().then((settings) => {
       renderScoreSettings(settings.scoreConfig);
       applyScoreConfigMode(settings);
+    });
+  }
+  if (
+    changes.protectionProfile ||
+    changes.enabled ||
+    changes.blockAllClipboard ||
+    changes.familySafe ||
+    changes.muteDetectionNotifications ||
+    changes.saveClipboardBackup ||
+    changes.sendCountry ||
+    changes.privacyBaselineEnabled ||
+    changes.detectionScreenshotCapture ||
+    changes.alertMinSeverity
+  ) {
+    loadSettings().then((settings) => {
+      applySettingsToStateControls(settings);
     });
   }
 });

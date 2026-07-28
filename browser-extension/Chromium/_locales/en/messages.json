@@ -153,6 +153,9 @@
   "manualReportReason": {
     "message": "Manual user report"
   },
+  "falsePositiveReason": {
+    "message": "Reported false positive"
+  },
   "blocklistReason": {
     "message": "Blocked by list"
   },
@@ -222,6 +225,26 @@
   "popupReportButton": {
     "message": "Report"
   },
+  "popupFalsePositiveButton": {
+    "message": "Review false positive"
+  },
+  "popupDeleteRequestButton": {
+    "message": "Request removal"
+  },
+  "popupDeleteReasonPrompt": {
+    "message": "Reason for removal (required)"
+  },
+  "popupDeleteReasonRequired": {
+    "message": "Enter a reason to request removal."
+  },
+  "popupDeleteRequestSent": {
+    "message": "Removal request sent: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
   "popupReportStatusMissing": {
     "message": "Enter a URL or use the current tab."
   },
@@ -233,11 +256,22 @@
       }
     }
   },
+  "popupFalsePositiveSent": {
+    "message": "False positive sent: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
   "popupReportStatusInvalid": {
     "message": "Invalid URL."
   },
   "popupReportStatusNoTab": {
     "message": "Could not detect the active tab."
+  },
+  "deleteRequestReason": {
+    "message": "User requested detection removal."
   },
   "popupOptionsLink": {
     "message": "Advanced options"
@@ -631,5 +665,179 @@
   },
   "alertFilterRed": {
     "message": "Red only"
+  },
+  "optionsExceptionlistTitle": {
+    "message": "Exception list"
+  },
+  "optionsExceptionlistHint": {
+    "message": "Sites listed here bypass local blocking and UI, but detections are still reported to administrators."
+  },
+  "optionsExceptionlistWarning": {
+    "message": "You are responsible for any exceptions you add."
+  },
+  "optionsExceptionlistPlaceholder": {
+    "message": "example.com"
+  },
+  "optionsExceptionlistAdd": {
+    "message": "Add exception"
+  },
+  "optionsExceptionlistEmpty": {
+    "message": "No exceptions."
+  },
+  "protectionProfileTitle": {
+    "message": "Recommended profile"
+  },
+  "protectionProfileBalanced": {
+    "message": "Balanced"
+  },
+  "protectionProfileStrict": {
+    "message": "Strict"
+  },
+  "protectionProfileQuiet": {
+    "message": "Quiet"
+  },
+  "protectionProfileAnalyst": {
+    "message": "Analyst"
+  },
+  "protectionProfileCustom": {
+    "message": "Custom"
+  },
+  "protectionProfileBalancedSummary": {
+    "message": "Protects without too much noise and keeps local learning enabled to reduce false positives."
+  },
+  "protectionProfileStrictSummary": {
+    "message": "Blocks earlier, alerts earlier, and applies a tighter posture for higher-risk workstations."
+  },
+  "protectionProfileQuietSummary": {
+    "message": "Keeps baseline protection with fewer visual interruptions and less local data retained."
+  },
+  "protectionProfileAnalystSummary": {
+    "message": "Shows more technical detail, keeps evidence, and avoids softening detection with the local baseline."
+  },
+  "protectionProfileCustomSummary": {
+    "message": "You changed settings manually. Keep this profile if you want to preserve your custom choices."
+  },
+  "privacyBaselineTitle": {
+    "message": "Local learning to reduce false positives"
+  },
+  "privacyBaselineHint": {
+    "message": "Stores only one baseline per installation and hostname. You can disable it at any time; it does not use real identity or full history."
+  },
+  "popupViewSimple": {
+    "message": "Essential view"
+  },
+  "popupViewAdvanced": {
+    "message": "Technical view"
+  },
+  "quickSummaryTitle": {
+    "message": "Quick summary"
+  },
+  "quickSummaryProtected": {
+    "message": "Protected"
+  },
+  "quickSummaryProtectedText": {
+    "message": "The extension is active and watching for deception and suspicious execution attempts."
+  },
+  "quickSummaryDisabled": {
+    "message": "Disabled"
+  },
+  "quickSummaryDisabledText": {
+    "message": "Main protection is off. New alerts will not be generated while it remains disabled."
+  },
+  "quickSummaryAttention": {
+    "message": "Attention"
+  },
+  "quickSummaryAttentionText": {
+    "message": "Recent high-risk alerts were seen. Review the recent history."
+  },
+  "quickSummarySilent": {
+    "message": "Silent"
+  },
+  "quickSummarySilentText": {
+    "message": "Protection is still active, but visual notifications are muted."
+  },
+  "quickSummaryMode": {
+    "message": "Status"
+  },
+  "quickSummaryModeActive": {
+    "message": "Active"
+  },
+  "quickSummaryModePaused": {
+    "message": "Paused"
+  },
+  "quickSummaryLastAlert": {
+    "message": "Last alert"
+  },
+  "quickSummaryNoAlerts": {
+    "message": "No alerts"
+  },
+  "quickSummarySiteFallback": {
+    "message": "Site"
+  },
+  "quickSummaryBlocks": {
+    "message": "Blocks"
+  },
+  "quickSummaryProfile": {
+    "message": "Profile"
+  },
+  "historySnippetsTitle": {
+    "message": "Snippets detected"
+  },
+  "onboardingPillFirstUse": {
+    "message": "First time"
+  },
+  "onboardingSkip": {
+    "message": "Skip"
+  },
+  "onboardingWelcomeTitle": {
+    "message": "Welcome"
+  },
+  "onboardingWelcomeDesc": {
+    "message": "We’ll guide you step by step."
+  },
+  "onboardingPrev": {
+    "message": "Back"
+  },
+  "onboardingNext": {
+    "message": "Next"
+  },
+  "onboardingFinish": {
+    "message": "Finish"
+  },
+  "onboardingStep1Title": {
+    "message": "Step 1 - Language"
+  },
+  "onboardingStep1Desc": {
+    "message": "Choose a language so the whole interface is in your language."
+  },
+  "onboardingStep2Title": {
+    "message": "Step 2 - Theme"
+  },
+  "onboardingStep2Desc": {
+    "message": "Pick the visual style: light, dark, or system."
+  },
+  "onboardingStep3Title": {
+    "message": "Step 3 - Alert level"
+  },
+  "onboardingStep3Desc": {
+    "message": "Adjust the alert filter to reduce noise."
+  },
+  "onboardingStep4Title": {
+    "message": "Step 4 - Protection"
+  },
+  "onboardingStep4Desc": {
+    "message": "Enable detection, clipboard blocking, and FamilySafe if needed."
+  },
+  "onboardingStep5Title": {
+    "message": "Step 5 - Scoring"
+  },
+  "onboardingStep5Desc": {
+    "message": "Tune weights and rules for your environment."
+  },
+  "onboardingStep6Title": {
+    "message": "Step 6 - Lists and history"
+  },
+  "onboardingStep6Desc": {
+    "message": "Manage lists and review the full history."
   }
 }

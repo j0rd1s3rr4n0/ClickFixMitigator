@@ -651,5 +651,62 @@
   },
   "optionsExceptionlistEmpty": {
     "message": "No exceptions."
+  },
+  "onboardingPillFirstUse": {
+    "message": "שימוש ראשון"
+  },
+  "onboardingSkip": {
+    "message": "דלג"
+  },
+  "onboardingWelcomeTitle": {
+    "message": "ברוך הבא"
+  },
+  "onboardingWelcomeDesc": {
+    "message": "נדריך אותך צעד אחר צעד."
+  },
+  "onboardingPrev": {
+    "message": "חזרה"
+  },
+  "onboardingNext": {
+    "message": "הבא"
+  },
+  "onboardingFinish": {
+    "message": "סיום"
+  },
+  "onboardingStep1Title": {
+    "message": "שלב 1 - שפה"
+  },
+  "onboardingStep1Desc": {
+    "message": "בחר שפה כדי שכל הממשק יהיה בשפה שלך."
+  },
+  "onboardingStep2Title": {
+    "message": "שלב 2 - ערכת נושא"
+  },
+  "onboardingStep2Desc": {
+    "message": "בחר מראה: בהיר, כהה או מערכת."
+  },
+  "onboardingStep3Title": {
+    "message": "שלב 3 - רמת התראות"
+  },
+  "onboardingStep3Desc": {
+    "message": "התאם את מסנן ההתראות כדי להפחית רעש."
+  },
+  "onboardingStep4Title": {
+    "message": "שלב 4 - הגנה"
+  },
+  "onboardingStep4Desc": {
+    "message": "הפעל זיהוי, חסימת לוח וגזיר ו-FamilySafe לפי הצורך."
+  },
+  "onboardingStep5Title": {
+    "message": "שלב 5 - ניקוד"
+  },
+  "onboardingStep5Desc": {
+    "message": "התאם משקלים וכללים לסביבה שלך."
+  },
+  "onboardingStep6Title": {
+    "message": "שלב 6 - רשימות והיסטוריה"
+  },
+  "onboardingStep6Desc": {
+    "message": "נהל רשימות וסקור את ההיסטוריה המלאה."
   }
 }

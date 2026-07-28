@@ -19,18 +19,60 @@
               <p class="muted" data-i18n="statsSubtitle">Overview of detections and blocks.</p>
             </div>
           </div>
+                  <div class="hero-actions">
+          <div class="view-switch" id="popup-view-switch">
+            <button type="button" class="view-switch-btn is-active" data-mode="simple" data-i18n="popupViewSimple">Vista esencial</button>
+            <button type="button" class="view-switch-btn" data-mode="advanced" data-i18n="popupViewAdvanced">Vista t&eacute;cnica</button>
+          </div>
           <span id="allowlist-status" class="pill" data-i18n="popupWhitelistTitle" hidden>Allowlist</span>
+        </div>
+
         </div>
       </header>
 
-      <section class="card">
+    <div class="onboarding" id="popup-onboarding" hidden>
+      <div class="onboarding-backdrop"></div>
+      <div class="onboarding-panel">
+        <div class="onboarding-header">
+          <span class="pill" data-i18n="onboardingPillFirstUse">First time</span>
+          <button id="popup-onboarding-skip" type="button" class="ghost" data-i18n="onboardingSkip">Skip</button>
+        </div>
+        <h2 data-i18n="onboardingStep1Title">Step 1 - Language</h2>
+        <p class="hint" data-i18n="onboardingStep1Desc">Choose a language so the whole interface is in your language.</p>
+        <div class="onboarding-body">
+          <label for="popup-onboarding-language" data-i18n="languageTitle">Language</label>
+          <select id="popup-onboarding-language">
+            <option value="es" data-i18n="languageSpanish">Español</option>
+            <option value="ca" data-i18n="languageCatalan">Català</option>
+            <option value="en" data-i18n="languageEnglish">English</option>
+            <option value="de" data-i18n="languageGerman">Deutsch</option>
+            <option value="fr" data-i18n="languageFrench">Français</option>
+            <option value="nl" data-i18n="languageDutch">Nederlands</option>
+            <option value="pt" data-i18n="languagePortuguese">Português</option>
+            <option value="ru" data-i18n="languageRussian">Русский</option>
+            <option value="zh" data-i18n="languageChinese">中文</option>
+            <option value="ja" data-i18n="languageJapanese">日本語</option>
+            <option value="ko" data-i18n="languageKorean">한국어</option>
+            <option value="he" data-i18n="languageHebrew">עברית</option>
+            <option value="ar" data-i18n="languageArabic">العربية</option>
+            <option value="hi" data-i18n="languageHindi">हिन्दी</option>
+          </select>
+        </div>
+        <div class="onboarding-footer">
+          <button id="popup-onboarding-start" type="button" data-i18n="onboardingNext">Next</button>
+        </div>
+      </div>
+    </div>
+
+
+      <section class="card" data-view-section="advanced">
         <div class="section-head">
           <h2 data-i18n="languageTitle">Language</h2>
         </div>
         <div class="row">
           <select id="language-select">
             <option value="es" data-i18n="languageSpanish">Español</option>
-            <option value="ca" data-i18n="languageCatalan">Catalán</option>
+            <option value="ca" data-i18n="languageCatalan">Català</option>
             <option value="en" data-i18n="languageEnglish">English</option>
             <option value="de" data-i18n="languageGerman">Deutsch</option>
             <option value="fr" data-i18n="languageFrench">Français</option>
@@ -57,6 +99,33 @@
         </div>
       </section>
 
+      </section>
+
+      <section class="card quick-summary" id="quick-summary-card">
+        <div class="section-head">
+          <h2 data-i18n="quickSummaryTitle">Resumen r&aacute;pido</h2>
+          <span class="pill" id="quick-summary-state" data-i18n="quickSummaryProtected">Protegido</span>
+        </div>
+        <p class="hint" id="quick-summary-text" data-i18n="quickSummaryProtectedText">La extensi&oacute;n est&aacute; funcionando con la configuraci&oacute;n actual.</p>
+        <div class="quick-summary-grid">
+          <div class="stat-card compact">
+            <div class="stat-label" data-i18n="quickSummaryMode">Estado</div>
+            <div class="stat-value" id="quick-summary-mode" data-i18n="quickSummaryModeActive">Activo</div>
+          </div>
+          <div class="stat-card compact">
+            <div class="stat-label" data-i18n="quickSummaryLastAlert">Ultima alerta</div>
+            <div class="stat-value" id="quick-summary-last-alert" data-i18n="quickSummaryNoAlerts">Sin alertas</div>
+          </div>
+          <div class="stat-card compact">
+            <div class="stat-label" data-i18n="quickSummaryBlocks">Bloqueos</div>
+            <div class="stat-value" id="quick-summary-blocks">0</div>
+          </div>
+          <div class="stat-card compact">
+            <div class="stat-label" data-i18n="quickSummaryProfile">Perfil</div>
+            <div class="stat-value" id="quick-summary-profile" data-i18n="protectionProfileBalanced">Equilibrado</div>
+          </div>
+        </div>
+      </section>
       <section class="card stats">
         <h2 data-i18n="statsTitle">Statistics</h2>
         <p class="hint" data-i18n="statsSubtitle">Overview of detections and blocks.</p>
@@ -99,7 +168,7 @@
         </div>
       </section>
 
-      <section class="card">
+      <section class="card" data-view-section="advanced">
         <div class="section-head">
           <h2 data-i18n="linksTitle">Links</h2>
         </div>
@@ -169,11 +238,12 @@
         <div class="row">
           <input id="report-input" type="text" placeholder="https://example-site.com" data-i18n-placeholder="popupReportPlaceholder" />
           <button id="report-site" type="button" data-i18n="popupReportButton">Report</button>
+          <button id="report-false-positive" type="button" data-i18n="popupFalsePositiveButton">Review false positive</button>
         </div>
         <div id="report-status" class="hint"></div>
       </section>
 
-      <section class="card">
+      <section class="card" data-view-section="advanced">
         <div class="section-head">
           <h2 data-i18n="popupWhitelistTitle">Allowlist</h2>
         </div>
@@ -184,7 +254,7 @@
         <ul id="whitelist-list" class="list"></ul>
       </section>
 
-      <section class="card">
+      <section class="card" data-view-section="advanced">
         <div class="section-head">
           <h2 data-i18n="popupClipboardTitle">Clipboard backups</h2>
           <button id="clear-clipboard-history" type="button" class="ghost" data-i18n="popupClipboardClear">Clear clipboard backups</button>

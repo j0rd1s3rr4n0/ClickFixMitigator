@@ -1,4 +1,4 @@
-﻿{
+{
   "appName": {
     "message": "ClickFix Mitigator"
   },
@@ -94,7 +94,7 @@
     "message": "La página sugiere usar Win+X para abrir la terminal."
   },
   "alertWinXI": {
-    "message": "La pÃ¡gina sugiere el flujo Win+X y luego I/Terminal/PowerShell."
+    "message": "La página sugiere el flujo Win+X y luego I/Terminal/PowerShell."
   },
   "alertBrowserError": {
     "message": "La página muestra un error falso del navegador."
@@ -210,6 +210,23 @@
   "popupReportButton": {
     "message": "Reportar"
   },
+  "popupDeleteRequestButton": {
+    "message": "Solicitar eliminacion"
+  },
+  "popupDeleteReasonPrompt": {
+    "message": "Motivo de eliminacion (obligatorio)"
+  },
+  "popupDeleteReasonRequired": {
+    "message": "Introduce un motivo para solicitar la eliminacion."
+  },
+  "popupDeleteRequestSent": {
+    "message": "Solicitud enviada: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
   "popupReportStatusMissing": {
     "message": "Introduce una URL o usa la pestaña actual."
   },
@@ -226,6 +243,9 @@
   },
   "popupReportStatusNoTab": {
     "message": "No se pudo detectar la pestaña activa."
+  },
+  "deleteRequestReason": {
+    "message": "Usuario solicito la eliminacion de la deteccion."
   },
   "popupOptionsLink": {
     "message": "Opciones avanzadas"
@@ -438,7 +458,7 @@
     "message": "Se bloqueó la pantalla completa porque se detectaron riesgos. Pulsa Esc o F11 para salir de pantalla completa."
   },
   "scoreBreakdownSummary": {
-    "message": "Desglose de puntuaci?n: $1/100",
+    "message": "Desglose de puntuación: $1/100",
     "placeholders": {
       "score": {
         "content": "$1"
@@ -460,7 +480,7 @@
     "message": "Sin factores que aporten."
   },
   "scoreComponentSignals": {
-    "message": "Se?ales"
+    "message": "Señales"
   },
   "scoreComponentClipboard": {
     "message": "Portapapeles"
@@ -469,13 +489,13 @@
     "message": "Contexto"
   },
   "scoreSignalCommandMatch": {
-    "message": "Patr?n de comando"
+    "message": "Patrón de comando"
   },
   "scoreSignalShellHint": {
-    "message": "Pistas de ejecuci?n shell"
+    "message": "Pistas de ejecución shell"
   },
   "scoreSignalEvasionHint": {
-    "message": "Ofuscaci?n / evasi?n"
+    "message": "Ofuscación / evasión"
   },
   "scoreSignalMismatch": {
     "message": "Desajuste portapapeles"
@@ -508,7 +528,7 @@
     "message": "Error del navegador"
   },
   "scoreSignalFixAction": {
-    "message": "Acci?n de arreglo"
+    "message": "Acción de arreglo"
   },
   "scoreSignalCaptcha": {
     "message": "Captcha"
@@ -517,7 +537,7 @@
     "message": "Palabras de comando"
   },
   "scoreClipboardExecutionHint": {
-    "message": "Pistas de ejecuci?n"
+    "message": "Pistas de ejecución"
   },
   "scoreClipboardUrl": {
     "message": "URL sospechosa"
@@ -526,7 +546,7 @@
     "message": "Carga Base64"
   },
   "scoreClipboardHighEntropy": {
-    "message": "Alta entrop?a"
+    "message": "Alta entropía"
   },
   "scoreClipboardShellMeta": {
     "message": "Metacaracteres de shell"
@@ -547,7 +567,7 @@
     "message": "Host confiable"
   },
   "scoreContextCodeContext": {
-    "message": "Contexto de c?digo"
+    "message": "Contexto de código"
   },
   "scoreContextIframe": {
     "message": "Contexto iframe"
@@ -556,7 +576,7 @@
     "message": "Iframes opacos"
   },
   "scoreSettingsTitle": {
-    "message": "Puntuaci?n"
+    "message": "Puntuación"
   },
   "scoreSettingsSubtitle": {
     "message": "Ajusta puntos y pesos para calcular la confianza."
@@ -565,19 +585,19 @@
     "message": "Los pesos se normalizan entre componentes disponibles."
   },
   "scoreSettingsSave": {
-    "message": "Guardar puntuaci?n"
+    "message": "Guardar puntuación"
   },
   "scoreSettingsReset": {
     "message": "Restablecer valores"
   },
   "scoreSettingsSaved": {
-    "message": "Puntuaci?n actualizada."
+    "message": "Puntuación actualizada."
   },
   "scoreSettingsResetDone": {
-    "message": "Puntuaci?n restablecida."
+    "message": "Puntuación restablecida."
   },
   "scoreWeightSignals": {
-    "message": "Peso de se?ales"
+    "message": "Peso de señales"
   },
   "scoreWeightClipboard": {
     "message": "Peso del portapapeles"
@@ -595,7 +615,7 @@
     "message": "pts"
   },
   "scoreGroupSignals": {
-    "message": "Reglas de se?ales"
+    "message": "Reglas de señales"
   },
   "scoreGroupClipboard": {
     "message": "Reglas del portapapeles"
@@ -604,7 +624,7 @@
     "message": "Reglas de contexto"
   },
   "scoreSettingsManagedByServer": {
-    "message": "Gestionado desde servidor. Ultima sincronizacion: $1.",
+    "message": "Gestionado desde servidor. Última sincronización: $1.",
     "placeholders": {
       "last_sync": {
         "content": "$1"
@@ -631,5 +651,193 @@
   },
   "alertFilterRed": {
     "message": "Solo rojo"
+  },
+  "popupFalsePositiveButton": {
+    "message": "Revisar falso positivo"
+  },
+  "popupFalsePositiveSent": {
+    "message": "Falso positivo enviado: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "falsePositiveReason": {
+    "message": "Falso positivo reportado"
+  },
+  "optionsExceptionlistTitle": {
+    "message": "Lista de excepciones"
+  },
+  "optionsExceptionlistHint": {
+    "message": "Los sitios en esta lista no se bloquean ni muestran alertas localmente, pero se reportan a administradores."
+  },
+  "optionsExceptionlistWarning": {
+    "message": "El usuario es responsable de las excepciones que agregue."
+  },
+  "optionsExceptionlistPlaceholder": {
+    "message": "ejemplo.com"
+  },
+  "optionsExceptionlistAdd": {
+    "message": "Agregar excepción"
+  },
+  "optionsExceptionlistEmpty": {
+    "message": "Sin excepciones."
+  },
+  "protectionProfileTitle": {
+    "message": "Perfil recomendado"
+  },
+  "protectionProfileBalanced": {
+    "message": "Equilibrado"
+  },
+  "protectionProfileStrict": {
+    "message": "Estricto"
+  },
+  "protectionProfileQuiet": {
+    "message": "Discreto"
+  },
+  "protectionProfileAnalyst": {
+    "message": "Analista"
+  },
+  "protectionProfileCustom": {
+    "message": "Personalizado"
+  },
+  "protectionProfileBalancedSummary": {
+    "message": "Protege sin generar tanto ruido y mantiene activado el aprendizaje local para reducir falsos positivos."
+  },
+  "protectionProfileStrictSummary": {
+    "message": "Bloquea antes, alerta antes y fuerza un modo mas cerrado para puestos de mayor riesgo."
+  },
+  "protectionProfileQuietSummary": {
+    "message": "Mantiene la proteccion base con menos ruido visual y menos datos locales guardados."
+  },
+  "protectionProfileAnalystSummary": {
+    "message": "Expone mas detalle tecnico, conserva evidencias y evita suavizar la deteccion con baseline local."
+  },
+  "protectionProfileCustomSummary": {
+    "message": "Has modificado opciones manualmente. Manten este perfil si quieres conservar ajustes propios."
+  },
+  "privacyBaselineTitle": {
+    "message": "Aprendizaje local para reducir falsos positivos"
+  },
+  "privacyBaselineHint": {
+    "message": "Guarda solo un baseline por instalacion y hostname. Puedes desactivarlo cuando quieras y no usa identidad real ni historial completo."
+  },
+  "popupViewSimple": {
+    "message": "Vista esencial"
+  },
+  "popupViewAdvanced": {
+    "message": "Vista tecnica"
+  },
+  "quickSummaryTitle": {
+    "message": "Resumen rapido"
+  },
+  "quickSummaryProtected": {
+    "message": "Protegido"
+  },
+  "quickSummaryProtectedText": {
+    "message": "Deteccion activa"
+  },
+  "quickSummaryDisabled": {
+    "message": "Desactivado"
+  },
+  "quickSummaryDisabledText": {
+    "message": "La proteccion esta pausada"
+  },
+  "quickSummaryAttention": {
+    "message": "Atencion"
+  },
+  "quickSummaryAttentionText": {
+    "message": "Actividad reciente de alto riesgo"
+  },
+  "quickSummarySilent": {
+    "message": "Silencioso"
+  },
+  "quickSummarySilentText": {
+    "message": "Alertas silenciadas"
+  },
+  "quickSummaryMode": {
+    "message": "Modo"
+  },
+  "quickSummaryModeActive": {
+    "message": "Activo"
+  },
+  "quickSummaryModePaused": {
+    "message": "Pausado"
+  },
+  "quickSummaryLastAlert": {
+    "message": "Ultima alerta"
+  },
+  "quickSummaryNoAlerts": {
+    "message": "Sin alertas"
+  },
+  "quickSummarySiteFallback": {
+    "message": "Sitio"
+  },
+  "quickSummaryBlocks": {
+    "message": "Bloqueos"
+  },
+  "quickSummaryProfile": {
+    "message": "Perfil"
+  },
+  "historySnippetsTitle": {
+    "message": "Snippets detectados"
+  },
+  "onboardingPillFirstUse": {
+    "message": "Primer uso"
+  },
+  "onboardingSkip": {
+    "message": "Saltar"
+  },
+  "onboardingWelcomeTitle": {
+    "message": "Bienvenido"
+  },
+  "onboardingWelcomeDesc": {
+    "message": "Te guiaremos paso a paso."
+  },
+  "onboardingPrev": {
+    "message": "Atrás"
+  },
+  "onboardingNext": {
+    "message": "Siguiente"
+  },
+  "onboardingFinish": {
+    "message": "Finalizar"
+  },
+  "onboardingStep1Title": {
+    "message": "Paso 1 - Idioma"
+  },
+  "onboardingStep1Desc": {
+    "message": "Elige el idioma para que toda la interfaz quede en tu idioma."
+  },
+  "onboardingStep2Title": {
+    "message": "Paso 2 - Tema"
+  },
+  "onboardingStep2Desc": {
+    "message": "Selecciona el aspecto visual: claro, oscuro o sistema."
+  },
+  "onboardingStep3Title": {
+    "message": "Paso 3 - Nivel de avisos"
+  },
+  "onboardingStep3Desc": {
+    "message": "Ajusta el filtro de alertas para reducir ruido."
+  },
+  "onboardingStep4Title": {
+    "message": "Paso 4 - Protección"
+  },
+  "onboardingStep4Desc": {
+    "message": "Activa detección, bloqueo de portapapeles y FamilySafe si aplica."
+  },
+  "onboardingStep5Title": {
+    "message": "Paso 5 - Puntuación"
+  },
+  "onboardingStep5Desc": {
+    "message": "Modula pesos y reglas de puntuación según tu entorno."
+  },
+  "onboardingStep6Title": {
+    "message": "Paso 6 - Listas e historial"
+  },
+  "onboardingStep6Desc": {
+    "message": "Gestiona listas y revisa el historial completo."
   }
 }

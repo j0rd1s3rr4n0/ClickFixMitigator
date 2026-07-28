@@ -13,9 +13,13 @@
     "alarms",
     "management",
     "downloads",
-    "declarativeNetRequest"
+    "declarativeNetRequest",
+    "contextMenus"
   ],
-  "host_permissions": ["<all_urls>", "file:///*"],
+  "host_permissions": [
+    "<all_urls>",
+    "file:///*"
+  ],
   "background": {
     "service_worker": "background.js"
   },
@@ -34,17 +38,26 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "<all_urls>"
+      ],
       "all_frames": true,
       "match_about_blank": true,
-      "js": ["content-script.js"],
+      "js": [
+        "content-script.js"
+      ],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["block-all-inject.js", "_locales/*/messages.json"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "block-all-inject.js",
+        "_locales/*/messages.json"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
   "icons": {
@@ -52,5 +65,4 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   }
-
 }

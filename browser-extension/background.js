@@ -1,36 +1,36 @@
 const SCORE_RULE_DEFINITIONS = {
   signals: [
-    { flag: "commandMatch", key: "scoreSignalCommandMatch", defaultPoints: 20 },
+    { flag: "commandMatch", key: "scoreSignalCommandMatch", defaultPoints: 18 },
     { flag: "shellHint", key: "scoreSignalShellHint", defaultPoints: 14 },
-    { flag: "evasionHint", key: "scoreSignalEvasionHint", defaultPoints: 12 },
+    { flag: "evasionHint", key: "scoreSignalEvasionHint", defaultPoints: 4 },
     { flag: "mismatch", key: "scoreSignalMismatch", defaultPoints: 8 },
-    { flag: "clipboardWarning", key: "scoreSignalClipboardWarning", defaultPoints: 6 },
+    { flag: "clipboardWarning", key: "scoreSignalClipboardWarning", defaultPoints: 3 },
     { flag: "winRHint", key: "scoreSignalWinR", defaultPoints: 6 },
     { flag: "winXHint", key: "scoreSignalWinX", defaultPoints: 4 },
     { flag: "winXTerminalHint", key: "scoreSignalWinXI", defaultPoints: 6 },
     { flag: "pasteSequenceHint", key: "scoreSignalPasteSequence", defaultPoints: 6 },
     { flag: "consoleHint", key: "scoreSignalConsole", defaultPoints: 5 },
     { flag: "fileExplorerHint", key: "scoreSignalFileExplorer", defaultPoints: 4 },
-    { flag: "copyTriggerHint", key: "scoreSignalCopyTrigger", defaultPoints: 4 },
+    { flag: "copyTriggerHint", key: "scoreSignalCopyTrigger", defaultPoints: 3 },
     { flag: "browserErrorHint", key: "scoreSignalBrowserError", defaultPoints: 4 },
     { flag: "fixActionHint", key: "scoreSignalFixAction", defaultPoints: 4 },
-    { flag: "captchaHint", key: "scoreSignalCaptcha", defaultPoints: 3 }
+    { flag: "captchaHint", key: "scoreSignalCaptcha", defaultPoints: 2 }
   ],
   clipboard: [
-    { flag: "hasCommand", key: "scoreClipboardCommand", defaultPoints: 22 },
-    { flag: "hasExecutionHint", key: "scoreClipboardExecutionHint", defaultPoints: 18 },
-    { flag: "hasUrl", key: "scoreClipboardUrl", defaultPoints: 12 },
-    { flag: "hasBase64", key: "scoreClipboardBase64", defaultPoints: 12 },
-    { flag: "hasHighEntropy", key: "scoreClipboardHighEntropy", defaultPoints: 10 },
-    { flag: "hasShellMeta", key: "scoreClipboardShellMeta", defaultPoints: 6 },
-    { flag: "isLong", key: "scoreClipboardLong", defaultPoints: 5 },
-    { flag: "hasLeadingWhitespace", key: "scoreClipboardLeadingWhitespace", defaultPoints: 5 },
-    { flag: "looksLikeCommand", key: "scoreClipboardLooksLikeCommand", defaultPoints: 10 }
+    { flag: "hasCommand", key: "scoreClipboardCommand", defaultPoints: 18 },
+    { flag: "hasExecutionHint", key: "scoreClipboardExecutionHint", defaultPoints: 14 },
+    { flag: "hasUrl", key: "scoreClipboardUrl", defaultPoints: 8 },
+    { flag: "hasBase64", key: "scoreClipboardBase64", defaultPoints: 4 },
+    { flag: "hasHighEntropy", key: "scoreClipboardHighEntropy", defaultPoints: 2 },
+    { flag: "hasShellMeta", key: "scoreClipboardShellMeta", defaultPoints: 4 },
+    { flag: "isLong", key: "scoreClipboardLong", defaultPoints: 3 },
+    { flag: "hasLeadingWhitespace", key: "scoreClipboardLeadingWhitespace", defaultPoints: 2 },
+    { flag: "looksLikeCommand", key: "scoreClipboardLooksLikeCommand", defaultPoints: 5 }
   ],
   context: [
-    { flag: "isAllowlisted", key: "scoreContextAllowlisted", defaultPoints: -25 },
-    { flag: "isTrustedHost", key: "scoreContextTrustedHost", defaultPoints: -15 },
-    { flag: "isCodeContext", key: "scoreContextCodeContext", defaultPoints: -10 },
+    { flag: "isAllowlisted", key: "scoreContextAllowlisted", defaultPoints: -35 },
+    { flag: "isTrustedHost", key: "scoreContextTrustedHost", defaultPoints: -22 },
+    { flag: "isCodeContext", key: "scoreContextCodeContext", defaultPoints: -18 },
     { flag: "isIframe", key: "scoreContextIframe", defaultPoints: 5 },
     { flag: "opaqueIframes", key: "scoreContextOpaqueIframes", defaultPoints: 5 },
     { flag: "opaqueIframesHigh", key: "scoreContextOpaqueIframes", defaultPoints: 10 }
@@ -50,11 +50,11 @@ function buildDefaultScoreRules() {
 
 const DEFAULT_SCORE_CONFIG = {
   weights: {
-    signals: 0.5,
-    clipboard: 0.35,
-    context: 0.15
+    signals: 0.44,
+    clipboard: 0.26,
+    context: 0.30
   },
-  contextBaseScore: 50,
+  contextBaseScore: 42,
   rules: buildDefaultScoreRules()
 };
 
@@ -94,9 +94,19 @@ const DEFAULT_SETTINGS = {
   scoreConfig: DEFAULT_SCORE_CONFIG,
   scoreConfigManagedBy: "local",
   scoreConfigServerUpdatedAt: 0,
-  alertMinSeverity: "green",
-  extensionMessageSeenIds: []
+  alertMinSeverity: "red",
+  extensionMessageSeenIds: [],
+  privacyBaselineEnabled: true,
+  privacyBaselineShareSummary: true,
+  baselineHosts: {}
 };
+
+const BASELINE_MAX_HOSTS = 400;
+const BASELINE_SUMMARY_LIMIT = 30;
+const BASELINE_VISIT_GAP_MS = 45 * 60 * 1000;
+const BASELINE_MIN_DAYS_FOR_SUMMARY = 2;
+const BASELINE_MIN_VISITS_FOR_SUMMARY = 4;
+const BASELINE_MAX_DISCOUNT = 18;
 
 const CLICKFIX_DEPLOY_ORIGIN = "https://clickfix.jordiserrano.me";
 const CLICKFIX_DEPLOY_BASE_PATH = "";
@@ -244,6 +254,15 @@ const BRAND_REPUTATION_RULES = [
   { name: "github", hosts: ["github.com"] },
   { name: "cloudflare", hosts: ["cloudflare.com"] }
 ];
+const TRUSTED_OBFUSCATION_HOSTS = [
+  "gstatic.com",
+  "googleusercontent.com",
+  "googlesyndication.com",
+  "doubleclick.net",
+  "google-analytics.com",
+  "googletagmanager.com",
+  "googleapis.com"
+];
 const LIST_REFRESH_MINUTES = 3;
 const REPORT_FLUSH_MINUTES = 5;
 const PAGE_ALERT_DEBOUNCE_MS = 900;
@@ -287,6 +306,68 @@ const ALERT_SEVERITY_ORDER = {
   orange: 2,
   red: 3
 };
+
+function looksLikeHtml(text) {
+  const value = String(text || "").trim();
+  if (!value || value.length < 6) {
+    return false;
+  }
+  const hasTag = /<\s*[a-z][^>]*>/i.test(value);
+  if (!hasTag) {
+    return false;
+  }
+  const hasCloseTag = /<\/\s*[a-z][^>]*>/i.test(value);
+  return hasCloseTag || value.startsWith("<");
+}
+
+function isTrustedBrandHost(hostname) {
+  if (!hostname) {
+    return false;
+  }
+  if (TRUSTED_OBFUSCATION_HOSTS.some((entry) => matchesHostname(hostname, entry))) {
+    return true;
+  }
+  return BRAND_REPUTATION_RULES.some((brand) =>
+    brand.hosts.some((entry) => matchesHostname(hostname, entry))
+  );
+}
+
+function shouldSuppressEvasionHint(details) {
+  if (!details?.evasionHint) {
+    return false;
+  }
+  const hostname = extractHostname(details?.url || "").toLowerCase();
+  if (!hostname || !isTrustedBrandHost(hostname)) {
+    return false;
+  }
+  const otherSignals = Boolean(
+    details?.commandMatch ||
+      details?.shellHint ||
+      details?.clipboardWarning ||
+      details?.mismatch ||
+      details?.winRHint ||
+      details?.winXHint ||
+      details?.winXTerminalHint ||
+      details?.consoleHint ||
+      details?.pasteSequenceHint ||
+      details?.copyTriggerHint ||
+      details?.fileExplorerHint ||
+      details?.browserErrorHint ||
+      details?.fixActionHint ||
+      details?.captchaHint
+  );
+  return !otherSignals;
+}
+
+function normalizeEvasionHint(details) {
+  if (!details?.evasionHint) {
+    return details;
+  }
+  if (shouldSuppressEvasionHint(details)) {
+    return { ...details, evasionHint: false };
+  }
+  return details;
+}
 
 function tabScriptBlockRuleIds(tabId) {
   const normalizedTabId = Number(tabId);
@@ -527,7 +608,17 @@ async function getSettings() {
     scoreConfig: normalizeScoreConfig(stored.scoreConfig),
     scoreConfigManagedBy: stored.scoreConfigManagedBy === "server" ? "server" : "local",
     scoreConfigServerUpdatedAt: Number(stored.scoreConfigServerUpdatedAt || 0),
-    alertMinSeverity: normalizeAlertMinSeverity(stored.alertMinSeverity)
+    alertMinSeverity:
+      ALERT_SEVERITY_ORDER[normalizeAlertMinSeverity(stored.alertMinSeverity)] <
+      ALERT_SEVERITY_ORDER.red
+        ? "red"
+        : normalizeAlertMinSeverity(stored.alertMinSeverity),
+    privacyBaselineEnabled: stored.privacyBaselineEnabled !== false,
+    privacyBaselineShareSummary: stored.privacyBaselineShareSummary !== false,
+    baselineHosts:
+      stored.baselineHosts && typeof stored.baselineHosts === "object" && !Array.isArray(stored.baselineHosts)
+        ? stored.baselineHosts
+        : {}
   };
 }
 
@@ -1201,6 +1292,287 @@ function clampScorePoints(value, fallback) {
   return Math.max(-100, Math.min(100, Math.round(numeric)));
 }
 
+
+function baselineDayKey(timestamp = Date.now()) {
+  return new Date(timestamp).toISOString().slice(0, 10);
+}
+
+function normalizeBaselineHost(hostname) {
+  return normalizeHostname(String(hostname || "")).trim().toLowerCase();
+}
+
+function normalizeBaselineEntry(raw) {
+  const entry = raw && typeof raw === "object" ? raw : {};
+  return {
+    firstSeenAt: Number(entry.firstSeenAt || 0),
+    lastSeenAt: Number(entry.lastSeenAt || 0),
+    lastVisitBucket: Number(entry.lastVisitBucket || 0),
+    lastAlertAt: Number(entry.lastAlertAt || 0),
+    lastSeenDay: typeof entry.lastSeenDay === "string" ? entry.lastSeenDay : "",
+    daysSeen: Math.max(0, Number(entry.daysSeen || 0)),
+    visitsCount: Math.max(0, Number(entry.visitsCount || 0)),
+    alertCount: Math.max(0, Number(entry.alertCount || 0)),
+    blockedCount: Math.max(0, Number(entry.blockedCount || 0)),
+    localAllowlisted: Boolean(entry.localAllowlisted),
+    trustScore: Math.max(0, Math.min(100, Number(entry.trustScore || 0)))
+  };
+}
+
+function computeBaselineTrustScore(entry) {
+  if (!entry) {
+    return 0;
+  }
+  let score = 0;
+  if (entry.daysSeen >= 2) score += 18;
+  if (entry.daysSeen >= 4) score += 14;
+  if (entry.daysSeen >= 7) score += 12;
+  if (entry.visitsCount >= 4) score += 16;
+  if (entry.visitsCount >= 8) score += 12;
+  if (entry.visitsCount >= 20) score += 10;
+  if (entry.alertCount === 0) score += 10;
+  else if (entry.alertCount <= 1) score += 4;
+  if (entry.blockedCount === 0) score += 4;
+  if (entry.localAllowlisted) score += 14;
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function pruneBaselineHosts(hosts) {
+  const entries = Object.entries(hosts || {}).map(([hostname, raw]) => {
+    const normalized = normalizeBaselineEntry(raw);
+    return [hostname, { ...normalized, trustScore: computeBaselineTrustScore(normalized) }];
+  });
+  entries.sort((a, b) => {
+    const trustDiff = (b[1].trustScore || 0) - (a[1].trustScore || 0);
+    if (trustDiff !== 0) {
+      return trustDiff;
+    }
+    return (b[1].lastSeenAt || 0) - (a[1].lastSeenAt || 0);
+  });
+  return Object.fromEntries(entries.slice(0, BASELINE_MAX_HOSTS));
+}
+
+async function updateBaselineHosts(mutator) {
+  const settings = await getSettings();
+  if (!settings.privacyBaselineEnabled) {
+    return settings.baselineHosts || {};
+  }
+  const nextHosts = { ...(settings.baselineHosts || {}) };
+  const changed = await mutator(nextHosts, settings);
+  if (!changed) {
+    return nextHosts;
+  }
+  const pruned = pruneBaselineHosts(nextHosts);
+  await chrome.storage.local.set({ baselineHosts: pruned });
+  return pruned;
+}
+
+async function trackBaselineVisit(pageUrl) {
+  const hostname = normalizeBaselineHost(extractHostname(String(pageUrl || "")));
+  if (!hostname) {
+    return;
+  }
+  await updateBaselineHosts(async (hosts, settings) => {
+    const now = Date.now();
+    const visitBucket = Math.floor(now / BASELINE_VISIT_GAP_MS);
+    const dayKey = baselineDayKey(now);
+    const entry = normalizeBaselineEntry(hosts[hostname]);
+    if (!entry.firstSeenAt) {
+      entry.firstSeenAt = now;
+    }
+    entry.lastSeenAt = now;
+    if (entry.lastVisitBucket !== visitBucket) {
+      entry.visitsCount += 1;
+      entry.lastVisitBucket = visitBucket;
+    }
+    if (entry.lastSeenDay !== dayKey) {
+      entry.daysSeen += 1;
+      entry.lastSeenDay = dayKey;
+    }
+    entry.localAllowlisted =
+      Boolean(entry.localAllowlisted) ||
+      settings.whitelist.includes(hostname) ||
+      settings.allowlist.includes(hostname);
+    entry.trustScore = computeBaselineTrustScore(entry);
+    hosts[hostname] = entry;
+    return true;
+  });
+}
+
+async function recordBaselineAlert(hostname, details = {}) {
+  const normalizedHost = normalizeBaselineHost(hostname);
+  if (!normalizedHost) {
+    return;
+  }
+  await updateBaselineHosts(async (hosts, settings) => {
+    const now = Date.now();
+    const entry = normalizeBaselineEntry(hosts[normalizedHost]);
+    if (!entry.firstSeenAt) {
+      entry.firstSeenAt = now;
+      entry.daysSeen = Math.max(1, entry.daysSeen || 0);
+      entry.visitsCount = Math.max(1, entry.visitsCount || 0);
+      entry.lastSeenDay = baselineDayKey(now);
+      entry.lastVisitBucket = Math.floor(now / BASELINE_VISIT_GAP_MS);
+    }
+    entry.lastSeenAt = now;
+    entry.lastAlertAt = now;
+    entry.alertCount += 1;
+    if (details.blocked) {
+      entry.blockedCount += 1;
+    }
+    entry.localAllowlisted =
+      Boolean(entry.localAllowlisted) ||
+      settings.whitelist.includes(normalizedHost) ||
+      settings.allowlist.includes(normalizedHost);
+    entry.trustScore = computeBaselineTrustScore(entry);
+    hosts[normalizedHost] = entry;
+    return true;
+  });
+}
+
+function hasStrongExecutionSignals(details) {
+  const executionHints = [
+    details?.shellHint,
+    details?.pasteSequenceHint,
+    details?.consoleHint,
+    details?.fileExplorerHint,
+    details?.winRHint,
+    details?.winXHint,
+    details?.winXTerminalHint,
+    details?.fixActionHint
+  ].filter(Boolean).length;
+  return Boolean(details?.commandMatch) && executionHints >= 1;
+}
+
+async function computeBaselineAdjustment(url, details, settings) {
+  if (!settings?.privacyBaselineEnabled) {
+    return null;
+  }
+  const hostname = normalizeBaselineHost(extractHostname(String(url || "")));
+  if (!hostname) {
+    return null;
+  }
+  const entry = normalizeBaselineEntry((settings.baselineHosts || {})[hostname]);
+  entry.localAllowlisted =
+    Boolean(entry.localAllowlisted) ||
+    settings.whitelist.includes(hostname) ||
+    settings.allowlist.includes(hostname);
+  entry.trustScore = computeBaselineTrustScore(entry);
+  const qualifies =
+    entry.localAllowlisted ||
+    entry.daysSeen >= BASELINE_MIN_DAYS_FOR_SUMMARY ||
+    entry.visitsCount >= BASELINE_MIN_VISITS_FOR_SUMMARY;
+  if (!qualifies) {
+    return null;
+  }
+  if (hasStrongExecutionSignals(details)) {
+    return {
+      hostname,
+      entry,
+      points: 0,
+      strongSignals: true
+    };
+  }
+  let points = 0;
+  if (entry.daysSeen >= 2) points += 4;
+  if (entry.daysSeen >= 4) points += 4;
+  if (entry.daysSeen >= 7) points += 3;
+  if (entry.visitsCount >= 4) points += 3;
+  if (entry.visitsCount >= 8) points += 2;
+  if (entry.visitsCount >= 20) points += 2;
+  if (entry.alertCount === 0) points += 3;
+  else if (entry.alertCount <= 1) points += 1;
+  if (entry.blockedCount === 0) points += 1;
+  if (entry.localAllowlisted) points += 4;
+  if (details?.evasionHint && !details?.commandMatch && !details?.shellHint) {
+    points += 2;
+  }
+  if (details?.clipboardWarning && !details?.mismatch && !details?.commandMatch) {
+    points += 1;
+  }
+  points = Math.max(0, Math.min(BASELINE_MAX_DISCOUNT, Math.round(points)));
+  if (details?.commandMatch || details?.shellHint) {
+    points = Math.min(points, 8);
+  }
+  if (points <= 0) {
+    return null;
+  }
+  return {
+    hostname,
+    entry,
+    points,
+    strongSignals: false
+  };
+}
+
+function applyBaselineAdjustment(scoreDetails, adjustment) {
+  if (!scoreDetails || !adjustment || !Number.isFinite(adjustment.points) || adjustment.points <= 0) {
+    return 0;
+  }
+  const applied = Math.max(0, Math.min(BASELINE_MAX_DISCOUNT, Math.round(adjustment.points)));
+  if (!applied) {
+    return 0;
+  }
+  scoreDetails.total = clampScore((scoreDetails.total || 0) - applied);
+  if (Array.isArray(scoreDetails.components)) {
+    const contextComponent = scoreDetails.components.find(
+      (component) => component && component.id === "context" && component.available !== false
+    );
+    if (contextComponent) {
+      contextComponent.score = clampScore((contextComponent.score || 0) - applied);
+      if (!Array.isArray(contextComponent.contributions)) {
+        contextComponent.contributions = [];
+      }
+      contextComponent.contributions.push({
+        key: "scoreContextBaselineHost",
+        points: -applied
+      });
+    }
+  }
+  return applied;
+}
+
+function buildBaselineSummary(settings) {
+  if (!settings?.privacyBaselineEnabled || !settings?.privacyBaselineShareSummary) {
+    return [];
+  }
+  const hosts = settings.baselineHosts && typeof settings.baselineHosts === "object" ? settings.baselineHosts : {};
+  return Object.entries(hosts)
+    .map(([hostname, raw]) => {
+      const entry = normalizeBaselineEntry(raw);
+      entry.localAllowlisted =
+        Boolean(entry.localAllowlisted) ||
+        settings.whitelist.includes(hostname) ||
+        settings.allowlist.includes(hostname);
+      entry.trustScore = computeBaselineTrustScore(entry);
+      return {
+        hostname,
+        ...entry
+      };
+    })
+    .filter((entry) =>
+      entry.hostname &&
+      (entry.localAllowlisted || entry.daysSeen >= BASELINE_MIN_DAYS_FOR_SUMMARY || entry.visitsCount >= BASELINE_MIN_VISITS_FOR_SUMMARY)
+    )
+    .sort((a, b) => {
+      const trustDiff = (b.trustScore || 0) - (a.trustScore || 0);
+      if (trustDiff !== 0) {
+        return trustDiff;
+      }
+      return (b.visitsCount || 0) - (a.visitsCount || 0);
+    })
+    .slice(0, BASELINE_SUMMARY_LIMIT)
+    .map((entry) => ({
+      hostname: entry.hostname,
+      visitsCount: Math.min(255, Math.max(0, Math.round(entry.visitsCount || 0))),
+      daysSeen: Math.min(255, Math.max(0, Math.round(entry.daysSeen || 0))),
+      alertCount: Math.min(255, Math.max(0, Math.round(entry.alertCount || 0))),
+      blockedCount: Math.min(255, Math.max(0, Math.round(entry.blockedCount || 0))),
+      trustScore: Math.min(100, Math.max(0, Math.round(entry.trustScore || 0))),
+      localAllowlisted: Boolean(entry.localAllowlisted),
+      lastSeenDay: entry.lastSeenDay || ""
+    }));
+}
+
 function clampWeight(value, fallback) {
   let numeric = Number(value);
   if (!Number.isFinite(numeric)) {
@@ -1500,6 +1872,15 @@ function computeUrlRiskSignals(details) {
 function computeContentRiskSignals(details) {
   const reasons = [];
   let score = 0;
+  const hasExecutionCorroboration = Boolean(
+    details?.commandMatch ||
+      details?.shellHint ||
+      details?.pasteSequenceHint ||
+      details?.consoleHint ||
+      details?.winRHint ||
+      details?.winXHint ||
+      details?.fileExplorerHint
+  );
   const add = (active, value, reason) => {
     if (!active) {
       return;
@@ -1510,18 +1891,20 @@ function computeContentRiskSignals(details) {
 
   add(details?.commandMatch, 14, "Command execution pattern found.");
   add(details?.shellHint, 12, "Shell execution hint found.");
-  add(details?.evasionHint, 12, "Obfuscation/evasion pattern found.");
-  add(details?.clipboardWarning, 9, "Clipboard manipulation indicator found.");
+  add(details?.evasionHint && hasExecutionCorroboration, 4, "Obfuscation/evasion pattern found.");
+  add(details?.clipboardWarning && (details?.mismatch || hasExecutionCorroboration), 5, "Clipboard manipulation indicator found.");
   add(details?.mismatch, 8, "Clipboard mismatch detected.");
   add(details?.winRHint || details?.winXHint, 8, "System shortcut instruction found.");
   add(details?.winXTerminalHint, 6, "Win+X then I/Terminal execution flow found.");
   add(details?.consoleHint, 8, "Developer console instruction found.");
   add(details?.pasteSequenceHint, 6, "Step-by-step paste execution flow found.");
+  add(details?.verificationStepsHint, 7, "Verification step-by-step instructions detected.");
   add(details?.copyTriggerHint, 6, "Forced clipboard copy trigger found.");
   add(details?.fileExplorerHint, 5, "File Explorer path execution instruction found.");
   add(details?.browserErrorHint, 5, "Fake browser error social engineering pattern found.");
   add(details?.fixActionHint, 5, "Fix/repair bait wording found.");
   add(details?.captchaHint, 4, "Fake CAPTCHA lure pattern found.");
+  add(details?.wordpressHint, 4, "WordPress footprint detected.");
   return { score, reasons };
 }
 
@@ -1577,6 +1960,19 @@ function computeLureRiskSignals(details) {
     score += 12;
     reasons.push("CAPTCHA + execution chain detected.");
   }
+  if (
+    details?.wordpressHint &&
+    (details?.winRHint ||
+      details?.winXHint ||
+      details?.consoleHint ||
+      details?.shellHint ||
+      details?.pasteSequenceHint ||
+      details?.copyTriggerHint ||
+      details?.verificationStepsHint)
+  ) {
+    score += 8;
+    reasons.push("WordPress + execution guidance combination detected.");
+  }
   if (details?.browserErrorHint && details?.fixActionHint) {
     score += 10;
     reasons.push("Browser error + fix-now social engineering flow detected.");
@@ -1602,7 +1998,7 @@ function buildRuntimeThreatVerdict(details, listDecision) {
       brandModel.score +
       lureModel.score
   );
-  const level = total >= 65 ? "unsafe" : total >= 38 ? "suspicious" : "low";
+  const level = total >= 72 ? "unsafe" : total >= 46 ? "suspicious" : "low";
 
   return {
     total,
@@ -1872,6 +2268,7 @@ function applyPageAlertTypeToDetails(details, alertType) {
   if (alertType === "console") details.consoleHint = true;
   if (alertType === "shell") details.shellHint = true;
   if (alertType === "paste-sequence") details.pasteSequenceHint = true;
+  if (alertType === "verification-steps") details.verificationStepsHint = true;
   if (alertType === "file-explorer") details.fileExplorerHint = true;
   if (alertType === "copy-trigger") details.copyTriggerHint = true;
 }
@@ -1891,11 +2288,13 @@ function mergePageSignalState(details, signalState) {
     "consoleHint",
     "shellHint",
     "pasteSequenceHint",
+    "verificationStepsHint",
     "fileExplorerHint",
     "copyTriggerHint",
     "evasionHint",
     "mismatch",
-    "clipboardWarning"
+    "clipboardWarning",
+    "wordpressHint"
   ];
   mappings.forEach((key) => {
     if (signalState[key]) {
@@ -1953,10 +2352,12 @@ function queueBatchedPageAlert(message, sender) {
         consoleHint: false,
         shellHint: false,
         pasteSequenceHint: false,
+        verificationStepsHint: false,
         fileExplorerHint: false,
         copyTriggerHint: false,
         evasionHint: false,
         clipboardWarning: false,
+        wordpressHint: false,
         snippets: [],
         blockedClipboardText: "",
         detectedContent: "",
@@ -2049,8 +2450,10 @@ function extractDetectionSignals(details) {
   addSignal("captchaHint", details?.captchaHint);
   addSignal("consoleHint", details?.consoleHint);
   addSignal("pasteSequenceHint", details?.pasteSequenceHint);
+  addSignal("verificationStepsHint", details?.verificationStepsHint);
   addSignal("fileExplorerHint", details?.fileExplorerHint);
   addSignal("copyTriggerHint", details?.copyTriggerHint);
+  addSignal("wordpressHint", details?.wordpressHint);
   addSignal("blockedClipboardText", Boolean(details?.blockedClipboardText));
 
   const clipboard = details?.clipboardAnalysis;
@@ -2434,6 +2837,7 @@ async function maybeCaptureBeforeScreenshotForPage(message, sender) {
 
 async function triggerAlert(details) {
   await ensureLocaleReady();
+  details = normalizeEvasionHint(details);
   const exceptionlisted = await isExceptionlisted(details?.url || "");
   if (exceptionlisted) {
     details = {
@@ -2448,6 +2852,8 @@ async function triggerAlert(details) {
   const progressive = computeProgressiveBonus(details);
   const progressiveBonus = applyProgressiveBonus(scoreDetails, progressive);
   const settings = await getSettings();
+  const baselineAdjustment = await computeBaselineAdjustment(details?.url || "", details, settings);
+  const baselineDiscount = applyBaselineAdjustment(scoreDetails, baselineAdjustment);
   const listDecision =
     details.reportHostname === false ? null : await resolveListDecision(details.url);
   const runtimeVerdict =
@@ -2486,6 +2892,8 @@ async function triggerAlert(details) {
       copyTriggerHint: details.copyTriggerHint,
       evasionHint: details.evasionHint,
       progressiveBonus,
+      baselineDiscount,
+      baselineHost: baselineAdjustment?.hostname || "",
       alertSeverity,
       alertMinSeverity,
       suppressAlertUi,
@@ -2498,6 +2906,8 @@ async function triggerAlert(details) {
     confidenceScore,
     scoreDetails,
     progressiveBonus,
+    baselineDiscount,
+    baselineAdjustment,
     runtimeVerdict,
     snippets: mergedSnippets
   };
@@ -2530,6 +2940,13 @@ async function triggerAlert(details) {
     : chrome.windows.WINDOW_ID_CURRENT;
   let afterScreenshot = "";
   const allowClipboardRestore = details.allowClipboardRestore !== false;
+
+  if (reportHostname && !exceptionlisted) {
+    await recordBaselineAlert(reportHostname, {
+      blocked: shouldBlockPage && !allowlisted,
+      confidenceScore
+    });
+  }
 
   if (!exceptionlisted) {
     await saveHistory({
@@ -2909,7 +3326,7 @@ function computeNonHtmlScore(analysis, extension, contentType) {
   let score = 0;
   if (analysis?.commandMatch) score += 28;
   if (analysis?.shellHint) score += 24;
-  if (analysis?.evasionHint) score += 18;
+  if (analysis?.evasionHint && (analysis?.commandMatch || analysis?.shellHint)) score += 8;
   if (extension && DOWNLOAD_DANGEROUS_EXTENSIONS.has(extension)) score += 16;
   if (contentType && /octet-stream|x-msdownload|x-msi|x-dosexec/i.test(contentType)) {
     score += 12;
@@ -3165,11 +3582,75 @@ async function addToWhitelist(hostname) {
   await chrome.storage.local.set({ whitelist });
 }
 
+async function addToBlocklist(hostname) {
+  if (!hostname) {
+    return;
+  }
+  const settings = await getSettings();
+  if (settings.blocklist.includes(hostname)) {
+    return;
+  }
+  const blocklist = [...settings.blocklist, hostname];
+  blocklistCache = { items: blocklist, fetchedAt: Date.now() };
+  await chrome.storage.local.set({ blocklist, blocklistUpdatedAt: Date.now() });
+}
+
+const CONTEXT_MENU_ROOT = "clickfix-root";
+const CONTEXT_MENU_REPORT = "clickfix-report";
+const CONTEXT_MENU_ALLOW = "clickfix-allow";
+const CONTEXT_MENU_BLOCK = "clickfix-block";
+const CONTEXT_MENU_SCAN_SIMPLE = "clickfix-scan-simple";
+const CONTEXT_MENU_SCAN_INTENSE = "clickfix-scan-intense";
+
+function createContextMenus() {
+  if (!chrome?.contextMenus?.create) {
+    return;
+  }
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_ROOT,
+      title: "ClickFix Mitigator",
+      contexts: ["page"]
+    });
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_REPORT,
+      parentId: CONTEXT_MENU_ROOT,
+      title: "Reportar sitio",
+      contexts: ["page"]
+    });
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_ALLOW,
+      parentId: CONTEXT_MENU_ROOT,
+      title: "Añadir a whitelist",
+      contexts: ["page"]
+    });
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_BLOCK,
+      parentId: CONTEXT_MENU_ROOT,
+      title: "Añadir a blacklist",
+      contexts: ["page"]
+    });
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_SCAN_SIMPLE,
+      parentId: CONTEXT_MENU_ROOT,
+      title: "Escaneo simple de ClickFix",
+      contexts: ["page"]
+    });
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_SCAN_INTENSE,
+      parentId: CONTEXT_MENU_ROOT,
+      title: "Escaneo intenso de ClickFix",
+      contexts: ["page"]
+    });
+  });
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   refreshBlocklist();
   refreshAllowlist();
   refreshServerScoreConfig();
   refreshExtensionMessages();
+  createContextMenus();
   chrome.alarms.create("clickfix-refresh", { periodInMinutes: LIST_REFRESH_MINUTES });
   chrome.alarms.create("clickfix-reports", { periodInMinutes: REPORT_FLUSH_MINUTES });
   restoreReportQueue();
@@ -3180,6 +3661,7 @@ chrome.runtime.onStartup.addListener(() => {
   refreshAllowlist();
   refreshServerScoreConfig();
   refreshExtensionMessages();
+  createContextMenus();
   chrome.alarms.create("clickfix-refresh", { periodInMinutes: LIST_REFRESH_MINUTES });
   chrome.alarms.create("clickfix-reports", { periodInMinutes: REPORT_FLUSH_MINUTES });
   restoreReportQueue();
@@ -3188,6 +3670,49 @@ chrome.runtime.onStartup.addListener(() => {
 if (chrome?.downloads?.onCreated) {
   chrome.downloads.onCreated.addListener((downloadItem) => {
     handleDownloadCreated(downloadItem).catch(() => undefined);
+  });
+}
+
+if (chrome?.contextMenus?.onClicked) {
+  chrome.contextMenus.onClicked.addListener((info, tab) => {
+    const pageUrl = String(info?.pageUrl || tab?.url || "");
+    if (!pageUrl) {
+      return;
+    }
+    const hostname = extractHostname(pageUrl);
+    if (info.menuItemId === CONTEXT_MENU_REPORT) {
+      enqueueReport({
+        url: pageUrl,
+        hostname: hostname || extractHostname(pageUrl),
+        timestamp: Date.now(),
+        reason: t("manualReportReason"),
+        blocked: true,
+        event_type: "manual_report",
+        manualReport: true,
+        detectedContent: "",
+        previous_url: ""
+      });
+      return;
+    }
+    if (info.menuItemId === CONTEXT_MENU_ALLOW) {
+      addToWhitelist(hostname);
+      return;
+    }
+    if (info.menuItemId === CONTEXT_MENU_BLOCK) {
+      addToBlocklist(hostname);
+      return;
+    }
+    if (
+      info.menuItemId === CONTEXT_MENU_SCAN_SIMPLE ||
+      info.menuItemId === CONTEXT_MENU_SCAN_INTENSE
+    ) {
+      if (Number.isInteger(tab?.id)) {
+        chrome.tabs.sendMessage(tab.id, {
+          type: "manualScan",
+          mode: info.menuItemId === CONTEXT_MENU_SCAN_INTENSE ? "intense" : "simple"
+        });
+      }
+    }
   });
 }
 
@@ -3220,6 +3745,9 @@ if (chrome?.tabs?.onUpdated) {
     }
     if (isClickFixDisabledUrl(pageUrl)) {
       return;
+    }
+    if (changeInfo?.status === "complete") {
+      trackBaselineVisit(pageUrl).catch(() => undefined);
     }
     if (changeInfo?.status === "complete" || changeInfo?.url) {
       probeNonHtmlContent(tabId, pageUrl).catch(() => undefined);
@@ -3316,6 +3844,7 @@ async function sendReport(details) {
 async function sendStatsReport() {
   const settings = await getSettings();
   const alertSites = buildAlertSites(settings.history ?? []);
+  const baselineHosts = buildBaselineSummary(settings);
   const country = settings.sendCountry ? chrome.i18n.getUILanguage() : "";
   const installInfo = await getInstallInfo();
   const clientId = await getClientId();
@@ -3334,6 +3863,9 @@ async function sendStatsReport() {
       installSource: installInfo.installSource || "",
       installChannel: installInfo.installChannel || "",
       extensionDistribution: installInfo.extensionDistribution || "",
+      privacyBaselineEnabled: settings.privacyBaselineEnabled !== false,
+      privacyBaselineShareSummary: settings.privacyBaselineShareSummary !== false,
+      baselineHosts,
       clientId
     }
   });
@@ -3821,11 +4353,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const shellHint = Boolean(
         clipboardAnalysis.shellHint ?? clipboardAnalysis.hasExecutionHint
       );
-      const evasionHint = Boolean(
+      const looksHtml = looksLikeHtml(clipboardText);
+      let evasionHint = Boolean(
         clipboardAnalysis.evasionHint ??
           clipboardAnalysis.hasBase64 ??
           clipboardAnalysis.hasHighEntropy
       );
+      if (looksHtml && !commandMatch && !shellHint) {
+        evasionHint = false;
+      }
       const mismatch =
         message.eventType === "copy" &&
         message.clipboardAvailable &&
@@ -3833,8 +4369,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         clipboardText &&
         selectionText.trim() !== clipboardText.trim();
 
-      const clipboardSignals = commandMatch || shellHint || evasionHint;
       const commandMatchOrHint = commandMatch || shellHint;
+      const actionableClipboardSignals =
+        commandMatchOrHint ||
+        (evasionHint && Boolean(clipboardAnalysis.hasBase64 ?? clipboardAnalysis.base64) && !looksHtml);
+      const clipboardSignals = actionableClipboardSignals;
       const isClipboardWatch = message.eventType === "clipboard-watch";
       const isPaste = message.eventType === "paste";
       const isCopy = message.eventType === "copy";

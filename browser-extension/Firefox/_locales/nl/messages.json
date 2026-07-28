@@ -620,6 +620,20 @@
   "alertFilterRed": {
     "message": "Red only"
   },
+  "popupFalsePositiveButton": {
+    "message": "Review false positive"
+  },
+  "popupFalsePositiveSent": {
+    "message": "False positive submitted: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "falsePositiveReason": {
+    "message": "False positive reported"
+  },
   "optionsExceptionlistTitle": {
     "message": "Exception list"
   },
@@ -637,5 +651,62 @@
   },
   "optionsExceptionlistEmpty": {
     "message": "No exceptions."
+  },
+  "onboardingPillFirstUse": {
+    "message": "Eerste keer"
+  },
+  "onboardingSkip": {
+    "message": "Overslaan"
+  },
+  "onboardingWelcomeTitle": {
+    "message": "Welkom"
+  },
+  "onboardingWelcomeDesc": {
+    "message": "We begeleiden je stap voor stap."
+  },
+  "onboardingPrev": {
+    "message": "Terug"
+  },
+  "onboardingNext": {
+    "message": "Volgende"
+  },
+  "onboardingFinish": {
+    "message": "Voltooien"
+  },
+  "onboardingStep1Title": {
+    "message": "Stap 1 - Taal"
+  },
+  "onboardingStep1Desc": {
+    "message": "Kies een taal zodat de hele interface in jouw taal is."
+  },
+  "onboardingStep2Title": {
+    "message": "Stap 2 - Thema"
+  },
+  "onboardingStep2Desc": {
+    "message": "Kies de weergave: licht, donker of systeem."
+  },
+  "onboardingStep3Title": {
+    "message": "Stap 3 - Waarschuwingsniveau"
+  },
+  "onboardingStep3Desc": {
+    "message": "Pas het waarschuwingsfilter aan om ruis te verminderen."
+  },
+  "onboardingStep4Title": {
+    "message": "Stap 4 - Bescherming"
+  },
+  "onboardingStep4Desc": {
+    "message": "Schakel detectie, klembordblokkering en FamilySafe in indien nodig."
+  },
+  "onboardingStep5Title": {
+    "message": "Stap 5 - Scoring"
+  },
+  "onboardingStep5Desc": {
+    "message": "Stem gewichten en regels af op jouw omgeving."
+  },
+  "onboardingStep6Title": {
+    "message": "Stap 6 - Lijsten en geschiedenis"
+  },
+  "onboardingStep6Desc": {
+    "message": "Beheer lijsten en bekijk de volledige geschiedenis."
   }
 }

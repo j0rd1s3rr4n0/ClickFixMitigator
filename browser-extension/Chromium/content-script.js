@@ -29,6 +29,10 @@ const CLICKFIX_FILE_EXPLORER_REGEX =
 const CLICKFIX_COPY_TRIGGER_REGEX =
   /(execCommand\(['"]copy['"]\)|navigator\.clipboard\.writeText|clipboard\.writeText)/i;
 const CLICKFIX_RECAPTCHA_ID_REGEX = /reCAPTCHA Verification ID/i;
+const CLICKFIX_VERIFICATION_STEPS_REGEX =
+  /(verification\s+steps|verify\s+you('?| a)?re\s+human|human\s+verification|to\s+better\s+prove\s+you('?| a)?re\s+not\s+a\s+robot|verification\s+window|press\s*(and|&)\s*hold|hold\s+the\s+windows\s+key)/i;
+const CLICKFIX_WORDPRESS_REGEX =
+  /(wp-content|wp-includes|wp-json|wp-login\.php|wp-admin|content=["']WordPress["'])/i;
 const COMMAND_REGEX =
   /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|bash|sh|zsh|curl|wget|rundll32|regsvr32|msbuild|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic|explorer(\.exe)?|reg\s+add|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d)\b/i;
 const SHELL_HINT_REGEX =
@@ -71,6 +75,8 @@ let pasteSequenceDetected = false;
 let fileExplorerDetected = false;
 let commandDetected = false;
 let copyTriggerDetected = false;
+let verificationStepsDetected = false;
+let wordpressDetected = false;
 let lastClipboardSnapshot = "";
 let clipboardWatchRunning = false;
 let lastScanSnapshot = { text: "", html: "", timestamp: 0 };
@@ -81,6 +87,7 @@ let blockAllRequested = false;
 let blockAllUnavailableNotified = false;
 
 let currentAllowlisted = false;
+let currentExceptionlisted = false;
 let familySafeEnabled = false;
 let uiThemePreference = "system";
 let muteDetectionNotifications = false;
@@ -269,11 +276,34 @@ function checkBlockAllInjection() {
   }
 }
 
+async function updateExceptionState() {
+  return new Promise((resolve) => {
+    safeSendMessage(
+      { type: "checkExceptionlist", url: window.location.href },
+      (response) => {
+        currentExceptionlisted = Boolean(response?.exceptionlisted);
+        updatePageContextFlags();
+        resolve(currentExceptionlisted);
+      }
+    );
+  });
+}
+
 async function updateBlockAllClipboardState() {
   const { blockAllClipboard, enabled } = await chrome.storage.local.get({
     blockAllClipboard: true,
     enabled: true
   });
+  const exceptionlisted = await updateExceptionState();
+  if (exceptionlisted) {
+    currentAllowlisted = false;
+    blockAllRequested = false;
+    if (blockAllActive) {
+      blockAllActive = false;
+      window.postMessage({ type: BLOCK_ALL_UPDATE_TYPE, enabled: false }, "*");
+    }
+    return;
+  }
   const allowlisted = await new Promise((resolve) => {
     safeSendMessage({ type: "checkAllowlist", url: window.location.href }, (response) => {
       resolve(Boolean(response?.allowlisted));
@@ -445,7 +475,7 @@ function isFullscreenActive() {
   );
 }
 
-function showFullscreenNotice(messageText, { sticky } = {}) {
+function showFullscreenNotice(messageText, { sticky, autoHideDelay } = {}) {
   const existing = document.getElementById(FULLSCREEN_BANNER_ID);
   if (existing) {
     const messageNode = existing.querySelector("[data-clickfix-fullscreen-message]");
@@ -556,12 +586,11 @@ function showFullscreenNotice(messageText, { sticky } = {}) {
   root.appendChild(banner);
 
   if (sticky) {
-    setTimeout(() => {
-      const current = document.getElementById(FULLSCREEN_BANNER_ID);
-      if (current && current.dataset.sticky === "true") {
-        current.remove();
-      }
-    }, 8000);
+    var delay = (typeof autoHideDelay === 'number' && autoHideDelay > 0) ? autoHideDelay : 8000;
+    setTimeout(function(){
+      var cur = document.getElementById(FULLSCREEN_BANNER_ID);
+      if (cur && cur.dataset.sticky === "true") { cur.remove(); }
+    }, delay);
   }
 }
 
@@ -613,7 +642,7 @@ function handleFullscreenChange() {
       if (hasDetectionsOnPage) {
         exitFullscreenDueToDetection();
       } else {
-        showFullscreenNotice(t("fullscreenExitPrompt"));
+        showFullscreenNotice(t("fullscreenExitPrompt"), { sticky: true, autoHideDelay: 4000 });
       }
     });
   } else {
@@ -670,6 +699,9 @@ if (!CLICKFIX_DISABLED_ON_THIS_HOST) {
     if (event.source !== window) {
       return;
     }
+    if (currentExceptionlisted) {
+      return;
+    }
     if (event.data?.type === BLOCK_ALL_BLOCKED_TYPE) {
       markDetectionOnPage();
       showBanner(t("blockAllClipboardBlocked"));
@@ -690,6 +722,7 @@ if (!CLICKFIX_DISABLED_ON_THIS_HOST) {
         changes.enabled ||
         changes.whitelist ||
         changes.allowlist ||
+        changes.exceptionlist ||
         changes.allowlistUpdatedAt)
     ) {
       updateBlockAllClipboardState();
@@ -718,8 +751,26 @@ async function getBlocklistStatus() {
 }
 
 function sendPageAlert(alertType, snippet) {
-  markDetectionOnPage();
+  if (!currentExceptionlisted) {
+    markDetectionOnPage();
+  }
   const fullContext = collectFullContext();
+  const signalState = {
+    commandMatch: commandDetected,
+    winRHint: winRDetected,
+    winXHint: winXDetected,
+    winXTerminalHint: winXTerminalDetected,
+    browserErrorHint: browserErrorDetected,
+    fixActionHint: fixActionDetected,
+    captchaHint: captchaDetected,
+    consoleHint: consoleDetected,
+    shellHint: shellDetected,
+    pasteSequenceHint: pasteSequenceDetected,
+    fileExplorerHint: fileExplorerDetected,
+    copyTriggerHint: copyTriggerDetected,
+    verificationStepsHint: verificationStepsDetected,
+    wordpressHint: wordpressDetected
+  };
   safeSendMessage({
     type: "pageAlert",
     alertType,
@@ -727,6 +778,7 @@ function sendPageAlert(alertType, snippet) {
     url: window.location.href,
     timestamp: Date.now(),
     fullContext,
+    signalState,
     previousUrl: getReferrerUrl()
   });
 }
@@ -1448,6 +1500,9 @@ async function checkBlocklistAndBlock() {
   if (!isTopFrame) {
     return false;
   }
+  if (await updateExceptionState()) {
+    return false;
+  }
   await ensureLocaleReady();
   const currentHost = getHostname(window.location.href);
   if (!familySafeEnabled) {
@@ -1566,8 +1621,16 @@ function hasHighEntropy(value) {
   if (!value) {
     return false;
   }
-  const tokens = value.split(/\s+/).filter((token) => token.length >= 32);
-  return tokens.some((token) => computeEntropy(token) >= 4.2);
+  const tokens = value.split(/\s+/).filter((token) => token.length >= 48);
+  return tokens.some((token) => {
+    if (/^(?:https?:\/\/|www\.)/i.test(token)) {
+      return false;
+    }
+    if (!/[A-Za-z]/.test(token) || !/\d/.test(token)) {
+      return false;
+    }
+    return computeEntropy(token) >= 4.6;
+  });
 }
 
 function extractBase64Candidates(text) {
@@ -1652,13 +1715,13 @@ function analyzeClipboardText(rawText, context) {
   if (hasUrl && (hasCommand || hasExecutionHint)) {
     score += 2;
   }
-  if (hasBase64) {
-    score += 2;
+  if (hasBase64 && (hasCommand || hasExecutionHint || hasUrl)) {
+    score += 1;
   }
   if (base64LooksBinary) {
     score += 2;
   }
-  if (hasHighEntropyFlag) {
+  if (hasHighEntropyFlag && (hasCommand || hasExecutionHint || hasBase64)) {
     score += 1;
   }
   if (hasShellMeta) {
@@ -1674,19 +1737,19 @@ function analyzeClipboardText(rawText, context) {
     score += 1;
   }
 
-  let threshold = 6;
+  let threshold = 7;
   if (context?.isTrustedHost) {
-    threshold += 2;
+    threshold += 4;
   }
   if (context?.isCodeContext) {
-    threshold += 2;
+    threshold += 4;
   }
   if (context?.isAllowlisted) {
-    threshold += 3;
+    threshold += 6;
   }
 
   const strongBlock = hasCommand && (hasExecutionHint || hasUrl || hasBase64 || hasHighEntropyFlag);
-  const strongObfuscation = hasBase64 && hasHighEntropyFlag && isLong;
+  const strongObfuscation = hasCommand && hasBase64 && hasHighEntropyFlag && isLong;
   const block = strongBlock || strongObfuscation || score >= threshold;
 
   return {
@@ -1750,6 +1813,7 @@ function updatePageContextFlags() {
     ? "true"
     : "false";
   document.documentElement.dataset.clickfixAllowlisted = currentAllowlisted ? "true" : "false";
+  document.documentElement.dataset.clickfixExceptionlisted = currentExceptionlisted ? "true" : "false";
 }
 
 function scheduleIframeScan() {
@@ -1824,6 +1888,7 @@ function handleUrlChange() {
   copyTriggerDetected = false;
   lastScanSnapshot = { text: "", html: "", timestamp: 0 };
   currentAllowlisted = false;
+  currentExceptionlisted = false;
   hasDetectionsOnPage = false;
   hideFullscreenNotice();
   updatePageContextFlags();
@@ -1839,11 +1904,13 @@ function reportClipboardThreat({ text, analysis, method, source }) {
   if (!text) {
     return;
   }
-  markDetectionOnPage();
+  if (!currentExceptionlisted) {
+    markDetectionOnPage();
+  }
   if (shouldThrottleClipboardAlert(text)) {
     return;
   }
-  if (!muteDetectionNotifications) {
+  if (!currentExceptionlisted && !muteDetectionNotifications) {
     showBanner(t("clipboardThreatWarning"));
   }
   const snippet = normalizeSnippet(text).slice(0, 200);
@@ -1860,7 +1927,7 @@ function reportClipboardThreat({ text, analysis, method, source }) {
     analysis: {
       commandMatch: Boolean(features.hasCommand),
       shellHint: Boolean(features.hasExecutionHint),
-      evasionHint: Boolean(features.hasBase64 || features.hasHighEntropy),
+      evasionHint: Boolean((features.hasBase64 && (features.hasCommand || features.hasExecutionHint)) || (features.hasHighEntropy && features.hasBase64 && !context?.isCodeContext)),
       base64: Boolean(features.hasBase64),
       highEntropy: Boolean(features.hasHighEntropy),
       url: Boolean(features.hasUrl),
@@ -1897,7 +1964,9 @@ function scheduleClipboardPostCheck(context, source, method) {
     if (!analysis.block) {
       return;
     }
-    await writeClipboardText("");
+    if (!currentExceptionlisted) {
+      await writeClipboardText("");
+    }
     reportClipboardThreat({
       text: clipboard.text,
       analysis,
@@ -2243,6 +2312,26 @@ function scanForPasteSequence() {
   return findMatchSnippet(CLICKFIX_PASTE_SEQUENCE_REGEX, snapshot.text);
 }
 
+function scanForVerificationSteps() {
+  const snapshot = getScanSnapshot();
+  const combined = `${snapshot.text}\n${snapshot.html}`;
+  const hasVerification = CLICKFIX_VERIFICATION_STEPS_REGEX.test(combined);
+  if (!hasVerification) {
+    return "";
+  }
+  const hasAction =
+    CLICKFIX_WIN_R_REGEX.test(combined) ||
+    CLICKFIX_WIN_X_REGEX.test(combined) ||
+    CLICKFIX_PASTE_SEQUENCE_REGEX.test(combined);
+  if (!hasAction) {
+    return "";
+  }
+  return (
+    findMatchSnippet(CLICKFIX_VERIFICATION_STEPS_REGEX, combined) ||
+    findMatchSnippet(CLICKFIX_PASTE_SEQUENCE_REGEX, combined)
+  );
+}
+
 function notifyPasteSequenceDetected() {
   const snippet = scanForPasteSequence();
   if (snippet && !pasteSequenceDetected) {
@@ -2258,9 +2347,32 @@ function notifyPasteSequenceDetected() {
   }
 }
 
+function notifyVerificationStepsDetected() {
+  const snippet = scanForVerificationSteps();
+  if (snippet && !verificationStepsDetected) {
+    verificationStepsDetected = true;
+    safeSendMessage({
+      type: "pageHint",
+      hint: "verification-steps",
+      snippet,
+      url: window.location.href,
+      timestamp: Date.now()
+    });
+    sendPageAlert("verification-steps", snippet);
+  }
+}
+
 function scanForFileExplorer() {
   const snapshot = getScanSnapshot();
   return findMatchSnippet(CLICKFIX_FILE_EXPLORER_REGEX, snapshot.text);
+}
+
+function scanForWordpress() {
+  const snapshot = getScanSnapshot();
+  return (
+    findMatchSnippet(CLICKFIX_WORDPRESS_REGEX, snapshot.html) ||
+    findMatchSnippet(CLICKFIX_WORDPRESS_REGEX, snapshot.text)
+  );
 }
 
 function scanForCopyTrigger() {
@@ -2341,6 +2453,20 @@ function notifyFileExplorerDetected() {
   }
 }
 
+function notifyWordpressDetected() {
+  const snippet = scanForWordpress();
+  if (snippet && !wordpressDetected) {
+    wordpressDetected = true;
+    safeSendMessage({
+      type: "pageHint",
+      hint: "wordpress",
+      snippet,
+      url: window.location.href,
+      timestamp: Date.now()
+    });
+  }
+}
+
 function runPageSignalScan() {
   notifyWinRDetected();
   notifyWinXDetected();
@@ -2351,9 +2477,11 @@ function runPageSignalScan() {
   notifyConsoleDetected();
   notifyShellDetected();
   notifyPasteSequenceDetected();
+  notifyVerificationStepsDetected();
   notifyCommandDetected();
   notifyCopyTriggerDetected();
   notifyFileExplorerDetected();
+  notifyWordpressDetected();
 }
 
 function schedulePageSignalScan() {
@@ -2367,6 +2495,15 @@ function schedulePageSignalScan() {
     lastPageSignalScanAt = Date.now();
     runPageSignalScan();
   }, delay);
+}
+
+function runManualScan(mode) {
+  scheduleIframeScan();
+  runPageSignalScan();
+  if (mode === "intense") {
+    setTimeout(() => runPageSignalScan(), 600);
+    setTimeout(() => runPageSignalScan(), 1400);
+  }
 }
 
 function sendClipboardEvent(payload) {
@@ -2420,13 +2557,15 @@ function handleCopyCut(eventType, event) {
   const source = buildClipboardSource(event);
 
   if (analysis.block) {
-    event?.preventDefault();
-    event?.stopImmediatePropagation();
-    if (event?.clipboardData?.setData) {
-      try {
-        event.clipboardData.setData("text/plain", "");
-      } catch (error) {
-        // Ignore clipboard reset errors.
+    if (!currentExceptionlisted) {
+      event?.preventDefault();
+      event?.stopImmediatePropagation();
+      if (event?.clipboardData?.setData) {
+        try {
+          event.clipboardData.setData("text/plain", "");
+        } catch (error) {
+          // Ignore clipboard reset errors.
+        }
       }
     }
     reportClipboardThreat({
@@ -2516,6 +2655,9 @@ chrome.runtime.onMessage.addListener((message) => {
   if (CLICKFIX_DISABLED_ON_THIS_HOST) {
     return;
   }
+  if (currentExceptionlisted) {
+    return;
+  }
   if (message?.type === "replaceClipboard") {
     if (!isTopFrame) {
       return;
@@ -2571,6 +2713,11 @@ chrome.runtime.onMessage.addListener((message) => {
         { familySafe: familySafeEnabled, theme: uiThemePreference }
       );
     });
+    return;
+  }
+  if (message?.type === "manualScan") {
+    const mode = String(message?.mode || "simple");
+    runManualScan(mode);
     return;
   }
   if (message?.type === "showBanner") {

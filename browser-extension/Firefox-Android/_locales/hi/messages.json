@@ -620,6 +620,20 @@
   "alertFilterRed": {
     "message": "Red only"
   },
+  "popupFalsePositiveButton": {
+    "message": "Review false positive"
+  },
+  "popupFalsePositiveSent": {
+    "message": "False positive submitted: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "falsePositiveReason": {
+    "message": "False positive reported"
+  },
   "optionsExceptionlistTitle": {
     "message": "Exception list"
   },
@@ -637,5 +651,62 @@
   },
   "optionsExceptionlistEmpty": {
     "message": "No exceptions."
+  },
+  "onboardingPillFirstUse": {
+    "message": "पहली बार"
+  },
+  "onboardingSkip": {
+    "message": "छोड़ें"
+  },
+  "onboardingWelcomeTitle": {
+    "message": "स्वागत है"
+  },
+  "onboardingWelcomeDesc": {
+    "message": "हम आपको चरण-दर-चरण मार्गदर्शन करेंगे।"
+  },
+  "onboardingPrev": {
+    "message": "पीछे"
+  },
+  "onboardingNext": {
+    "message": "अगला"
+  },
+  "onboardingFinish": {
+    "message": "समाप्त"
+  },
+  "onboardingStep1Title": {
+    "message": "चरण 1 - भाषा"
+  },
+  "onboardingStep1Desc": {
+    "message": "भाषा चुनें ताकि पूरी इंटरफ़ेस आपकी भाषा में हो।"
+  },
+  "onboardingStep2Title": {
+    "message": "चरण 2 - थीम"
+  },
+  "onboardingStep2Desc": {
+    "message": "रूप चुनें: हल्का, गहरा या सिस्टम।"
+  },
+  "onboardingStep3Title": {
+    "message": "चरण 3 - चेतावनी स्तर"
+  },
+  "onboardingStep3Desc": {
+    "message": "शोर कम करने के लिए चेतावनी फ़िल्टर समायोजित करें।"
+  },
+  "onboardingStep4Title": {
+    "message": "चरण 4 - सुरक्षा"
+  },
+  "onboardingStep4Desc": {
+    "message": "ज़रूरत हो तो डिटेक्शन, क्लिपबोर्ड ब्लॉक और FamilySafe चालू करें।"
+  },
+  "onboardingStep5Title": {
+    "message": "चरण 5 - स्कोरिंग"
+  },
+  "onboardingStep5Desc": {
+    "message": "अपने वातावरण के अनुसार वज़न और नियम सेट करें।"
+  },
+  "onboardingStep6Title": {
+    "message": "चरण 6 - सूचियाँ और इतिहास"
+  },
+  "onboardingStep6Desc": {
+    "message": "सूचियाँ प्रबंधित करें और पूरा इतिहास देखें।"
   }
 }

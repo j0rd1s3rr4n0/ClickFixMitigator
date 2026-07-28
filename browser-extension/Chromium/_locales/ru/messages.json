@@ -619,5 +619,94 @@
   },
   "alertFilterRed": {
     "message": "Red only"
+  },
+  "popupFalsePositiveButton": {
+    "message": "Review false positive"
+  },
+  "popupFalsePositiveSent": {
+    "message": "False positive submitted: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "falsePositiveReason": {
+    "message": "False positive reported"
+  },
+  "optionsExceptionlistTitle": {
+    "message": "Exception list"
+  },
+  "optionsExceptionlistHint": {
+    "message": "Sites listed here bypass local blocking and UI, but detections are still reported to administrators."
+  },
+  "optionsExceptionlistWarning": {
+    "message": "You are responsible for any exceptions you add."
+  },
+  "optionsExceptionlistPlaceholder": {
+    "message": "example.com"
+  },
+  "optionsExceptionlistAdd": {
+    "message": "Add exception"
+  },
+  "optionsExceptionlistEmpty": {
+    "message": "No exceptions."
+  },
+  "onboardingPillFirstUse": {
+    "message": "Первый запуск"
+  },
+  "onboardingSkip": {
+    "message": "Пропустить"
+  },
+  "onboardingWelcomeTitle": {
+    "message": "Добро пожаловать"
+  },
+  "onboardingWelcomeDesc": {
+    "message": "Мы проведем вас шаг за шагом."
+  },
+  "onboardingPrev": {
+    "message": "Назад"
+  },
+  "onboardingNext": {
+    "message": "Далее"
+  },
+  "onboardingFinish": {
+    "message": "Завершить"
+  },
+  "onboardingStep1Title": {
+    "message": "Шаг 1 - Язык"
+  },
+  "onboardingStep1Desc": {
+    "message": "Выберите язык, чтобы весь интерфейс был на вашем языке."
+  },
+  "onboardingStep2Title": {
+    "message": "Шаг 2 - Тема"
+  },
+  "onboardingStep2Desc": {
+    "message": "Выберите оформление: светлая, темная или системная."
+  },
+  "onboardingStep3Title": {
+    "message": "Шаг 3 - Уровень предупреждений"
+  },
+  "onboardingStep3Desc": {
+    "message": "Настройте фильтр предупреждений, чтобы уменьшить шум."
+  },
+  "onboardingStep4Title": {
+    "message": "Шаг 4 - Защита"
+  },
+  "onboardingStep4Desc": {
+    "message": "Включите обнаружение, блокировку буфера обмена и FamilySafe при необходимости."
+  },
+  "onboardingStep5Title": {
+    "message": "Шаг 5 - Оценка"
+  },
+  "onboardingStep5Desc": {
+    "message": "Настройте веса и правила под вашу среду."
+  },
+  "onboardingStep6Title": {
+    "message": "Шаг 6 - Списки и история"
+  },
+  "onboardingStep6Desc": {
+    "message": "Управляйте списками и просматривайте полную историю."
   }
 }

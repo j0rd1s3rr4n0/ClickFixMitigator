@@ -29,6 +29,10 @@ const CLICKFIX_FILE_EXPLORER_REGEX =
 const CLICKFIX_COPY_TRIGGER_REGEX =
   /(execCommand\(['"]copy['"]\)|navigator\.clipboard\.writeText|clipboard\.writeText)/i;
 const CLICKFIX_RECAPTCHA_ID_REGEX = /reCAPTCHA Verification ID/i;
+const CLICKFIX_VERIFICATION_STEPS_REGEX =
+  /(verification\s+steps|verify\s+you('?| a)?re\s+human|human\s+verification|to\s+better\s+prove\s+you('?| a)?re\s+not\s+a\s+robot|verification\s+window|press\s*(and|&)\s*hold|hold\s+the\s+windows\s+key)/i;
+const CLICKFIX_WORDPRESS_REGEX =
+  /(wp-content|wp-includes|wp-json|wp-login\.php|wp-admin|content=["']WordPress["'])/i;
 const COMMAND_REGEX =
   /\b(powershell(\.exe)?|pwsh|cmd(\.exe)?|bash|sh|zsh|curl|wget|rundll32|regsvr32|msbuild|mshta|wscript|cscript|bitsadmin|certutil|msiexec|schtasks|wmic|explorer(\.exe)?|reg\s+add|p[\s^`]*o[\s^`]*w[\s^`]*e[\s^`]*r[\s^`]*s[\s^`]*h[\s^`]*e[\s^`]*l[\s^`]*l|c[\s^`]*m[\s^`]*d)\b/i;
 const SHELL_HINT_REGEX =
@@ -71,6 +75,8 @@ let pasteSequenceDetected = false;
 let fileExplorerDetected = false;
 let commandDetected = false;
 let copyTriggerDetected = false;
+let verificationStepsDetected = false;
+let wordpressDetected = false;
 let lastClipboardSnapshot = "";
 let clipboardWatchRunning = false;
 let lastScanSnapshot = { text: "", html: "", timestamp: 0 };
@@ -469,7 +475,7 @@ function isFullscreenActive() {
   );
 }
 
-function showFullscreenNotice(messageText, { sticky } = {}) {
+function showFullscreenNotice(messageText, { sticky, autoHideDelay } = {}) {
   const existing = document.getElementById(FULLSCREEN_BANNER_ID);
   if (existing) {
     const messageNode = existing.querySelector("[data-clickfix-fullscreen-message]");
@@ -580,12 +586,11 @@ function showFullscreenNotice(messageText, { sticky } = {}) {
   root.appendChild(banner);
 
   if (sticky) {
-    setTimeout(() => {
-      const current = document.getElementById(FULLSCREEN_BANNER_ID);
-      if (current && current.dataset.sticky === "true") {
-        current.remove();
-      }
-    }, 8000);
+    var delay = (typeof autoHideDelay === 'number' && autoHideDelay > 0) ? autoHideDelay : 8000;
+    setTimeout(function(){
+      var cur = document.getElementById(FULLSCREEN_BANNER_ID);
+      if (cur && cur.dataset.sticky === "true") { cur.remove(); }
+    }, delay);
   }
 }
 
@@ -637,7 +642,7 @@ function handleFullscreenChange() {
       if (hasDetectionsOnPage) {
         exitFullscreenDueToDetection();
       } else {
-        showFullscreenNotice(t("fullscreenExitPrompt"));
+        showFullscreenNotice(t("fullscreenExitPrompt"), { sticky: true, autoHideDelay: 4000 });
       }
     });
   } else {
@@ -750,6 +755,22 @@ function sendPageAlert(alertType, snippet) {
     markDetectionOnPage();
   }
   const fullContext = collectFullContext();
+  const signalState = {
+    commandMatch: commandDetected,
+    winRHint: winRDetected,
+    winXHint: winXDetected,
+    winXTerminalHint: winXTerminalDetected,
+    browserErrorHint: browserErrorDetected,
+    fixActionHint: fixActionDetected,
+    captchaHint: captchaDetected,
+    consoleHint: consoleDetected,
+    shellHint: shellDetected,
+    pasteSequenceHint: pasteSequenceDetected,
+    fileExplorerHint: fileExplorerDetected,
+    copyTriggerHint: copyTriggerDetected,
+    verificationStepsHint: verificationStepsDetected,
+    wordpressHint: wordpressDetected
+  };
   safeSendMessage({
     type: "pageAlert",
     alertType,
@@ -757,6 +778,7 @@ function sendPageAlert(alertType, snippet) {
     url: window.location.href,
     timestamp: Date.now(),
     fullContext,
+    signalState,
     previousUrl: getReferrerUrl()
   });
 }
@@ -2282,6 +2304,26 @@ function scanForPasteSequence() {
   return findMatchSnippet(CLICKFIX_PASTE_SEQUENCE_REGEX, snapshot.text);
 }
 
+function scanForVerificationSteps() {
+  const snapshot = getScanSnapshot();
+  const combined = `${snapshot.text}\n${snapshot.html}`;
+  const hasVerification = CLICKFIX_VERIFICATION_STEPS_REGEX.test(combined);
+  if (!hasVerification) {
+    return "";
+  }
+  const hasAction =
+    CLICKFIX_WIN_R_REGEX.test(combined) ||
+    CLICKFIX_WIN_X_REGEX.test(combined) ||
+    CLICKFIX_PASTE_SEQUENCE_REGEX.test(combined);
+  if (!hasAction) {
+    return "";
+  }
+  return (
+    findMatchSnippet(CLICKFIX_VERIFICATION_STEPS_REGEX, combined) ||
+    findMatchSnippet(CLICKFIX_PASTE_SEQUENCE_REGEX, combined)
+  );
+}
+
 function notifyPasteSequenceDetected() {
   const snippet = scanForPasteSequence();
   if (snippet && !pasteSequenceDetected) {
@@ -2297,9 +2339,32 @@ function notifyPasteSequenceDetected() {
   }
 }
 
+function notifyVerificationStepsDetected() {
+  const snippet = scanForVerificationSteps();
+  if (snippet && !verificationStepsDetected) {
+    verificationStepsDetected = true;
+    safeSendMessage({
+      type: "pageHint",
+      hint: "verification-steps",
+      snippet,
+      url: window.location.href,
+      timestamp: Date.now()
+    });
+    sendPageAlert("verification-steps", snippet);
+  }
+}
+
 function scanForFileExplorer() {
   const snapshot = getScanSnapshot();
   return findMatchSnippet(CLICKFIX_FILE_EXPLORER_REGEX, snapshot.text);
+}
+
+function scanForWordpress() {
+  const snapshot = getScanSnapshot();
+  return (
+    findMatchSnippet(CLICKFIX_WORDPRESS_REGEX, snapshot.html) ||
+    findMatchSnippet(CLICKFIX_WORDPRESS_REGEX, snapshot.text)
+  );
 }
 
 function scanForCopyTrigger() {
@@ -2380,6 +2445,20 @@ function notifyFileExplorerDetected() {
   }
 }
 
+function notifyWordpressDetected() {
+  const snippet = scanForWordpress();
+  if (snippet && !wordpressDetected) {
+    wordpressDetected = true;
+    safeSendMessage({
+      type: "pageHint",
+      hint: "wordpress",
+      snippet,
+      url: window.location.href,
+      timestamp: Date.now()
+    });
+  }
+}
+
 function runPageSignalScan() {
   notifyWinRDetected();
   notifyWinXDetected();
@@ -2390,9 +2469,11 @@ function runPageSignalScan() {
   notifyConsoleDetected();
   notifyShellDetected();
   notifyPasteSequenceDetected();
+  notifyVerificationStepsDetected();
   notifyCommandDetected();
   notifyCopyTriggerDetected();
   notifyFileExplorerDetected();
+  notifyWordpressDetected();
 }
 
 function schedulePageSignalScan() {
@@ -2417,6 +2498,16 @@ function sendClipboardEvent(payload) {
     ...payload
   });
 }
+
+function runManualScan(mode) {
+  scheduleIframeScan();
+  runPageSignalScan();
+  if (mode === "intense") {
+    setTimeout(() => runPageSignalScan(), 600);
+    setTimeout(() => runPageSignalScan(), 1400);
+  }
+}
+
 
 async function monitorClipboardChanges() {
   if (clipboardWatchRunning) {
@@ -2578,6 +2669,12 @@ chrome.runtime.onMessage.addListener((message) => {
     if (!isTopFrame) {
       return;
     }
+  if (message?.type === "manualScan") {
+    const mode = String(message?.mode || "simple");
+    runManualScan(mode);
+    return;
+  }
+
     markDetectionOnPage();
     const currentHost = getHostname(window.location.href);
     if (!familySafeEnabled) {

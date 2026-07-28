@@ -620,6 +620,20 @@
   "alertFilterRed": {
     "message": "Red only"
   },
+  "popupFalsePositiveButton": {
+    "message": "Review false positive"
+  },
+  "popupFalsePositiveSent": {
+    "message": "False positive submitted: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "falsePositiveReason": {
+    "message": "False positive reported"
+  },
   "optionsExceptionlistTitle": {
     "message": "Exception list"
   },
@@ -637,5 +651,62 @@
   },
   "optionsExceptionlistEmpty": {
     "message": "No exceptions."
+  },
+  "onboardingPillFirstUse": {
+    "message": "初回利用"
+  },
+  "onboardingSkip": {
+    "message": "スキップ"
+  },
+  "onboardingWelcomeTitle": {
+    "message": "ようこそ"
+  },
+  "onboardingWelcomeDesc": {
+    "message": "ステップごとにご案内します。"
+  },
+  "onboardingPrev": {
+    "message": "戻る"
+  },
+  "onboardingNext": {
+    "message": "次へ"
+  },
+  "onboardingFinish": {
+    "message": "完了"
+  },
+  "onboardingStep1Title": {
+    "message": "ステップ1 - 言語"
+  },
+  "onboardingStep1Desc": {
+    "message": "画面全体をあなたの言語にするために言語を選択してください。"
+  },
+  "onboardingStep2Title": {
+    "message": "ステップ2 - テーマ"
+  },
+  "onboardingStep2Desc": {
+    "message": "外観を選択: ライト、ダーク、またはシステム。"
+  },
+  "onboardingStep3Title": {
+    "message": "ステップ3 - 警告レベル"
+  },
+  "onboardingStep3Desc": {
+    "message": "ノイズを減らすために警告フィルターを調整します。"
+  },
+  "onboardingStep4Title": {
+    "message": "ステップ4 - 保護"
+  },
+  "onboardingStep4Desc": {
+    "message": "必要に応じて検出、クリップボードのブロック、FamilySafe を有効にします。"
+  },
+  "onboardingStep5Title": {
+    "message": "ステップ5 - スコア"
+  },
+  "onboardingStep5Desc": {
+    "message": "環境に合わせて重みとルールを調整します。"
+  },
+  "onboardingStep6Title": {
+    "message": "ステップ6 - リストと履歴"
+  },
+  "onboardingStep6Desc": {
+    "message": "リストを管理し、履歴を確認します。"
   }
 }

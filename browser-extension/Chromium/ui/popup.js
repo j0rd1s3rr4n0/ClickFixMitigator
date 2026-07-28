@@ -4,7 +4,9 @@ const DEFAULT_SETTINGS = {
   familySafe: false,
   uiTheme: "system",
   muteDetectionNotifications: false,
-  alertMinSeverity: "green",
+  alertMinSeverity: "red",
+  popupViewMode: "simple",
+  protectionProfile: "balanced",
   whitelist: [],
   history: []
 };
@@ -19,15 +21,28 @@ const addDomainButton = document.getElementById("add-domain");
 const whitelistList = document.getElementById("whitelist-list");
 const historyContainer = document.getElementById("history");
 const clearHistoryButton = document.getElementById("clear-history");
+const popupOnboarding = document.getElementById("popup-onboarding");
+const popupOnboardingLanguage = document.getElementById("popup-onboarding-language");
+const popupOnboardingStart = document.getElementById("popup-onboarding-start");
+const popupOnboardingSkip = document.getElementById("popup-onboarding-skip");
 const clipboardHistoryContainer = document.getElementById("clipboard-history");
 const clearClipboardHistoryButton = document.getElementById("clear-clipboard-history");
 const reportInput = document.getElementById("report-input");
 const reportReasonInput = document.getElementById("report-reason");
 const reportButton = document.getElementById("report-site");
+const falsePositiveButton = document.getElementById("report-false-positive");
 const reportStatus = document.getElementById("report-status");
 const languageSelect = document.getElementById("language-select");
 const themeSelect = document.getElementById("theme-select");
 const allowlistStatus = document.getElementById("allowlist-status");
+const popupViewSwitch = document.getElementById("popup-view-switch");
+const popupViewButtons = popupViewSwitch ? [...popupViewSwitch.querySelectorAll("[data-mode]")] : [];
+const quickSummaryState = document.getElementById("quick-summary-state");
+const quickSummaryText = document.getElementById("quick-summary-text");
+const quickSummaryMode = document.getElementById("quick-summary-mode");
+const quickSummaryLastAlert = document.getElementById("quick-summary-last-alert");
+const quickSummaryBlocks = document.getElementById("quick-summary-blocks");
+const quickSummaryProfile = document.getElementById("quick-summary-profile");
 const statsTotalAlerts = document.getElementById("stats-total-alerts");
 const statsTotalBlocked = document.getElementById("stats-total-blocked");
 const statsBlocklistCount = document.getElementById("stats-blocklist-count");
@@ -41,6 +56,29 @@ const SUPPORTED_LOCALES = ["en", "es", "ca", "de", "fr", "nl", "he", "ru", "zh",
 const DEFAULT_LOCALE = "en";
 let activeMessages = null;
 const RTL_LOCALES = new Set(["ar"]);
+
+function normalizeProtectionProfile(value) {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized === "strict" || normalized === "quiet" || normalized === "analyst" || normalized === "custom") {
+    return normalized;
+  }
+  return "balanced";
+}
+
+function getProtectionProfileLabel(profile) {
+  switch (normalizeProtectionProfile(profile)) {
+    case "strict":
+      return t("protectionProfileStrict");
+    case "quiet":
+      return t("protectionProfileQuiet");
+    case "analyst":
+      return t("protectionProfileAnalyst");
+    case "custom":
+      return t("protectionProfileCustom");
+    default:
+      return t("protectionProfileBalanced");
+  }
+}
 
 function t(key, substitutions) {
   if (activeMessages?.[key]?.message) {
@@ -208,6 +246,8 @@ async function loadSettings() {
     uiTheme: settings.uiTheme ?? "system",
     muteDetectionNotifications: settings.muteDetectionNotifications ?? false,
     alertMinSeverity: normalizeAlertMinSeverity(settings.alertMinSeverity),
+    popupViewMode: settings.popupViewMode === "advanced" ? "advanced" : "simple",
+    protectionProfile: normalizeProtectionProfile(settings.protectionProfile),
     whitelist: settings.whitelist ?? [],
     history: settings.history ?? [],
     clipboardBackups: settings.clipboardBackups ?? [],
@@ -215,6 +255,75 @@ async function loadSettings() {
     blockCount: settings.blockCount ?? 0,
     blocklist: settings.blocklist ?? []
   };
+}
+
+
+function setPopupViewMode(mode) {
+  const normalized = mode === "advanced" ? "advanced" : "simple";
+  document.body.dataset.popupView = normalized;
+  popupViewButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.mode === normalized);
+  });
+  document.querySelectorAll('[data-view-section="advanced"]').forEach((section) => {
+    section.hidden = normalized !== "advanced";
+  });
+}
+
+function renderQuickSummary(settings) {
+  const history = Array.isArray(settings.history) ? settings.history : [];
+  const lastEntry = history[0] || null;
+  const lastScore = extractConfidenceScore(lastEntry);
+  const lastSeverity = scoreToSeverity(lastScore);
+  const isEnabled = Boolean(settings.enabled);
+  const muted = Boolean(settings.muteDetectionNotifications);
+  const profileLabel = getProtectionProfileLabel(settings.protectionProfile);
+
+  let stateLabel = "Protegido";
+  let stateText = "La extensión está activa y vigilando intentos de engaño y ejecución sospechosa.";
+  if (!isEnabled) {
+    stateLabel = "Desactivado";
+    stateText = "La protección principal está apagada. No se generarán alertas nuevas mientras siga desactivada.";
+  } else if (lastSeverity === "critical" || lastSeverity === "high") {
+    stateLabel = "Atención";
+    stateText = "Se han visto alertas recientes de riesgo elevado. Conviene revisar el historial reciente.";
+  } else if (muted) {
+    stateLabel = "Silencioso";
+    stateText = "La protección sigue activa, pero las notificaciones visuales están silenciadas.";
+  }
+
+  stateLabel = t("quickSummaryProtected");
+  stateText = t("quickSummaryProtectedText");
+  if (!isEnabled) {
+    stateLabel = t("quickSummaryDisabled");
+    stateText = t("quickSummaryDisabledText");
+  } else if (lastSeverity === "critical" || lastSeverity === "high") {
+    stateLabel = t("quickSummaryAttention");
+    stateText = t("quickSummaryAttentionText");
+  } else if (muted) {
+    stateLabel = t("quickSummarySilent");
+    stateText = t("quickSummarySilentText");
+  }
+
+  if (quickSummaryState) {
+    quickSummaryState.textContent = stateLabel;
+  }
+  if (quickSummaryText) {
+    quickSummaryText.textContent = stateText;
+  }
+  if (quickSummaryMode) {
+    quickSummaryMode.textContent = isEnabled ? t("quickSummaryModeActive") : t("quickSummaryModePaused");
+  }
+  if (quickSummaryLastAlert) {
+    quickSummaryLastAlert.textContent = lastEntry
+      ? `${lastEntry.hostname || t("quickSummarySiteFallback")}${lastScore !== null && lastScore !== undefined ? ` - ${lastScore}/100` : ""}`
+      : t("quickSummaryNoAlerts");
+  }
+  if (quickSummaryBlocks) {
+    quickSummaryBlocks.textContent = formatNumber(settings.blockCount || 0);
+  }
+  if (quickSummaryProfile) {
+    quickSummaryProfile.textContent = profileLabel;
+  }
 }
 
 function renderWhitelist(domains) {
@@ -254,6 +363,7 @@ function renderHistory(history) {
   }
 
   historyContainer.classList.remove("empty");
+  const isAdvancedView = document.body.dataset.popupView === "advanced";
   history.forEach((entry) => {
     const message = buildLocalizedAlertMessage(entry);
     const score = extractConfidenceScore(entry);
@@ -283,9 +393,9 @@ function renderHistory(history) {
     const body = document.createElement("div");
     body.classList.add("history-message");
     body.textContent = message;
-    const reasonsList = buildReasonListElement(entry);
-    const snippetsList = buildSnippetListElement(entry);
-    const breakdown = buildScoreBreakdownElement(entry);
+    const reasonsList = isAdvancedView ? buildReasonListElement(entry) : null;
+    const snippetsList = isAdvancedView ? buildSnippetListElement(entry) : null;
+    const breakdown = isAdvancedView ? buildScoreBreakdownElement(entry) : null;
     const meta = document.createElement("small");
     meta.textContent = time;
     card.appendChild(header);
@@ -300,6 +410,18 @@ function renderHistory(history) {
       card.appendChild(breakdown);
     }
     card.appendChild(meta);
+    if (isAdvancedView) {
+      const actions = document.createElement("div");
+      actions.classList.add("history-actions");
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.textContent = t("popupDeleteRequestButton");
+      deleteBtn.addEventListener("click", async () => {
+        await requestDeletion(entry);
+      });
+      actions.appendChild(deleteBtn);
+      card.appendChild(actions);
+    }
     historyContainer.appendChild(card);
   });
   resizePopupToContent();
@@ -372,7 +494,7 @@ function buildSnippetListElement(entry) {
   container.classList.add("history-snippets");
   const title = document.createElement("div");
   title.classList.add("history-snippets-title");
-  title.textContent = "Snippets detected";
+  title.textContent = t("historySnippetsTitle");
   const list = document.createElement("ul");
   list.classList.add("history-snippet-list");
   snippets.forEach((snippet) => {
@@ -538,7 +660,7 @@ function buildScoreBreakdownElement(entry) {
   if (weightParts.length) {
     const meta = document.createElement("div");
     meta.classList.add("score-breakdown-meta");
-    meta.textContent = t("scoreBreakdownWeights", weightParts.join(" · "));
+    meta.textContent = t("scoreBreakdownWeights", weightParts.join(" | "));
     wrapper.appendChild(meta);
   }
 
@@ -551,7 +673,7 @@ function buildScoreBreakdownElement(entry) {
     const title = document.createElement("div");
     title.classList.add("score-breakdown-title");
     const label = component.labelKey ? t(component.labelKey) : component.id;
-    title.textContent = `${label} — ${component.score ?? 0}/100`;
+    title.textContent = `${label} - ${component.score ?? 0}/100`;
     section.appendChild(title);
 
     const contributions = Array.isArray(component.contributions)
@@ -688,6 +810,7 @@ function renderStats(settings) {
 
   const counts = buildDailyCounts(settings.history || [], 7);
   renderDetectionsChart(counts);
+  renderQuickSummary(settings);
   if (statsDetectionsTotal) {
     const total = counts.reduce((sum, value) => sum + value, 0);
     statsDetectionsTotal.textContent = formatNumber(total);
@@ -803,6 +926,61 @@ async function reportSite(targetUrl) {
   }
 }
 
+async function reportFalsePositive(targetUrl) {
+  if (!targetUrl) {
+    reportStatus.textContent = t("popupReportStatusMissing");
+    return;
+  }
+  try {
+    const parsedUrl = new URL(targetUrl);
+    const reason = reportReasonInput?.value
+      ? reportReasonInput.value.trim().replace(/\s+/g, " ").slice(0, 160)
+      : "";
+    chrome.runtime.sendMessage({
+      type: "falsePositiveReport",
+      url: parsedUrl.href,
+      hostname: parsedUrl.hostname,
+      timestamp: Date.now(),
+      reason
+    });
+    reportStatus.textContent = t("popupFalsePositiveSent", parsedUrl.hostname);
+    if (reportReasonInput) {
+      reportReasonInput.value = "";
+    }
+  } catch (error) {
+    reportStatus.textContent = t("popupReportStatusInvalid");
+  }
+}
+
+async function requestDeletion(entry) {
+  const hostname = String(entry?.hostname || "");
+  const url = String(entry?.url || "");
+  const promptText = t("popupDeleteReasonPrompt");
+  const reasonInput = window.prompt(promptText, "");
+  if (reasonInput === null) {
+    return;
+  }
+  const reason = reasonInput.trim().replace(/\s+/g, " ").slice(0, 160);
+  if (!reason) {
+    if (reportStatus) {
+      reportStatus.textContent = t("popupDeleteReasonRequired");
+    }
+    return;
+  }
+  await sendRuntimeMessage({
+    type: "deleteDetectionRequest",
+    url,
+    hostname,
+    timestamp: entry?.timestamp ?? Date.now(),
+    detectedContent: entry?.detectedContent ?? entry?.detected_content ?? "",
+    previousUrl: entry?.previousUrl ?? entry?.previous_url ?? "",
+    reason
+  });
+  if (reportStatus) {
+    reportStatus.textContent = t("popupDeleteRequestSent", hostname || url || "");
+  }
+}
+
 reportButton.addEventListener("click", async () => {
   const value = reportInput.value.trim();
   if (value) {
@@ -819,11 +997,81 @@ reportButton.addEventListener("click", async () => {
   }
 });
 
+falsePositiveButton?.addEventListener("click", async () => {
+  const value = reportInput.value.trim();
+  if (value) {
+    await reportFalsePositive(value);
+    reportInput.value = "";
+    return;
+  }
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  const url = tabs?.[0]?.url;
+  if (url) {
+    await reportFalsePositive(url);
+  } else {
+    reportStatus.textContent = t("popupReportStatusNoTab");
+  }
+});
+
+async function initPopupOnboarding() {
+  if (!popupOnboarding) {
+    return;
+  }
+  const stored = await chrome.storage.local.get({ onboardingCompleted: false, uiLanguage: "" });
+  const browserLocale = normalizeLocale((chrome.i18n.getUILanguage && chrome.i18n.getUILanguage()) || "");
+  if (stored.onboardingCompleted) {
+    return;
+  }
+  const selectedLocale = normalizeLocale(stored.uiLanguage || browserLocale || DEFAULT_LOCALE);
+  await loadLocaleMessages(selectedLocale);
+  popupOnboarding.hidden = false;
+  if (popupOnboardingLanguage) {
+    popupOnboardingLanguage.value = selectedLocale;
+  }
+  const hideOnboarding = () => {
+    popupOnboarding.hidden = true;
+    popupOnboarding.style.display = "none";
+  };
+  const persistOnboardingChoice = async () => {
+    if (popupOnboardingLanguage) {
+      await chrome.storage.local.set({
+        uiLanguage: normalizeLocale(popupOnboardingLanguage.value || browserLocale || DEFAULT_LOCALE)
+      });
+    }
+    await chrome.storage.local.set({ onboardingCompleted: true });
+  };
+  const openOptionsPage = async () => {
+    if (chrome.runtime?.openOptionsPage) {
+      await chrome.runtime.openOptionsPage();
+      return;
+    }
+    const optionsUrl = chrome.runtime.getURL("ui/options.html");
+    if (chrome.tabs?.create) {
+      await chrome.tabs.create({ url: optionsUrl });
+    }
+  };
+  const skip = async () => {
+    hideOnboarding();
+    await persistOnboardingChoice();
+    window.close();
+  };
+  const start = async () => {
+    hideOnboarding();
+    await persistOnboardingChoice();
+    await openOptionsPage();
+    window.close();
+  };
+  popupOnboardingStart?.addEventListener("click", start);
+  popupOnboardingSkip?.addEventListener("click", skip);
+}
+
 (async () => {
+  await initPopupOnboarding();
   removeDuplicateReportSections();
   await initLanguageSelector();
   await initThemeSelector();
   const settings = await loadSettings();
+  setPopupViewMode(settings.popupViewMode);
   toggleEnabled.checked = settings.enabled;
   if (toggleBlockAll) {
     toggleBlockAll.checked = settings.blockAllClipboard;
@@ -845,8 +1093,32 @@ reportButton.addEventListener("click", async () => {
   resizePopupToContent();
 })();
 
+popupViewButtons.forEach((button) => {
+  button.addEventListener("click", async () => {
+    const mode = button.dataset.mode === "advanced" ? "advanced" : "simple";
+    await chrome.storage.local.set({ popupViewMode: mode });
+    setPopupViewMode(mode);
+    const settings = await loadSettings();
+    renderHistory(settings.history);
+    renderClipboardHistory(settings.clipboardBackups);
+    renderStats(settings);
+    resizePopupToContent();
+  });
+});
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") {
+    return;
+  }
+  if (changes.popupViewMode) {
+    const mode = changes.popupViewMode.newValue === "advanced" ? "advanced" : "simple";
+    setPopupViewMode(mode);
+    loadSettings().then((settings) => {
+      renderHistory(settings.history);
+      renderClipboardHistory(settings.clipboardBackups);
+      renderStats(settings);
+      resizePopupToContent();
+    });
     return;
   }
   const shouldUpdateStats =

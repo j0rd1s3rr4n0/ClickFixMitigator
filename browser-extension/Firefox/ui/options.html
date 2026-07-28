@@ -11,9 +11,59 @@
       <h1 data-i18n="optionsTitle">Opciones avanzadas</h1>
       <p data-i18n="optionsSubtitle">Configura el comportamiento de detección y revisa alertas históricas.</p>
     </header>
+    <div class="onboarding" id="onboarding-overlay" hidden>
+      <div class="onboarding-panel">
+        <div class="onboarding-header">
+          <span class="pill" data-i18n="onboardingPillFirstUse">First time</span>
+          <button id="onboarding-skip" type="button" class="ghost" data-i18n="onboardingSkip" onclick="window.__clickfixSkipOnboarding && window.__clickfixSkipOnboarding(event)">Skip</button>
+        </div>
+        <h2 id="onboarding-title">Welcome</h2>
+        <p class="hint" id="onboarding-desc">We’ll guide you step by step.</p>
+        <div class="onboarding-body" id="onboarding-body">
+          <div class="onboarding-lang" id="onboarding-language-wrap">
+            <label for="onboarding-language" data-i18n="languageTitle">Language</label>
+            <select id="onboarding-language">
+              <option value="es">Español</option>
+              <option value="ca">Català</option>
+              <option value="en">English</option>
+              <option value="de">Deutsch</option>
+              <option value="fr">Français</option>
+              <option value="nl">Nederlands</option>
+              <option value="pt">Português</option>
+              <option value="ru">Русский</option>
+              <option value="zh">中文</option>
+              <option value="ja">日本語</option>
+              <option value="ko">한국어</option>
+              <option value="he">עברית</option>
+              <option value="ar">العربية</option>
+              <option value="hi">हिन्दी</option>
+            </select>
+          </div>
+        </div>
+        <div class="onboarding-footer">
+          <button id="onboarding-prev" type="button" class="secondary" data-i18n="onboardingPrev">Back</button>
+          <button id="onboarding-next" type="button" data-i18n="onboardingNext" onclick="window.__clickfixAdvanceOnboarding && window.__clickfixAdvanceOnboarding(event)">Next</button>
+        </div>
+      </div>
+    </div>
 
-    <section>
+<section id="state-section">
       <h2 data-i18n="optionsStateTitle">Estado</h2>
+      <div class="section-head">
+        <label for="protection-profile"><strong>Perfil recomendado</strong></label>
+      </div>
+      <div class="row">
+        <select id="protection-profile">
+          <option value="balanced">Equilibrado</option>
+          <option value="strict">Estricto</option>
+          <option value="quiet">Discreto</option>
+          <option value="analyst">Analista</option>
+          <option value="custom">Personalizado</option>
+        </select>
+      </div>
+      <div class="profile-summary" id="protection-profile-summary">
+        Protege sin generar tanto ruido y mantiene activado el aprendizaje local para reducir falsos positivos.
+      </div>
       <label class="toggle">
         <input id="toggle-enabled" type="checkbox" />
         <span data-i18n="popupDetectionActive">Detección activa</span>
@@ -45,6 +95,13 @@
       <p class="hint" data-i18n="optionsDetectionScreenshotsWarning">
         No recomendado si se visualiza información confidencial.
       </p>
+      <label class="toggle">
+        <input id="toggle-privacy-baseline" type="checkbox" />
+        <span>Aprendizaje local para reducir falsos positivos</span>
+      </label>
+      <p class="hint">
+        Guarda solo un baseline por instalaci&oacute;n y hostname. Puedes desactivarlo cuando quieras y no usa identidad real ni historial completo.
+      </p>
       <div class="row">
         <label for="alert-min-severity" data-i18n="alertFilterTitle">Filtro de alertas por color</label>
         <select id="alert-min-severity">
@@ -57,12 +114,12 @@
       <p class="hint" data-i18n="alertFilterHint">Oculta alertas por debajo del color seleccionado.</p>
     </section>
 
-    <section>
+    <section id="language-section">
       <h2 data-i18n="languageTitle">Idioma</h2>
       <div class="row">
         <select id="language-select">
           <option value="es" data-i18n="languageSpanish">Español</option>
-          <option value="ca" data-i18n="languageCatalan">Catal?n</option>
+          <option value="ca" data-i18n="languageCatalan">Català</option>
           <option value="en" data-i18n="languageEnglish">English</option>
           <option value="de" data-i18n="languageGerman">Deutsch</option>
           <option value="fr" data-i18n="languageFrench">Français</option>
@@ -74,12 +131,12 @@
           <option value="ko" data-i18n="languageKorean">한국어</option>
           <option value="he" data-i18n="languageHebrew">עברית</option>
           <option value="ar" data-i18n="languageArabic">العربية</option>
-          <option value="hi" data-i18n="languageHindi">??????</option>
+          <option value="hi" data-i18n="languageHindi">हिन्दी</option>
         </select>
       </div>
     </section>
 
-    <section>
+    <section id="theme-section">
       <h2 data-i18n="themeTitle">Tema</h2>
       <div class="row">
         <select id="theme-select">
@@ -138,8 +195,8 @@
       <p class="hint score-status" id="score-settings-status"></p>
     </section>
 
-    <section class="stats">
-      <h2 data-i18n="statsTitle">Estad?sticas</h2>
+    <section class="stats" id="stats-section">
+      <h2 data-i18n="statsTitle">Estad&iacute;sticas</h2>
       <p class="hint" data-i18n="statsSubtitle">Resumen de detecciones y bloqueos.</p>
       <div class="stats-grid">
         <div class="stat-card">
@@ -170,17 +227,17 @@
           </div>
         </div>
         <div class="stat-card stat-chart-card">
-          <div class="stat-label" data-i18n="statsDetectionsChart">Gr?fico de detecciones</div>
+          <div class="stat-label" data-i18n="statsDetectionsChart">Gr&aacute;fico de detecciones</div>
           <div class="stats-bars" id="stats-detections-chart"></div>
           <div class="stats-chart-labels">
-            <span data-i18n="statsLast7Days">?ltimos 7 d?as</span>
+            <span data-i18n="statsLast7Days">&Uacute;ltimos 7 d&iacute;as</span>
             <span id="stats-detections-total">0</span>
           </div>
         </div>
       </div>
 </section>
 
-    <section>
+    <section id="lists-section">
       <h2 data-i18n="optionsWhitelistTitle">Lista blanca</h2>
       <div class="row">
         <input id="whitelist-input" type="text" placeholder="ejemplo.com" data-i18n-placeholder="popupWhitelistPlaceholder" />
@@ -238,7 +295,7 @@
       <ul id="allowlist-list"></ul>
     </section>
 
-    <section>
+    <section id="history-section">
       <h2 data-i18n="optionsHistoryTitle">Historial completo</h2>
       <div id="history"></div>
       <button id="clear-history" type="button" class="secondary" data-i18n="optionsClearHistory">Limpiar historial</button>

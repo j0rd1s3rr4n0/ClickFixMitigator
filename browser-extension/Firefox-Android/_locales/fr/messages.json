@@ -620,6 +620,20 @@
   "alertFilterRed": {
     "message": "Red only"
   },
+  "popupFalsePositiveButton": {
+    "message": "Review false positive"
+  },
+  "popupFalsePositiveSent": {
+    "message": "False positive submitted: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "falsePositiveReason": {
+    "message": "False positive reported"
+  },
   "optionsExceptionlistTitle": {
     "message": "Exception list"
   },
@@ -637,5 +651,62 @@
   },
   "optionsExceptionlistEmpty": {
     "message": "No exceptions."
+  },
+  "onboardingPillFirstUse": {
+    "message": "Première utilisation"
+  },
+  "onboardingSkip": {
+    "message": "Passer"
+  },
+  "onboardingWelcomeTitle": {
+    "message": "Bienvenue"
+  },
+  "onboardingWelcomeDesc": {
+    "message": "Nous vous guidons pas à pas."
+  },
+  "onboardingPrev": {
+    "message": "Précédent"
+  },
+  "onboardingNext": {
+    "message": "Suivant"
+  },
+  "onboardingFinish": {
+    "message": "Terminer"
+  },
+  "onboardingStep1Title": {
+    "message": "Étape 1 - Langue"
+  },
+  "onboardingStep1Desc": {
+    "message": "Choisissez la langue pour que toute l'interface soit dans votre langue."
+  },
+  "onboardingStep2Title": {
+    "message": "Étape 2 - Thème"
+  },
+  "onboardingStep2Desc": {
+    "message": "Choisissez l'apparence : clair, sombre ou système."
+  },
+  "onboardingStep3Title": {
+    "message": "Étape 3 - Niveau d'alertes"
+  },
+  "onboardingStep3Desc": {
+    "message": "Ajustez le filtre d'alertes pour réduire le bruit."
+  },
+  "onboardingStep4Title": {
+    "message": "Étape 4 - Protection"
+  },
+  "onboardingStep4Desc": {
+    "message": "Activez la détection, le blocage du presse-papiers et FamilySafe si besoin."
+  },
+  "onboardingStep5Title": {
+    "message": "Étape 5 - Score"
+  },
+  "onboardingStep5Desc": {
+    "message": "Ajustez les poids et les règles selon votre environnement."
+  },
+  "onboardingStep6Title": {
+    "message": "Étape 6 - Listes et historique"
+  },
+  "onboardingStep6Desc": {
+    "message": "Gérez les listes et consultez l'historique complet."
   }
 }

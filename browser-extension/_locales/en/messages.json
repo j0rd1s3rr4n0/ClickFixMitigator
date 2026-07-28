@@ -683,5 +683,62 @@
   },
   "optionsExceptionlistEmpty": {
     "message": "No exceptions."
+  },
+  "onboardingPillFirstUse": {
+    "message": "First time"
+  },
+  "onboardingSkip": {
+    "message": "Skip"
+  },
+  "onboardingWelcomeTitle": {
+    "message": "Welcome"
+  },
+  "onboardingWelcomeDesc": {
+    "message": "We’ll guide you step by step."
+  },
+  "onboardingPrev": {
+    "message": "Back"
+  },
+  "onboardingNext": {
+    "message": "Next"
+  },
+  "onboardingFinish": {
+    "message": "Finish"
+  },
+  "onboardingStep1Title": {
+    "message": "Step 1 - Language"
+  },
+  "onboardingStep1Desc": {
+    "message": "Choose a language so the whole interface is in your language."
+  },
+  "onboardingStep2Title": {
+    "message": "Step 2 - Theme"
+  },
+  "onboardingStep2Desc": {
+    "message": "Pick the visual style: light, dark, or system."
+  },
+  "onboardingStep3Title": {
+    "message": "Step 3 - Alert level"
+  },
+  "onboardingStep3Desc": {
+    "message": "Adjust the alert filter to reduce noise."
+  },
+  "onboardingStep4Title": {
+    "message": "Step 4 - Protection"
+  },
+  "onboardingStep4Desc": {
+    "message": "Enable detection, clipboard blocking, and FamilySafe if needed."
+  },
+  "onboardingStep5Title": {
+    "message": "Step 5 - Scoring"
+  },
+  "onboardingStep5Desc": {
+    "message": "Tune weights and rules for your environment."
+  },
+  "onboardingStep6Title": {
+    "message": "Step 6 - Lists and history"
+  },
+  "onboardingStep6Desc": {
+    "message": "Manage lists and review the full history."
   }
 }

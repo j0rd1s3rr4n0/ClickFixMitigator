@@ -620,6 +620,20 @@
   "alertFilterRed": {
     "message": "Red only"
   },
+  "popupFalsePositiveButton": {
+    "message": "Review false positive"
+  },
+  "popupFalsePositiveSent": {
+    "message": "False positive submitted: $1",
+    "placeholders": {
+      "hostname": {
+        "content": "$1"
+      }
+    }
+  },
+  "falsePositiveReason": {
+    "message": "False positive reported"
+  },
   "optionsExceptionlistTitle": {
     "message": "Exception list"
   },
@@ -637,5 +651,62 @@
   },
   "optionsExceptionlistEmpty": {
     "message": "No exceptions."
+  },
+  "onboardingPillFirstUse": {
+    "message": "首次使用"
+  },
+  "onboardingSkip": {
+    "message": "跳过"
+  },
+  "onboardingWelcomeTitle": {
+    "message": "欢迎"
+  },
+  "onboardingWelcomeDesc": {
+    "message": "我们将一步步引导你。"
+  },
+  "onboardingPrev": {
+    "message": "返回"
+  },
+  "onboardingNext": {
+    "message": "下一步"
+  },
+  "onboardingFinish": {
+    "message": "完成"
+  },
+  "onboardingStep1Title": {
+    "message": "第1步 - 语言"
+  },
+  "onboardingStep1Desc": {
+    "message": "选择语言，让整个界面显示为你的语言。"
+  },
+  "onboardingStep2Title": {
+    "message": "第2步 - 主题"
+  },
+  "onboardingStep2Desc": {
+    "message": "选择外观：浅色、深色或系统。"
+  },
+  "onboardingStep3Title": {
+    "message": "第3步 - 警报级别"
+  },
+  "onboardingStep3Desc": {
+    "message": "调整警报过滤器以减少干扰。"
+  },
+  "onboardingStep4Title": {
+    "message": "第4步 - 防护"
+  },
+  "onboardingStep4Desc": {
+    "message": "按需启用检测、剪贴板阻止和 FamilySafe。"
+  },
+  "onboardingStep5Title": {
+    "message": "第5步 - 评分"
+  },
+  "onboardingStep5Desc": {
+    "message": "根据你的环境调整权重和规则。"
+  },
+  "onboardingStep6Title": {
+    "message": "第6步 - 列表与历史"
+  },
+  "onboardingStep6Desc": {
+    "message": "管理列表并查看完整历史。"
   }
 }

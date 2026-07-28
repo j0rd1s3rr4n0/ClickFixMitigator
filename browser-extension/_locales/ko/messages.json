@@ -651,5 +651,62 @@
   },
   "optionsExceptionlistEmpty": {
     "message": "No exceptions."
+  },
+  "onboardingPillFirstUse": {
+    "message": "첫 사용"
+  },
+  "onboardingSkip": {
+    "message": "건너뛰기"
+  },
+  "onboardingWelcomeTitle": {
+    "message": "환영합니다"
+  },
+  "onboardingWelcomeDesc": {
+    "message": "단계별로 안내해 드립니다."
+  },
+  "onboardingPrev": {
+    "message": "이전"
+  },
+  "onboardingNext": {
+    "message": "다음"
+  },
+  "onboardingFinish": {
+    "message": "완료"
+  },
+  "onboardingStep1Title": {
+    "message": "1단계 - 언어"
+  },
+  "onboardingStep1Desc": {
+    "message": "전체 인터페이스를 내 언어로 표시하려면 언어를 선택하세요."
+  },
+  "onboardingStep2Title": {
+    "message": "2단계 - 테마"
+  },
+  "onboardingStep2Desc": {
+    "message": "모양을 선택하세요: 밝게, 어둡게 또는 시스템."
+  },
+  "onboardingStep3Title": {
+    "message": "3단계 - 알림 수준"
+  },
+  "onboardingStep3Desc": {
+    "message": "잡음을 줄이기 위해 알림 필터를 조정하세요."
+  },
+  "onboardingStep4Title": {
+    "message": "4단계 - 보호"
+  },
+  "onboardingStep4Desc": {
+    "message": "필요 시 감지, 클립보드 차단, FamilySafe를 활성화하세요."
+  },
+  "onboardingStep5Title": {
+    "message": "5단계 - 점수"
+  },
+  "onboardingStep5Desc": {
+    "message": "환경에 맞게 가중치와 규칙을 조정하세요."
+  },
+  "onboardingStep6Title": {
+    "message": "6단계 - 목록 및 기록"
+  },
+  "onboardingStep6Desc": {
+    "message": "목록을 관리하고 전체 기록을 확인하세요."
   }
 }
