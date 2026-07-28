@@ -33,7 +33,8 @@ class AgentControlPanel:
         self.kpi_vars: Dict[str, StringVar] = {}
         self.setting_vars: Dict[str, Any] = {}
         self.setting_bool_vars: Dict[str, BooleanVar] = {}
-        self.alert_banner_var = StringVar(value="Defensive console active. Waiting for new alerts.")
+        self.profile_var: StringVar | None = None
+        self.alert_banner_var: StringVar | None = None
 
     def start(self, show_on_start: bool = True) -> None:
         if self.thread and self.thread.is_alive():
@@ -54,6 +55,8 @@ class AgentControlPanel:
 
     def _run(self) -> None:
         self.root = Tk()
+        self.profile_var = StringVar(master=self.root, value="balanced")
+        self.alert_banner_var = StringVar(master=self.root, value="Defensive console active. Waiting for new alerts.")
         self.root.title("ClickFix Mitigator Agent")
         self.root.geometry("1260x820")
         self.root.minsize(1040, 720)
@@ -141,7 +144,7 @@ class AgentControlPanel:
             card = ttk.Frame(kpi_row, style="Card.TFrame", padding=12)
             card.pack(side="left", fill="both", expand=True, padx=(0, 10))
             ttk.Label(card, text=label, style="CardTitle.TLabel").pack(anchor="w")
-            var = StringVar(value="--")
+            var = StringVar(master=self.root, value="--")
             self.kpi_vars[key] = var
             ttk.Label(card, textvariable=var, font=("Segoe UI", 18, "bold"), background="#0d1622", foreground="#f5fbff").pack(anchor="w", pady=(8, 0))
 
@@ -201,6 +204,18 @@ class AgentControlPanel:
 
         settings_form = ttk.Frame(settings, style="Card.TFrame")
         settings_form.pack(fill="x")
+        ttk.Label(settings_form, text="User profile", style="CardTitle.TLabel").grid(row=0, column=0, sticky="w", pady=6, padx=(0, 12))
+        profile_row = ttk.Frame(settings_form, style="Card.TFrame")
+        profile_row.grid(row=0, column=1, sticky="ew", pady=6)
+        self.profile_combo = ttk.Combobox(
+            profile_row,
+            textvariable=self.profile_var,
+            values=["balanced", "strict", "quiet", "analyst"],
+            state="readonly",
+            width=18,
+        )
+        self.profile_combo.pack(side="left")
+        ttk.Button(profile_row, text="Apply profile", command=self._apply_profile_to_form).pack(side="left", padx=(8, 0))
         for row, (key, label) in enumerate(
             [
                 ("clipboard_poll_interval_s", "Clipboard poll interval (s)"),
@@ -208,21 +223,31 @@ class AgentControlPanel:
                 ("allow_timeout_s", "Temporary allow timeout (s)"),
                 ("min_clipboard_length", "Minimum clipboard length"),
                 ("blocked_clipboard_placeholder", "Blocked clipboard placeholder"),
+                ("remote_base_url", "Remote base URL"),
+                ("remote_report_endpoint", "Remote alert endpoint"),
+                ("remote_stats_endpoint", "Remote stats endpoint"),
+                ("remote_timeout_s", "Remote timeout (s)"),
+                ("remote_client_id", "Remote client_id"),
+                ("remote_bearer_token", "Remote bearer token"),
+                ("remote_api_key", "Remote API key"),
             ]
         ):
-            ttk.Label(settings_form, text=label, style="CardTitle.TLabel").grid(row=row, column=0, sticky="w", pady=6, padx=(0, 12))
-            variable = StringVar(value="")
+            ttk.Label(settings_form, text=label, style="CardTitle.TLabel").grid(row=row + 1, column=0, sticky="w", pady=6, padx=(0, 12))
+            variable = StringVar(master=self.root, value="")
             self.setting_vars[key] = variable
-            ttk.Entry(settings_form, textvariable=variable, width=42).grid(row=row, column=1, sticky="ew", pady=6)
+            ttk.Entry(settings_form, textvariable=variable, width=42).grid(row=row + 1, column=1, sticky="ew", pady=6)
 
-        bool_row = 6
+        bool_row = len(self.setting_vars) + 2
         for key, label in [
             ("show_panel_on_start", "Show panel on start"),
             ("open_panel_on_alert", "Bring panel to front on alert"),
             ("use_system_notifications", "Enable Windows toast notifications"),
             ("close_to_tray", "Close window to tray instead of stopping"),
+            ("remote_enabled", "Enable remote sync"),
+            ("remote_verify_tls", "Verify remote TLS certificates"),
+            ("remote_include_host_snapshot", "Include host snapshot in remote alerts"),
         ]:
-            variable = BooleanVar(value=False)
+            variable = BooleanVar(master=self.root, value=False)
             self.setting_bool_vars[key] = variable
             ttk.Checkbutton(settings_form, variable=variable, text=label).grid(
                 row=bool_row, column=0, columnspan=2, sticky="w", pady=4
@@ -366,12 +391,24 @@ class AgentControlPanel:
         host = snapshot.get("host_snapshot", {})
         summary_lines = [
             f"Version: {snapshot.get('version', '--')}",
+            f"Profile: {snapshot.get('settings', {}).get('ui', {}).get('user_profile', 'balanced')}",
             f"Host: {host.get('hostname', '--')}",
             f"CPU: {host.get('cpu_percent', '--')}%",
             f"Memory: {host.get('memory_percent', '--')}%",
             f"Recent DNS records: {len((host.get('dns') or {}).get('recent_records', []))}",
             f"Antivirus products: {len(host.get('antivirus') or [])}",
         ]
+        remote = snapshot.get("remote", {})
+        if isinstance(remote, dict):
+            summary_lines.extend(
+                [
+                    "",
+                    f"Remote sync: {'enabled' if remote.get('enabled') else 'disabled'}",
+                    f"Remote base URL: {remote.get('base_url', '--') or '--'}",
+                    f"Remote auth: {remote.get('auth_mode', '--')}",
+                    f"Remote client_id: {remote.get('client_id', '--')}",
+                ]
+            )
         text.configure(state="normal")
         text.delete("1.0", "end")
         text.insert("1.0", "\n".join(summary_lines))
@@ -415,11 +452,21 @@ class AgentControlPanel:
         settings = snapshot.get("settings", {})
         sensitivity = settings.get("sensitivity", {})
         ui = settings.get("ui", {})
+        remote = settings.get("remote", {})
+        telemetry = settings.get("telemetry", {})
+        self.profile_var.set(str(ui.get("user_profile", "balanced") or "balanced"))
         for key in self.setting_vars:
             if key in sensitivity:
                 self.setting_vars[key].set(str(sensitivity.get(key, "")))
+            elif key == "remote_client_id":
+                self.setting_vars[key].set(str(telemetry.get("client_id", "")))
+            elif key.startswith("remote_"):
+                self.setting_vars[key].set(str(remote.get(key.replace("remote_", ""), "")))
         for key in self.setting_bool_vars:
-            self.setting_bool_vars[key].set(bool(ui.get(key, False)))
+            if key.startswith("remote_"):
+                self.setting_bool_vars[key].set(bool(remote.get(key.replace("remote_", ""), False)))
+            else:
+                self.setting_bool_vars[key].set(bool(ui.get(key, False)))
 
     def _on_alert_selected(self, _event: Any) -> None:
         if self.alert_tree is None or self.alert_detail is None:
@@ -435,10 +482,31 @@ class AgentControlPanel:
 
     def _save_settings(self) -> None:
         updates = {key: value.get().strip() for key, value in self.setting_vars.items()}
+        updates["user_profile"] = self.profile_var.get().strip() or "balanced"
         for key, value in self.setting_bool_vars.items():
             updates[key] = "1" if value.get() else "0"
         self.controller.save_settings(updates)
         self._refresh()
+
+    def _apply_profile_to_form(self) -> None:
+        profile = self.profile_var.get().strip() or "balanced"
+        presets = self.controller.list_user_profiles()
+        preset = presets.get(profile) if isinstance(presets, dict) else None
+        if not isinstance(preset, dict):
+            return
+        sensitivity = preset.get("sensitivity", {}) if isinstance(preset.get("sensitivity"), dict) else {}
+        ui = preset.get("ui", {}) if isinstance(preset.get("ui"), dict) else {}
+        remote = preset.get("remote", {}) if isinstance(preset.get("remote"), dict) else {}
+        for key, variable in self.setting_vars.items():
+            if key in sensitivity:
+                variable.set(str(sensitivity.get(key, "")))
+            elif key.startswith("remote_") and key.replace("remote_", "") in remote:
+                variable.set(str(remote.get(key.replace("remote_", ""), "")))
+        for key, variable in self.setting_bool_vars.items():
+            if key in ui:
+                variable.set(bool(ui.get(key, False)))
+            elif key.startswith("remote_") and key.replace("remote_", "") in remote:
+                variable.set(bool(remote.get(key.replace("remote_", ""), False)))
 
     def _handle_alert(self, payload: Dict[str, Any]) -> None:
         if self.root is None:

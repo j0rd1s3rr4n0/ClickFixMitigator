@@ -1,0 +1,118 @@
+{
+  "rules": {
+    "suspicious_regexes": [
+      "(?i)powershell(\\.exe)?\\s+-.*(enc|encodedcommand)",
+      "(?i)pwsh\\s+-.*(enc|encodedcommand)",
+      "(?i)\\bpowershell(\\.exe)?\\b[\\s\\S]{0,96}\\b(?:-nop|-noni|-w\\s+hidden|-windowstyle\\s+hidden|-ep\\s+bypass|-executionpolicy\\s+bypass|-command|-c)\\b",
+      "(?i)\\bpwsh\\b[\\s\\S]{0,96}\\b(?:-nop|-noni|-w\\s+hidden|-windowstyle\\s+hidden|-ep\\s+bypass|-executionpolicy\\s+bypass|-command|-c)\\b",
+      "(?i)cmd(\\.exe)?\\s+/[ck]",
+      "(?i)\\bcmd(\\.exe)?\\b[\\s\\S]{0,64}\\s+/k\\b",
+      "(?i)\\bconhost(\\.exe)?\\b[\\s\\S]{0,120}\\bcmd(\\.exe)?\\b[\\s\\S]{0,32}/[ck]\\b",
+      "(?i)\\bconhost(\\.exe)?\\b[\\s\\S]{0,160}\\b(?:powershell|pwsh|cmd|curl|wget)\\b",
+      "(?i)curl\\s+http",
+      "(?i)\\b(?:curl|wget)(\\.exe)?\\b[\\s\\S]{0,96}\\b(?:https?|ftp)://",
+      "(?i)\\b(?:invoke-webrequest|invoke-restmethod|\\biwr\\b|\\birm\\b|downloadstring|downloadfile|start-bitstransfer)\\b",
+      "(?i)\\b(?:invoke-expression|\\biex\\b|\\biex\\s*\\()\\b",
+      "(?i)\\b(?:encodedcommand|-enc\\b|-encodedcommand\\b|frombase64string|\\[convert\\]::frombase64string)\\b",
+      "(?i)\\b(?:-bxor|\\bxor\\b|rot13|righttoleft|\\breverse\\b)\\b",
+      "(?i)\\b(?:\\[char\\[\\]\\]|\\[byte\\[\\]\\]|join\\(|charcode|text\\.encoding)\\b",
+      "(?i)\\b(?:https?|ftp)://(?:0x[a-f0-9]{1,8}|(?:0x[a-f0-9]{1,2}\\.){3}0x[a-f0-9]{1,2}|(?:\\d{1,3}\\.){3}\\d{1,3}|[a-z0-9.-]+\\.[a-z]{2,})(?::\\d{1,5})?(?:/|\\b)",
+      "(?i)\\b0x[a-f0-9]{8}\\b",
+      "(?i)\\b(?:0x[a-f0-9]{1,2}\\.){3}0x[a-f0-9]{1,2}\\b",
+      "(?i)\\bnet\\s+use\\s+[a-z]:\\s+\\\\\\\\",
+      "(?i)\\bpushd\\s+\\\\\\\\",
+      "(?i)\\bbitsadmin\\s+",
+      "(?i)\\breg\\s+add\\b",
+      "(?i)\\bmshta\\s+",
+      "(?i)\\bregsvr32\\b[\\s\\S]{0,80}\\s+/i[:\\s]",
+      "(?i)\\bcertutil\\s+-urlcache",
+      "(?i)\\brundll32\\s+",
+      "(?i)\\bwmic\\s+",
+      "(?i)\\bschtasks\\s+",
+      "(?i)\\bmsiexec\\s+",
+      "(?i)\\bcscript\\s+",
+      "(?i)\\bwscript\\s+",
+      "(?i)p[\\s\\^`]*o[\\s\\^`]*w[\\s\\^`]*e[\\s\\^`]*r[\\s\\^`]*s[\\s\\^`]*h[\\s\\^`]*e[\\s\\^`]*l[\\s\\^`]*l",
+      "(?i)c[\\s\\^`]*m[\\s\\^`]*d"
+    ],
+    "exclusions": [
+      "(?i)\\bexample\\.com\\b",
+      "(?i)\\btrusted-script\\.ps1\\b"
+    ],
+    "process_allowlist": [],
+    "window_allowlist": []
+  },
+  "sensitivity": {
+    "clipboard_poll_interval_s": 0.5,
+    "run_sequence_timeout_s": 8,
+    "blocked_clipboard_placeholder": "[Clipboard blocked]",
+    "allow_timeout_s": 15,
+    "min_clipboard_length": 8,
+    "max_clipboard_preview": 240
+  },
+  "hotkeys": {
+    "run_dialog": [
+      "windows+r",
+      "win+r"
+    ],
+    "explorer": [
+      "windows+e",
+      "win+e"
+    ],
+    "address_bar": [
+      "alt+l",
+      "alt+d",
+      "ctrl+l"
+    ],
+    "paste": [
+      "ctrl+v",
+      "shift+insert",
+      "ctrl+shift+v"
+    ],
+    "execute": [
+      "enter",
+      "ctrl+shift+enter"
+    ],
+    "restore": [
+      "ctrl+shift+u"
+    ]
+  },
+  "telemetry": {
+    "enable_local_db": true,
+    "db_path": "data/clickfix.sqlite",
+    "log_json": true,
+    "log_path": "agent.log",
+    "alertsites_path": "alertsites",
+    "stats_flush_interval_s": 30,
+    "host_snapshot_interval_s": 45,
+    "client_id": ""
+  },
+  "ui": {
+    "user_profile": "balanced",
+    "show_panel_on_start": true,
+    "refresh_interval_s": 3,
+    "open_panel_on_alert": true,
+    "use_system_notifications": false,
+    "close_to_tray": true
+  },
+  "consent": {
+    "required": true,
+    "terms_version": "2026-03-15-agent",
+    "terms_path": "TERMS_AND_CONDITIONS.txt",
+    "state_path": "data/agent_state.json"
+  },
+  "logging": {
+    "level": "DEBUG"
+  },
+  "remote": {
+    "enabled": false,
+    "base_url": "",
+    "report_endpoint": "clickfix-report.php",
+    "stats_endpoint": "clickfix-report.php",
+    "bearer_token": "",
+    "api_key": "",
+    "timeout_s": 8,
+    "verify_tls": true,
+    "include_host_snapshot": false
+  }
+}

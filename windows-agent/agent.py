@@ -7,8 +7,13 @@ import os
 import re
 import sqlite3
 import socket
+import ssl
+import sys
 import threading
 import time
+import urllib.error
+import urllib.request
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, Callable, Iterable, Tuple
@@ -26,9 +31,9 @@ from host_telemetry import collect_host_snapshot
 
 
 # ---- Build/version marker (to confirm you're running the right file) ----
-AGENT_VERSION = "agent-2026-03-22-gui-alerts"
+AGENT_VERSION = "agent-2026-05-18-paste-intercept"
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "config.json"
 LOG_PATH = BASE_DIR / "agent-debug.log"
 EVENT_LOG_PATH = BASE_DIR / "agent.log"
@@ -39,6 +44,101 @@ TRAY_ICON_PATH = BASE_DIR / "logo.png"
 TERMS_PATH = BASE_DIR / "TERMS_AND_CONDITIONS.txt"
 MESSAGEBOX_YES = 6
 MESSAGEBOX_NO = 7
+ERROR_ALREADY_EXISTS = 183
+INSTANCE_MUTEX_NAME = "Global\\ClickFixMitigatorAgent"
+INSTANCE_MUTEX_HANDLE = None
+
+ctypes.windll.user32.OpenClipboard.argtypes = [wintypes.HWND]
+ctypes.windll.user32.OpenClipboard.restype = wintypes.BOOL
+ctypes.windll.user32.CloseClipboard.argtypes = []
+ctypes.windll.user32.CloseClipboard.restype = wintypes.BOOL
+ctypes.windll.user32.IsClipboardFormatAvailable.argtypes = [wintypes.UINT]
+ctypes.windll.user32.IsClipboardFormatAvailable.restype = wintypes.BOOL
+ctypes.windll.user32.GetClipboardData.argtypes = [wintypes.UINT]
+ctypes.windll.user32.GetClipboardData.restype = wintypes.HANDLE
+ctypes.windll.user32.EmptyClipboard.argtypes = []
+ctypes.windll.user32.EmptyClipboard.restype = wintypes.BOOL
+ctypes.windll.user32.SetClipboardData.argtypes = [wintypes.UINT, wintypes.HANDLE]
+ctypes.windll.user32.SetClipboardData.restype = wintypes.HANDLE
+ctypes.windll.kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
+ctypes.windll.kernel32.GlobalAlloc.restype = wintypes.HGLOBAL
+ctypes.windll.kernel32.GlobalLock.argtypes = [wintypes.HGLOBAL]
+ctypes.windll.kernel32.GlobalLock.restype = wintypes.LPVOID
+ctypes.windll.kernel32.GlobalUnlock.argtypes = [wintypes.HGLOBAL]
+ctypes.windll.kernel32.GlobalUnlock.restype = wintypes.BOOL
+ctypes.windll.kernel32.GlobalFree.argtypes = [wintypes.HGLOBAL]
+ctypes.windll.kernel32.GlobalFree.restype = wintypes.HGLOBAL
+
+USER_PROFILE_PRESETS: Dict[str, Dict[str, Dict[str, object]]] = {
+    "balanced": {
+        "sensitivity": {
+            "clipboard_poll_interval_s": 0.5,
+            "run_sequence_timeout_s": 8.0,
+            "allow_timeout_s": 15.0,
+            "min_clipboard_length": 8,
+        },
+        "ui": {
+            "show_panel_on_start": True,
+            "open_panel_on_alert": True,
+            "use_system_notifications": False,
+            "close_to_tray": True,
+        },
+        "remote": {
+            "include_host_snapshot": False,
+        },
+    },
+    "strict": {
+        "sensitivity": {
+            "clipboard_poll_interval_s": 0.35,
+            "run_sequence_timeout_s": 10.0,
+            "allow_timeout_s": 8.0,
+            "min_clipboard_length": 6,
+        },
+        "ui": {
+            "show_panel_on_start": True,
+            "open_panel_on_alert": True,
+            "use_system_notifications": True,
+            "close_to_tray": True,
+        },
+        "remote": {
+            "include_host_snapshot": False,
+        },
+    },
+    "quiet": {
+        "sensitivity": {
+            "clipboard_poll_interval_s": 0.75,
+            "run_sequence_timeout_s": 8.0,
+            "allow_timeout_s": 20.0,
+            "min_clipboard_length": 12,
+        },
+        "ui": {
+            "show_panel_on_start": False,
+            "open_panel_on_alert": False,
+            "use_system_notifications": False,
+            "close_to_tray": True,
+        },
+        "remote": {
+            "include_host_snapshot": False,
+        },
+    },
+    "analyst": {
+        "sensitivity": {
+            "clipboard_poll_interval_s": 0.35,
+            "run_sequence_timeout_s": 12.0,
+            "allow_timeout_s": 30.0,
+            "min_clipboard_length": 4,
+        },
+        "ui": {
+            "show_panel_on_start": True,
+            "open_panel_on_alert": True,
+            "use_system_notifications": True,
+            "close_to_tray": False,
+        },
+        "remote": {
+            "include_host_snapshot": True,
+        },
+    },
+}
 
 DB_SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS reports (
@@ -97,6 +197,20 @@ def utc_now_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
+def normalize_client_id(raw: str) -> str:
+    value = re.sub(r"[^a-z0-9_-]+", "", (raw or "").strip().lower())
+    if 8 <= len(value) <= 80:
+        return value
+    return ""
+
+
+def normalize_user_profile(raw: object) -> str:
+    value = str(raw or "").strip().lower()
+    if value in USER_PROFILE_PRESETS:
+        return value
+    return "balanced"
+
+
 def safe_truncate(text: str, limit: int) -> str:
     if limit <= 0:
         return ""
@@ -130,6 +244,28 @@ class TelemetryStore:
         self.stats_flush_interval = float(telemetry.get("stats_flush_interval_s", 30))
         self.hostname = socket.gethostname()
         self.user_agent = f"windows-agent/{AGENT_VERSION}"
+        self.client_id = normalize_client_id(str(telemetry.get("client_id", "")))
+        if self.client_id == "":
+            self.client_id = "wa-" + uuid.uuid4().hex[:24]
+            telemetry["client_id"] = self.client_id
+            config["telemetry"] = telemetry
+            try:
+                CONFIG_PATH.write_text(json.dumps(config, indent=2, ensure_ascii=False), encoding="utf-8")
+            except Exception:
+                logging.exception("Failed to persist generated client_id")
+
+        remote = config.get("remote", {})
+        if not isinstance(remote, dict):
+            remote = {}
+        self.remote_enabled = bool(remote.get("enabled", False))
+        self.remote_base_url = str(remote.get("base_url", "")).strip().rstrip("/")
+        self.remote_report_endpoint = str(remote.get("report_endpoint", "clickfix-report.php")).strip().lstrip("/")
+        self.remote_stats_endpoint = str(remote.get("stats_endpoint", "clickfix-report.php")).strip().lstrip("/")
+        self.remote_bearer_token = str(remote.get("bearer_token", "")).strip()
+        self.remote_api_key = str(remote.get("api_key", "")).strip()
+        self.remote_timeout_s = max(2.0, min(30.0, float(remote.get("timeout_s", 8.0))))
+        self.remote_verify_tls = bool(remote.get("verify_tls", True))
+        self.remote_include_host_snapshot = bool(remote.get("include_host_snapshot", False))
 
         self.alert_count = 0
         self.block_count = 0
@@ -201,6 +337,90 @@ class TelemetryStore:
         except Exception:
             logging.exception("Failed to write JSON event log")
 
+    def remote_status(self) -> Dict[str, object]:
+        return {
+            "enabled": self.remote_enabled,
+            "base_url": self.remote_base_url,
+            "auth_mode": "bearer" if self.remote_bearer_token else ("api_key" if self.remote_api_key else "none"),
+            "client_id": self.client_id,
+            "verify_tls": self.remote_verify_tls,
+            "include_host_snapshot": self.remote_include_host_snapshot,
+        }
+
+    def _remote_headers(self) -> Dict[str, str]:
+        headers = {
+            "Content-Type": "application/json; charset=utf-8",
+            "User-Agent": self.user_agent,
+        }
+        if self.remote_bearer_token:
+            headers["Authorization"] = f"Bearer {self.remote_bearer_token}"
+        elif self.remote_api_key:
+            headers["X-API-Key"] = self.remote_api_key
+        return headers
+
+    def _remote_url(self, endpoint: str) -> str:
+        return f"{self.remote_base_url}/{endpoint.lstrip('/')}"
+
+    def _remote_context(self) -> Optional[ssl.SSLContext]:
+        if self.remote_verify_tls:
+            return None
+        return ssl._create_unverified_context()
+
+    def _remote_target_allowed(self) -> bool:
+        base = self.remote_base_url.lower()
+        if base.startswith("https://"):
+            return True
+        return base.startswith("http://localhost") or base.startswith("http://127.0.0.1")
+
+    def send_remote_payload(self, endpoint: str, payload: Dict[str, object], event_type: str) -> None:
+        if not self.remote_enabled or self.remote_base_url == "":
+            return
+        if not self.remote_bearer_token and not self.remote_api_key:
+            logging.warning("Remote sync enabled but no bearer/api key configured")
+            return
+        if not self._remote_target_allowed():
+            logging.warning("Remote sync refused for non-HTTPS non-local target: %s", self.remote_base_url)
+            return
+        try:
+            data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            request = urllib.request.Request(
+                self._remote_url(endpoint),
+                data=data,
+                headers=self._remote_headers(),
+                method="POST",
+            )
+            with urllib.request.urlopen(
+                request,
+                timeout=self.remote_timeout_s,
+                context=self._remote_context(),
+            ) as response:
+                body = response.read(2048).decode("utf-8", errors="replace")
+            self.log_event(
+                "remote_sync",
+                {
+                    "target": endpoint,
+                    "event_type": event_type,
+                    "status": "ok",
+                    "http_status": getattr(response, "status", 200),
+                    "body_preview": safe_truncate(body, 240),
+                },
+            )
+        except urllib.error.HTTPError as exc:
+            body = exc.read(2048).decode("utf-8", errors="replace")
+            self.log_event(
+                "remote_sync",
+                {
+                    "target": endpoint,
+                    "event_type": event_type,
+                    "status": "error",
+                    "http_status": exc.code,
+                    "body_preview": safe_truncate(body, 240),
+                },
+            )
+            logging.warning("Remote sync HTTP error for %s: %s", endpoint, exc)
+        except Exception:
+            logging.exception("Remote sync failed for %s", endpoint)
+
     def record_report(self, record: Dict[str, object]) -> None:
         if not self.enable_db:
             return
@@ -236,30 +456,51 @@ class TelemetryStore:
             logging.exception("Failed to write report to SQLite")
 
     def record_stats(self, force: bool = False, host_health: Optional[str] = None) -> None:
-        if not self.enable_db:
+        if not self.enable_db and not self.remote_enabled:
             return
         now = time.time()
         if not force and (now - self.last_stats_flush) < self.stats_flush_interval:
             return
         try:
-            with self._db_lock, sqlite3.connect(self.db_path, timeout=3) as conn:
-                conn.execute(
-                    """
-                    INSERT INTO stats (
-                        received_at, enabled, alert_count, block_count, manual_sites_json, country, host_health
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        utc_now_iso(),
-                        1,
-                        self.alert_count,
-                        self.block_count,
-                        json.dumps(sorted(self.alertsites_cache), ensure_ascii=False),
-                        None,
-                        host_health,
-                    ),
-                )
+            ts = utc_now_iso()
+            manual_sites_json = json.dumps(sorted(self.alertsites_cache), ensure_ascii=False)
+            if self.enable_db:
+                with self._db_lock, sqlite3.connect(self.db_path, timeout=3) as conn:
+                    conn.execute(
+                        """
+                        INSERT INTO stats (
+                            received_at, enabled, alert_count, block_count, manual_sites_json, country, host_health
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            ts,
+                            1,
+                            self.alert_count,
+                            self.block_count,
+                            manual_sites_json,
+                            None,
+                            host_health,
+                        ),
+                    )
             self.last_stats_flush = now
+            self.send_remote_payload(
+                self.remote_stats_endpoint,
+                {
+                    "type": "stats",
+                    "client_id": self.client_id,
+                    "timestamp": ts,
+                    "data": {
+                        "enabled": True,
+                        "alertCount": self.alert_count,
+                        "blockCount": self.block_count,
+                        "manualSites": sorted(self.alertsites_cache),
+                        "country": "",
+                        "hostHealth": host_health or self.derive_host_health(),
+                        "baselineHosts": [],
+                    },
+                },
+                "stats",
+            )
         except Exception:
             logging.exception("Failed to write stats to SQLite")
 
@@ -338,6 +579,33 @@ class TelemetryStore:
             },
         )
         self.record_report(record)
+        remote_context = {
+            "active_process": active_process,
+            "active_window": active_window,
+            "action_taken": "blocked" if blocked else "allowed",
+        }
+        if self.remote_include_host_snapshot:
+            remote_context["host_snapshot"] = self.last_host_snapshot
+        self.send_remote_payload(
+            self.remote_report_endpoint,
+            {
+                "type": "alert",
+                "client_id": self.client_id,
+                "event_type": "manual_report",
+                "timestamp": record["received_at"],
+                "hostname": self.hostname,
+                "url": record["url"],
+                "message": reason,
+                "detectedContent": safe_truncate(text, 2000),
+                "full_context": json.dumps(remote_context, ensure_ascii=False),
+                "signals": dict(signals),
+                "blocked": blocked,
+                "manualReport": True,
+                "trusted_signal_source": True,
+                "score_total": 0,
+            },
+            "alert",
+        )
         self.record_stats(host_health=self.derive_host_health())
 
     def derive_host_health(self) -> str:
@@ -397,6 +665,9 @@ class ClipboardMonitor:
         self.sequence_type: Optional[str] = None
         self.sequence_last_paste: Optional[str] = None
         self.sequence_steps: list[str] = []
+        self.paste_hotkey_handles: list[object] = []
+        self.replaying_paste_hotkey = False
+        self.hotkey_registration_lock = threading.RLock()
 
         self.running = True
         self.tray_icon: Optional[pystray.Icon] = None
@@ -409,7 +680,10 @@ class ClipboardMonitor:
         ui_cfg = config.get("ui", {})
         if not isinstance(ui_cfg, dict):
             ui_cfg = {}
+            config["ui"] = ui_cfg
+        ui_cfg["user_profile"] = normalize_user_profile(ui_cfg.get("user_profile", "balanced"))
         self.host_snapshot_interval = float(telemetry_cfg.get("host_snapshot_interval_s", 45))
+        self.enable_host_telemetry = bool(telemetry_cfg.get("enable_host_telemetry", False))
         self.panel = AgentControlPanel(
             self,
             TRAY_ICON_PATH,
@@ -420,8 +694,12 @@ class ClipboardMonitor:
         self.open_panel_on_alert = bool(ui_cfg.get("open_panel_on_alert", True))
         self.use_system_notifications = bool(ui_cfg.get("use_system_notifications", False))
         self.close_to_tray = bool(ui_cfg.get("close_to_tray", True))
+        self.enable_panel = bool(ui_cfg.get("enable_panel", False))
+        self.enable_tray = bool(ui_cfg.get("enable_tray", False))
+        self.enable_keyboard_hooks = bool(ui_cfg.get("enable_keyboard_hooks", False))
         self.last_host_snapshot: Dict[str, object] = {}
         self.last_host_snapshot_lock = threading.Lock()
+        self._refresh_runtime_settings()
 
         logging.debug(
             "ClipboardMonitor initialized. poll_interval=%s allow_timeout=%s run_sequence_timeout=%s",
@@ -449,8 +727,7 @@ class ClipboardMonitor:
                 logging.debug("GlobalLock returned NULL")
                 return None
             try:
-                data = wintypes.LPCWSTR(pointer)
-                text = data.value
+                text = ctypes.wstring_at(pointer)
                 logging.debug("Clipboard read OK (len=%s)", len(text) if text else 0)
                 return text
             finally:
@@ -555,6 +832,57 @@ class ClipboardMonitor:
             "restore": normalize(hotkeys.get("restore"), ["ctrl+shift+u"]),
         }
 
+    def list_user_profiles(self) -> Dict[str, Dict[str, object]]:
+        return json.loads(json.dumps(USER_PROFILE_PRESETS))
+
+    def apply_user_profile(self, profile: object, persist: bool = True) -> str:
+        normalized = normalize_user_profile(profile)
+        preset = USER_PROFILE_PRESETS.get(normalized, USER_PROFILE_PRESETS["balanced"])
+        with self.config_lock:
+            sensitivity = self.config.setdefault("sensitivity", {})
+            if not isinstance(sensitivity, dict):
+                sensitivity = {}
+                self.config["sensitivity"] = sensitivity
+            ui = self.config.setdefault("ui", {})
+            if not isinstance(ui, dict):
+                ui = {}
+                self.config["ui"] = ui
+            remote = self.config.setdefault("remote", {})
+            if not isinstance(remote, dict):
+                remote = {}
+                self.config["remote"] = remote
+            sensitivity.update(preset.get("sensitivity", {}))
+            ui.update(preset.get("ui", {}))
+            ui["user_profile"] = normalized
+            for key, value in preset.get("remote", {}).items():
+                remote[key] = value
+            if persist:
+                CONFIG_PATH.write_text(json.dumps(self.config, indent=2, ensure_ascii=False), encoding="utf-8")
+        self._refresh_runtime_settings()
+        return normalized
+
+    def _refresh_runtime_settings(self) -> None:
+        self.poll_interval = float(self.config.get("sensitivity", {}).get("clipboard_poll_interval_s", self.poll_interval))
+        self.run_sequence_timeout = float(self.config.get("sensitivity", {}).get("run_sequence_timeout_s", self.run_sequence_timeout))
+        self.allow_timeout = float(self.config.get("sensitivity", {}).get("allow_timeout_s", self.allow_timeout))
+        self.min_clipboard_length = int(self.config.get("sensitivity", {}).get("min_clipboard_length", self.min_clipboard_length))
+        self.blocked_placeholder = str(
+            self.config.get("sensitivity", {}).get("blocked_clipboard_placeholder", self.blocked_placeholder)
+        )
+        self.show_panel_on_start = bool(self.config.get("ui", {}).get("show_panel_on_start", self.show_panel_on_start))
+        self.open_panel_on_alert = bool(self.config.get("ui", {}).get("open_panel_on_alert", self.open_panel_on_alert))
+        self.use_system_notifications = bool(self.config.get("ui", {}).get("use_system_notifications", self.use_system_notifications))
+        self.close_to_tray = bool(self.config.get("ui", {}).get("close_to_tray", self.close_to_tray))
+        self.telemetry.remote_enabled = bool(self.config.get("remote", {}).get("enabled", self.telemetry.remote_enabled))
+        self.telemetry.remote_base_url = str(self.config.get("remote", {}).get("base_url", self.telemetry.remote_base_url)).strip().rstrip("/")
+        self.telemetry.remote_report_endpoint = str(self.config.get("remote", {}).get("report_endpoint", self.telemetry.remote_report_endpoint)).strip().lstrip("/")
+        self.telemetry.remote_stats_endpoint = str(self.config.get("remote", {}).get("stats_endpoint", self.telemetry.remote_stats_endpoint)).strip().lstrip("/")
+        self.telemetry.remote_bearer_token = str(self.config.get("remote", {}).get("bearer_token", self.telemetry.remote_bearer_token)).strip()
+        self.telemetry.remote_api_key = str(self.config.get("remote", {}).get("api_key", self.telemetry.remote_api_key)).strip()
+        self.telemetry.remote_timeout_s = max(2.0, min(30.0, float(self.config.get("remote", {}).get("timeout_s", self.telemetry.remote_timeout_s))))
+        self.telemetry.remote_verify_tls = bool(self.config.get("remote", {}).get("verify_tls", self.telemetry.remote_verify_tls))
+        self.telemetry.remote_include_host_snapshot = bool(self.config.get("remote", {}).get("include_host_snapshot", self.telemetry.remote_include_host_snapshot))
+
     def set_host_snapshot(self, snapshot: Dict[str, object]) -> None:
         with self.last_host_snapshot_lock:
             self.last_host_snapshot = snapshot
@@ -565,6 +893,9 @@ class ClipboardMonitor:
             return dict(self.last_host_snapshot)
 
     def open_panel(self, _=None) -> None:
+        if not self.enable_panel:
+            logging.info("Control panel is disabled in config")
+            return
         self.panel.open()
 
     def get_ui_snapshot(self) -> Dict[str, object]:
@@ -636,6 +967,7 @@ class ClipboardMonitor:
             "host_snapshot": host_snapshot,
             "recent_alerts": recent_alerts,
             "trend": trend,
+            "remote": self.telemetry.remote_status(),
             "settings": json.loads(json.dumps(self.config)),
         }
 
@@ -643,6 +975,9 @@ class ClipboardMonitor:
         numeric_float = {"clipboard_poll_interval_s", "run_sequence_timeout_s", "allow_timeout_s"}
         numeric_int = {"min_clipboard_length"}
         boolean_keys = {"show_panel_on_start", "open_panel_on_alert", "use_system_notifications", "close_to_tray"}
+        remote_boolean_keys = {"remote_enabled", "remote_verify_tls", "remote_include_host_snapshot"}
+        remote_text_keys = {"remote_base_url", "remote_report_endpoint", "remote_stats_endpoint", "remote_bearer_token", "remote_api_key", "remote_client_id"}
+        remote_numeric_float = {"remote_timeout_s"}
         with self.config_lock:
             sensitivity = self.config.setdefault("sensitivity", {})
             if not isinstance(sensitivity, dict):
@@ -652,9 +987,40 @@ class ClipboardMonitor:
             if not isinstance(ui, dict):
                 ui = {}
                 self.config["ui"] = ui
+            telemetry = self.config.setdefault("telemetry", {})
+            if not isinstance(telemetry, dict):
+                telemetry = {}
+                self.config["telemetry"] = telemetry
+            remote = self.config.setdefault("remote", {})
+            if not isinstance(remote, dict):
+                remote = {}
+                self.config["remote"] = remote
+            requested_profile = None
             for key, raw_value in updates.items():
+                if key == "user_profile":
+                    requested_profile = normalize_user_profile(raw_value)
+                    continue
                 if key in boolean_keys:
                     ui[key] = str(raw_value).strip() in {"1", "true", "yes", "on"}
+                    continue
+                if key in remote_boolean_keys:
+                    remote[key.replace("remote_", "")] = str(raw_value).strip() in {"1", "true", "yes", "on"}
+                    continue
+                if key in remote_numeric_float:
+                    try:
+                        remote[key.replace("remote_", "")] = float(raw_value)
+                    except Exception:
+                        continue
+                    continue
+                if key in remote_text_keys:
+                    next_value = str(raw_value).strip()
+                    if key == "remote_client_id":
+                        normalized = normalize_client_id(next_value)
+                        if normalized:
+                            telemetry["client_id"] = normalized
+                            self.telemetry.client_id = normalized
+                        continue
+                    remote[key.replace("remote_", "")] = next_value
                     continue
                 if key not in sensitivity and key != "blocked_clipboard_placeholder":
                     continue
@@ -670,18 +1036,10 @@ class ClipboardMonitor:
                         continue
                 else:
                     sensitivity[key] = raw_value
+            if requested_profile:
+                ui["user_profile"] = requested_profile
             CONFIG_PATH.write_text(json.dumps(self.config, indent=2, ensure_ascii=False), encoding="utf-8")
-        self.poll_interval = float(self.config.get("sensitivity", {}).get("clipboard_poll_interval_s", self.poll_interval))
-        self.run_sequence_timeout = float(self.config.get("sensitivity", {}).get("run_sequence_timeout_s", self.run_sequence_timeout))
-        self.allow_timeout = float(self.config.get("sensitivity", {}).get("allow_timeout_s", self.allow_timeout))
-        self.min_clipboard_length = int(self.config.get("sensitivity", {}).get("min_clipboard_length", self.min_clipboard_length))
-        self.blocked_placeholder = str(
-            self.config.get("sensitivity", {}).get("blocked_clipboard_placeholder", self.blocked_placeholder)
-        )
-        self.show_panel_on_start = bool(self.config.get("ui", {}).get("show_panel_on_start", self.show_panel_on_start))
-        self.open_panel_on_alert = bool(self.config.get("ui", {}).get("open_panel_on_alert", self.open_panel_on_alert))
-        self.use_system_notifications = bool(self.config.get("ui", {}).get("use_system_notifications", self.use_system_notifications))
-        self.close_to_tray = bool(self.config.get("ui", {}).get("close_to_tray", self.close_to_tray))
+        self._refresh_runtime_settings()
         self.telemetry.log_event("settings_update", {"updated_keys": sorted(updates.keys())})
 
     # ---------------- Alerts / UI ----------------
@@ -712,12 +1070,15 @@ class ClipboardMonitor:
             preview,
         )
 
-        try:
-            self.panel.push_alert(payload)
-            if self.open_panel_on_alert:
-                self.panel.open()
-        except Exception:
-            logging.exception("Failed to push alert into control panel")
+        if self.enable_panel:
+            try:
+                self.panel.push_alert(payload)
+                if self.open_panel_on_alert:
+                    self.panel.open()
+            except Exception:
+                logging.exception("Failed to push alert into control panel")
+        else:
+            logging.debug("Control panel disabled; alert kept in telemetry only")
 
         if self.use_system_notifications:
             try:
@@ -781,7 +1142,7 @@ class ClipboardMonitor:
         reason: str,
         signals: Optional[Dict[str, object]] = None,
         close_run_dialog: bool = False,
-    ) -> None:
+    ) -> bool:
         logging.warning(
             "Quarantine triggered. reason=%s close_run_dialog=%s text_preview=%r",
             reason,
@@ -792,7 +1153,7 @@ class ClipboardMonitor:
         active_window, active_process = self.capture_context()
         if self.is_allowed_context(active_process, active_window):
             logging.debug("Context allowed; skipping quarantine")
-            return
+            return True
 
         self.last_blocked_clipboard = text
         self.last_blocked_reason = reason
@@ -820,7 +1181,7 @@ class ClipboardMonitor:
                     action="Permitido",
                 )
             )
-            return
+            return True
 
         if close_run_dialog:
             try:
@@ -847,6 +1208,7 @@ class ClipboardMonitor:
                 action="Bloqueado",
             )
         )
+        return False
 
     def restore_last_clipboard(self, _=None) -> None:
         if not self.last_blocked_clipboard:
@@ -936,16 +1298,89 @@ class ClipboardMonitor:
         if self.sequence_steps:
             self.sequence_steps.append(step)
 
+    def _inspect_clipboard_for_paste(self, source: str) -> Tuple[bool, str, Optional[str]]:
+        text = self.load_clipboard_text() or ""
+        logging.info("%s paste inspection (len=%s)", source, len(text) if text else 0)
+
+        if not text:
+            return True, text, None
+        if self.is_excluded(text):
+            logging.debug("%s paste text excluded; allowing paste", source)
+            return True, text, None
+        if self.is_temporarily_allowed(text):
+            logging.debug("%s paste text temporarily allowed; allowing paste", source)
+            return True, text, None
+        if len(text.strip()) < self.min_clipboard_length:
+            logging.debug("%s paste text shorter than min length; allowing paste", source)
+            return True, text, None
+
+        match = self.match_suspicious(text)
+        return match is None, text, match
+
+    def _register_paste_hotkeys(self) -> None:
+        with self.hotkey_registration_lock:
+            if self.paste_hotkey_handles:
+                return
+            for key in self.hotkeys["paste"]:
+                handle = keyboard.add_hotkey(
+                    key,
+                    lambda k=key: self.handle_sequence_paste(k),
+                    suppress=True,
+                )
+                self.paste_hotkey_handles.append(handle)
+
+    def _unregister_paste_hotkeys(self) -> None:
+        with self.hotkey_registration_lock:
+            handles = list(self.paste_hotkey_handles)
+            self.paste_hotkey_handles = []
+        for handle in handles:
+            try:
+                keyboard.remove_hotkey(handle)
+            except Exception:
+                logging.exception("Failed to remove paste hotkey handle")
+
+    def replay_paste_hotkey(self, method: str) -> None:
+        if self.replaying_paste_hotkey:
+            return
+        self.replaying_paste_hotkey = True
+        try:
+            self._unregister_paste_hotkeys()
+            keyboard.send(method)
+        except Exception:
+            logging.exception("Failed to replay paste hotkey: %s", method)
+        finally:
+            self._register_paste_hotkeys()
+            self.replaying_paste_hotkey = False
+
+    def preflight_sequence_clipboard(self, sequence_type: str, trigger: str) -> None:
+        allowed, text, match = self._inspect_clipboard_for_paste(f"{sequence_type}:{trigger}")
+        if allowed or not match:
+            return
+        self.quarantine_clipboard(
+            text,
+            f"Clipboard sospechoso antes de {trigger} con regla '{match}'",
+            signals={
+                "source": "sequence_preflight",
+                "sequence": sequence_type,
+                "steps": list(self.sequence_steps),
+                "match": match,
+            },
+            close_run_dialog=sequence_type == "run",
+        )
+
     def handle_run_hotkey(self) -> None:
         self.start_sequence("run", "win+r")
+        self.preflight_sequence_clipboard("run", "win+r")
 
     def handle_explorer_hotkey(self) -> None:
         self.start_sequence("explorer", "win+e")
+        self.preflight_sequence_clipboard("explorer", "win+e")
 
     def handle_address_hotkey(self, key: str) -> None:
         self.start_sequence("address", key)
+        self.preflight_sequence_clipboard("address", key)
 
-    def handle_sequence_paste(self, method: str) -> None:
+    def _handle_sequence_paste_legacy(self, method: str) -> None:
         if not self.sequence_active():
             logging.debug("Paste ignored (no active sequence)")
             return
@@ -976,6 +1411,54 @@ class ClipboardMonitor:
                 },
                 close_run_dialog=self.sequence_type == "run",
             )
+
+    def handle_sequence_paste(self, method: str) -> None:
+        if self.replaying_paste_hotkey:
+            return
+
+        sequence_was_active = self.sequence_active()
+        allowed, text, match = self._inspect_clipboard_for_paste(
+            self.sequence_type or "direct"
+        )
+
+        if not sequence_was_active:
+            if allowed or not match:
+                self.replay_paste_hotkey(method)
+                return
+            user_allowed = self.quarantine_clipboard(
+                text,
+                f"Intento de pegar texto sospechoso con regla '{match}'",
+                signals={
+                    "source": "paste_hotkey",
+                    "sequence": None,
+                    "steps": [method],
+                    "match": match,
+                },
+            )
+            if user_allowed:
+                self.replay_paste_hotkey(method)
+            return
+
+        self.sequence_last_paste = method
+        self.record_sequence_step(method)
+        if allowed or not match:
+            self.replay_paste_hotkey(method)
+            return
+
+        seq_label = self.sequence_type or "secuencia"
+        user_allowed = self.quarantine_clipboard(
+            text,
+            f"Patron {seq_label} + pegar ({method}) con regla '{match}'",
+            signals={
+                "source": "sequence_paste",
+                "sequence": self.sequence_type,
+                "steps": list(self.sequence_steps),
+                "match": match,
+            },
+            close_run_dialog=self.sequence_type == "run",
+        )
+        if user_allowed:
+            self.replay_paste_hotkey(method)
 
     def handle_sequence_execute(self, method: str) -> None:
         if not self.sequence_active():
@@ -1057,8 +1540,7 @@ class ClipboardMonitor:
                 keyboard.add_hotkey(key, self.handle_explorer_hotkey)
             for key in self.hotkeys["address_bar"]:
                 keyboard.add_hotkey(key, lambda k=key: self.handle_address_hotkey(k))
-            for key in self.hotkeys["paste"]:
-                keyboard.add_hotkey(key, lambda k=key: self.handle_sequence_paste(k))
+            self._register_paste_hotkeys()
             for key in self.hotkeys["execute"]:
                 keyboard.add_hotkey(key, lambda k=key: self.handle_sequence_execute(k))
             for key in self.hotkeys["restore"]:
@@ -1135,7 +1617,8 @@ class ClipboardMonitor:
         except Exception:
             logging.exception("Failed to flush telemetry stats")
         try:
-            self.panel.stop()
+            if self.enable_panel:
+                self.panel.stop()
         except Exception:
             logging.exception("Failed to stop control panel")
         try:
@@ -1151,7 +1634,10 @@ class ClipboardMonitor:
             self.set_host_snapshot(collect_host_snapshot(process_limit=14))
         except Exception:
             logging.exception("Initial host snapshot failed")
-        self.panel.start(show_on_start=self.show_panel_on_start)
+        if self.enable_panel:
+            self.panel.start(show_on_start=self.show_panel_on_start)
+        else:
+            logging.info("Control panel disabled; running monitor-only mode")
         self.telemetry.record_stats(force=True, host_health=self.telemetry.derive_host_health())
         self.telemetry.log_event("agent_start", {"pid": os.getpid()})
 
@@ -1163,25 +1649,40 @@ class ClipboardMonitor:
                 name="monitor_clipboard_watchdog",
                 daemon=False,
             ),
-            threading.Thread(
-                target=self._run_thread_watchdog,
-                args=(self.monitor_paste_hotkey, "monitor_paste_hotkey"),
-                name="monitor_paste_hotkey_watchdog",
-                daemon=False,
-            ),
-            threading.Thread(
-                target=self._run_thread_watchdog,
-                args=(self.run_tray_icon, "run_tray_icon"),
-                name="tray_watchdog",
-                daemon=False,
-            ),
-            threading.Thread(
-                target=self._run_thread_watchdog,
-                args=(self.monitor_host_telemetry, "monitor_host_telemetry"),
-                name="monitor_host_telemetry_watchdog",
-                daemon=False,
-            ),
         ]
+        if self.enable_host_telemetry:
+            threads.append(
+                threading.Thread(
+                    target=self._run_thread_watchdog,
+                    args=(self.monitor_host_telemetry, "monitor_host_telemetry"),
+                    name="monitor_host_telemetry_watchdog",
+                    daemon=False,
+                )
+            )
+        else:
+            logging.info("Host telemetry disabled; clipboard monitor remains active")
+        if self.enable_keyboard_hooks:
+            threads.append(
+                threading.Thread(
+                    target=self._run_thread_watchdog,
+                    args=(self.monitor_paste_hotkey, "monitor_paste_hotkey"),
+                    name="monitor_paste_hotkey_watchdog",
+                    daemon=False,
+                )
+            )
+        else:
+            logging.warning("Keyboard hooks disabled; monitoring clipboard content without global hotkey interception")
+        if self.enable_tray:
+            threads.append(
+                threading.Thread(
+                    target=self._run_thread_watchdog,
+                    args=(self.run_tray_icon, "run_tray_icon"),
+                    name="tray_watchdog",
+                    daemon=False,
+                )
+            )
+        else:
+            logging.info("Tray icon disabled; running without system tray")
 
         for t in threads:
             logging.debug("Starting thread %s", t.name)
@@ -1190,8 +1691,9 @@ class ClipboardMonitor:
         # Keep main alive no matter what.
         try:
             logging.info("Main keepalive loop started")
+            print("ClickFix Mitigator monitorizando continuamente. Pulsa Ctrl+C o usa Exit en la bandeja para parar.", flush=True)
             while self.running:
-                time.sleep(1)
+                self.stop_event.wait(1)
         except KeyboardInterrupt:
             logging.info("KeyboardInterrupt; stopping")
             self.stop()
@@ -1263,6 +1765,17 @@ def setup_logging(config: Optional[Dict[str, object]] = None) -> None:
     logger.addHandler(console_handler)
 
 
+def acquire_single_instance_lock() -> bool:
+    global INSTANCE_MUTEX_HANDLE
+    kernel32 = ctypes.windll.kernel32
+    handle = kernel32.CreateMutexW(None, False, INSTANCE_MUTEX_NAME)
+    last_error = kernel32.GetLastError()
+    if not handle:
+        return True
+    INSTANCE_MUTEX_HANDLE = handle
+    return last_error != ERROR_ALREADY_EXISTS
+
+
 def main() -> None:
     # These prints are intentional: to prove which file is running.
     import os
@@ -1280,6 +1793,11 @@ def main() -> None:
         raise
 
     setup_logging(config)
+
+    if not acquire_single_instance_lock():
+        logging.warning("Another ClickFix Mitigator agent instance is already running")
+        print("ClickFix Mitigator ya esta monitorizando en otra instancia. Revisa la bandeja del sistema.")
+        return
 
     logging.info("Starting ClickFix Mitigator agent")
     print("ClickFix Mitigator iniciado. Revisa la bandeja del sistema.")

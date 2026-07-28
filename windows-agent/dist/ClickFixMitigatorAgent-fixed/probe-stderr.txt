@@ -1,0 +1,85 @@
+2026-05-18 10:32:44,612 INFO [MainThread] Starting ClickFix Mitigator agent
+2026-05-18 10:32:44,629 DEBUG [MainThread] ClipboardMonitor initialized. poll_interval=0.5 allow_timeout=15.0 run_sequence_timeout=8.0
+2026-05-18 10:32:44,630 INFO [MainThread] ClipboardMonitor run() starting
+2026-05-18 10:32:48,768 DEBUG [MainThread] Starting thread monitor_clipboard_watchdog
+2026-05-18 10:32:48,769 INFO [monitor_clipboard_watchdog] Starting worker: monitor_clipboard
+2026-05-18 10:32:48,769 DEBUG [MainThread] Starting thread monitor_paste_hotkey_watchdog
+2026-05-18 10:32:48,770 INFO [monitor_clipboard_watchdog] monitor_clipboard started
+2026-05-18 10:32:48,771 INFO [monitor_paste_hotkey_watchdog] Starting worker: monitor_paste_hotkey
+2026-05-18 10:32:48,771 DEBUG [MainThread] Starting thread tray_watchdog
+2026-05-18 10:32:48,771 DEBUG [monitor_clipboard_watchdog] Clipboard format UNICODETEXT not available
+2026-05-18 10:32:48,772 DEBUG [MainThread] Starting thread monitor_host_telemetry_watchdog
+2026-05-18 10:32:48,772 INFO [tray_watchdog] Starting worker: run_tray_icon
+2026-05-18 10:32:48,772 INFO [monitor_host_telemetry_watchdog] Starting worker: monitor_host_telemetry
+2026-05-18 10:32:48,771 INFO [monitor_paste_hotkey_watchdog] monitor_paste_hotkey started (registering hotkeys)
+2026-05-18 10:32:48,772 INFO [MainThread] Main keepalive loop started
+2026-05-18 10:32:48,772 INFO [tray_watchdog] Starting tray icon (pystray)
+2026-05-18 10:32:48,773 INFO [monitor_host_telemetry_watchdog] monitor_host_telemetry started
+2026-05-18 10:32:48,776 DEBUG [tray_watchdog] Loading tray icon from C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\windows-agent\dist\ClickFixMitigatorAgent-fixed\_internal\logo.png
+2026-05-18 10:32:48,788 DEBUG [tray_watchdog] STREAM b'IHDR' 16 13
+2026-05-18 10:32:48,788 DEBUG [tray_watchdog] STREAM b'IDAT' 41 4096
+2026-05-18 10:32:48,791 DEBUG [tray_watchdog] STREAM b'IDAT' 201056 6
+2026-05-18 10:32:48,803 DEBUG [Thread-9 (setup_handler)] Importing AvifImagePlugin
+2026-05-18 10:32:48,806 DEBUG [Thread-9 (setup_handler)] Importing BlpImagePlugin
+2026-05-18 10:32:48,808 DEBUG [Thread-9 (setup_handler)] Importing BmpImagePlugin
+2026-05-18 10:32:48,808 DEBUG [Thread-9 (setup_handler)] Importing BufrStubImagePlugin
+2026-05-18 10:32:48,809 DEBUG [Thread-9 (setup_handler)] Importing CurImagePlugin
+2026-05-18 10:32:48,809 DEBUG [Thread-9 (setup_handler)] Importing DcxImagePlugin
+2026-05-18 10:32:48,810 DEBUG [Thread-9 (setup_handler)] Importing DdsImagePlugin
+2026-05-18 10:32:48,814 DEBUG [Thread-9 (setup_handler)] Importing EpsImagePlugin
+2026-05-18 10:32:48,814 DEBUG [Thread-9 (setup_handler)] Importing FitsImagePlugin
+2026-05-18 10:32:48,816 DEBUG [Thread-9 (setup_handler)] Importing FliImagePlugin
+2026-05-18 10:32:48,817 DEBUG [Thread-9 (setup_handler)] Importing FpxImagePlugin
+2026-05-18 10:32:48,817 DEBUG [Thread-9 (setup_handler)] Image: failed to import FpxImagePlugin: No module named 'olefile'
+2026-05-18 10:32:48,818 DEBUG [Thread-9 (setup_handler)] Importing FtexImagePlugin
+2026-05-18 10:32:48,818 DEBUG [Thread-9 (setup_handler)] Importing GbrImagePlugin
+2026-05-18 10:32:48,819 DEBUG [Thread-9 (setup_handler)] Importing GifImagePlugin
+2026-05-18 10:32:48,819 DEBUG [Thread-9 (setup_handler)] Importing GribStubImagePlugin
+2026-05-18 10:32:48,820 DEBUG [Thread-9 (setup_handler)] Importing Hdf5StubImagePlugin
+2026-05-18 10:32:48,821 DEBUG [Thread-9 (setup_handler)] Importing IcnsImagePlugin
+2026-05-18 10:32:48,822 DEBUG [Thread-9 (setup_handler)] Importing IcoImagePlugin
+2026-05-18 10:32:48,823 DEBUG [Thread-9 (setup_handler)] Importing ImImagePlugin
+2026-05-18 10:32:48,824 DEBUG [Thread-9 (setup_handler)] Importing ImtImagePlugin
+2026-05-18 10:32:48,825 DEBUG [Thread-9 (setup_handler)] Importing IptcImagePlugin
+2026-05-18 10:32:48,826 DEBUG [Thread-9 (setup_handler)] Importing JpegImagePlugin
+2026-05-18 10:32:48,826 DEBUG [Thread-9 (setup_handler)] Importing Jpeg2KImagePlugin
+2026-05-18 10:32:48,826 DEBUG [Thread-9 (setup_handler)] Importing McIdasImagePlugin
+2026-05-18 10:32:48,827 DEBUG [Thread-9 (setup_handler)] Importing MicImagePlugin
+2026-05-18 10:32:48,828 DEBUG [Thread-9 (setup_handler)] Image: failed to import MicImagePlugin: No module named 'olefile'
+2026-05-18 10:32:48,828 DEBUG [Thread-9 (setup_handler)] Importing MpegImagePlugin
+2026-05-18 10:32:48,829 DEBUG [Thread-9 (setup_handler)] Importing MpoImagePlugin
+2026-05-18 10:32:48,833 DEBUG [Thread-9 (setup_handler)] Importing MspImagePlugin
+2026-05-18 10:32:48,833 DEBUG [Thread-9 (setup_handler)] Importing PalmImagePlugin
+2026-05-18 10:32:48,834 DEBUG [Thread-9 (setup_handler)] Importing PcdImagePlugin
+2026-05-18 10:32:48,835 DEBUG [Thread-9 (setup_handler)] Importing PcxImagePlugin
+2026-05-18 10:32:48,835 DEBUG [Thread-9 (setup_handler)] Importing PdfImagePlugin
+2026-05-18 10:32:48,841 DEBUG [Thread-9 (setup_handler)] Importing PixarImagePlugin
+2026-05-18 10:32:48,841 DEBUG [Thread-9 (setup_handler)] Importing PngImagePlugin
+2026-05-18 10:32:48,841 DEBUG [Thread-9 (setup_handler)] Importing PpmImagePlugin
+2026-05-18 10:32:48,842 DEBUG [Thread-9 (setup_handler)] Importing PsdImagePlugin
+2026-05-18 10:32:48,843 DEBUG [Thread-9 (setup_handler)] Importing QoiImagePlugin
+2026-05-18 10:32:48,843 DEBUG [Thread-9 (setup_handler)] Importing SgiImagePlugin
+2026-05-18 10:32:48,844 DEBUG [Thread-9 (setup_handler)] Importing SpiderImagePlugin
+2026-05-18 10:32:48,845 DEBUG [Thread-9 (setup_handler)] Importing SunImagePlugin
+2026-05-18 10:32:48,845 DEBUG [Thread-9 (setup_handler)] Importing TgaImagePlugin
+2026-05-18 10:32:48,846 DEBUG [Thread-9 (setup_handler)] Importing TiffImagePlugin
+2026-05-18 10:32:48,846 DEBUG [Thread-9 (setup_handler)] Importing WebPImagePlugin
+2026-05-18 10:32:48,848 DEBUG [Thread-9 (setup_handler)] Importing WmfImagePlugin
+2026-05-18 10:32:48,849 DEBUG [Thread-9 (setup_handler)] Importing XbmImagePlugin
+2026-05-18 10:32:48,850 DEBUG [Thread-9 (setup_handler)] Importing XpmImagePlugin
+2026-05-18 10:32:48,850 DEBUG [Thread-9 (setup_handler)] Importing XVThumbImagePlugin
+2026-05-18 10:32:49,131 INFO [monitor_paste_hotkey_watchdog] Hotkeys registered: {'run_dialog': ['windows+r', 'win+r'], 'explorer': ['windows+e', 'win+e'], 'address_bar': ['alt+l', 'alt+d', 'ctrl+l'], 'paste': ['ctrl+v', 'shift+insert', 'ctrl+shift+v'], 'execute': ['enter', 'ctrl+shift+enter'], 'restore': ['ctrl+shift+u']}
+2026-05-18 10:32:49,300 DEBUG [monitor_clipboard_watchdog] Clipboard format UNICODETEXT not available
+2026-05-18 10:32:49,968 DEBUG [monitor_clipboard_watchdog] Clipboard format UNICODETEXT not available
+2026-05-18 10:32:50,569 DEBUG [monitor_clipboard_watchdog] Clipboard format UNICODETEXT not available
+2026-05-18 10:32:51,116 DEBUG [monitor_clipboard_watchdog] Clipboard format UNICODETEXT not available
+2026-05-18 10:32:51,722 DEBUG [monitor_clipboard_watchdog] Clipboard format UNICODETEXT not available
+2026-05-18 10:32:52,270 DEBUG [monitor_clipboard_watchdog] Clipboard format UNICODETEXT not available
+2026-05-18 10:32:52,771 DEBUG [monitor_clipboard_watchdog] Clipboard format UNICODETEXT not available
+2026-05-18 10:32:53,272 DEBUG [monitor_clipboard_watchdog] Clipboard format UNICODETEXT not available
+2026-05-18 10:32:53,775 DEBUG [monitor_clipboard_watchdog] Clipboard format UNICODETEXT not available
+2026-05-18 10:32:54,277 DEBUG [monitor_clipboard_watchdog] Clipboard format UNICODETEXT not available
+2026-05-18 10:32:54,778 DEBUG [monitor_clipboard_watchdog] Clipboard format UNICODETEXT not available
+2026-05-18 10:32:55,285 DEBUG [monitor_clipboard_watchdog] Clipboard format UNICODETEXT not available
+2026-05-18 10:32:55,786 DEBUG [monitor_clipboard_watchdog] Clipboard format UNICODETEXT not available
+2026-05-18 10:32:56,288 DEBUG [monitor_clipboard_watchdog] Clipboard format UNICODETEXT not available

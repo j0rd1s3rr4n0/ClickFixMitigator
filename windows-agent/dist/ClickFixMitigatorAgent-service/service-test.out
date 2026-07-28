@@ -1,0 +1,5 @@
+RUNNING: C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\windows-agent\dist\ClickFixMitigatorAgent-service\_internal\agent.py
+PYTHON : C:\Users\kunakawi\Documents\GitHub\ClickFixMitigator\windows-agent\dist\ClickFixMitigatorAgent-service\ClickFixMitigatorAgent-service.exe
+VERSION: agent-2026-05-18-paste-intercept
+ClickFix Mitigator iniciado. Revisa la bandeja del sistema.
+ClickFix Mitigator monitorizando continuamente. Pulsa Ctrl+C o usa Exit en la bandeja para parar.

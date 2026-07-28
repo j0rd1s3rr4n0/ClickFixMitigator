@@ -1,0 +1,42 @@
+﻿ClickFix Mitigator Windows Agent - Terms and Conditions
+
+Last updated: 2026-03-15
+
+This Windows Agent is a separate desktop application from the ClickFix Mitigator browser extension.
+It performs local defensive monitoring on the Windows host to help detect suspicious clipboard abuse,
+guided-execution flows, and related activity that may indicate ClickFix-style social engineering.
+
+By explicitly accepting and using this Windows Agent, you acknowledge and accept all of the following:
+
+1. Scope of local defensive monitoring
+The agent may inspect clipboard content locally and monitor suspicious interaction sequences such as
+Run dialog usage, file explorer address-bar execution patterns, and paste-then-execute flows.
+
+2. Additional host telemetry
+The agent may collect and locally store defensive host telemetry beyond what the browser extension handles,
+including active processes, process command lines, DNS settings and recent DNS cache entries,
+local alert history, execution context, and antivirus product status.
+
+3. Local storage and evidence
+The agent may write events, host telemetry, trends, and alert details to local log files and SQLite storage
+for defensive investigation, operational review, audit, and troubleshooting.
+
+4. Authorized use only
+You must use this software only on systems, data, and environments for which you have explicit authorization.
+You are responsible for complying with your organization's policies and applicable law.
+
+5. No offensive use
+This software is provided for defensive monitoring and incident response support. It must not be used to
+facilitate offensive activity, evasion testing against unauthorized systems, or surveillance beyond authorized scope.
+
+6. Operational signals
+Alerts and detections are investigative signals, not proof of attribution, compromise, or legal wrongdoing.
+Human review remains required.
+
+7. External forwarding and integrations
+If your organization forwards agent telemetry to a server, SIEM, case-management platform, or other system,
+your organization is responsible for the associated notice, governance, retention, and access controls.
+
+8. Condition of use
+You must explicitly accept these terms before the application can be used. If you do not accept them,
+you must close the application and not use the Windows Agent.

@@ -1,0 +1,9 @@
+2026-05-18 10:37:15,812 INFO [MainThread] Starting ClickFix Mitigator agent
+2026-05-18 10:37:15,827 DEBUG [MainThread] ClipboardMonitor initialized. poll_interval=0.5 allow_timeout=15.0 run_sequence_timeout=8.0
+2026-05-18 10:37:15,827 INFO [MainThread] ClipboardMonitor run() starting
+2026-05-18 10:37:20,887 DEBUG [MainThread] Starting thread monitor_clipboard_watchdog
+2026-05-18 10:37:20,888 INFO [monitor_clipboard_watchdog] Starting worker: monitor_clipboard
+2026-05-18 10:37:20,889 DEBUG [MainThread] Starting thread monitor_paste_hotkey_watchdog
+2026-05-18 10:37:20,889 INFO [monitor_clipboard_watchdog] monitor_clipboard started
+2026-05-18 10:37:20,890 INFO [monitor_paste_hotkey_watchdog] Starting worker: monitor_paste_hotkey
+2026-05-18 10:37:20,890 DEBUG [MainThread] Starting thread tray_watchdog

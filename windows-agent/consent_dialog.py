@@ -98,7 +98,7 @@ def ensure_agent_terms_acceptance(config: Dict[str, object], base_dir: Path) -> 
     text.configure(state="disabled")
     text.pack(fill="both", expand=True)
 
-    checkbox_var = BooleanVar(value=False)
+    checkbox_var = BooleanVar(master=root, value=False)
     ttk.Checkbutton(
         outer,
         variable=checkbox_var,
@@ -141,4 +141,3 @@ def ensure_agent_terms_acceptance(config: Dict[str, object], base_dir: Path) -> 
     root.protocol("WM_DELETE_WINDOW", decline)
     root.mainloop()
     return accepted["value"]
-

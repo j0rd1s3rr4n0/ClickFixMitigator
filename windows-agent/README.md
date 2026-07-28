@@ -1,7 +1,7 @@
 ﻿# Windows Agent - ClickFix Mitigator
 
-Revision: 2026-03-22
-Version: agent-2026-03-22-gui-alerts
+Revision: 2026-05-18
+Version: agent-2026-05-18-paste-intercept
 
 The Windows Agent is a separate desktop defensive application for ClickFix Mitigator. It is built for host-side visibility and intervention on Windows systems where clipboard abuse, guided execution, and suspicious paste-then-run flows need to be interrupted before execution.
 
@@ -14,6 +14,7 @@ Unlike the browser extension, the Windows Agent can inspect local execution cont
   - `Win + R -> paste -> Enter`
   - `Win + E / address bar -> paste -> Enter`
   - clipboard-command patterns commonly used in ClickFix-style lures
+- Intercepts common paste hotkeys (`Ctrl+V`, `Shift+Insert`, `Ctrl+Shift+V`) before forwarding them. Safe clipboard text is pasted normally; suspicious command text is quarantined instead.
 - Lets the user explicitly allow or block suspicious clipboard execution.
 - Replaces blocked clipboard content with a safe placeholder until restored.
 - Exposes a desktop control panel with:
@@ -79,11 +80,25 @@ Key sections:
 - `sensitivity.*`: polling, thresholds, clipboard placeholder, timeout values
 - `hotkeys.*`: monitored sequences and restore shortcut
 - `telemetry.*`: SQLite/log paths and host snapshot interval
+- `telemetry.client_id`: pseudonymous installation id used if remote sync is enabled
+- `remote.*`: optional sync to the ClickFix web platform via bearer token or API key
 - `ui.*`: desktop panel startup behavior and refresh interval
+- `ui.user_profile`: base preset for different user types (`balanced`, `strict`, `quiet`, `analyst`)
 - `ui.open_panel_on_alert`: bring the panel to front when a detection is raised
 - `ui.use_system_notifications`: optional fallback to Windows toast notifications
 - `ui.close_to_tray`: keep the app living in the tray when the window is closed/minimized
 - `consent.*`: required terms version, terms file path, acceptance state path
+
+### Built-in user profiles
+
+The agent control panel now includes four presets so the same binary can fit different usage patterns:
+
+- `balanced`: default for daily use
+- `strict`: earlier alerting and tighter runtime posture
+- `quiet`: less disruptive UI behavior with fewer interruptions
+- `analyst`: more visible telemetry and more aggressive investigation defaults
+
+The profile selector updates the settings form before saving, so operators can start from a sane preset and then adjust individual values.
 
 ## Run
 
@@ -113,6 +128,28 @@ SQLite now includes:
 - `reports`
 - `stats`
 - `host_snapshots`
+
+## Optional remote sync with the ClickFix web platform
+
+The agent can now forward alerts and periodic stats to the web platform.
+
+Configuration keys:
+
+- `remote.enabled`
+- `remote.base_url`
+- `remote.report_endpoint`
+- `remote.stats_endpoint`
+- `remote.bearer_token` or `remote.api_key`
+- `remote.timeout_s`
+- `remote.verify_tls`
+- `remote.include_host_snapshot`
+
+Notes:
+
+- Remote sync is disabled by default.
+- The agent generates a pseudonymous `telemetry.client_id` if one does not exist.
+- Use `clickfix-report.php` as the default report/stats endpoint unless you front it differently.
+- Prefer bearer or API keys with the minimum required scope.
 
 ## Local dashboard
 

@@ -1,0 +1,11 @@
+2026-05-18 10:43:47,301 INFO [MainThread] Starting ClickFix Mitigator agent
+2026-05-18 10:43:47,326 DEBUG [MainThread] ClipboardMonitor initialized. poll_interval=0.5 allow_timeout=15.0 run_sequence_timeout=8.0
+2026-05-18 10:43:47,327 INFO [MainThread] ClipboardMonitor run() starting
+2026-05-18 10:43:51,061 INFO [MainThread] Control panel disabled; running monitor-only mode
+2026-05-18 10:43:51,066 INFO [MainThread] Host telemetry disabled; clipboard monitor remains active
+2026-05-18 10:43:51,066 WARNING [MainThread] Keyboard hooks disabled; monitoring clipboard content without global hotkey interception
+2026-05-18 10:43:51,068 INFO [MainThread] Tray icon disabled; running without system tray
+2026-05-18 10:43:51,068 DEBUG [MainThread] Starting thread monitor_clipboard_watchdog
+2026-05-18 10:43:51,068 INFO [monitor_clipboard_watchdog] Starting worker: monitor_clipboard
+2026-05-18 10:43:51,068 INFO [MainThread] Main keepalive loop started
+2026-05-18 10:43:51,069 INFO [monitor_clipboard_watchdog] monitor_clipboard started
