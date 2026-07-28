@@ -4,6 +4,8 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/src/clickfix_core.php';
 require_once dirname(__DIR__) . '/src/clickfix_blog_feed.php';
 
+clickfix_bootstrap();
+
 clickfix_apply_api_headers('GET, OPTIONS', 'Content-Type, Authorization, X-API-Key');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -15,13 +17,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 $pdo = clickfix_open_db(true);
-clickfix_llm_ensure_table($pdo);
 $ip = clickfix_client_ip();
 
 if (!clickfix_api_rate_limit($pdo, 'blog:ip:' . $ip, 120, 60)) {
     clickfix_api_json(429, ['status' => 'error', 'message' => 'rate_limited']);
 }
-if (!clickfix_is_request_origin_allowed(true)) {
+$isFromDashboard = (clickfix_current_user() !== null);
+if (!$isFromDashboard && !clickfix_is_request_origin_allowed(true)) {
     clickfix_api_json(403, ['status' => 'error', 'message' => 'origin_not_allowed']);
 }
 

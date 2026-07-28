@@ -16,10 +16,10 @@ function clickfix_domain_feeds_sources(): array
         [
             'key' => 'carson_list',
             'label' => 'Carson ClickFix',
-            'url' => 'https://clickfix.carsonww.com/domains?limit=250',
+            'url' => 'https://clickfix.carsonww.com/domains?limit=50',
             'type' => 'paginated_html',
             'detail_url_template' => 'https://clickfix.carsonww.com/domains/{domain}',
-            'interval_hours' => 12,
+            'interval_hours' => 6,
         ],
     ];
 }
@@ -195,25 +195,34 @@ function clickfix_domain_feeds_fetch_carson_list(PDO $pdo, array $source): array
         return ['ok' => false, 'error' => 'no_url', 'items' => 0, 'new' => 0];
     }
     $allDomains = [];
-    $maxPages = 5;
+    $maxPages = 10;
     $fetchedPages = 0;
-    $response = clickfix_domain_feeds_http_get($baseUrl, ['Accept: text/html'], 12);
-    if ($response === null) {
-        clickfix_domain_feeds_log($pdo, $key, 'error', 0, 0, 'Carson HTTP fetch failed (may be offline)');
-        return ['ok' => false, 'error' => 'http_fetch_failed', 'items' => 0, 'new' => 0];
-    }
-    $domains = clickfix_domain_feeds_parse_carson_page($response);
-    if (empty($domains)) {
-        clickfix_domain_feeds_log($pdo, $key, 'error', 0, 0, 'No domains parsed from Carson');
-        return ['ok' => false, 'error' => 'no_domains_parsed', 'items' => 0, 'new' => 0];
-    }
-    foreach ($domains as $d) {
-        $domain = $d['domain'];
-        if (!isset($allDomains[$domain])) {
-            $allDomains[$domain] = $d;
+    for ($page = 1; $page <= $maxPages; $page++) {
+        $pageUrl = $baseUrl . (str_contains($baseUrl, '?') ? '&' : '?') . 'page=' . $page;
+        $response = clickfix_domain_feeds_http_get($pageUrl, ['Accept: text/html'], 12);
+        if ($response === null) {
+            if ($page === 1) {
+                clickfix_domain_feeds_log($pdo, $key, 'error', 0, 0, 'Carson HTTP fetch failed');
+                return ['ok' => false, 'error' => 'http_fetch_failed', 'items' => 0, 'new' => 0];
+            }
+            break;
         }
+        $domains = clickfix_domain_feeds_parse_carson_page($response);
+        if (empty($domains)) {
+            if ($page === 1) {
+                clickfix_domain_feeds_log($pdo, $key, 'error', 0, 0, 'No domains parsed from Carson');
+                return ['ok' => false, 'error' => 'no_domains_parsed', 'items' => 0, 'new' => 0];
+            }
+            break;
+        }
+        $newOnPage = 0;
+        foreach ($domains as $d) {
+            $domain = $d['domain'];
+            if (!isset($allDomains[$domain])) { $allDomains[$domain] = $d; $newOnPage++; }
+        }
+        if ($newOnPage === 0) break;
+        $fetchedPages++;
     }
-    $fetchedPages++;
     $total = count($allDomains);
     $new = 0;
     $now = gmdate('c');

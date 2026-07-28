@@ -4,6 +4,8 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/src/clickfix_core.php';
 require_once dirname(__DIR__) . '/src/clickfix_llm.php';
 
+clickfix_bootstrap();
+
 clickfix_apply_api_headers('POST, OPTIONS', 'Content-Type, Authorization, X-API-Key');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -18,16 +20,24 @@ $ip = clickfix_client_ip();
 if (!clickfix_api_rate_limit($pdo, 'llm:ip:' . $ip, 60, 60)) {
     clickfix_api_json(429, ['status' => 'error', 'message' => 'rate_limited']);
 }
-if (!clickfix_is_request_origin_allowed(true)) {
+$isSession = (clickfix_current_user() !== null);
+if (!$isSession && !clickfix_is_request_origin_allowed(true)) {
     clickfix_api_json(403, ['status' => 'error', 'message' => 'origin_not_allowed']);
 }
 
+$isAuth = false;
 $claims = clickfix_authenticate_api_request($pdo, []);
-if (!is_array($claims)) {
-    clickfix_api_json(401, ['status' => 'error', 'message' => 'unauthorized']);
+if (is_array($claims)) {
+    $isAuth = true;
 }
-if (!clickfix_token_has_scopes($claims, ['intel:read', 'investigations:write'])) {
-    clickfix_api_json(403, ['status' => 'error', 'message' => 'insufficient_scope']);
+if (!$isAuth) {
+    $sessionUser = clickfix_current_user();
+    if ($sessionUser !== null && clickfix_user_has_min_role($sessionUser, 'analyst_jr')) {
+        $isAuth = true;
+    }
+}
+if (!$isAuth) {
+    clickfix_api_json(401, ['status' => 'error', 'message' => 'unauthorized']);
 }
 
 $input = json_decode((string) file_get_contents('php://input'), true);
@@ -88,7 +98,32 @@ if ($action === 'summarize') {
 if ($action === 'extract_iocs') {
     $text = trim((string) ($input['text'] ?? ''));
     $profileId = max(0, (int) ($input['profile_id'] ?? clickfix_llm_default_profile_id($pdo)));
+    $graphId = max(0, (int) ($input['graph_id'] ?? 0));
     $options = is_array($input['options'] ?? null) ? $input['options'] : [];
+    if ($text === '' && $graphId > 0) {
+        $inv = clickfix_get_investigation_any($pdo, $graphId);
+        if ($inv !== null) {
+            $graph = is_array($inv['graph'] ?? null) ? $inv['graph'] : ['nodes'=>[],'edges'=>[]];
+            $nodes = is_array($graph['nodes'] ?? null) ? $graph['nodes'] : [];
+            $edges = is_array($graph['edges'] ?? null) ? $graph['edges'] : [];
+            $parts = [];
+            $parts[] = "Title: " . ((string)($inv['title'] ?? ''));
+            $parts[] = "Domain: " . ((string)($inv['site_domain'] ?? ''));
+            $parts[] = "Verdict: " . ((string)($inv['verdict'] ?? ''));
+            $parts[] = "Summary: " . ((string)($inv['summary'] ?? ''));
+            $parts[] = "Notes: " . ((string)($inv['notes'] ?? ''));
+            $parts[] = "Tags: " . ((string)($inv['tags_json'] ?? ''));
+            $parts[] = "Nodes (" . count($nodes) . "):";
+            foreach ($nodes as $n) {
+                $parts[] = "- [" . ((string)($n['type']??'?')) . "] " . ((string)($n['label']??$n['id']??'')) . (isset($n['notes']) ? ': ' . ((string)$n['notes']) : '');
+            }
+            $parts[] = "Edges (" . count($edges) . "):";
+            foreach ($edges as $e) {
+                $parts[] = "- " . ((string)($e['source']??'')) . " -> " . ((string)($e['target']??'')) . " [" . ((string)($e['label']??'')) . "]";
+            }
+            $text = implode("\n", $parts);
+        }
+    }
     if ($text === '') {
         clickfix_api_json(400, ['status' => 'error', 'message' => 'text_required']);
     }

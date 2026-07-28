@@ -199,22 +199,30 @@ file_put_contents($envPath, implode(PHP_EOL, $envLines));
 if (!is_file($premiumConfigPath)) {
     $premiumConfig = [
         'scoreConfig' => [
-            'weights' => ['signals' => 0.55, 'clipboard' => 0.35, 'context' => 0.10],
-            'contextBaseScore' => 52,
+            'weights' => ['signals' => 0.46, 'clipboard' => 0.24, 'context' => 0.30],
+            'contextBaseScore' => 40,
             'rules' => [
                 'signals' => [
-                    'commandMatch' => 24,
-                    'shellHint' => 18,
-                    'evasionHint' => 16,
-                    'clipboardWarning' => 10,
-                    'copyTriggerHint' => 7
+                    'commandMatch' => 20,
+                    'shellHint' => 16,
+                    'evasionHint' => 5,
+                    'clipboardWarning' => 4,
+                    'copyTriggerHint' => 4
                 ],
                 'clipboard' => [
-                    'hasCommand' => 24,
-                    'hasExecutionHint' => 20,
-                    'hasBase64' => 14,
-                    'hasHighEntropy' => 12
-                ]
+                    'hasCommand' => 20,
+                    'hasExecutionHint' => 16,
+                    'hasBase64' => 5,
+                    'hasHighEntropy' => 2
+                ],
+                'context' => [
+                    'isAllowlisted' => -38,
+                    'isTrustedHost' => -24,
+                    'isCodeContext' => -20,
+                    'isIframe' => 5,
+                    'opaqueIframes' => 5,
+                    'opaqueIframesHigh' => 10
+                ],
             ]
         ]
     ];

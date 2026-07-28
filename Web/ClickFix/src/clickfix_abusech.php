@@ -98,7 +98,8 @@ function clickfix_abusech_fetch_clickfix_tags(PDO $pdo): array
         foreach ($allDomains as $d) {
             $sourceKey = (string) ($d['source'] ?? '');
             $details = ['threat' => $d['threat'] ?? '', 'tags' => $d['tags'] ?? [], 'date_added' => $d['date_added'] ?? $d['first_seen'] ?? ''];
-            $stmt->execute([':sk' => $sourceKey !== '' ? $sourceKey : 'abusech', ':sl' => 'abuse.ch (' . ($sourceKey !== '' ? $sourceKey : 'ClickFix') . ')', ':d' => $d['domain'], ':u' => $d['url'] ?? '', ':fs' => $d['first_seen'] !== '' ? $d['first_seen'] : $now, ':ls' => $now, ':h' => 1, ':dj' => json_encode($details, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ':fa' => $now]);
+            $firstSeenVal = $d['first_seen'] ?? $d['date_added'] ?? '';
+            $stmt->execute([':sk' => $sourceKey !== '' ? $sourceKey : 'abusech', ':sl' => 'abuse.ch (' . ($sourceKey !== '' ? $sourceKey : 'ClickFix') . ')', ':d' => $d['domain'], ':u' => $d['url'] ?? '', ':fs' => $firstSeenVal !== '' ? $firstSeenVal : $now, ':ls' => $now, ':h' => 1, ':dj' => json_encode($details, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ':fa' => $now]);
             if ($stmt->rowCount() > 0) { $imported++; }
         }
     }

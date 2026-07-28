@@ -465,7 +465,7 @@ function clickfix_llm_summarize_investigation(PDO $pdo, int $graphId, array $opt
     foreach (array_slice($edges, 0, 30) as $edge) {
         $contextText .= "- " . ((string) ($edge['source'] ?? '')) . " -> " . ((string) ($edge['target'] ?? '')) . " [" . ((string) ($edge['label'] ?? '')) . "]\n";
     }
-    $systemPrompt = 'You are a cybersecurity threat intelligence analyst. Analyze the investigation data and provide a concise summary, identify key threat actors, infrastructure patterns, and recommend next steps for further investigation. Format in Markdown.';
+    $systemPrompt = 'You are a senior SOC analyst. Analyze the investigation data concisely: 1) Verdict (malicious/suspicious/benign) 2) Key evidence 3) Infrastructure patterns 4) Actionable next steps. Be direct, do not repeat the user input. Always respond in the same language as the user. Format in Markdown.';
     $messages = [
         ['role' => 'user', 'content' => "Please analyze this ClickFix threat investigation and provide:\n1. Executive Summary (2-3 sentences)\n2. Key Findings (bullet points)\n3. Infrastructure Patterns\n4. Recommended Next Steps\n\nInvestigation Data:\n" . $contextText],
     ];
@@ -523,7 +523,7 @@ function clickfix_llm_chat_investigation(PDO $pdo, int $graphId, string $userMes
     $nodes = is_array($graph['nodes'] ?? null) ? $graph['nodes'] : [];
     $edges = is_array($graph['edges'] ?? null) ? $graph['edges'] : [];
     $contextText = "INVESTIGATION CONTEXT:\nTitle: " . ((string) ($investigation['title'] ?? 'Untitled')) . "\nDomain: " . ((string) ($investigation['site_domain'] ?? 'N/A')) . "\nVerdict: " . ((string) ($investigation['verdict'] ?? 'unknown')) . "\nSummary: " . ((string) ($investigation['summary'] ?? 'N/A')) . "\nNodes: " . count($nodes) . " | Edges: " . count($edges) . "\n";
-    $systemPrompt = "You are a cybersecurity threat intelligence analyst assistant integrated into the ClickFix Mitigator platform. You help analysts investigate social engineering and ClickFix attacks. You have access to the current investigation context. Be concise, technical, and actionable. Format responses in Markdown when appropriate.\n\n" . $contextText;
+    $systemPrompt = "You are a senior SOC analyst specialized in ClickFix/social engineering attacks. You work inside the ClickFix Mitigator platform. Be direct, concise, and technical. Never repeat the user's question back to them. Always respond in the same language the user is writing in. Format responses in Markdown.\n\nCURRENT INVESTIGATION CONTEXT:\n" . $contextText;
     $chatHistory = is_array($options['history'] ?? null) ? $options['history'] : [];
     $messages = [];
     foreach ($chatHistory as $msg) {
@@ -751,7 +751,7 @@ function clickfix_llm_investigate_alert(PDO $pdo, int $reportId, int $userId, ar
         } catch (Throwable $e) {}
     }
     $prompt = clickfix_llm_build_enriched_prompt($pdo, $report, $enrichment);
-    $systemPrompt = 'You are a cybersecurity SOC analyst specializing in ClickFix/social engineering attacks. Analyze the detection report and API enrichment data. Provide: 1) Executive threat assessment (malicious/suspicious/benign), 2) Key indicators and TTPs identified, 3) Infrastructure analysis, 4) Recommended containment and remediation actions. Format as Markdown. Be concise and actionable.';
+    $systemPrompt = 'You are a senior SOC analyst. Analyze this ClickFix detection report with enrichment data. Provide: 1) Threat verdict 2) Key IOCs and TTPs 3) Infrastructure analysis 4) Recommended actions. Be direct and concise. Do not repeat the input data back. Always respond in English unless asked otherwise. Format Markdown.';
     $messages = [
         ['role' => 'user', 'content' => "Analyze this ClickFix detection:\n\n" . $prompt],
     ];
@@ -759,6 +759,8 @@ function clickfix_llm_investigate_alert(PDO $pdo, int $reportId, int $userId, ar
     $result['enrichment'] = $enrichment;
     return $result;
 }
+
+function clickfix_llm_ensure_table(PDO $pdo): void
 {
     if (!clickfix_has_table($pdo, 'user_llm_profiles')) {
         $pdo->exec("CREATE TABLE IF NOT EXISTS user_llm_profiles (

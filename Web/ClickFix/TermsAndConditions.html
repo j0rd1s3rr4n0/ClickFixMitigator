@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Terms & Conditions - ClickFix Mitigator</title>
+  <title>Terms &amp; Conditions - ClickFix Mitigator</title>
   <meta name="description" content="ClickFix Mitigator terms and conditions for the extension and web platform." />
   <style>
     :root{
@@ -15,7 +15,7 @@
     *{box-sizing:border-box}
     body{
       margin:0; padding:48px 18px;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
       background: radial-gradient(1200px 600px at 20% 0%, rgba(96,165,250,.18), transparent 55%),
                   radial-gradient(900px 500px at 80% 10%, rgba(34,197,94,.10), transparent 50%),
                   var(--bg);
@@ -82,9 +82,9 @@
 <body>
   <div class="wrap">
     <header>
-      <h1>Terms & Conditions</h1>
+      <h1>Terms &amp; Conditions</h1>
       <p class="sub">
-        <strong>ClickFix Mitigator</strong> · Last updated: <time datetime="2026-03-15">March 15, 2026</time>
+        <strong>ClickFix Mitigator</strong> · Last updated: <time datetime="2026-04-24">April 24, 2026</time>
       </p>
     </header>
 
@@ -98,66 +98,79 @@
       <nav aria-label="Index">
         <a href="#acceptance">1. Acceptance</a>
         <a href="#scope">2. Scope</a>
-        <a href="#responsible-use">3. Responsible use</a>
-        <a href="#availability">4. Availability</a>
-        <a href="#evidence">5. Evidence and reports</a>
-        <a href="#accounts">6. Accounts and access</a>
-        <a href="#liability">7. Liability</a>
-        <a href="#changes">8. Changes</a>
-        <a href="#contact">9. Contact</a>
+        <a href="#telemetry">3. Defensive telemetry</a>
+        <a href="#responsible-use">4. Responsible use</a>
+        <a href="#availability">5. Availability</a>
+        <a href="#evidence">6. Evidence and reports</a>
+        <a href="#accounts">7. Accounts and access</a>
+        <a href="#liability">8. Liability</a>
+        <a href="#changes">9. Changes</a>
+        <a href="#contact">10. Contact</a>
       </nav>
 
       <section id="acceptance">
         <h2>1. Acceptance of terms</h2>
-        <p>By using the ClickFix Mitigator extension, web platform, demos, or related documentation, you agree to these terms and conditions.</p>
+        <p>By using the ClickFix Mitigator extension, web platform, demos or related documentation, you agree to these terms and conditions.</p>
       </section>
 
       <section id="scope">
         <h2>2. Scope of the service</h2>
-        <p>ClickFix Mitigator is a defensive security project focused on prevention, visibility, triage, investigation, and evidence handling around ClickFix-style social-engineering activity.</p>
-        <p>The service is intended for defensive, analytical, educational, and operational security use.</p>
+        <p>ClickFix Mitigator is a defensive security project focused on prevention, visibility, triage, investigation and evidence handling around ClickFix-style social-engineering activity.</p>
+        <p>The service is intended for defensive, analytical, educational and operational security use.</p>
+      </section>
+
+      <section id="telemetry">
+        <h2>3. Defensive telemetry and private baseline</h2>
+        <p>The service may process defensive telemetry required to detect suspicious flows, generate alerts, operate investigations and improve false-positive handling.</p>
+        <p>The browser extension may maintain a private baseline by installation to recognize habitual hostnames. This feature is designed around a pseudonymous client identifier rather than a real-world identity.</p>
+        <ul>
+          <li>The baseline is intended to reduce false positives, not to identify a person.</li>
+          <li>Baseline sharing, when enabled, is limited to aggregated hostname-level summaries.</li>
+          <li>The user can disable the private baseline feature from the extension options.</li>
+        </ul>
+        <p class="note">Baseline logic, allowlists, score reductions and other workflow aids do not guarantee that a given event is benign or malicious. Strong malicious signals may still trigger alerts even on habitual hosts.</p>
       </section>
 
       <section id="responsible-use">
-        <h2>3. Responsible use</h2>
+        <h2>4. Responsible use</h2>
         <ul>
-          <li>You must not use the platform to facilitate unauthorized access, offensive intrusion, malware deployment, or unlawful surveillance.</li>
-          <li>You are responsible for configuring policies, allowlists, blocklists, and operational workflows in line with your environment and legal obligations.</li>
-          <li>You must review detections, enrichments, and investigations before taking business or security action with external impact.</li>
+          <li>You must not use the platform to facilitate unauthorized access, offensive intrusion, malware deployment or unlawful surveillance.</li>
+          <li>You are responsible for configuring policies, allowlists, blocklists, baseline settings and operational workflows in line with your environment and legal obligations.</li>
+          <li>You must review detections, enrichments and investigations before taking business or security action with external impact.</li>
         </ul>
-        <p class="note">Security signals, enrichment results, and analytics are operational aids. They are not automatic attribution or legal conclusions.</p>
+        <p class="note">Security signals, enrichment results, score components and analyst views are operational aids. They are not automatic attribution, legal conclusions or guaranteed malware determinations.</p>
       </section>
 
       <section id="availability">
-        <h2>4. Availability and changes</h2>
-        <p>The project may evolve continuously. Features, workflows, interfaces, or integrations may be modified, improved, limited, or removed to improve security, reliability, or operational value.</p>
+        <h2>5. Availability and changes</h2>
+        <p>The project may evolve continuously. Features, workflows, interfaces or integrations may be modified, improved, limited or removed to improve security, reliability or operational value.</p>
       </section>
 
       <section id="evidence">
-        <h2>5. Evidence, reports, and public content</h2>
-        <p>Reports, screenshots, investigation summaries, and public featured investigations may contain defensive security context. Public sharing should only be enabled by authorized administrators after review.</p>
-        <p>You remain responsible for ensuring that any data you publish or distribute through the platform is lawful, proportionate, and appropriate.</p>
+        <h2>6. Evidence, reports and public content</h2>
+        <p>Reports, screenshots, investigation summaries and public featured investigations may contain defensive security context. Public sharing should only be enabled by authorized administrators after review.</p>
+        <p>You remain responsible for ensuring that any data you publish or distribute through the platform is lawful, proportionate and appropriate.</p>
       </section>
 
       <section id="accounts">
-        <h2>6. Accounts and access control</h2>
+        <h2>7. Accounts and access control</h2>
         <p>Access to authenticated areas may be restricted by role. You are responsible for keeping your credentials secure and for actions performed under your account.</p>
         <p>Administrative capabilities must only be granted to trusted operators.</p>
       </section>
 
       <section id="liability">
-        <h2>7. Liability and warranties</h2>
-        <p>The project is provided on an as-available basis. No guarantee is made that the platform will detect every malicious flow, classify every event correctly, or remain continuously available without interruption.</p>
+        <h2>8. Liability and warranties</h2>
+        <p>The project is provided on an as-available basis. No guarantee is made that the platform will detect every malicious flow, classify every event correctly, prevent every false positive or remain continuously available without interruption.</p>
         <p>Operational decisions remain the responsibility of the user or organization deploying the platform.</p>
       </section>
 
       <section id="changes">
-        <h2>8. Changes to these terms</h2>
+        <h2>9. Changes to these terms</h2>
         <p>These terms may be updated over time. The latest published version in this document should be treated as the current reference.</p>
       </section>
 
       <section id="contact">
-        <h2>9. Contact</h2>
+        <h2>10. Contact</h2>
         <p>Official site: <a href="https://jordiserrano.me" rel="noopener noreferrer" target="_blank">jordiserrano.me</a></p>
       </section>
     </main>

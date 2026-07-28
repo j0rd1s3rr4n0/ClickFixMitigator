@@ -1,28 +1,4 @@
 User-agent: *
-Allow: /
-Allow: /dashboard.php
-Allow: /api/
-Disallow: /api/token.php
-Disallow: /api/refresh.php
-Disallow: /data/
-Disallow: /keys/
-Disallow: /Databases/
-Disallow: /backupdashboard/
-Disallow: /scripts/
-Disallow: /.well-known/
-Disallow: /*.sqlite$
-Disallow: /*.env$
-Disallow: /*.pem$
-Disallow: /*.log$
-Disallow: /*.json$
-Allow: /clickfix-score-config.json
+Disallow: /index.php?lang=
 
 Sitemap: https://clickfix.jordiserrano.me/sitemap.xml
-
-User-agent: GPTBot
-Disallow: /api/
-Disallow: /data/
-
-User-agent: CCBot
-Disallow: /api/
-Disallow: /data/

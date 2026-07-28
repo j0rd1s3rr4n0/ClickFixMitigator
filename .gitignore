@@ -162,3 +162,5 @@ botanalyzer/settings.json
 # Preferences (puede contener configuración sensible)
 /botanalyzer/chrome-profile/**/Preferences
 /botanalyzer/chrome-profile/**/Secure Preferences
+/Web/backup_clickfix_20260330_213846
+/Web/ClickFix/assets/corona

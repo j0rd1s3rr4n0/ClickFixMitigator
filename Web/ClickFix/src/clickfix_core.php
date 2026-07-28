@@ -84,6 +84,7 @@ function clickfix_cache_set(string $key, $value, int $ttlSeconds): void
 function clickfix_bootstrap(): void
 {
     if (!headers_sent()) {
+        header('CF-RocketLoader: off');
         header('Content-Type: text/html; charset=utf-8');
         header('X-Content-Type-Options: nosniff');
         header('Referrer-Policy: strict-origin-when-cross-origin');

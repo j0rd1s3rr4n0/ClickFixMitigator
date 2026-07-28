@@ -47,6 +47,12 @@ if ($extension === 'png') {
     $contentType = 'image/jpeg';
 } elseif ($extension === 'webp') {
     $contentType = 'image/webp';
+} elseif ($extension === 'gif') {
+    $contentType = 'image/gif';
+} elseif ($extension === 'bmp') {
+    $contentType = 'image/bmp';
+} elseif ($extension === 'avif') {
+    $contentType = 'image/avif';
 }
 
 header('Content-Type: ' . $contentType);

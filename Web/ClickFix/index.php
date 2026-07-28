@@ -22,6 +22,7 @@ if (!headers_sent()) {
     header('Vary: Cookie');
 }
 require_once __DIR__ . '/src/clickfix_core.php';
+clickfix_bootstrap();
 $monetization = clickfix_monetization_config();
 $indexViewer = clickfix_current_user();
 $indexViewerRole = $indexViewer ? clickfix_normalize_role((string) ($indexViewer['role'] ?? 'guest')) : 'guest';
@@ -7374,7 +7375,7 @@ $sourceCodeSchema = [
             var lat = Number(entry && entry.lat ? entry.lat : 0);
             var lon = Number(entry && entry.lon ? entry.lon : 0);
             var hits = Number(entry && entry.hits ? entry.hits : 0);
-            var countryCode = entry && entry.country_code ? String(entry.country_code) : '';
+            var countryCode = entry && entry.country_code ? String(entry.country_code).toUpperCase().slice(0, 2) : '';
             var countryName = entry && entry.country_name ? String(entry.country_name) : countryCode;
             var hostname = entry && entry.hostname ? String(entry.hostname) : '';
             return {
@@ -7395,6 +7396,18 @@ $sourceCodeSchema = [
           });
         }
 
+        function applyPerCountryLimit(points, enabled, limit) {
+          if (!enabled) {
+            return points;
+          }
+          var seen = Object.create(null);
+          return points.filter(function(point) {
+            var code = point && point.country_code ? String(point.country_code).toUpperCase().slice(0, 2) : '__UNK__';
+            seen[code] = (seen[code] || 0) + 1;
+            return seen[code] <= limit;
+          });
+        }
+
         var alertPoints = normalizePoints(
           (payload && (payload.geo_points_alerts || payload.geo_points)) || [],
           'alert'
@@ -7403,7 +7416,11 @@ $sourceCodeSchema = [
           (payload && payload.geo_points_domains) || [],
           'domain'
         );
-        return alertPoints.slice(0, 26).concat(domainPoints.slice(0, 24));
+        var settings = payload && payload.map_settings ? payload.map_settings : {};
+        var limitEnabled = !!settings.limit_points_per_country;
+        var perCountryLimit = Math.max(1, Math.min(12, Number(settings.max_points_per_country || 2) || 2));
+        var combined = alertPoints.slice(0, 26).concat(domainPoints.slice(0, 24));
+        return applyPerCountryLimit(combined, limitEnabled, perCountryLimit);
       }
 
       function loadHeroMapWorldGeoJson() {

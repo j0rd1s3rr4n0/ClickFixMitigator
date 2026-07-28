@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/src/clickfix_core.php';
 clickfix_bootstrap();
+header('Cache-Control: no-store, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 header('Content-Type: text/html; charset=utf-8');
 if ((string) ($_GET['debug'] ?? '') === '1') {
     ini_set('display_errors', '1');
@@ -5960,6 +5962,7 @@ $ogImage = 'https://clickfix.jordiserrano.me/assets/corona/images/clickfix-og.pn
                     <?php if ($loggedIn && clickfix_user_has_min_role($user, 'analyst_jr')): ?>
                       <form method="post">
                         <input type="hidden" name="action" value="report_quick_action">
+                        <input type="hidden" name="csrf_token" value="<?= clickfix_h($csrf); ?>">
                         <input type="hidden" name="quick_mode" value="create_investigation">
                         <input type="hidden" name="report_id" value="<?= (int) ($fr['id'] ?? 0); ?>">
                         <button class="btn btn-outline-light btn-sm" type="submit">Abrir caso</button>
@@ -7428,7 +7431,6 @@ $ogImage = 'https://clickfix.jordiserrano.me/assets/corona/images/clickfix-og.pn
             <button type="button" class="btn" data-scroll-target="intel-section-entities">Entidades</button>
             <button type="button" class="btn" data-scroll-target="intel-section-actions">Distribucion</button>
             <?php if ($activeGraphId > 0): ?>
-              <button type="button" class="btn" data-scroll-target="intel-section-llm">LLM Chat</button>
               <button type="button" class="btn" data-scroll-target="intel-section-auto-inv">Auto-Inv</button>
               <button type="button" class="btn" data-scroll-target="intel-section-timeline">Timeline</button>
             <?php endif; ?>
@@ -8362,45 +8364,6 @@ $ogImage = 'https://clickfix.jordiserrano.me/assets/corona/images/clickfix-og.pn
             <?php endif; ?>
 
             <?php if ($activeGraphId > 0): ?>
-              <div class="intel-editor-section" id="intel-section-llm" data-intel-section="intel-section-llm">
-                <div class="intel-section-head">
-                  <div>
-                    <span class="intel-section-kicker">AI Analysis</span>
-                    <h3>LLM Chat - AI-Powered Investigation Assistant</h3>
-                    <p class="mut">Conecta a OpenAI, LM Studio, Anthropic o cualquier endpoint compatible. Analiza IOCs, genera resumenes y asiste en la investigacion.</p>
-                  </div>
-                </div>
-                <div class="llm-chat-panel" id="llm-chat-panel">
-                  <div class="llm-chat-header">
-                    <strong>AI Analyst Chat</strong>
-                    <div class="llm-header-actions">
-                      <select id="llm-profile-select">
-                        <option value="0">-- Select LLM Profile --</option>
-                        <?php foreach ($llmProfiles as $llmProfile): ?>
-                          <option value="<?= (int) ($llmProfile['id'] ?? 0); ?>"><?= clickfix_h((string) ($llmProfile['label'] ?? 'Profile ' . ($llmProfile['id'] ?? 0))); ?> (<?= clickfix_h(clickfix_llm_provider_label((string) ($llmProfile['provider'] ?? 'custom'))); ?>)</option>
-                        <?php endforeach; ?>
-                      </select>
-                      <input type="text" id="llm-model-override" placeholder="Model override (optional)" style="min-width:140px" list="llm-models-datalist">
-                      <datalist id="llm-models-datalist"></datalist>
-                      <input type="text" id="llm-bearer-override" placeholder="Bearer token (optional)" style="min-width:140px">
-                      <input type="text" id="llm-agent-override" placeholder="User-Agent (optional)" style="min-width:140px">
-                      <input type="hidden" id="llm-graph-id" value="<?= $activeGraphId; ?>">
-                      <button type="button" class="btn btn-sm" id="llm-action-summarize">Summarize</button>
-                      <button type="button" class="btn btn-sm" id="llm-action-extract-ioc">Extract IOCs</button>
-                      <button type="button" class="btn btn-sm" id="llm-chat-clear">Clear</button>
-                    </div>
-                  </div>
-                  <div class="llm-chat-messages" id="llm-chat-messages">
-                    <div class="llm-msg assistant">
-                      <div class="msg-body">Welcome! I am your ClickFix investigation AI assistant. Select an LLM profile above, then:<br><br>- <b>Chat</b>: Ask me anything about the investigation<br>- <b>Summarize</b>: Generate an executive summary<br>- <b>Extract IOCs</b>: Find IOCs in the investigation data<br><br>Supported providers: OpenAI, LM Studio, Anthropic, and custom OpenAI-compatible endpoints. You can override the model, Bearer token, and User-Agent per request.</div>
-                    </div>
-                  </div>
-                  <div class="llm-chat-input">
-                    <textarea id="llm-chat-input-textarea" placeholder="Ask about this investigation... (Enter to send, Shift+Enter for new line)" rows="2"></textarea>
-                    <button type="button" id="llm-chat-send">Send</button>
-                  </div>
-                </div>
-              </div>
               <div class="intel-editor-section" id="intel-section-auto-inv" data-intel-section="intel-section-auto-inv">
                 <div class="intel-section-head">
                   <div>
@@ -12179,6 +12142,9 @@ $ogImage = 'https://clickfix.jordiserrano.me/assets/corona/images/clickfix-og.pn
   <script src="<?= clickfix_h($templateBaseUrl); ?>/js/misc.js"></script>
   <script src="<?= clickfix_h($templateBaseUrl); ?>/js/settings.js"></script>
   <script src="<?= clickfix_h($templateBaseUrl); ?>/js/todolist.js"></script>
+  <?php require __DIR__ . '/partials/dashboard_chat_bubble.php'; ?>
+  <?php require __DIR__ . '/partials/dashboard_chat_js.php'; ?>
+  <?php require __DIR__ . '/partials/dashboard_autoinv_js.php'; ?>
   <?php require __DIR__ . '/partials/dashboard_scripts.php'; ?>
   <script id="cf-event-workbench-data" type="application/json"><?= $eventWorkbenchJson; ?></script>
   <script>

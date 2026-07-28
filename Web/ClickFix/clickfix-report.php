@@ -166,7 +166,7 @@ function clickfix_decode_data_url_image(string $raw, int $maxBytes): ?array
     if ($value === '') {
         return null;
     }
-    if (!preg_match('#^data:image/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=]+)$#i', $value, $matches)) {
+    if (!preg_match('#^data:image/(png|jpeg|jpg|webp|gif|bmp|avif);base64,([A-Za-z0-9+/=]+)$#i', $value, $matches)) {
         return null;
     }
     $mime = strtolower((string) $matches[1]);
@@ -181,7 +181,13 @@ function clickfix_decode_data_url_image(string $raw, int $maxBytes): ?array
     if (strlen($decoded) > $maxBytes) {
         return null;
     }
-    $extension = $mime === 'jpeg' || $mime === 'jpg' ? 'jpg' : ($mime === 'webp' ? 'webp' : 'png');
+    $extension = $mime === 'jpeg' || $mime === 'jpg'
+        ? 'jpg'
+        : ($mime === 'webp'
+            ? 'webp'
+            : ($mime === 'gif'
+                ? 'gif'
+                : ($mime === 'bmp' ? 'bmp' : ($mime === 'avif' ? 'avif' : 'png'))));
     return [
         'mime' => $mime,
         'extension' => $extension,
@@ -199,9 +205,14 @@ function clickfix_store_scan_image(int $reportId, string $kind, array $decodedIm
     }
     $extension = (string) ($decodedImage['extension'] ?? '');
     $binary = $decodedImage['binary'] ?? null;
-    if (!in_array($extension, ['png', 'jpg', 'webp'], true) || !is_string($binary) || $binary === '') {
+    if (!in_array($extension, ['png', 'jpg', 'webp', 'gif', 'bmp', 'avif'], true) || !is_string($binary) || $binary === '') {
         return null;
     }
+    $detectedInfo = clickfix_scan_detect_image_info($binary);
+    if ($detectedInfo === null) {
+        return null;
+    }
+    $extension = (string) ($detectedInfo['ext'] ?? $extension);
 
     $scanDir = __DIR__ . '/data/scans';
     if (!is_dir($scanDir)) {
@@ -211,7 +222,7 @@ function clickfix_store_scan_image(int $reportId, string $kind, array $decodedIm
         return null;
     }
 
-    foreach (['png', 'jpg', 'webp'] as $existingExt) {
+    foreach (['png', 'jpg', 'webp', 'gif', 'bmp', 'avif'] as $existingExt) {
         $existingPath = $scanDir . '/' . $reportId . '-' . $kind . '.' . $existingExt;
         if (is_file($existingPath)) {
             @unlink($existingPath);
@@ -245,6 +256,15 @@ function clickfix_detect_binary_image_extension(string $binary): string
     }
     if (strncmp($binary, 'RIFF', 4) === 0 && substr($binary, 8, 4) === 'WEBP') {
         return 'webp';
+    }
+    if (strncmp($binary, "GIF87a", 6) === 0 || strncmp($binary, "GIF89a", 6) === 0) {
+        return 'gif';
+    }
+    if (strncmp($binary, 'BM', 2) === 0) {
+        return 'bmp';
+    }
+    if (substr($binary, 4, 8) === 'ftypavif' || substr($binary, 4, 8) === 'ftypavis') {
+        return 'avif';
     }
     return '';
 }
@@ -584,47 +604,61 @@ function computeServerVerdict(array $signals, string $message, array $reasons, a
 {
     $score = 0;
     $boolSignals = [
-        'commandMatch' => 24,
-        'shellHint' => 18,
-        'evasionHint' => 16,
-        'mismatch' => 10,
-        'clipboardWarning' => 10,
-        'winRHint' => 9,
+        'commandMatch' => 20,
+        'shellHint' => 14,
+        'evasionHint' => 5,
+        'mismatch' => 8,
+        'clipboardWarning' => 4,
+        'winRHint' => 8,
         'winXHint' => 6,
         'consoleHint' => 8,
         'pasteSequenceHint' => 8,
-        'copyTriggerHint' => 7,
+        'copyTriggerHint' => 5,
         'fileExplorerHint' => 5,
         'browserErrorHint' => 5,
         'fixActionHint' => 5,
-        'captchaHint' => 5
+        'captchaHint' => 4
     ];
+    $hasExecutionCorroboration = !empty($signals['commandMatch'])
+        || !empty($signals['shellHint'])
+        || !empty($signals['winRHint'])
+        || !empty($signals['winXHint'])
+        || !empty($signals['consoleHint'])
+        || !empty($signals['pasteSequenceHint'])
+        || !empty($signals['fileExplorerHint']);
     foreach ($boolSignals as $key => $points) {
-        if (!empty($signals[$key])) {
-            $score += $points;
+        if (empty($signals[$key])) {
+            continue;
         }
+        if ($key === 'evasionHint' && !$hasExecutionCorroboration) {
+            continue;
+        }
+        if ($key === 'clipboardWarning' && empty($signals['mismatch']) && !$hasExecutionCorroboration) {
+            continue;
+        }
+        $score += $points;
     }
 
     $messageLower = strtolower($message);
     if (preg_match('/powershell|cmd\s+\/c|bash\s+-c|curl\s+|wget\s+|invoke-webrequest|encodedcommand/', $messageLower)) {
-        $score += 14;
+        $score += 10;
     }
     if (preg_match('/captcha|verification|fix|error|console|terminal/', $messageLower)) {
-        $score += 6;
+        $score += 4;
     }
 
     $reasonCount = count($reasons);
     if ($reasonCount >= 6) {
-        $score += 10;
+        $score += 6;
     } elseif ($reasonCount >= 3) {
-        $score += 5;
+        $score += 3;
     }
 
     $snippetCount = count($snippets);
     if ($snippetCount >= 4) {
-        $score += 8;
-    } elseif ($snippetCount >= 2) {
         $score += 4;
+    } elseif ($snippetCount >= 2) {
+        $score += 2;
     }
 
     if ($eventType === 'unsafe_download') {
@@ -635,9 +669,9 @@ function computeServerVerdict(array $signals, string $message, array $reasons, a
 
     $score = max(0, min(100, $score));
     $verdict = 'low';
-    if ($score >= 65) {
+    if ($score >= 72) {
         $verdict = 'unsafe';
-    } elseif ($score >= 40) {
+    } elseif ($score >= 48) {
         $verdict = 'suspicious';
     }
 
@@ -878,6 +912,7 @@ $normalizedStats = [
     'block_count' => (int) ($statsData['blockCount'] ?? 0),
     'manual_sites' => [],
     'alert_sites' => [],
+    'baseline_hosts' => [],
     'country' => '',
     'install_type' => '',
     'install_source' => '',
@@ -900,6 +935,32 @@ $normalizedStats = [
             if ($site !== '' && preg_match('/^[a-z0-9.-]+$/i', $site)) {
                 $normalizedStats['alert_sites'][] = $site;
             }
+        }
+    }
+    $baselineHosts = $statsData['baselineHosts'] ?? [];
+    if (is_array($baselineHosts)) {
+        foreach (array_slice($baselineHosts, 0, 60) as $hostRow) {
+            if (!is_array($hostRow)) {
+                continue;
+            }
+            $host = clickfix_normalize_domain((string) ($hostRow['hostname'] ?? ''));
+            if ($host === '') {
+                continue;
+            }
+            $lastSeenDay = substr(trim((string) ($hostRow['lastSeenDay'] ?? '')), 0, 10);
+            if ($lastSeenDay !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $lastSeenDay)) {
+                $lastSeenDay = '';
+            }
+            $normalizedStats['baseline_hosts'][] = [
+                'hostname' => $host,
+                'visits_count' => max(0, min(255, (int) ($hostRow['visitsCount'] ?? 0))),
+                'days_seen' => max(0, min(255, (int) ($hostRow['daysSeen'] ?? 0))),
+                'alert_count' => max(0, min(255, (int) ($hostRow['alertCount'] ?? 0))),
+                'blocked_count' => max(0, min(255, (int) ($hostRow['blockedCount'] ?? 0))),
+                'trust_score' => max(0, min(100, (int) ($hostRow['trustScore'] ?? 0))),
+                'local_allowlisted' => filter_var($hostRow['localAllowlisted'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false,
+                'last_seen_day' => $lastSeenDay,
+            ];
         }
     }
     $countryInput = strtoupper(substr(trim((string) ($statsData['country'] ?? '')), 0, 2));
@@ -1049,6 +1110,7 @@ if ($pdo instanceof PDO) {
                 ':install_channel' => $normalizedStats['install_channel'],
                 ':country' => $entry['country']
             ]);
+            clickfix_baseline_merge_host_summaries($pdo, $clientId, $normalizedStats['baseline_hosts'], $entry['received_at']);
         } else {
             $dedupeRow = null;
             if ($clientId !== '' || $entry['ip'] !== '') {
@@ -1111,6 +1173,7 @@ if ($pdo instanceof PDO) {
                     ':matched_snippets' => json_encode($entry['matched_snippets'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
                     ':id' => (int) ($dedupeRow['id'] ?? 0)
                 ]);
+                clickfix_baseline_record_alert($pdo, $clientId, $entry['hostname'], !empty($entry['blocked']), $entry['received_at'], (string) $entry['server_verdict']);
                 $targetReportId = (int) ($dedupeRow['id'] ?? 0);
                 $inserted = true;
                 $skipLogWrite = true;
@@ -1145,6 +1208,7 @@ if ($pdo instanceof PDO) {
                     ':server_verdict' => $entry['server_verdict'],
                     ':trusted_signal_source' => $entry['trusted_signal_source']
                 ]);
+                clickfix_baseline_record_alert($pdo, $clientId, $entry['hostname'], !empty($entry['blocked']), $entry['received_at'], (string) $entry['server_verdict']);
                 $targetReportId = (int) $pdo->lastInsertId();
             }
         }
